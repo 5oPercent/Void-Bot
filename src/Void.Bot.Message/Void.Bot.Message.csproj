@@ -6,4 +6,14 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="Commands\" />
+      <Folder Include="Enum\" />
+      <Folder Include="Events\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Mediator.Net" Version="4.8.0" />
+    </ItemGroup>
+
 </Project>
