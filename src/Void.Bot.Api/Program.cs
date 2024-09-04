@@ -17,16 +17,14 @@ public class Program
         
         configuration.Get(typeof(AppSetting));
         
-        var serilogSetting = new SerilogSetting(configuration);
         Log.Logger = new LoggerConfiguration()
-            .Enrich.FromLogContext()
-            .Enrich.WithProperty("Application", serilogSetting.Application)
-            .WriteTo.Console()
-            .WriteTo.Seq(serilogSetting.Seq.ServerUrl, apiKey: serilogSetting.Seq.ApiKey)
+            .ReadFrom.Configuration(configuration)
+            .Enrich.WithProperty("MachineName", Environment.MachineName)
+            .Enrich.WithProperty("ReleaseVersion", configuration.GetValue<string>("ReleaseVersion"))
             .CreateLogger();
         
         var connectionSetting = new ConnectionStringSetting(configuration);
-        new DbUpRunner(connectionSetting.Value).Run(nameof(Core.Dbup));
+        new DbUpRunner(connectionSetting.Mysql).Run(nameof(Core.Dbup));
         
         Host.CreateDefaultBuilder(args)
             .UseSerilog()

@@ -7,7 +7,7 @@ namespace Void.Bot.Core.Data;
 
 public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbContext, IUnitOfWork
 {
-    private readonly string _dbConnectionString = connectionString.Value;
+    private readonly string _dbConnectionString = connectionString.Mysql;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

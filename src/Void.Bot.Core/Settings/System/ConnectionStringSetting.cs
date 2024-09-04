@@ -2,12 +2,12 @@ using Microsoft.Extensions.Configuration;
 
 namespace Void.Bot.Core.Settings.System;
 
-public class ConnectionStringSetting : IConfigurationSetting<string>
+public class ConnectionStringSetting : IConfigurationSetting
 {
-    public string Value { get; set; }
+    public string Mysql { get; set; }
     
     public ConnectionStringSetting(IConfiguration configuration)
     {
-        Value = configuration["ConnectionStrings"] ?? string.Empty;
+        Mysql = configuration["ConnectionStrings:Mysql"] ?? string.Empty;
     }
 }
