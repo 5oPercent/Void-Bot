@@ -4,7 +4,7 @@ using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Serilog;
 
-namespace Void.Bot.Core.Middlewares.Logging;
+namespace Void.Bot.Core.Middlewares.Logger;
 
 public static class LoggerMiddleware
 {

@@ -1,12 +1,11 @@
 using System.Runtime.ExceptionServices;
-using AutoMapper;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Serilog;
 using Void.Bot.Core.Extension;
 
-namespace Void.Bot.Core.Middlewares.Logging;
+namespace Void.Bot.Core.Middlewares.Logger;
 
 public class LoggerSpecification<TContext>(ILogger logger) : IPipeSpecification<TContext>
     where TContext : IContext<IMessage>

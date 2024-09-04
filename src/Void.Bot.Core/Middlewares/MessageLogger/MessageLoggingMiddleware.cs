@@ -14,7 +14,8 @@ public static class MessageLoggingMiddleware
     {
         if (configurator.DependencyScope == null)
         {
-            throw new DependencyScopeNotConfiguredException(nameof(configurator.DependencyScope));
+            throw new DependencyScopeNotConfiguredException(
+                $"{nameof(messageLoggingService)} is not provided and IDependencyScope is not configured, Please ensure {nameof(messageLoggingService)} is registered properly if you are using IoC container, otherwise please pass {nameof(messageLoggingService)} as parameter");
         }
         
         messageLoggingService ??= configurator.DependencyScope.Resolve<IMessageLoggingService>();

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Void.Bot.Core.Data;
-using Void.Bot.Core.Middlewares.Logging;
+using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
