@@ -1,0 +1,122 @@
+using System.Collections.Concurrent;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
+using Newtonsoft.Json;
+using NSubstitute;
+using Respawn;
+using Respawn.Graph;
+using Serilog;
+using Void.Bot.Core;
+using Void.Bot.Core.Dbup;
+using Void.Bot.Core.Settings;
+using Void.Bot.Core.Settings.System;
+
+namespace Void.Bot.IntegrationTest;
+
+public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
+{
+    private readonly string _topic;
+    private readonly string _databaseName;
+    
+    private static readonly ConcurrentDictionary<string, IContainer> Containers = new();
+    private static readonly ConcurrentDictionary<string,bool> ShouldRunDbUpDatabases = new();
+    
+    private Respawner? _respawner;
+
+    protected ILifetimeScope CurrentScope { get; }
+    protected IConfiguration CurrentConfiguration => CurrentScope.Resolve<IConfiguration>();
+
+    public IntegrationFixture(string topic, string databaseName)
+    {
+        _topic = topic;
+        _databaseName = databaseName;
+        
+        var logger = Substitute.For<ILogger>();
+
+        var container = Containers.GetValueOrDefault(_topic);
+        if (container == null)
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddLogging(l =>
+            {
+                l.AddSerilog();
+            });
+            
+            var containerBuilder = new ContainerBuilder();
+            
+            RegisterConfiguration(containerBuilder);
+            
+            containerBuilder.Populate(serviceCollection);
+            containerBuilder.RegisterModule(new VoidBotModule(logger, typeof(IntegrationFixture).Assembly));
+            containerBuilder.RegisterInstance(new MemoryCache(new MemoryCacheOptions())).AsSelf().As<IMemoryCache>().SingleInstance();
+            
+            container = containerBuilder.Build();
+            Containers[_topic] = container;
+        }
+        
+        CurrentScope = container.BeginLifetimeScope();
+        
+        RunDbUpIfRequired();
+        SetupScope(CurrentScope);
+    }
+
+    private IConfiguration RegisterConfiguration(ContainerBuilder containerBuilder)
+    {
+        var targetJson = $"appsetting_{_topic}.json";
+        File.Copy("appsettings.json", targetJson, true);
+        
+        dynamic jsonObj = JsonConvert.DeserializeObject(File.ReadAllText(targetJson)) ?? throw new InvalidOperationException();
+        jsonObj["ConnectionStrings"]["Mysql"] = jsonObj["ConnectionStrings"]["Mysql"].ToString()
+            .Replace("database=db_void_bot", $"database=db_void_bot_{_databaseName}");
+        
+        File.WriteAllText(targetJson, JsonConvert.SerializeObject(jsonObj));
+        
+        var configuration = new ConfigurationBuilder().AddJsonFile(targetJson).Build();
+        containerBuilder.RegisterInstance(configuration).AsImplementedInterfaces();
+        
+        configuration.Get(typeof(AppSetting));
+        
+        return configuration;
+    }
+    
+    private void RunDbUpIfRequired()
+    {
+        if(!ShouldRunDbUpDatabases.GetValueOrDefault(_databaseName, true)) return;
+        
+        new DbUpRunner(new ConnectionStringSetting(CurrentConfiguration).Mysql).Run("Dbup");
+
+        ShouldRunDbUpDatabases[_databaseName] = false;
+    }
+    
+    public async Task InitializeAsync()
+    {
+        await using var conn = new MySqlConnection(new ConnectionStringSetting(CurrentConfiguration).Mysql);
+        await conn.OpenAsync();
+        
+        _respawner = await Respawner.CreateAsync(conn, new RespawnerOptions
+        {
+            TablesToIgnore = new Table[]
+            {
+                "schemaversions"
+            },
+            SchemasToInclude = new []
+            {
+                $"db_void_bot_{_databaseName}"  
+            },
+            DbAdapter = DbAdapter.MySql
+        });
+    }
+
+    public async Task DisposeAsync()
+    {
+        if (_respawner == null) return;
+            
+        await using var conn = new MySqlConnection(new ConnectionStringSetting(CurrentConfiguration).Mysql);
+        await conn.OpenAsync();
+        await _respawner.ResetAsync(conn);
+    }
+}

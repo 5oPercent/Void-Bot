@@ -1,0 +1,39 @@
+using Mediator.Net;
+using Shouldly;
+using Void.Bot.IntegrationTest.Services.MessageLogging.TestClass;
+using Void.Bot.IntegrationTest.TestBaseClasses;
+using Void.Bot.IntegrationTest.Utils;
+using Void.Bot.Message.Request.MessageLogging;
+
+namespace Void.Bot.IntegrationTest.Services.MessageLogging;
+
+public class MessageLoggingFixture : MessageLoggingFixtureBase
+{
+    private readonly MessageLoggingUtil _util;
+    
+    public MessageLoggingFixture()
+    {
+        _util = new MessageLoggingUtil(CurrentScope);
+    }
+    
+    [Theory]
+    [ClassData(typeof(GetMessageLoggingDataProvider))]
+    public async Task CanRequest(GetMessageLoggingTestCase testCase)
+    {
+        await _util.AddMessageLoggingAsync(Guid.Parse("fb46b581-7837-41ca-b734-db32ffd9c7e9"), "string", "{}", "string", "{}", DateTimeOffset.Parse("2024-08-05"));
+        await _util.AddMessageLoggingAsync(Guid.Parse("ffee8b77-40d8-4dfd-8a7a-4b4cf936ab35"), "string", "{}", "string", "{}", DateTimeOffset.Parse("2024-08-09"));
+        await _util.AddMessageLoggingAsync(Guid.Parse("ae668eb7-9922-4469-8c0b-1c24c4fa0160"), "string", "{}", "string", "{}", DateTimeOffset.Parse("2024-08-25"));
+        
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<GetMessageLogRequest, GetMessageLogResponse>(new GetMessageLogRequest
+            {
+                Ids = testCase.Ids,
+                StartDate = testCase.StartDate,
+                EndDate = testCase.EndDate
+            });
+            
+            response.Result.Count.ShouldBe(testCase.SuccessesCount);
+        });
+    }
+}

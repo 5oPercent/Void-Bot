@@ -13,6 +13,9 @@
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
+        <PackageReference Include="NSubstitute" Version="5.1.0" />
+        <PackageReference Include="Respawn" Version="6.2.1" />
+        <PackageReference Include="Shouldly" Version="4.2.1" />
         <PackageReference Include="xunit" Version="2.5.3"/>
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3"/>
     </ItemGroup>
@@ -23,6 +26,17 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Void.Bot.Core\Void.Bot.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Middlewares\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="appsettings.json" />
+      <Content Include="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
 </Project>
