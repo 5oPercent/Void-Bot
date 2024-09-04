@@ -29,6 +29,7 @@
     <ItemGroup>
       <Folder Include="Handler\CommandHandler\" />
       <Folder Include="Handler\EventHandler\" />
+      <Folder Include="Middlewares\" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,0 +1,24 @@
+using Mediator.Net;
+using Mediator.Net.Context;
+using Mediator.Net.Contracts;
+using Mediator.Net.Pipeline;
+using Void.Bot.Core.Services.MessageLogging;
+
+namespace Void.Bot.Core.Middlewares.MessageLogger;
+
+public static class MessageLoggingMiddleware
+{
+    public static void UseMessageLogging<TContext>(
+        this IPipeConfigurator<TContext> configurator, IMessageLoggingService messageLoggingService = null)
+        where TContext : IContext<IMessage>
+    {
+        if (configurator.DependencyScope == null)
+        {
+            throw new DependencyScopeNotConfiguredException(nameof(configurator.DependencyScope));
+        }
+        
+        messageLoggingService ??= configurator.DependencyScope.Resolve<IMessageLoggingService>();
+        
+        configurator.AddPipeSpecification(new MessageLoggingSpecification<TContext>(messageLoggingService));
+    }
+}
