@@ -16,7 +16,7 @@ public class MessageLoggingService(IMapper mapper, IMessageLoggingDataProvider d
 {
     public async Task<GetMessageLogResponse> GetLogsAsync(GetMessageLogRequest request, CancellationToken cancellationToken)
     {
-        return await dataProvider.GetMessageLogsAsync(request.Ids, request.startDate, request.endDate, cancellationToken).ConfigureAwait(false);
+        return await dataProvider.GetMessageLogsAsync(request.Ids, request.StartDate, request.EndDate, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task AddLogsAsync(List<AddMessageLoggingCommand> commands, CancellationToken cancellationToken)

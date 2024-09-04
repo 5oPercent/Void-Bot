@@ -1,0 +1,24 @@
+using Autofac;
+using Void.Bot.Core.Data;
+using Void.Bot.Core.Domain;
+
+namespace Void.Bot.IntegrationTest.Utils;
+
+public class MessageLoggingUtil(ILifetimeScope lifetimeScope) : IntegrationUtilBase(lifetimeScope)
+{
+    public async Task AddMessageLoggingAsync(Guid id, string messageType, string messageJson, string resultType, string resultJson, DateTimeOffset createDate)
+    {
+        await RunWithUnitOfWork<IRepository>(async rep =>
+        {
+            await rep.InsertAsync(new MessageLog
+            {
+                Id = id,
+                MessageType = messageType,
+                MessageJson = messageJson,
+                ResultType = resultType,
+                ResultJson = resultJson,
+                CreatedDate = createDate
+            }).ConfigureAwait(false);
+        });
+    }
+}

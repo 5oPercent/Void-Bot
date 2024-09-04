@@ -1,6 +1,8 @@
+using Void.Bot.Core.Services;
+
 namespace Void.Bot.Core.Caching;
 
-public interface ICacheManager : IDisposable
+public interface ICacheManager : IScope, IDisposable
 {
     Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class;
     

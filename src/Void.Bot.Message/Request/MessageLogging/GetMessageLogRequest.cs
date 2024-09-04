@@ -8,9 +8,9 @@ public class GetMessageLogRequest : IRequest
 {
     public List<Guid>? Ids { get; set; }
 
-    public DateTimeOffset? startDate { get; set; }
+    public DateTimeOffset? StartDate { get; set; }
 
-    public DateTimeOffset? endDate { get; set; }
+    public DateTimeOffset? EndDate { get; set; }
 }
 
 public class GetMessageLogResponse : VoidBotResponse<List<MessageLogDto>>
