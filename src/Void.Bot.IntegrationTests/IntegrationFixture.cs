@@ -25,7 +25,7 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
     private static readonly ConcurrentDictionary<string, IContainer> Containers = new();
     private static readonly ConcurrentDictionary<string,bool> ShouldRunDbUpDatabases = new();
     
-    private Respawner _respawner;
+    private Respawner? _respawner;
 
     protected ILifetimeScope CurrentScope { get; }
     protected IConfiguration CurrentConfiguration => CurrentScope.Resolve<IConfiguration>();
@@ -34,6 +34,7 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
     {
         _topic = topic;
         _databaseName = databaseName;
+        
         var logger = Substitute.For<ILogger>();
 
         var container = Containers.GetValueOrDefault(_topic);
@@ -68,7 +69,7 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
         var targetJson = $"appsetting_{_topic}.json";
         File.Copy("appsettings.json", targetJson, true);
         
-        dynamic jsonObj = JsonConvert.DeserializeObject(File.ReadAllText(targetJson));
+        dynamic jsonObj = JsonConvert.DeserializeObject(File.ReadAllText(targetJson)) ?? throw new InvalidOperationException();
         jsonObj["ConnectionStrings"]["Mysql"] = jsonObj["ConnectionStrings"]["Mysql"].ToString()
             .Replace("database=db_void_bot", $"database=db_void_bot_{_databaseName}");
         
@@ -112,6 +113,8 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
 
     public async Task DisposeAsync()
     {
+        if (_respawner == null) return;
+            
         await using var conn = new MySqlConnection(new ConnectionStringSetting(CurrentConfiguration).Mysql);
         await conn.OpenAsync();
         await _respawner.ResetAsync(conn);

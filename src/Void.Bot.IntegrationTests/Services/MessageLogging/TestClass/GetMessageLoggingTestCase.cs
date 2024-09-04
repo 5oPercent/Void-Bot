@@ -4,7 +4,7 @@ namespace Void.Bot.IntegrationTest.Services.MessageLogging.TestClass;
 
 public class GetMessageLoggingTestCase
 {
-    public List<Guid> Ids { get; set; }
+    public List<Guid>? Ids { get; set; }
     
     public DateTimeOffset? StartDate { get; set; }
     

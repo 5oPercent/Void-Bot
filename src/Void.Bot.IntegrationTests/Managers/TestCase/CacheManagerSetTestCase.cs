@@ -4,9 +4,11 @@ namespace Void.Bot.IntegrationTest.Managers.TestCase;
 
 public class CacheManagerSetTestCase
 {
-    public string Key { get; set; }
-    public Type Type { get; set; }
-    public object Data { get; set; }
+    public required string Key { get; set; }
+    
+    public required Type Type { get; set; }
+    
+    public required object Data { get; set; }
 }
 
 public class CacheManagerSetDataProvider : IEnumerable<object[]>

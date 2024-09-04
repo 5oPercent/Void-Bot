@@ -11,7 +11,7 @@ namespace Void.Bot.Core.Services.MessageLogging;
 public interface IMessageLoggingDataProvider : IScope
 {
     Task<GetMessageLogResponse> GetMessageLogsAsync(
-        List<Guid> ids = default,
+        List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
         CancellationToken cancellationToken = default);
@@ -22,14 +22,14 @@ public interface IMessageLoggingDataProvider : IScope
 public class MessageLoggingDataProvider(IRepository repository, IMapper mapper) : IMessageLoggingDataProvider
 {
     public async Task<GetMessageLogResponse> GetMessageLogsAsync(
-        List<Guid> ids = default,
+        List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
         CancellationToken cancellationToken = default)
     {
         var query = repository.QueryNoTracking<MessageLog>();
 
-        if (!ids.IsNullOrEmpty()) query = query.Where(x => ids.Contains(x.Id));
+        if (!ids.IsNullOrEmpty()) query = query.Where(x => ids != null && ids.Contains(x.Id));
         if (startDate != null) query = query.Where(x => x.CreatedDate >= startDate);
         if (endDate != null) query = query.Where(x => x.CreatedDate <= endDate);
         

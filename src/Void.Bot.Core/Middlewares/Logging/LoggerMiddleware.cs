@@ -8,8 +8,7 @@ namespace Void.Bot.Core.Middlewares.Logging;
 
 public static class LoggerMiddleware
 {
-    public static void UseLogger<TContext>(this IPipeConfigurator<TContext> configurator,
-        ILogger logger = null)
+    public static void UseLogger<TContext>(this IPipeConfigurator<TContext> configurator, ILogger? logger = null)
         where TContext : IContext<IMessage>
     {
         if (logger == null && configurator.DependencyScope == null)

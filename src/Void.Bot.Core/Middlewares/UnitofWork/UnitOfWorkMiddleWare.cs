@@ -8,7 +8,8 @@ namespace Void.Bot.Core.Middlewares.UnitofWork;
 
 public static class UnitOfWorkMiddleWare
 {
-    public static void UseUnitOfWork<TContext>(this IPipeConfigurator<TContext> configurator, IUnitOfWork unitOfWork = null) where TContext : IContext<IMessage>
+    public static void UseUnitOfWork<TContext>(this IPipeConfigurator<TContext> configurator, IUnitOfWork? unitOfWork = null)
+        where TContext : IContext<IMessage>
     {
         if (unitOfWork == null && configurator.DependencyScope == null)
         {

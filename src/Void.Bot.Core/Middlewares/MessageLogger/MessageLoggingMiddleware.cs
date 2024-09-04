@@ -9,7 +9,7 @@ namespace Void.Bot.Core.Middlewares.MessageLogger;
 public static class MessageLoggingMiddleware
 {
     public static void UseMessageLogging<TContext>(
-        this IPipeConfigurator<TContext> configurator, IMessageLoggingService messageLoggingService = null)
+        this IPipeConfigurator<TContext> configurator, IMessageLoggingService? messageLoggingService = null)
         where TContext : IContext<IMessage>
     {
         if (configurator.DependencyScope == null)
