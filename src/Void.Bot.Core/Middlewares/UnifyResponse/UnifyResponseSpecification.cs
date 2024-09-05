@@ -30,7 +30,7 @@ public class UnifyResponseSpecification<TContext> : IPipeSpecification<TContext>
         var response = (dynamic)context.Result;
         
         if (response.Code == 0) response.Code = HttpStatusCode.OK;
-        if (string.IsNullOrEmpty(response.Msg)) response.Msg = nameof(HttpStatusCode.OK).ToLower();
+        if (string.IsNullOrEmpty(response.Message)) response.Message = nameof(response.Code).ToLower();
 
         return Task.CompletedTask;
     }
@@ -42,7 +42,7 @@ public class UnifyResponseSpecification<TContext> : IPipeSpecification<TContext>
         var response = (dynamic)context.Result;
 
         response.Code = HttpStatusCode.InternalServerError;
-        response.Msg = ex.Message;
+        response.Message = ex.Message;
 
         throw ex;
     }

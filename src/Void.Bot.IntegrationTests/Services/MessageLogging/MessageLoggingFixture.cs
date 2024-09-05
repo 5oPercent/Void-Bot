@@ -32,8 +32,10 @@ public class MessageLoggingFixture : MessageLoggingFixtureBase
                 StartDate = testCase.StartDate,
                 EndDate = testCase.EndDate
             });
+
+            response.Data.ShouldNotBeNull();
             
-            response.Result.Count.ShouldBe(testCase.SuccessesCount);
+            response.Data.Count.ShouldBe(testCase.SuccessesCount);
         });
     }
 }
