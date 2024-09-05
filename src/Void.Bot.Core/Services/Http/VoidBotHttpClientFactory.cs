@@ -11,11 +11,11 @@ public interface IVoidBotHttpClientFactory : IScope
 {
     HttpClient CreateClient(TokenModel? tokenModel = null, Dictionary<string, string>? headers = null, TimeSpan? timeout = null, bool beginScope = false);
     
-    Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null);
+    Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null, bool beginScope = false);
     
-    Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null);
+    Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null, bool beginScope = false);
     
-    Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null);
+    Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? tokenModel = null, Dictionary<string, string>? headers = null, bool beginScope = false);
 }
 
 public class VoidBotHttpClientFactory(ILifetimeScope scope) : IVoidBotHttpClientFactory
@@ -44,7 +44,7 @@ public class VoidBotHttpClientFactory(ILifetimeScope scope) : IVoidBotHttpClient
         return client;
     }
     
-    public async Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? token = null, Dictionary<string, string>? headers = null)
+    public async Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
         return await SafeProcessAsync(async () =>
         {
@@ -61,7 +61,7 @@ public class VoidBotHttpClientFactory(ILifetimeScope scope) : IVoidBotHttpClient
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? token = null, Dictionary<string, string>? headers = null)
+    public async Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
         return await SafeProcessAsync(async () =>
         {
@@ -78,7 +78,7 @@ public class VoidBotHttpClientFactory(ILifetimeScope scope) : IVoidBotHttpClient
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken, TimeSpan? timeout = null, bool beginScope = false, TokenModel? token = null, Dictionary<string, string>? headers = null)
+    public async Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
         return await SafeProcessAsync(async () =>
         {
