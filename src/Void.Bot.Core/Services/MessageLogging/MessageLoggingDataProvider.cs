@@ -35,11 +35,9 @@ public class MessageLoggingDataProvider(IRepository repository, IMapper mapper) 
         
         var entities = await query.ToListAsync(cancellationToken);
 
-        var result = mapper.Map<List<MessageLogDto>>(entities);
-        
         return new GetMessageLogResponse
         {
-            Result = result
+            Data = mapper.Map<List<MessageLogDto>>(entities)
         };
     }
 
