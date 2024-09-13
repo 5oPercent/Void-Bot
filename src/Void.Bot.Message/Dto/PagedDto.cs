@@ -4,7 +4,7 @@ namespace Void.Bot.Message.Dto;
 
 public class PageInputDto
 {
-    public int Page { get; set; } = 1;
+    public int PageIndex { get; set; } = 1;
     
     [Range(1, 100, ErrorMessage = "PageSize must be between 1 and 100")]
     public int PageSize { get; set; } = 20;

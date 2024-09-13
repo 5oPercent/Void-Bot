@@ -30,7 +30,7 @@ public class MessageLoggingService(IMapper mapper, IMessageLoggingDataProvider d
 
     public async Task<GetMessageLogPageResponse> GetPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken)
     {
-        var paged = await dataProvider.GetPageAsync(request.Page, request.PageSize, cancellationToken).ConfigureAwait(false);
+        var paged = await dataProvider.GetPageAsync(request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
 
         return new GetMessageLogPageResponse
         {
