@@ -16,13 +16,4 @@ public class MessageLoggingController(IMediator mediator) : ControllerBase
         
         return Ok(response);
     }
-    
-    [HttpGet]
-    [Route("get/page")]
-    public async Task<IActionResult> GetMessageLogPageAsync([FromQuery] GetMessageLogPageRequest request)
-    {
-        var response = await mediator.RequestAsync<GetMessageLogPageRequest, GetMessageLogPageResponse>(request).ConfigureAwait(false);
-        
-        return Ok(response);
-    }
 }
