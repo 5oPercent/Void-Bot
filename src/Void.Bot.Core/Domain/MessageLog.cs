@@ -10,26 +10,22 @@ public class MessageLog : IEntity
     {
         Id = Guid.NewGuid();
         CreatedDate = DateTimeOffset.Now;
-        MessageType = string.Empty;
-        MessageJson = string.Empty;
-        ResultType = string.Empty;
-        ResultJson = string.Empty;
     }
     
     [Column("id")]
     public Guid Id { get; set; }
 
     [Column("message_type"), StringLength(128)]
-    public string MessageType { get; set; }
+    public required string MessageType { get; set; }
     
     [Column("result_type"), StringLength(128)]
-    public string ResultType { get; set; }
+    public required string ResultType { get; set; }
     
     [Column("message_json")]
-    public string MessageJson { get; set; }
+    public required string MessageJson { get; set; }
     
     [Column("result_json")]
-    public string ResultJson { get; set; }
+    public required string ResultJson { get; set; }
 
     [Column("created_date")]
     public DateTimeOffset CreatedDate { get; set; }
