@@ -39,6 +39,11 @@ public class PageInput
 
 public class PagedList<TEntity> where TEntity : new()
 {
+    public PagedList()
+    {
+        Items = new List<TEntity>();
+    }
+    
     public int PageIndex { get; set; }
     
     public int PageSize { get; set; }

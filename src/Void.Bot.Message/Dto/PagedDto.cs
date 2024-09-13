@@ -12,6 +12,11 @@ public class PageInputDto
 
 public class PagedListDto<TEntity> where TEntity : new()
 {
+    public PagedListDto()
+    {
+        Items = new List<TEntity>();
+    }
+    
     public int PageIndex { get; set; }
     
     public int PageSize { get; set; }

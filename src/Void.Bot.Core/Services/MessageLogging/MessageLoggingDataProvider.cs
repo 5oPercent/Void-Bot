@@ -22,7 +22,7 @@ public interface IMessageLoggingDataProvider : IScope
     Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken);
 }
 
-public class MessageLoggingDataProvider(IRepository repository, IMapper mapper) : IMessageLoggingDataProvider
+public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggingDataProvider
 {
     public async Task<IEnumerable<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
