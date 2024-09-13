@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Serilog;
 using Void.Bot.Core.Data;
+using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
@@ -38,6 +39,8 @@ public class VoidBotModule(ILogger logger, params Assembly[] assemblies) : Modul
         RegisterSettings(builder);
 
         RegisterDbContext(builder);
+        
+        RegisterJobs(builder);
     }
     
     // 注册日志
@@ -113,5 +116,15 @@ public class VoidBotModule(ILogger logger, params Assembly[] assemblies) : Modul
             .InstancePerLifetimeScope();
 
         builder.RegisterType<Repository>().As<IRepository>().InstancePerLifetimeScope();
+    }
+    
+    // 注册循环任务
+    private void RegisterJobs(ContainerBuilder builder)
+    {
+        foreach (var type in typeof(IRecurringJob).Assembly.GetTypes()
+                     .Where(t => typeof(IRecurringJob).IsAssignableFrom(t) && t.IsClass))
+        {
+            builder.RegisterType(type).AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
+        }
     }
 }
