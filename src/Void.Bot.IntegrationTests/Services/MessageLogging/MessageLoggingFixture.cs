@@ -38,4 +38,27 @@ public class MessageLoggingFixture : MessageLoggingFixtureBase
             response.Data.Count.ShouldBe(testCase.SuccessesCount);
         });
     }
+    
+    [Theory]
+    [ClassData(typeof(GetMessageLoggingDataPageProvider))]
+    public async Task CanRequestPage(GetMessageLoggingPageTestCase testCase)
+    {
+        await _util.AddMessageLoggingAsync(Guid.NewGuid(), "int", "1", "string", "{}", DateTimeOffset.Parse("2024-08-05"));
+        await _util.AddMessageLoggingAsync(Guid.NewGuid(), "double", "3", "string", "{}", DateTimeOffset.Parse("2024-08-09"));
+        await _util.AddMessageLoggingAsync(Guid.NewGuid(), "int", "2", "string", "{}", DateTimeOffset.Parse("2024-08-25"));
+        await _util.AddMessageLoggingAsync(Guid.NewGuid(), "double", "4", "string", "{}", DateTimeOffset.Parse("2024-08-26"));
+        
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<GetMessageLogPageRequest, GetMessageLogPageResponse>(new GetMessageLogPageRequest
+            {
+                PageIndex = testCase.PageIndex,
+                PageSize = testCase.PageSize
+            });
+
+            response.Data.ShouldNotBeNull();
+            
+            response.Data.Items.Count().ShouldBe(testCase.SuccessesCount);
+        });
+    }
 }

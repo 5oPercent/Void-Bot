@@ -3,25 +3,28 @@ using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain;
 using Void.Bot.Core.Extension;
-using Void.Bot.Message.Dto.MessageLogging;
-using Void.Bot.Message.Request.MessageLogging;
 
 namespace Void.Bot.Core.Services.MessageLogging;
 
 public interface IMessageLoggingDataProvider : IScope
 {
-    Task<GetMessageLogResponse> GetMessageLogsAsync(
+    Task<IEnumerable<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
         CancellationToken cancellationToken = default);
     
+    Task<PagedList<MessageLog>> GetPageAsync(
+        int pageIndex = 1,
+        int pageSize = 20,
+        CancellationToken cancellationToken = default);
+    
     Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken);
 }
 
-public class MessageLoggingDataProvider(IRepository repository, IMapper mapper) : IMessageLoggingDataProvider
+public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggingDataProvider
 {
-    public async Task<GetMessageLogResponse> GetMessageLogsAsync(
+    public async Task<IEnumerable<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
@@ -35,10 +38,14 @@ public class MessageLoggingDataProvider(IRepository repository, IMapper mapper) 
         
         var entities = await query.ToListAsync(cancellationToken);
 
-        return new GetMessageLogResponse
-        {
-            Data = mapper.Map<List<MessageLogDto>>(entities)
-        };
+        return entities;
+    }
+
+    public async Task<PagedList<MessageLog>> GetPageAsync(int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default)
+    {
+        var paged = await repository.QueryNoTracking<MessageLog>().ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
+
+        return paged;
     }
 
     public async Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken)
