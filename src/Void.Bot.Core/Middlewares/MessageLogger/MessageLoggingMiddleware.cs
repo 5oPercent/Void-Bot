@@ -2,6 +2,7 @@ using Mediator.Net;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
+using Void.Bot.Core.Data;
 using Void.Bot.Core.Services.MessageLogging;
 
 namespace Void.Bot.Core.Middlewares.MessageLogger;
@@ -9,7 +10,7 @@ namespace Void.Bot.Core.Middlewares.MessageLogger;
 public static class MessageLoggingMiddleware
 {
     public static void UseMessageLogging<TContext>(
-        this IPipeConfigurator<TContext> configurator, IMessageLoggingService? messageLoggingService = null)
+        this IPipeConfigurator<TContext> configurator, IMessageLoggingService? messageLoggingService = null, IUnitOfWork unitOfWork = null)
         where TContext : IContext<IMessage>
     {
         if (configurator.DependencyScope == null)
@@ -19,7 +20,9 @@ public static class MessageLoggingMiddleware
         }
         
         messageLoggingService ??= configurator.DependencyScope.Resolve<IMessageLoggingService>();
+
+        unitOfWork ??= configurator.DependencyScope.Resolve<IUnitOfWork>();
         
-        configurator.AddPipeSpecification(new MessageLoggingSpecification<TContext>(messageLoggingService));
+        configurator.AddPipeSpecification(new MessageLoggingSpecification<TContext>(messageLoggingService, unitOfWork));
     }
 }
