@@ -1,9 +1,15 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Void.Bot.Core.Extension;
 
 public static class EfCorePagedExtension
 {
+    public static IQueryable<T> WhereIF<T>(this IQueryable<T> source, bool condition, Expression<Func<T, bool>> predicate)
+    {
+        return condition ? source.Where(predicate) : source; // 如果条件为 false，返回原始查询
+    }
+    
     public static PagedList<TEntity> ToPaged<TEntity>(this IQueryable<TEntity> query, int pageIndex, int pageSize) where TEntity : new()
     {
         var total = query.Count();

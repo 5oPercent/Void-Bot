@@ -1,5 +1,3 @@
-using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain;
 using Void.Bot.Core.Extension;
@@ -29,12 +27,11 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
         int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = repository.QueryNoTracking<MessageLog>();
-
-        if (!ids.IsNullOrEmpty()) query = query.Where(x => ids != null && ids.Contains(x.Id));
-        if (startDate != null) query = query.Where(x => x.CreatedDate >= startDate);
-        if (endDate != null) query = query.Where(x => x.CreatedDate <= endDate);
-
+        var query = repository.QueryNoTracking<MessageLog>()
+            .WhereIF(!ids.IsNullOrEmpty(), x => ids != null && ids.Contains(x.Id))
+            .WhereIF(startDate != null, x => x.CreatedDate >= startDate)
+            .WhereIF(endDate != null, x => x.CreatedDate <= endDate);
+        
         var entities = await query.OrderByDescending(x => x.CreatedDate)
             .ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
 
