@@ -5,17 +5,17 @@ using Void.Bot.Message.Request.MessageLogging;
 
 namespace Void.Bot.Core.Handler.RequestHandler.MessageLogging;
 
-public class GetMessageLogPageHandler : IRequestHandler<GetMessageLogPageRequest, GetMessageLogPageResponse>
+public class GetMessageLogHandler : IRequestHandler<GetMessageLogPageRequest, GetMessageLogPageResponse>
 {
     private readonly IMessageLoggingService _service;
 
-    public GetMessageLogPageHandler(IMessageLoggingService service)
+    public GetMessageLogHandler(IMessageLoggingService service)
     {
         _service = service;
     }
     
     public async Task<GetMessageLogPageResponse> Handle(IReceiveContext<GetMessageLogPageRequest> context, CancellationToken cancellationToken)
     {
-        return await _service.GetPageAsync(context.Message, cancellationToken).ConfigureAwait(false);
+        return await _service.GetLogPageAsync(context.Message, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -8,13 +8,10 @@ namespace Void.Bot.Core.Services.MessageLogging;
 
 public interface IMessageLoggingDataProvider : IScope
 {
-    Task<IEnumerable<MessageLog>> GetFilterAsync(
+    Task<PagedList<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
-        CancellationToken cancellationToken = default);
-    
-    Task<PagedList<MessageLog>> GetPageAsync(
         int pageIndex = 1,
         int pageSize = 20,
         CancellationToken cancellationToken = default);
@@ -24,10 +21,12 @@ public interface IMessageLoggingDataProvider : IScope
 
 public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggingDataProvider
 {
-    public async Task<IEnumerable<MessageLog>> GetFilterAsync(
+    public async Task<PagedList<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
         DateTimeOffset? startDate = null,
         DateTimeOffset? endDate = null,
+        int pageIndex = 1,
+        int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
         var query = repository.QueryNoTracking<MessageLog>();
@@ -35,17 +34,11 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
         if (!ids.IsNullOrEmpty()) query = query.Where(x => ids != null && ids.Contains(x.Id));
         if (startDate != null) query = query.Where(x => x.CreatedDate >= startDate);
         if (endDate != null) query = query.Where(x => x.CreatedDate <= endDate);
-        
-        var entities = await query.ToListAsync(cancellationToken);
+
+        var entities = await query.OrderByDescending(x => x.CreatedDate)
+            .ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
 
         return entities;
-    }
-
-    public async Task<PagedList<MessageLog>> GetPageAsync(int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default)
-    {
-        var paged = await repository.QueryNoTracking<MessageLog>().ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
-
-        return paged;
     }
 
     public async Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken)
