@@ -30,11 +30,10 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
         DateTimeOffset? endDate = null,
         CancellationToken cancellationToken = default)
     {
-        var query = repository.QueryNoTracking<MessageLog>();
-
-        if (!ids.IsNullOrEmpty()) query = query.Where(x => ids != null && ids.Contains(x.Id));
-        if (startDate != null) query = query.Where(x => x.CreatedDate >= startDate);
-        if (endDate != null) query = query.Where(x => x.CreatedDate <= endDate);
+        var query = repository.QueryNoTracking<MessageLog>()
+            .WhereIF(!ids.IsNullOrEmpty(), x => ids != null && ids.Contains(x.Id))
+            .WhereIF(startDate != null, x => x.CreatedDate >= startDate)
+            .WhereIF(endDate != null, x => x.CreatedDate <= endDate);
         
         var entities = await query.ToListAsync(cancellationToken);
 
