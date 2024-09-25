@@ -9,16 +9,7 @@ namespace Void.Bot.Api.Controllers;
 public class MessageLoggingController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
-    [Route("get")]
-    public async Task<IActionResult> GetMessageLogAsync([FromQuery] GetMessageLogRequest request)
-    {
-        var response = await mediator.RequestAsync<GetMessageLogRequest, GetMessageLogResponse>(request).ConfigureAwait(false);
-        
-        return Ok(response);
-    }
-    
-    [HttpGet]
-    [Route("get/page")]
+    [Route("page")]
     public async Task<IActionResult> GetMessageLogPageAsync([FromQuery] GetMessageLogPageRequest request)
     {
         var response = await mediator.RequestAsync<GetMessageLogPageRequest, GetMessageLogPageResponse>(request).ConfigureAwait(false);

@@ -9,6 +9,10 @@ public class GetMessageLoggingTestCase
     public DateTimeOffset? StartDate { get; set; }
     
     public DateTimeOffset? EndDate { get; set; }
+
+    public int PageIndex { get; set; } = 1;
+
+    public int PageSize { get; set; } = 20;
     
     public int SuccessesCount { get; set; }
 }
@@ -38,7 +42,9 @@ public class GetMessageLoggingDataProvider : IEnumerable<object[]>
                 Ids = new List<Guid>(),
                 StartDate = DateTimeOffset.Parse("2024-08-01"),
                 EndDate = DateTimeOffset.Parse("2024-09-01"),
-                SuccessesCount = 3
+                PageIndex = 1,
+                PageSize = 5,
+                SuccessesCount = 5
             }
         };
         
