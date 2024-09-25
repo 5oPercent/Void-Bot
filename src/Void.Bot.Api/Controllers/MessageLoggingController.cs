@@ -10,9 +10,9 @@ public class MessageLoggingController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
     [Route("get")]
-    public async Task<IActionResult> GetMessageLogAsync([FromQuery] GetMessageLogRequest request)
+    public async Task<IActionResult> GetMessageLogAsync([FromQuery] GetMessageLogPageRequest pageRequest)
     {
-        var response = await mediator.RequestAsync<GetMessageLogRequest, GetMessageLogResponse>(request).ConfigureAwait(false);
+        var response = await mediator.RequestAsync<GetMessageLogPageRequest, GetMessageLogPageResponse>(pageRequest).ConfigureAwait(false);
         
         return Ok(response);
     }

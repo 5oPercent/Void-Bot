@@ -9,34 +9,26 @@ namespace Void.Bot.Core.Services.MessageLogging;
 
 public interface IMessageLoggingService : IScope
 {
-    Task<GetMessageLogResponse> GetLogsAsync(GetMessageLogRequest request, CancellationToken cancellationToken);
-    
-    Task<GetMessageLogPageResponse> GetPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken);
+    Task<GetMessageLogPageResponse> GetLogPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken);
     
     Task AddLogsAsync(List<AddMessageLoggingCommand> commands, CancellationToken cancellationToken);
 }
     
 public class MessageLoggingService(IMapper mapper, IMessageLoggingDataProvider dataProvider) : IMessageLoggingService
 {
-    public async Task<GetMessageLogResponse> GetLogsAsync(GetMessageLogRequest request, CancellationToken cancellationToken)
+    public async Task<GetMessageLogPageResponse> GetLogPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken)
     {
-        var list = await dataProvider.GetFilterAsync(request.Ids, request.StartDate, request.EndDate, cancellationToken).ConfigureAwait(false);
-
-        return new GetMessageLogResponse
-        {
-            Data = mapper.Map<List<MessageLogDto>>(list)
-        };
-    }
-
-    public async Task<GetMessageLogPageResponse> GetPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken)
-    {
-        var paged = await dataProvider.GetPageAsync(request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
+        var paged = await dataProvider.GetFilterAsync(
+            request.Ids,
+            request.StartDate, request.EndDate,
+            request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
 
         return new GetMessageLogPageResponse
         {
             Data = mapper.Map<PagedListDto<MessageLogDto>>(paged)
         };
     }
+
 
     public async Task AddLogsAsync(List<AddMessageLoggingCommand> commands, CancellationToken cancellationToken)
     {
