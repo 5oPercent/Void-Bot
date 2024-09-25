@@ -5,11 +5,11 @@ using Void.Bot.Message.Request.MessageLogging;
 
 namespace Void.Bot.Core.Handler.RequestHandler.MessageLogging;
 
-public class GetMessageLogHandler : IRequestHandler<GetMessageLogPageRequest, GetMessageLogPageResponse>
+public class GetMessageLogPageHandler : IRequestHandler<GetMessageLogPageRequest, GetMessageLogPageResponse>
 {
     private readonly IMessageLoggingService _service;
 
-    public GetMessageLogHandler(IMessageLoggingService service)
+    public GetMessageLogPageHandler(IMessageLoggingService service)
     {
         _service = service;
     }
