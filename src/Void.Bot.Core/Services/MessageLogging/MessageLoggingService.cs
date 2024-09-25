@@ -1,23 +1,34 @@
 using AutoMapper;
 using Void.Bot.Core.Domain;
 using Void.Bot.Message.Commands.MessageLogging;
+using Void.Bot.Message.Dto;
+using Void.Bot.Message.Dto.MessageLogging;
 using Void.Bot.Message.Request.MessageLogging;
 
 namespace Void.Bot.Core.Services.MessageLogging;
 
 public interface IMessageLoggingService : IScope
 {
-    Task<GetMessageLogResponse> GetLogsAsync(GetMessageLogRequest request, CancellationToken cancellationToken);
+    Task<GetMessageLogPageResponse> GetLogPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken);
     
     Task AddLogsAsync(List<AddMessageLoggingCommand> commands, CancellationToken cancellationToken);
 }
     
 public class MessageLoggingService(IMapper mapper, IMessageLoggingDataProvider dataProvider) : IMessageLoggingService
 {
-    public async Task<GetMessageLogResponse> GetLogsAsync(GetMessageLogRequest request, CancellationToken cancellationToken)
+    public async Task<GetMessageLogPageResponse> GetLogPageAsync(GetMessageLogPageRequest request, CancellationToken cancellationToken)
     {
-        return await dataProvider.GetMessageLogsAsync(request.Ids, request.StartDate, request.EndDate, cancellationToken).ConfigureAwait(false);
+        var paged = await dataProvider.GetFilterAsync(
+            request.Ids,
+            request.StartDate, request.EndDate,
+            request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
+
+        return new GetMessageLogPageResponse
+        {
+            Data = mapper.Map<PagedListDto<MessageLogDto>>(paged)
+        };
     }
+
 
     public async Task AddLogsAsync(List<AddMessageLoggingCommand> commands, CancellationToken cancellationToken)
     {

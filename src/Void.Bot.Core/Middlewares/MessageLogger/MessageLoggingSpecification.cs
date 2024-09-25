@@ -4,15 +4,25 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Newtonsoft.Json;
+using Void.Bot.Core.Data;
 using Void.Bot.Core.Services.MessageLogging;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.MessageLogging;
 
 namespace Void.Bot.Core.Middlewares.MessageLogger;
 
-public class MessageLoggingSpecification<TContext>(IMessageLoggingService messageLoggingService) : IPipeSpecification<TContext>
+public class MessageLoggingSpecification<TContext> : IPipeSpecification<TContext>
     where TContext : IContext<IMessage>
 {
+    private IMessageLoggingService _messageLoggingService;
+    private IUnitOfWork _unitOfWork;
+
+    public MessageLoggingSpecification(IMessageLoggingService messageLoggingService, IUnitOfWork unitOfWork)
+    {
+        _messageLoggingService = messageLoggingService;
+        _unitOfWork = unitOfWork;
+    }
+    
     public bool ShouldExecute(TContext context, CancellationToken cancellationToken)
     {
         if (context.Result == null) return false;
@@ -34,7 +44,7 @@ public class MessageLoggingSpecification<TContext>(IMessageLoggingService messag
     {
         if (!ShouldExecute(context, cancellationToken)) return;
         
-        await messageLoggingService.AddLogsAsync(new List<AddMessageLoggingCommand>
+        await _messageLoggingService.AddLogsAsync(new List<AddMessageLoggingCommand>
         {
             new()
             {
@@ -44,6 +54,8 @@ public class MessageLoggingSpecification<TContext>(IMessageLoggingService messag
                 ResultJson = JsonConvert.SerializeObject(context.Result)
             }
         }, cancellationToken).ConfigureAwait(false);
+        
+        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public Task OnException(Exception ex, TContext context)

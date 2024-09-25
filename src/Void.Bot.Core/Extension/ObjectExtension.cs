@@ -2,6 +2,11 @@ namespace Void.Bot.Core.Extension;
 
 public static class ObjectExtension
 {
+    public static IEnumerable<T> WhereIF<T>(this IEnumerable<T> source, bool condition, Func<T, bool> predicate)
+    {
+        return condition ? source.Where(predicate) : Enumerable.Empty<T>();
+    }
+    
     public static bool IsNullOrEmpty<T>(this IEnumerable<T>? source)
     {
         return source == null || !source.Any();
