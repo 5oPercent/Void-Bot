@@ -6,6 +6,13 @@ namespace Void.Bot.Api;
 
 public class Startup
 {
+    private readonly IConfiguration _configuration;
+
+    public Startup(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+    
     public void ConfigureServices(IServiceCollection services)
     {
         services.AddAuthorization();
@@ -16,7 +23,7 @@ public class Startup
 
     public void ConfigureContainer(ContainerBuilder builder)
     {
-        builder.RegisterModule(new VoidBotModule(Log.Logger, typeof(VoidBotModule).Assembly));
+        builder.RegisterModule(new VoidBotModule(Log.Logger, _configuration, typeof(VoidBotModule).Assembly));
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
