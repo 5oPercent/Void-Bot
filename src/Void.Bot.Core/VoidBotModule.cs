@@ -13,6 +13,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Void.Bot.Core.Data;
+using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
@@ -47,6 +48,8 @@ public class VoidBotModule(ILogger logger, IConfiguration configuration, params 
         RegisterDbContext(builder);
 
         RegisterDiscordBotClient(builder);
+
+        RegisterJobs(builder);
     }
     
     // 注册日志
@@ -125,7 +128,7 @@ public class VoidBotModule(ILogger logger, IConfiguration configuration, params 
     }
     
     // 注册 Discord Bot 客户端
-    public void RegisterDiscordBotClient(ContainerBuilder builder)
+    private void RegisterDiscordBotClient(ContainerBuilder builder)
     {
         var clientConfig = new DiscordSocketConfig();
         
@@ -171,5 +174,15 @@ public class VoidBotModule(ILogger logger, IConfiguration configuration, params 
         #endregion
 
         builder.RegisterInstance(client).AsSelf().SingleInstance();
+    }
+    
+    // 注册任务
+    private void RegisterJobs(ContainerBuilder builder)
+    {
+        foreach (var type in typeof(IJob).Assembly.GetTypes()
+                     .Where(t => typeof(IJob).IsAssignableFrom(t) && t.IsClass))
+        {
+            builder.RegisterType(type).AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
+        }
     }
 }
