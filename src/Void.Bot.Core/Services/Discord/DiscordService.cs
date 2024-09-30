@@ -24,7 +24,7 @@ public class DiscordService : IDiscordService
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     
-    private static DiscordSocketClient _client;
+    private readonly DiscordSocketClient _client;
 
     public DiscordService(ILogger logger, DiscordSetting setting, IDiscordDataProvider dataProvider, IDiscordSlashCommandRoute slashCommandRoute ,DiscordSocketClient client)
     {
