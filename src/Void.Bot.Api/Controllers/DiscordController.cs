@@ -28,4 +28,18 @@ public class DiscordController : ControllerBase
     {
         await _mediator.RequestAsync<DiscordStopBotRequest, DiscordStopBotResponse>(request).ConfigureAwait(false);
     }
+    
+    [HttpGet]
+    [Route("bot/apply/global/slashCommand")]
+    public async Task ApplyGlobalSlashCommandAsync([FromQuery]DiscordApplyGlobalSlashCommandRequest request)
+    {
+        await _mediator.RequestAsync<DiscordApplyGlobalSlashCommandRequest, DiscordApplyGlobalSlashCommandResponse>(request).ConfigureAwait(false);
+    }
+    
+    [HttpGet]
+    [Route("bot/apply/guild/slashCommand")]
+    public async Task ApplyGuildSlashCommandAsync([FromQuery]DiscordApplyGuildSlashCommandRequest request)
+    {
+        await _mediator.RequestAsync<DiscordApplyGuildSlashCommandRequest, DiscordApplyGuildSlashCommandResponse>(request).ConfigureAwait(false);
+    }
 }
