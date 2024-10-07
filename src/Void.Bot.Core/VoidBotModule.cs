@@ -1,23 +1,31 @@
+using System.Net;
 using System.Reflection;
 using Autofac;
 using AutoMapper.Contrib.Autofac.DependencyInjection;
+using Discord;
+using Discord.Net.Rest;
+using Discord.Net.WebSockets;
+using Discord.WebSocket;
 using Mediator.Net;
 using Mediator.Net.Autofac;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using Void.Bot.Core.Data;
+using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Settings;
+using Void.Bot.Core.Settings.Discord;
 using Module = Autofac.Module;
 
 namespace Void.Bot.Core;
 
-public class VoidBotModule(ILogger logger, params Assembly[] assemblies) : Module
+public class VoidBotModule(ILogger logger, IConfiguration configuration, params Assembly[] assemblies) : Module
 {
     private readonly Assembly[] _assemblies = assemblies.Length == 0
         ? new Assembly[] { typeof(VoidBotModule).Assembly }
@@ -38,6 +46,10 @@ public class VoidBotModule(ILogger logger, params Assembly[] assemblies) : Modul
         RegisterSettings(builder);
 
         RegisterDbContext(builder);
+
+        RegisterDiscordBotClient(builder);
+
+        RegisterJobs(builder);
     }
     
     // 注册日志
@@ -113,5 +125,64 @@ public class VoidBotModule(ILogger logger, params Assembly[] assemblies) : Modul
             .InstancePerLifetimeScope();
 
         builder.RegisterType<Repository>().As<IRepository>().InstancePerLifetimeScope();
+    }
+    
+    // 注册 Discord Bot 客户端
+    private void RegisterDiscordBotClient(ContainerBuilder builder)
+    {
+        var clientConfig = new DiscordSocketConfig();
+        
+        var discordSetting = new DiscordSetting(configuration);
+        if (discordSetting.EnableProxy)
+        {
+            clientConfig.WebSocketProvider = DefaultWebSocketProvider.Create(new WebProxy(AppSetting.ProxyUrl));
+            clientConfig.RestClientProvider = DefaultRestClientProvider.Create(useProxy: true);
+        }
+        
+        var client = new DiscordSocketClient(clientConfig);
+
+        #region Setting Logger
+        
+        client.Log += log =>
+        {
+            switch (log.Severity)
+            {
+                case LogSeverity.Critical:
+                    logger.Fatal(log.Exception, log.Message);
+                    break;
+                case LogSeverity.Error:
+                    logger.Error(log.Exception, log.Message);
+                    break;
+                case LogSeverity.Warning:
+                    logger.Warning(log.Exception, log.Message);
+                    break;
+                case LogSeverity.Info:
+                    logger.Information(log.Exception, log.Message);
+                    break;
+                case LogSeverity.Verbose:
+                case LogSeverity.Debug:
+                    logger.Debug(log.Exception, log.Message);
+                    break;
+                default:
+                    logger.Warning(log.Exception, "漏网之鱼: " + log.Message);
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+
+        #endregion
+
+        builder.RegisterInstance(client).AsSelf().SingleInstance();
+    }
+    
+    // 注册任务
+    private void RegisterJobs(ContainerBuilder builder)
+    {
+        foreach (var type in typeof(IJob).Assembly.GetTypes()
+                     .Where(t => typeof(IJob).IsAssignableFrom(t) && t.IsClass))
+        {
+            builder.RegisterType(type).AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
+        }
     }
 }

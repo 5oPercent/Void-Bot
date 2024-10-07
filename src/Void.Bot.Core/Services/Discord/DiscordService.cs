@@ -1,0 +1,83 @@
+using Discord;
+using Discord.WebSocket;
+using Serilog;
+using Void.Bot.Core.Settings.Discord;
+using Void.Bot.Message.Request.Discord;
+
+namespace Void.Bot.Core.Services.Discord;
+
+public interface IDiscordService : IScope
+{
+    Task<DiscordStartBotResponse> StartAsync(DiscordStartBotRequest request, CancellationToken cancellationToken);
+    
+    Task<DiscordStopBotResponse> StopAsync(DiscordStopBotRequest request, CancellationToken cancellationToken);
+    
+    Task ApplyGlobalSlashCommandAsync(DiscordApplyGlobalSlashCommandRequest request, CancellationToken cancellationToken);
+
+    Task ApplyGuildSlashCommandAsync(DiscordApplyGuildSlashCommandRequest request, CancellationToken cancellationToken);
+}
+
+public class DiscordService : IDiscordService
+{
+    private readonly ILogger _logger;
+    private readonly DiscordSetting _setting;
+    private readonly IDiscordDataProvider _dataProvider;
+    private readonly IDiscordSlashCommandRoute _slashCommandRoute;
+    
+    private readonly DiscordSocketClient _client;
+
+    public DiscordService(ILogger logger, DiscordSetting setting, IDiscordDataProvider dataProvider, IDiscordSlashCommandRoute slashCommandRoute ,DiscordSocketClient client)
+    {
+        _logger = logger;
+        _setting = setting;
+        _dataProvider = dataProvider;
+        _slashCommandRoute = slashCommandRoute; 
+        
+        _client = client;
+        
+        _client.SlashCommandExecuted += SlashCommandHandlerAsync;
+    }
+
+    public async Task<DiscordStartBotResponse> StartAsync(DiscordStartBotRequest request, CancellationToken cancellationToken)
+    {
+        await _client.LoginAsync(TokenType.Bot, _setting.Token).ConfigureAwait(false);
+        await _client.StartAsync().ConfigureAwait(false);
+
+        return new DiscordStartBotResponse();
+    }
+
+    public async Task<DiscordStopBotResponse> StopAsync(DiscordStopBotRequest request, CancellationToken cancellationToken)
+    {
+        if (_client.ConnectionState != ConnectionState.Disconnected)
+        {
+            await _client.StopAsync().ConfigureAwait(false);
+        }
+
+        return new DiscordStopBotResponse();
+    }
+
+    public async Task ApplyGlobalSlashCommandAsync(DiscordApplyGlobalSlashCommandRequest request ,CancellationToken cancellationToken)
+    {
+        var properties = new List<ApplicationCommandProperties>(_slashCommandRoute.GetGlobalCommands());
+        
+        await _client.BulkOverwriteGlobalApplicationCommandsAsync(properties.ToArray()).ConfigureAwait(false);
+    }
+    
+    public async Task ApplyGuildSlashCommandAsync(DiscordApplyGuildSlashCommandRequest request, CancellationToken cancellationToken)
+    {
+        var guild = _client.GetGuild(request.GuildId);
+        if (guild == null) return;
+
+        var guildCommands = _slashCommandRoute.GetGuildCommands([request.GuildId]);
+
+        foreach (var command in guildCommands)
+        {
+            await guild.CreateApplicationCommandAsync(command).ConfigureAwait(false);
+        }
+    }
+
+    private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
+    {
+        await _slashCommandRoute.RouteAsync(command).ConfigureAwait(false);
+    }
+}
