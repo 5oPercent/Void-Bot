@@ -57,7 +57,13 @@ public class Startup
         if (env.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
+
+            app.UseStaticFiles();
+            
+            app.UseSwaggerUI(c =>
+            {
+                c.InjectStylesheet("/swagger-dark-theme.css");
+            });
         }
 
         app.UseHttpsRedirection();
