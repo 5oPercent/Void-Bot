@@ -16,4 +16,10 @@
       <ProjectReference Include="..\Void.Bot.Core\Void.Bot.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="wwwroot\swagger-dark-theme.css">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>
