@@ -2,8 +2,8 @@ HI, Void 是一个查询机器人, 正处于早期开发阶段.
 
 ## 目标方向
 
-1. 集成 Destiny2 Api.
-2. 继承 Steam Api.
+1. 链接平台: Discord、Steam、Bungie
+2. 集成 Destiny2 Api.
 3. 在线 Web 控制面板.
 
 ## 部署
