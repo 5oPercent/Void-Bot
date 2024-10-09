@@ -14,5 +14,5 @@ public class MessageLogDto
     
     public Guid? CreatedBy { get; set; }
 
-    public DateTimeOffset CreatedDate { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }

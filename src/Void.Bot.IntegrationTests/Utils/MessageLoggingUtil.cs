@@ -6,7 +6,7 @@ namespace Void.Bot.IntegrationTest.Utils;
 
 public class MessageLoggingUtil(ILifetimeScope lifetimeScope) : IntegrationUtilBase(lifetimeScope)
 {
-    public async Task AddMessageLoggingAsync(Guid id, string messageType, string messageJson, string resultType, string resultJson, DateTimeOffset createDate)
+    public async Task AddMessageLoggingAsync(Guid id, string messageType, string messageJson, string resultType, string resultJson, DateTimeOffset createAt)
     {
         await RunWithUnitOfWork<IRepository>(async rep =>
         {
@@ -17,7 +17,7 @@ public class MessageLoggingUtil(ILifetimeScope lifetimeScope) : IntegrationUtilB
                 MessageJson = messageJson,
                 ResultType = resultType,
                 ResultJson = resultJson,
-                CreatedDate = createDate
+                CreatedAt = createAt
             }).ConfigureAwait(false);
         });
     }

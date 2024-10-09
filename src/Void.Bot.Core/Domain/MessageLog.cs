@@ -4,12 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Void.Bot.Core.Domain;
 
 [Table("message_log")]
-public class MessageLog : IEntity
+public class MessageLog : IEntity, IEntityCreated
 {
     public MessageLog()
     {
         Id = Guid.NewGuid();
-        CreatedDate = DateTimeOffset.Now;
+        CreatedAt = DateTimeOffset.Now;
         MessageType = string.Empty;
         MessageJson = string.Empty;
         ResultType = string.Empty;
@@ -32,5 +32,5 @@ public class MessageLog : IEntity
     public string ResultJson { get; set; }
 
     [Column("created_date")]
-    public DateTimeOffset CreatedDate { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
