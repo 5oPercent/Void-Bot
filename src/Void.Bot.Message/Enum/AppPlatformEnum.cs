@@ -5,7 +5,7 @@ namespace Void.Bot.Message.Enum;
 public enum AppPlatformEnum
 {
     [Description("Self")]
-    Self = 0,
+    Void = 0,
     
     [Description("Steam")]
     Steam = 1,
