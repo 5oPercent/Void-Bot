@@ -29,8 +29,6 @@ public class Startup
         services.AddSwaggerGen();
         services.AddControllers();
         
-        services.AddHangfire(configuration => configuration.UseMemoryStorage());
-        
         services.AddHangfire(configuration =>
         {
             switch(_hangfireSetting.UseStorage)
