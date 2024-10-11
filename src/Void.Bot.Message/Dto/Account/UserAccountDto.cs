@@ -8,6 +8,8 @@ public class UserAccountDto
     
     public string Suffix { get; set; }
     
+    public string DisplayName => $"{Name}#{Suffix}";
+    
     public string Password { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

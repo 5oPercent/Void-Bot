@@ -17,6 +17,9 @@ public class UserAccount : IEntity, IEntityCreated, IEntityModified
     [Column("Suffix")] [StringLength(4)]
     public string Suffix { get; set; } = "".GenerateNumberSuffix();
     
+    [NotMapped]
+    public string DisplayName => $"{Name}#{Suffix}";
+    
     [Column("password")]
     [StringLength(255)]
     public string Password { get; set; }
