@@ -36,26 +36,40 @@ public class IdentityController : ControllerBase
     }
     
     [HttpGet]
-    [Route("login/steam/{platform}/{accountId}")]
+    [Route("link/steam/{platform}/{accountId}")]
     public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCRequest oidcRequest)
     {
-        var request = new LoginSteamRequest
+        try
         {
-            Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
-            OpenID = oidcRequest.OpenID
-        };
+            var request = new LoginSteamRequest
+            {
+                Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
+                OpenID = oidcRequest.OpenID
+            };
         
-        var response = await _mediator.RequestAsync<LoginSteamRequest, LoginSteamResponse>(request).ConfigureAwait(false);
-
-        return Ok(response);
+            var response = await _mediator.RequestAsync<LoginSteamRequest, LoginSteamResponse>(request).ConfigureAwait(false);
+            
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Ok(ex.Message);
+        }
     }
     
     [HttpGet]
-    [Route("login/bungie")]
+    [Route("link/bungie")]
     public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieRequest request)
     {
-        var response = await _mediator.RequestAsync<LoginBungieRequest, LoginBungieResponse>(request).ConfigureAwait(false);
+        try
+        {
+            var response = await _mediator.RequestAsync<LoginBungieRequest, LoginBungieResponse>(request).ConfigureAwait(false);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Ok(ex.Message);
+        }
     }
 }

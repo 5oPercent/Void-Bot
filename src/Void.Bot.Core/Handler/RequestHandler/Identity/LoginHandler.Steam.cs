@@ -16,6 +16,6 @@ public class LoginSteamHandler : IRequestHandler<LoginSteamRequest, LoginSteamRe
     
     public async Task<LoginSteamResponse> Handle(IReceiveContext<LoginSteamRequest> context, CancellationToken cancellationToken)
     {
-        return await _service.LoginFromSteamAsync(context.Message, cancellationToken).ConfigureAwait(false);
+        return await _service.LinkToSteamAsync(context.Message, cancellationToken).ConfigureAwait(false);
     }
 }

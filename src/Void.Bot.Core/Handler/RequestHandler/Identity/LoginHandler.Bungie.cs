@@ -16,6 +16,6 @@ public class LoginBungieHandler : IRequestHandler<LoginBungieRequest, LoginBungi
     
     public async Task<LoginBungieResponse> Handle(IReceiveContext<LoginBungieRequest> context, CancellationToken cancellationToken)
     {
-        return await _service.LoginFromBungieAsync(context.Message, cancellationToken).ConfigureAwait(false);
+        return await _service.LinkToBungieAsync(context.Message, cancellationToken).ConfigureAwait(false);
     }
 }
