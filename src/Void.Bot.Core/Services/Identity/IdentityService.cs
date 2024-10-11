@@ -1,37 +1,34 @@
-using Mediator.Net;
 using Serilog;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Account;
+using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
-using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Core.Services.Identity;
 
 public interface IIdentityService : IScope
 {
-    Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamRequest request, CancellationToken cancellationToken);
+    Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken);
     
-    Task<LoginBungieResponse> LinkToBungieAsync(LoginBungieRequest request, CancellationToken cancellationToken);
+    Task<LoginBungieResponse> LinkToBungieAsync(LoginBungieCommand command, CancellationToken cancellationToken);
 }
 
 public class IdentityService : IIdentityService
 {
     private readonly ILogger _logger;
-    private readonly IMediator _mediator;
     private readonly IAccountService _accountService;
 
-    public IdentityService(ILogger logger, IMediator mediator, IAccountService accountService)
+    public IdentityService(ILogger logger, IAccountService accountService)
     {
         _logger = logger;
-        _mediator = mediator;
         _accountService = accountService;
     }
     
-    public async Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamRequest request, CancellationToken cancellationToken)
+    public async Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken)
     {
-        var claimedId = request.OpenID.Claimed_id;
+        var claimedId = command.OpenID.Claimed_id;
         if (claimedId == null)
         {
             throw new Exception($"绑定{AppPlatformEnum.Steam}失败, Steam ID 未找到");
@@ -42,8 +39,8 @@ public class IdentityService : IIdentityService
         
         var findVoidAccountResponse = await _accountService.GetUserAccountByThirdPartyAsync(new GetUserAccountByThirdPartyRequest
         {
-            Platform = request.Authorization.Platform,
-            ThirdPartyUserId = request.Authorization.AccountId
+            Platform = command.Authorization.Platform,
+            ThirdPartyUserId = command.Authorization.AccountId
         }, cancellationToken);
 
         if (findVoidAccountResponse.Data == null)
@@ -51,7 +48,7 @@ public class IdentityService : IIdentityService
             throw new Exception($"绑定{AppPlatformEnum.Steam}失败, 请先绑定{AppPlatformEnum.Void}.");
         }
 
-        await _mediator.SendAsync<LinkUserAccountFromThirdPartyCommand, LinkUserAccountFromThirdPartyResponse>(
+        await _accountService.LinkAccountFromThirdPartyAsync(
             new LinkUserAccountFromThirdPartyCommand
             {
                 Authorization = new AuthorizationDto
@@ -61,10 +58,10 @@ public class IdentityService : IIdentityService
                 },
                 MasterDisplayName = findVoidAccountResponse.Data.DisplayName
             }, cancellationToken).ConfigureAwait(false);
-
+        
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +
-                      $"Platform: {request.Authorization.Platform}\n" +
-                      $"Account ID: {request.Authorization.AccountId}\n" +
+                      $"Platform: {command.Authorization.Platform}\n" +
+                      $"Account ID: {command.Authorization.AccountId}\n" +
                       $"Steam ID: {steamId}");
         
         return new LoginSteamResponse
@@ -73,9 +70,9 @@ public class IdentityService : IIdentityService
         };
     }
 
-    public async Task<LoginBungieResponse> LinkToBungieAsync(LoginBungieRequest request, CancellationToken cancellationToken)
+    public async Task<LoginBungieResponse> LinkToBungieAsync(LoginBungieCommand command, CancellationToken cancellationToken)
     {
-        var stateArray = request.State.Split('|');
+        var stateArray = command.State.Split('|');
         if (stateArray.Length != 2)
         {
             throw new Exception("绑定失败, State 格式错误");
@@ -100,13 +97,13 @@ public class IdentityService : IIdentityService
             throw new Exception($"绑定{AppPlatformEnum.Bungie}失败, 请先绑定{AppPlatformEnum.Void}.");
         }
         
-        await _mediator.SendAsync<LinkUserAccountFromThirdPartyCommand, LinkUserAccountFromThirdPartyResponse>(
+        await _accountService.LinkAccountFromThirdPartyAsync(
             new LinkUserAccountFromThirdPartyCommand
             {
                 Authorization = new AuthorizationDto
                 {
                     Platform = AppPlatformEnum.Bungie,
-                    AccountId = request.Code
+                    AccountId = command.Code
                 },
                 MasterDisplayName = findVoidAccountResponse.Data.DisplayName
             }, cancellationToken).ConfigureAwait(false);
@@ -114,7 +111,7 @@ public class IdentityService : IIdentityService
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +
                             $"Platform: {platform}\n" +
                             $"Account ID: {accountId}\n" +
-                            $"Bungie OAuth Code: {request.Code}");
+                            $"Bungie OAuth Code: {command.Code}");
 
         return new LoginBungieResponse
         {

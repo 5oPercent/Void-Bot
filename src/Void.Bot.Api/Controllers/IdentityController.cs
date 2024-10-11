@@ -1,5 +1,6 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Identity;
@@ -37,17 +38,17 @@ public class IdentityController : ControllerBase
     
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
-    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCRequest oidcRequest)
+    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand oidcCommand)
     {
         try
         {
-            var request = new LoginSteamRequest
+            var request = new LoginSteamCommand
             {
                 Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
-                OpenID = oidcRequest.OpenID
+                OpenID = oidcCommand.OpenID
             };
         
-            var response = await _mediator.RequestAsync<LoginSteamRequest, LoginSteamResponse>(request).ConfigureAwait(false);
+            var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
             
             return Ok(response);
         }
@@ -59,11 +60,11 @@ public class IdentityController : ControllerBase
     
     [HttpGet]
     [Route("link/bungie")]
-    public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieRequest request)
+    public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieCommand command)
     {
         try
         {
-            var response = await _mediator.RequestAsync<LoginBungieRequest, LoginBungieResponse>(request).ConfigureAwait(false);
+            var response = await _mediator.SendAsync<LoginBungieCommand, LoginBungieResponse>(command).ConfigureAwait(false);
 
             return Ok(response);
         }
