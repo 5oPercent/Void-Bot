@@ -121,8 +121,8 @@ public class AccountDataProvider : IAccountDataProvider
 
     public async Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken)
     {
-        var dto = _mapper.Map<UserThirdParty>(thirdParty);
+        var item = _mapper.Map<UserThirdParty>(thirdParty);
 
-        await _repository.InsertAsync(dto, cancellationToken).ConfigureAwait(false);
+        await _repository.InsertAsync(item, cancellationToken).ConfigureAwait(false);
     }
 }
