@@ -23,7 +23,7 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
             .WithType(ApplicationCommandOptionType.Integer))
         .AddOption(new SlashCommandOptionBuilder()
             .WithName("主账号完整名称")
-            .WithDescription($"此选项仅在关联{AppPlatformEnum.Void.ToString()}平台时有效. 不提供则创建新Void账号. 填写示例: Void#0000")
+            .WithDescription($"此选项仅在关联{AppPlatformEnum.Void}平台时有效. 不提供则创建新Void账号. 填写示例: Void#0000")
             .WithRequired(false)
             .WithType(ApplicationCommandOptionType.String)
         )
@@ -57,7 +57,7 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
                 
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
                 {
-                    builder.Content = $"绑定{AppPlatformEnum.Void.ToString()}成功!";
+                    builder.Content = $"绑定{AppPlatformEnum.Void}成功!";
                 }).ConfigureAwait(false);
             }
             catch (Exception ex)
