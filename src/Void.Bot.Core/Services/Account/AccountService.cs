@@ -108,6 +108,7 @@ public class AccountService : IAccountService
         
         var thirdParty = new UserThirdPartyDto
         {
+            Id = Guid.NewGuid(),
             UserId = userInfo.Id,
             Provider = command.Authorization.Platform.ToString(),
             ThirdPartyUserId = command.Authorization.AccountId
