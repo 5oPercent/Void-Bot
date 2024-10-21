@@ -29,10 +29,10 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
     {
         var query = repository.QueryNoTracking<MessageLog>()
             .WhereIF(!ids.IsNullOrEmpty(), x => ids != null && ids.Contains(x.Id))
-            .WhereIF(startDate != null, x => x.CreatedDate >= startDate)
-            .WhereIF(endDate != null, x => x.CreatedDate <= endDate);
+            .WhereIF(startDate != null, x => x.CreatedAt >= startDate)
+            .WhereIF(endDate != null, x => x.CreatedAt <= endDate);
         
-        var entities = await query.OrderByDescending(x => x.CreatedDate)
+        var entities = await query.OrderByDescending(x => x.CreatedAt)
             .ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
 
         return entities;

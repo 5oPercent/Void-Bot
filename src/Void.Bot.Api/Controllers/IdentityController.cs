@@ -1,5 +1,6 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Identity;
@@ -36,26 +37,40 @@ public class IdentityController : ControllerBase
     }
     
     [HttpGet]
-    [Route("login/steam/{platform}/{accountId}")]
-    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCRequest oidcRequest)
+    [Route("link/steam/{platform}/{accountId}")]
+    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand oidcCommand)
     {
-        var request = new LoginSteamRequest
+        try
         {
-            Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
-            OpenID = oidcRequest.OpenID
-        };
+            var request = new LoginSteamCommand
+            {
+                Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
+                OpenID = oidcCommand.OpenID
+            };
         
-        var response = await _mediator.RequestAsync<LoginSteamRequest, LoginSteamResponse>(request).ConfigureAwait(false);
-
-        return Ok(response);
+            var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
+            
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Ok(ex.Message);
+        }
     }
     
     [HttpGet]
-    [Route("login/bungie")]
-    public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieRequest request)
+    [Route("link/bungie")]
+    public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieCommand command)
     {
-        var response = await _mediator.RequestAsync<LoginBungieRequest, LoginBungieResponse>(request).ConfigureAwait(false);
+        try
+        {
+            var response = await _mediator.SendAsync<LoginBungieCommand, LoginBungieResponse>(command).ConfigureAwait(false);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Ok(ex.Message);
+        }
     }
 }

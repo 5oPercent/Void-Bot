@@ -36,7 +36,7 @@ public class SteamService : ISteamService
         parameters["openid.ns"] = "http://specs.openid.net/auth/2.0";
         parameters["openid.identity"] = "http://specs.openid.net/auth/2.0/identifier_select";
         parameters["openid.claimed_id"] = "http://specs.openid.net/auth/2.0/identifier_select";
-        parameters["openid.return_to"] = AppSetting.DomainUrl + $"/api/Identity/login/steam/{dto.Platform}/{dto.AccountId}";
+        parameters["openid.return_to"] = AppSetting.DomainUrl + $"/api/Identity/link/steam/{dto.Platform}/{dto.AccountId}";
 
         return $"{baseUrl}?{parameters}";
     }

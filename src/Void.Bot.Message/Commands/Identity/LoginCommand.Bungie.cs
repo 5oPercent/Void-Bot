@@ -1,9 +1,9 @@
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
 
-namespace Void.Bot.Message.Request.Identity;
+namespace Void.Bot.Message.Commands.Identity;
 
-public class LoginBungieRequest : IRequest
+public class LoginBungieCommand : ICommand
 {
     public string Code { get; set; }
     
