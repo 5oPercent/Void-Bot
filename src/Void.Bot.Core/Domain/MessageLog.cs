@@ -31,6 +31,6 @@ public class MessageLog : IEntity, IEntityCreated
     [Column("result_json")]
     public string ResultJson { get; set; }
 
-    [Column("created_date")]
+    [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
 }
