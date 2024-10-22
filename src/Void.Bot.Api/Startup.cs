@@ -3,6 +3,7 @@ using Hangfire;
 using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Serilog;
+using Void.Bot.Api.ActionFilters;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Settings.System;
@@ -27,7 +28,11 @@ public class Startup
         services.AddAuthorization();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
-        services.AddControllers();
+        services.AddControllers(options =>
+        {
+            options.Filters.Add<UnifyResponseFilter>();
+            options.Filters.Add<UnifyResponseExceptionFilter>();
+        });
         
         services.AddHangfire(configuration =>
         {

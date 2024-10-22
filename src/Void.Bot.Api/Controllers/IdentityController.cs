@@ -40,37 +40,23 @@ public class IdentityController : ControllerBase
     [Route("link/steam/{platform}/{accountId}")]
     public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand oidcCommand)
     {
-        try
+        var request = new LoginSteamCommand
         {
-            var request = new LoginSteamCommand
-            {
-                Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
-                OpenID = oidcCommand.OpenID
-            };
+            Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
+            OpenID = oidcCommand.OpenID
+        };
         
-            var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
             
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Ok(ex.Message);
-        }
+        return Ok(response);
     }
     
     [HttpGet]
     [Route("link/bungie")]
     public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieCommand command)
     {
-        try
-        {
-            var response = await _mediator.SendAsync<LoginBungieCommand, LoginBungieResponse>(command).ConfigureAwait(false);
+        var response = await _mediator.SendAsync<LoginBungieCommand, LoginBungieResponse>(command).ConfigureAwait(false);
 
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Ok(ex.Message);
-        }
+        return Ok(response);
     }
 }
