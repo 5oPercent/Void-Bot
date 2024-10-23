@@ -5,9 +5,9 @@ namespace Void.Bot.Message.Commands.Identity;
 
 public class LoginBungieCommand : ICommand
 {
-    public string Code { get; set; }
+    public required string Code { get; set; }
     
-    public string State { get; set; }
+    public required string State { get; set; }
 }
 
 public class LoginBungieResponse : VoidBotResponse<string>

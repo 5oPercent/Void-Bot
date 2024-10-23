@@ -9,7 +9,7 @@ public class GetUserAccountByThirdPartyRequest : IRequest
 {
     public AppPlatformEnum Platform { get; set; }
     
-    public string ThirdPartyUserId { get; set; }
+    public required string ThirdPartyUserId { get; set; }
 }
 
 public class GetUserAccountByThirdPartyResponse : VoidBotResponse<UserAccountInfoDto>

@@ -9,20 +9,22 @@ public class UserAccount : IEntity, IEntityCreated, IEntityModified
 {
     [Key] [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();
-    
+
     [Column("name")]
     [StringLength(64)]
-    public string Name { get; set; }
+    [Required]
+    public string Name { get; set; } = string.Empty;
 
     [Column("Suffix")] [StringLength(4)]
     public string Suffix { get; set; } = "".GenerateNumberSuffix();
     
     [NotMapped]
     public string DisplayName => $"{Name}#{Suffix}";
-    
+
     [Column("password")]
     [StringLength(255)]
-    public string Password { get; set; }
+    [Required]
+    public string Password { get; set; } = string.Empty;
     
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

@@ -3,10 +3,10 @@ namespace Void.Bot.Message.Dto.Account;
 public class UserAccountInfoDto
 {
     public Guid Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
     
-    public string Name { get; set; }
-    
-    public string Suffix { get; set; }
+    public string Suffix { get; set; } = string.Empty;
     
     public string DisplayName => $"{Name}#{Suffix}";
     

@@ -5,10 +5,10 @@ public class UserThirdPartyDto
     public Guid Id { get; set; }
     
     public Guid UserId { get; set; }
+
+    public string Provider { get; set; } = string.Empty;
     
-    public string Provider { get; set; }
-    
-    public string ThirdPartyUserId { get; set; }
+    public string ThirdPartyUserId { get; set; } = string.Empty;
 
     public string AccessToken { get; set; } = string.Empty;
 
