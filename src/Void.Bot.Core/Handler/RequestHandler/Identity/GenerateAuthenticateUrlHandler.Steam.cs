@@ -14,11 +14,11 @@ public class GenerateAuthenticateUrlFromSteamHandler : IRequestHandler<GenerateA
         _service = service;
     }
     
-    public async Task<GenerateAuthenticateUrlFromSteamResponse> Handle(IReceiveContext<GenerateAuthenticateUrlFromSteamRequest> context, CancellationToken cancellationToken)
+    public Task<GenerateAuthenticateUrlFromSteamResponse> Handle(IReceiveContext<GenerateAuthenticateUrlFromSteamRequest> context, CancellationToken cancellationToken)
     {
-        return new GenerateAuthenticateUrlFromSteamResponse
+        return Task.FromResult(new GenerateAuthenticateUrlFromSteamResponse
         {
             Data = _service.GenerateAuthenticateUrl(context.Message.Authorization)
-        };
+        });
     }
 }

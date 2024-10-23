@@ -4,13 +4,13 @@ public class UserAccountDto
 {
     public Guid Id { get; set; }
     
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
-    public string Suffix { get; set; }
+    public string Suffix { get; set; } = string.Empty;
     
     public string DisplayName => $"{Name}#{Suffix}";
     
-    public string Password { get; set; }
+    public string Password { get; set; } = string.Empty;
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 

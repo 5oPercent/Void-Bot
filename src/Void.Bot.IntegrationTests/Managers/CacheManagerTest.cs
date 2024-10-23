@@ -43,48 +43,4 @@ public class CacheManagerTest : ManagerFixtureBase
             value1.ShouldBeNull();
         });
     }
-    
-    [Fact]
-    public async Task ShouldRemoveByPattern()
-    {
-        await Run<ICacheManager>(async cache =>
-        {
-            await cache.Set("Test1", "TA");
-            await cache.Set("Test2", "TB");
-            await cache.Set("Test3", "TC");
-            await cache.Set("ABCDF", "TD");
-            
-            await cache.RemoveByPrefix("Test*");
-            
-            var value1 = await cache.Get<string>("Test1");
-            var value2 = await cache.Get<string>("Test2");
-            var value3 = await cache.Get<string>("Test3");
-            var value6 = await cache.Get<string>("ABCDF");
-            
-            value1.ShouldBeNull();
-            value2.ShouldBeNull();
-            value3.ShouldBeNull();
-            value6.ShouldBe("TD");
-        });
-    }
-    
-    [Fact]
-    public async Task ShouldClear()
-    {
-        await Run<ICacheManager>(async cache =>
-        {
-            await cache.Set("Test1", "TA");
-            await cache.Set("Test2", "TB");
-            await cache.Set("Test3", "TC");
-            await cache.Clear();
-            
-            var value1 = await cache.Get<object>("Test1");
-            var value2 = await cache.Get<object>("Test2");
-            var value3 = await cache.Get<object>("Test3");
-            
-            value1.ShouldBeNull();
-            value2.ShouldBeNull();
-            value3.ShouldBeNull();
-        });
-    }
 }

@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Request.Identity;
 
 public class GenerateAuthenticateUrlFromBungieRequest : IRequest
 {
-    public AuthorizationDto Authorization { get; set; }
+    public required AuthorizationDto Authorization { get; set; }
 }
 
 public class GenerateAuthenticateUrlFromBungieResponse : VoidBotResponse<string>

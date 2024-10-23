@@ -14,11 +14,11 @@ public class GenerateAuthenticateUrlFromBungieHandler : IRequestHandler<Generate
         _service = service;
     }
     
-    public async Task<GenerateAuthenticateUrlFromBungieResponse> Handle(IReceiveContext<GenerateAuthenticateUrlFromBungieRequest> context, CancellationToken cancellationToken)
+    public Task<GenerateAuthenticateUrlFromBungieResponse> Handle(IReceiveContext<GenerateAuthenticateUrlFromBungieRequest> context, CancellationToken cancellationToken)
     {
-        return new GenerateAuthenticateUrlFromBungieResponse
+        return Task.FromResult(new GenerateAuthenticateUrlFromBungieResponse
         {
             Data = _service.GenerateAuthenticateUrl(context.Message.Authorization)
-        };
+        });
     }
 }

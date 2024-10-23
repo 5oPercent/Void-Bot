@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Commands.Account;
 
 public class LinkUserAccountFromThirdPartyCommand : ICommand
 {
-    public AuthorizationDto Authorization { get; set; }
+    public required AuthorizationDto Authorization { get; set; }
     
     public string? MasterDisplayName { get; set; }
 }

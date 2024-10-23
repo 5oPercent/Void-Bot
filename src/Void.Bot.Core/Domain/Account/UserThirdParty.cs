@@ -6,18 +6,21 @@ namespace Void.Bot.Core.Domain.Account;
 [Table("user_third_party")]
 public class UserThirdParty : IEntity, IEntityCreated, IEntityModified
 {
-    [Key] [Column("id")]
+    [Key]
+    [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();
     
     [Column("user_id")]
     public Guid UserId { get; set; }
-    
+
     [Column("provider")]
-    public string Provider { get; set; }
+    [Required]
+    public string Provider { get; set; } = string.Empty;
     
     [Column("third_party_user_id")]
     [StringLength(255)]
-    public string ThirdPartyUserId { get; set; }
+    [Required]
+    public string ThirdPartyUserId { get; set; } = string.Empty;
 
     [Column("access_token")]
     [StringLength(512)]

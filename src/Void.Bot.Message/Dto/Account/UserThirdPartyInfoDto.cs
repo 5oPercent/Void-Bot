@@ -2,9 +2,9 @@ namespace Void.Bot.Message.Dto.Account;
 
 public class UserThirdPartyInfoDto
 {
-    public string Provider { get; set; }
+    public string Provider { get; set; } = string.Empty;
     
-    public string ThirdPartyUserId { get; set; }
+    public string ThirdPartyUserId { get; set; } = string.Empty;
     
     public DateTimeOffset CreatedAt { get; set; }
 
