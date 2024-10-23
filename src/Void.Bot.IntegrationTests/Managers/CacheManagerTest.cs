@@ -56,6 +56,8 @@ public class CacheManagerTest : ManagerFixtureBase
             
             await cache.RemoveByPrefix("Test*");
             
+            await Task.Delay(100);
+            
             var value1 = await cache.Get<string>("Test1");
             var value2 = await cache.Get<string>("Test2");
             var value3 = await cache.Get<string>("Test3");
@@ -77,6 +79,8 @@ public class CacheManagerTest : ManagerFixtureBase
             await cache.Set("Test2", "TB");
             await cache.Set("Test3", "TC");
             await cache.Clear();
+            
+            await Task.Delay(100);
             
             var value1 = await cache.Get<object>("Test1");
             var value2 = await cache.Get<object>("Test2");
