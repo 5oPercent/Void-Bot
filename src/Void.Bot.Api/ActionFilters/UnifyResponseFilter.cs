@@ -10,11 +10,11 @@ public class UnifyResponseFilter : ActionFilterAttribute
 {
     public override void OnActionExecuted(ActionExecutedContext context)
     {
-        if (context.Result is not VoidBotResponse)
+        if (context.Result is ObjectResult { Value: not VoidBotResponse } objectResult)
         {
             context.Result = new JsonResult(new VoidBotResponse<object>
             {
-                Data = context.Result is ObjectResult objectResult ? objectResult.Value : context.Result,
+                Data = objectResult.Value,
                 Code = HttpStatusCode.OK,
                 Message = nameof(HttpStatusCode.OK).ToLower()
             });
