@@ -36,8 +36,6 @@ public class LoggerSpecification<TContext>(ILogger logger) : IPipeSpecification<
 
     public Task OnException(Exception ex, TContext context)
     {
-        logger.Information("----- Exception message {MessageName}: {@Exception}", context.Message.GetGenericTypeName(), ex);
-        
         ExceptionDispatchInfo.Capture(ex).Throw();
         return Task.CompletedTask;
     }
