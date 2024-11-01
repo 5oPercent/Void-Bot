@@ -33,4 +33,21 @@ public static class ObjectExtension
     {
         return @object.GetType().GetGenericTypeName();
     }
+    
+    public static Dictionary<string, string> ToDictionary(this object source)
+    {
+        var dictionary = new Dictionary<string, string>();
+        var properties = source.GetType().GetProperties();
+
+        foreach (var property in properties)
+        {
+            var value = property.GetValue(source);
+            if (value != null)
+            {
+                dictionary.Add(property.Name, value.ToString());
+            }
+        }
+
+        return dictionary;
+    }
 }

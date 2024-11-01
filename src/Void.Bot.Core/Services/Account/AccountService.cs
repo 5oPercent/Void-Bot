@@ -2,6 +2,7 @@ using AutoMapper;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto.Account;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
 
 namespace Void.Bot.Core.Services.Account;
@@ -80,7 +81,7 @@ public class AccountService : IAccountService
 
         if (getUserByThirdPartyResponse.Data != null)
         {
-            throw new Exception($"当前平台{command.Authorization.Platform.ToString()}已关联过Void主账号.");
+            throw new Exception($"当前{AppPlatformEnum.Void}账号已关联过{command.Authorization.Platform.ToString()}平台.");
         }
         
         UserAccountInfoDto userInfo;
@@ -111,7 +112,11 @@ public class AccountService : IAccountService
             Id = Guid.NewGuid(),
             UserId = userInfo.Id,
             Provider = command.Authorization.Platform.ToString(),
-            ThirdPartyUserId = command.Authorization.AccountId
+            ThirdPartyUserId = command.Authorization.AccountId,
+            AccessToken = command.AccessToken,
+            RefreshToken = command.RefreshToken,
+            ExpiresAt = command.ExpiresAt,
+            ExtraData = command.ExtraData
         };
         
         await _dataProvider.LinkThirdPartyAsync(thirdParty, cancellationToken).ConfigureAwait(false);
