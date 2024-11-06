@@ -30,11 +30,31 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbCont
     
     public override int SaveChanges()
     {
+        UpdateCreatedFields();
+        UpdateLastModifiedFields();
         return ShouldSaveChanges ? base.SaveChanges() : 0;
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
+        UpdateCreatedFields();
+        UpdateLastModifiedFields();
         return ShouldSaveChanges ? base.SaveChangesAsync(cancellationToken) : Task.FromResult(0);
+    }
+
+    private void UpdateCreatedFields()
+    {
+        foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Added, Entity: IEntityCreated }))
+        {
+            ((IEntityCreated)entry.Entity).CreatedAt = DateTimeOffset.Now;
+        }
+    }
+    
+    private void UpdateLastModifiedFields()
+    {
+        foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Modified, Entity: IEntityModified }))
+        {
+            ((IEntityModified)entry.Entity).UpdatedAt = DateTimeOffset.Now;
+        }
     }
 }
