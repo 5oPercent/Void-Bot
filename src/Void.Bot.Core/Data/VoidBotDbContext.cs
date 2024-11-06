@@ -46,7 +46,10 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbCont
     {
         foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Added, Entity: IEntityCreated }))
         {
-            ((IEntityCreated)entry.Entity).CreatedAt = DateTimeOffset.Now;
+            if (((IEntityCreated)entry.Entity).CreatedAt == default)
+            {
+                ((IEntityCreated)entry.Entity).CreatedAt= DateTimeOffset.Now;
+            }
         }
     }
     
@@ -54,7 +57,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbCont
     {
         foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Modified, Entity: IEntityModified }))
         {
-            ((IEntityModified)entry.Entity).UpdatedAt = DateTimeOffset.Now;
+            ((IEntityModified)entry.Entity).UpdatedAt= DateTimeOffset.Now;
         }
     }
 }
