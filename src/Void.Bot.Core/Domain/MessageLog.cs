@@ -6,30 +6,22 @@ namespace Void.Bot.Core.Domain;
 [Table("message_log")]
 public class MessageLog : IEntity, IEntityCreated
 {
-    public MessageLog()
-    {
-        Id = Guid.NewGuid();
-        CreatedAt = DateTimeOffset.Now;
-        MessageType = string.Empty;
-        MessageJson = string.Empty;
-        ResultType = string.Empty;
-        ResultJson = string.Empty;
-    }
-    
     [Column("id")]
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
 
-    [Column("message_type"), StringLength(128)]
-    public string MessageType { get; set; }
+    [Column("message_type")]
+    [StringLength(128)]
+    public string MessageType { get; set; } = string.Empty;
     
-    [Column("result_type"), StringLength(128)]
-    public string ResultType { get; set; }
+    [Column("result_type")]
+    [StringLength(128)]
+    public string ResultType { get; set; } = string.Empty;
     
     [Column("message_json")]
-    public string MessageJson { get; set; }
+    public string MessageJson { get; set; } = string.Empty;
     
     [Column("result_json")]
-    public string ResultJson { get; set; }
+    public string ResultJson { get; set; } = string.Empty;
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }

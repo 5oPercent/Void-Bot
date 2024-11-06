@@ -1,26 +1,39 @@
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Message.Dto.Authorization;
 
 public class OIDCDto
 {
-    public string? Ns { get; set; }
-    
-    public string? Mode { get; set; }
-    
-    public string? Op_endpoint { get; set; }
+    [JsonPropertyName("ns")]
+    public string Ns { get; set; } = string.Empty;
 
-    public string? Claimed_id { get; set; } = string.Empty;
-    
-    public string? Identity { get; set; }
-    
-    public string? Return_to { get; set; }
-    
-    public string? Response_nonce { get; set; }
-    
-    public string? Assoc_handle { get; set; }
-    
-    public string? Signed { get; set; }
-    
-    public string? Sig { get; set; }
-    
-    public string? Error { get; set; }
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = string.Empty;
+
+    [JsonPropertyName("op_endpoint")]
+    public string OpEndpoint { get; set; } = string.Empty;
+
+    [JsonPropertyName("claimed_id")]
+    public string ClaimedId { get; set; } = string.Empty;
+
+    [JsonPropertyName("identity")]
+    public string Identity { get; set; } = string.Empty;
+
+    [JsonPropertyName("return_to")]
+    public string ReturnTo { get; set; } = string.Empty;
+
+    [JsonPropertyName("response_nonce")]
+    public string ResponseNonce { get; set; } = string.Empty;
+
+    [JsonPropertyName("assoc_handle")]
+    public string AssocHandle { get; set; } = string.Empty;
+
+    [JsonPropertyName("signed")]
+    public string Signed { get; set; } = string.Empty;
+
+    [JsonPropertyName("sig")]
+    public string Sig { get; set; } = string.Empty;
+
+    [JsonPropertyName("error")]
+    public string Error { get; set; } = string.Empty;
 }

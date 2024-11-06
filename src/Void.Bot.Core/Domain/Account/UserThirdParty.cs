@@ -26,20 +26,23 @@ public class UserThirdParty : IEntity, IEntityCreated, IEntityModified
     [StringLength(512)]
     public string AccessToken { get; set; } = string.Empty;
 
+    [Column("access_token_expires_at")]
+    public DateTimeOffset? AccessTokenExpiresAt { get; set; }
+
     [Column("refresh_token")]
     [StringLength(512)]
     public string RefreshToken { get; set; } = string.Empty;
 
-    [Column("expires_at")]
-    public DateTimeOffset ExpiresAt { get; set; }
-    
+    [Column("refresh_token_expires_at")]
+    public DateTimeOffset? RefreshTokenExpiresAt { get; set; }
+
     [Column("extra_data")]
     [StringLength(2048)]
     public string ExtraData { get; set; } = string.Empty;
     
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset CreatedAt { get; set; }
 
     [Column("update_at")]
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset? UpdatedAt { get; set; }
 }

@@ -51,8 +51,8 @@ public class BungieService : IBungieService
 
         var dto = new BungieGenerateTokenRequestDto
         {
-            Client_Id = _setting.ClientId,
-            Grant_Type = "authorization_code",
+            ClientId = _setting.ClientId,
+            GrantType = "authorization_code",
             Code = command.OAuthCode
         };
 
@@ -76,9 +76,9 @@ public class BungieService : IBungieService
 
         var dto = new BungieGenerateTokenRequestDto
         {
-            Client_Id = _setting.ClientId,
-            Grant_Type = "refresh_token",
-            Refresh_Token = command.Token
+            ClientId = _setting.ClientId,
+            GrantType = "refresh_token",
+            RefreshToken = command.Token
         };
         
         var content = new FormUrlEncodedContent(dto.ToDictionary());

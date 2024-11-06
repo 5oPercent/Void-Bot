@@ -12,13 +12,15 @@ public class UserThirdPartyDto
 
     public string AccessToken { get; set; } = string.Empty;
 
+    public DateTimeOffset? AccessTokenExpiresAt { get; set; }
+    
     public string RefreshToken { get; set; } = string.Empty;
-
-    public DateTimeOffset ExpiresAt { get; set; }
+    
+    public DateTimeOffset? RefreshTokenExpiresAt { get; set; }
     
     public string ExtraData { get; set; } = string.Empty;
     
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset? UpdatedAt { get; set; }
 }

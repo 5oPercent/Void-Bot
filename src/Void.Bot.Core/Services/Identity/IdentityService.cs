@@ -32,7 +32,7 @@ public class IdentityService : IIdentityService
     
     public async Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken)
     {
-        var claimedId = command.OpenID.Claimed_id;
+        var claimedId = command.OpenID.ClaimedId;
         if (claimedId == null)
         {
             throw new Exception($"绑定{AppPlatformEnum.Steam}失败, 未找到 Steam ID.");
@@ -61,7 +61,7 @@ public class IdentityService : IIdentityService
                     AccountId = steamId
                 },
                 MasterDisplayName = findVoidAccountResponse.Data.DisplayName,
-                ExpiresAt = DateTimeOffset.Now.AddYears(3)
+                AccessTokenExpiresAt = DateTimeOffset.Now.AddYears(3)
             }, cancellationToken).ConfigureAwait(false);
         
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +
@@ -119,11 +119,15 @@ public class IdentityService : IIdentityService
                 Authorization = new AuthorizationDto
                 {
                     Platform = AppPlatformEnum.Bungie,
-                    AccountId = tokenResponse.Data.Membership_Id
+                    AccountId = tokenResponse.Data.MembershipId
                 },
                 MasterDisplayName = findVoidAccountResponse.Data.DisplayName,
-                AccessToken = tokenResponse.Data.Access_Token,
-                ExpiresAt = DateTimeOffset.Now.AddSeconds(tokenResponse.Data.Expires_In)
+                AccessToken = tokenResponse.Data.AccessToken,
+                AccessTokenExpiresAt = DateTimeOffset.Now.AddSeconds(tokenResponse.Data.ExpiresIn),
+                RefreshToken = tokenResponse.Data.RefreshToken,
+                RefreshTokenExpiresAt = string.IsNullOrEmpty(tokenResponse.Data.RefreshToken) 
+                    ? null
+                    : DateTimeOffset.Now.AddSeconds(tokenResponse.Data.RefreshExpiresIn)
             }, cancellationToken).ConfigureAwait(false);
 
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +

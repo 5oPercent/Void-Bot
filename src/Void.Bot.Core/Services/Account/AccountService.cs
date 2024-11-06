@@ -111,8 +111,9 @@ public class AccountService : IAccountService
                 Provider = command.Authorization.Platform.ToString(),
                 ThirdPartyUserId = command.Authorization.AccountId,
                 AccessToken = command.AccessToken,
+                AccessTokenExpiresAt = command.AccessTokenExpiresAt,
                 RefreshToken = command.RefreshToken,
-                ExpiresAt = command.ExpiresAt,
+                RefreshTokenExpiresAt = command.RefreshTokenExpiresAt,
                 ExtraData = command.ExtraData
             };
         
@@ -127,8 +128,9 @@ public class AccountService : IAccountService
             if (thirdParty != null)
             {
                 thirdParty.AccessToken = command.AccessToken;
+                thirdParty.AccessTokenExpiresAt = command.AccessTokenExpiresAt;
                 thirdParty.RefreshToken = command.RefreshToken;
-                thirdParty.ExpiresAt = command.ExpiresAt;
+                thirdParty.RefreshTokenExpiresAt = command.RefreshTokenExpiresAt;
                 thirdParty.ExtraData = command.ExtraData;
                 
                 await _dataProvider.UpdateThirdPartyAsync(thirdParty, cancellationToken).ConfigureAwait(false);
