@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
+using System.Text.Json.Nodes;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
-using Newtonsoft.Json;
 using NSubstitute;
 using Respawn;
 using Respawn.Graph;
@@ -68,12 +68,12 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
     {
         var targetJson = $"appsetting_{_topic}.json";
         File.Copy("appsettings.json", targetJson, true);
-        
-        dynamic jsonObj = JsonConvert.DeserializeObject(File.ReadAllText(targetJson)) ?? throw new InvalidOperationException();
-        jsonObj["ConnectionStrings"]["Mysql"] = jsonObj["ConnectionStrings"]["Mysql"].ToString()
+
+        var document = JsonNode.Parse(File.ReadAllText(targetJson)) ?? throw new InvalidOperationException();
+        document["ConnectionStrings"]!["Mysql"] = document["ConnectionStrings"]!["Mysql"]!.ToString()
             .Replace("database=db_void_bot", $"database=db_void_bot_{_databaseName}");
         
-        File.WriteAllText(targetJson, JsonConvert.SerializeObject(jsonObj));
+        File.WriteAllText(targetJson, document.ToJsonString());
         
         var configuration = new ConfigurationBuilder().AddJsonFile(targetJson).Build();
         containerBuilder.RegisterInstance(configuration).AsImplementedInterfaces();
