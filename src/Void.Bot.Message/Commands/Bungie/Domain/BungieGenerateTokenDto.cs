@@ -29,22 +29,22 @@ public class BungieGenerateTokenRequestDto
 public class BungieGenerateTokenResponseDto
 {
     /// <summary>
-    /// 令牌
-    /// </summary>
-    [JsonPropertyName("access_token")]
-    public string AccessToken { get; set; } = string.Empty;
-    
-    /// <summary>
     /// 授权类型
     /// </summary>
     [JsonPropertyName("token_type")]
     public string TokenType { get; set; } = string.Empty;
 
     /// <summary>
+    /// 令牌
+    /// </summary>
+    [JsonPropertyName("access_token")]
+    public string AccessToken { get; set; } = string.Empty;
+    
+    /// <summary>
     /// Token 有效秒数
     /// </summary>
     [JsonPropertyName("expires_in")]
-    public int ExpiresIn { get; set; }
+    public int AccessTokenExpiresIn { get; set; }
 
     /// <summary>
     /// 刷新令牌
@@ -57,12 +57,12 @@ public class BungieGenerateTokenResponseDto
     /// </summary>
     [JsonPropertyName("refresh_expires_in")]
     public int RefreshExpiresIn { get; set; }
-    
+
     /// <summary>
     /// Bungie会员Id
     /// </summary>
     [JsonPropertyName("membership_id")]
-    public string MembershipId { get; set; }
+    public string MembershipId { get; set; } = string.Empty;
     
     [JsonPropertyName("error")]
     public string Error { get; set; } = string.Empty;

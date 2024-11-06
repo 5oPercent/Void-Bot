@@ -49,7 +49,7 @@ public static class ObjectExtension
             
             var jsonPropertyAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
             var key = jsonPropertyAttribute != null ? jsonPropertyAttribute.Name : property.Name;
-            dictionary.Add(key, value.ToString());
+            dictionary.Add(key, value.ToString()!);
         }
 
         return dictionary;

@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Commands.Bungie;
 
 public class RefreshBungieTokenCommand : ICommand
 {
-    public string Token { get; set; }
+    public required string Token { get; set; }
 }
 
 public class RefreshBungieTokenResponse : VoidBotResponse<BungieGenerateTokenResponseDto>

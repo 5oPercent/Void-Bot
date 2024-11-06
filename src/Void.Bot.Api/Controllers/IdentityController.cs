@@ -38,12 +38,12 @@ public class IdentityController : ControllerBase
     
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
-    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand oidcCommand)
+    public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand command)
     {
         var request = new LoginSteamCommand
         {
             Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
-            OpenID = oidcCommand.OpenID
+            OpenId = command.OpenId
         };
         
         var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);

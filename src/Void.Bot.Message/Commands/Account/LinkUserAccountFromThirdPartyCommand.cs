@@ -12,7 +12,7 @@ public class LinkUserAccountFromThirdPartyCommand : ICommand
     
     public string AccessToken { get; set; } = string.Empty;
 
-    public DateTimeOffset AccessTokenExpiresAt { get; set; }
+    public DateTimeOffset? AccessTokenExpiresAt { get; set; }
 
     public string RefreshToken { get; set; } = string.Empty;
     

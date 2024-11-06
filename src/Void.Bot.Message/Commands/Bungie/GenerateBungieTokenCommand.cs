@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Commands.Bungie;
 
 public class GenerateBungieTokenCommand : ICommand
 {
-    public string OAuthCode { get; set; }
+    public required string OAuthCode { get; set; }
 }
 
 public class GenerateBungieTokenResponse : VoidBotResponse<BungieGenerateTokenResponseDto>

@@ -53,7 +53,7 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
                     new LinkUserAccountFromThirdPartyCommand
                     {
                         Authorization = authorization,
-                        MasterDisplayName = masterDisplayName
+                        MasterDisplayName = masterDisplayName ?? string.Empty
                     }, cancellationToken).ConfigureAwait(false);
                 
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
