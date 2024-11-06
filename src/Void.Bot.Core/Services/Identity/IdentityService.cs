@@ -32,7 +32,7 @@ public class IdentityService : IIdentityService
     
     public async Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken)
     {
-        var claimedId = command.OpenID.Claimed_id;
+        var claimedId = command.OpenId.Claimed_Id;
         if (claimedId == null)
         {
             throw new Exception($"绑定{AppPlatformEnum.Steam}失败, 未找到 Steam ID.");
@@ -60,8 +60,7 @@ public class IdentityService : IIdentityService
                     Platform = AppPlatformEnum.Steam,
                     AccountId = steamId
                 },
-                MasterDisplayName = findVoidAccountResponse.Data.DisplayName,
-                ExpiresAt = DateTimeOffset.Now.AddYears(3)
+                MasterDisplayName = findVoidAccountResponse.Data.DisplayName
             }, cancellationToken).ConfigureAwait(false);
         
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +
@@ -112,18 +111,24 @@ public class IdentityService : IIdentityService
         {
             throw new Exception($"绑定{AppPlatformEnum.Bungie}失败, 生成 Token 异常: {tokenResponse.Message}.");
         }
-        
+
         await _accountService.LinkAccountFromThirdPartyAsync(
             new LinkUserAccountFromThirdPartyCommand
             {
                 Authorization = new AuthorizationDto
                 {
                     Platform = AppPlatformEnum.Bungie,
-                    AccountId = tokenResponse.Data.Membership_Id
+                    AccountId = tokenResponse.Data.MembershipId
                 },
                 MasterDisplayName = findVoidAccountResponse.Data.DisplayName,
-                AccessToken = tokenResponse.Data.Access_Token,
-                ExpiresAt = DateTimeOffset.Now.AddSeconds(tokenResponse.Data.Expires_In)
+                AccessToken = tokenResponse.Data.AccessToken,
+                AccessTokenExpiresAt = string.IsNullOrEmpty(tokenResponse.Data.AccessToken)
+                    ? null
+                    : DateTimeOffset.Now.AddSeconds(tokenResponse.Data.AccessTokenExpiresIn),
+                RefreshToken = tokenResponse.Data.RefreshToken,
+                RefreshTokenExpiresAt = string.IsNullOrEmpty(tokenResponse.Data.RefreshToken)
+                    ? null
+                    : DateTimeOffset.Now.AddSeconds(tokenResponse.Data.RefreshExpiresIn)
             }, cancellationToken).ConfigureAwait(false);
 
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +

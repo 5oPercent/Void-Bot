@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Core.Extension;
 
 public static class ObjectExtension
@@ -42,10 +45,11 @@ public static class ObjectExtension
         foreach (var property in properties)
         {
             var value = property.GetValue(source);
-            if (value != null)
-            {
-                dictionary.Add(property.Name, value.ToString());
-            }
+            if (value == null) continue;
+            
+            var jsonPropertyAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
+            var key = jsonPropertyAttribute != null ? jsonPropertyAttribute.Name : property.Name;
+            dictionary.Add(key, value.ToString()!);
         }
 
         return dictionary;
