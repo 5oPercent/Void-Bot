@@ -9,16 +9,21 @@ namespace Void.Bot.Core.Services.Account;
 
 public interface IAccountDataProvider : IScope
 {
-    Task<UserAccountInfoDto?> GetUserAccountAsync(
-        Guid? userId, string? displayName, CancellationToken cancellationToken);
+    Task<UserAccountDto?> GetUserAccountAsync(
+        Guid? userId, string displayName, CancellationToken cancellationToken);
     
-    Task<UserAccountInfoDto?> GetUserAccountByThirdPartyAsync(
+    Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
         string provider, string thirdPartyUserId, CancellationToken cancellationToken);
     
-    Task<UserAccountInfoDto?> RegisterUserAccountAsync(
+    Task<UserThirdPartyDto?> GetThirdPartyByUserIdAsync(
+        Guid userId, string provider, CancellationToken cancellationToken);
+    
+    Task<UserAccountDto?> RegisterUserAccountAsync(
         string name, string encryptionPassword, CancellationToken cancellationToken);
     
     Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
+    
+    Task UpdateThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
 }
 
 public class AccountDataProvider : IAccountDataProvider
@@ -32,10 +37,10 @@ public class AccountDataProvider : IAccountDataProvider
         _repository = repository;
     }
     
-    public async Task<UserAccountInfoDto?> GetUserAccountAsync(
-        Guid? userId, string? displayName, CancellationToken cancellationToken)
+    public async Task<UserAccountDto?> GetUserAccountAsync(
+        Guid? userId, string displayName, CancellationToken cancellationToken)
     {
-        var (name, suffix) = displayName?.Split('#') switch
+        var (name, suffix) = displayName.Split('#') switch
         {
             [var n, var s] => (n, s),
             _ => (null, null)
@@ -52,29 +57,13 @@ public class AccountDataProvider : IAccountDataProvider
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
         }
         
-        return _mapper.Map<UserAccountInfoDto>(user);
+        return _mapper.Map<UserAccountDto>(user);
     }
 
-    public async Task<UserAccountInfoDto?> GetUserAccountByNameSuffixAsync(
-        string name, string suffix, CancellationToken cancellationToken)
-    {
-        var user = await _repository.QueryNoTracking<UserAccount>()
-            .Where(x => x.Name.Equals(name) && x.Suffix.Equals(suffix))
-            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-        
-        if (user != null)
-        {
-            user.ThirdParties = await _repository.QueryNoTracking<UserThirdParty>(x => x.UserId == user.Id)
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-        }
-        
-        return _mapper.Map<UserAccountInfoDto>(user);
-    }
-
-    public async Task<UserAccountInfoDto?> GetUserAccountByThirdPartyAsync(
+    public async Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
         string provider, string thirdPartyUserId, CancellationToken cancellationToken)
     {
-        UserAccountInfoDto? user = null;
+        UserAccountDto? user = null;
         
         var thirdParty = await _repository
             .QueryNoTracking<UserThirdParty>(x => x.Provider.Equals(provider) && x.ThirdPartyUserId.Equals(thirdPartyUserId) )
@@ -86,7 +75,17 @@ public class AccountDataProvider : IAccountDataProvider
         return user;
     }
 
-    public async Task<UserAccountInfoDto?> RegisterUserAccountAsync(
+    public async Task<UserThirdPartyDto?> GetThirdPartyByUserIdAsync(
+        Guid userId, string provider, CancellationToken cancellationToken)
+    {
+        var thirdParty = await _repository
+            .QueryNoTracking<UserThirdParty>(x => x.UserId.Equals(userId) && x.Provider.Equals(provider))
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        
+        return _mapper.Map<UserThirdPartyDto>(thirdParty);
+    }
+
+    public async Task<UserAccountDto?> RegisterUserAccountAsync(
         string name, string encryptionPassword, CancellationToken cancellationToken)
     {
         var accountCount = await _repository.QueryNoTracking<UserAccount>(x => x.Name == name)
@@ -116,7 +115,7 @@ public class AccountDataProvider : IAccountDataProvider
         
         await _repository.InsertAsync(user, cancellationToken).ConfigureAwait(false);
         
-        return _mapper.Map<UserAccountInfoDto>(user);
+        return _mapper.Map<UserAccountDto>(user);
     }
 
     public async Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken)
@@ -124,5 +123,12 @@ public class AccountDataProvider : IAccountDataProvider
         var item = _mapper.Map<UserThirdParty>(thirdParty);
 
         await _repository.InsertAsync(item, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task UpdateThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken)
+    {
+        var item = _mapper.Map<UserThirdParty>(thirdParty);
+        
+        await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
     }
 }

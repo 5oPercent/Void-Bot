@@ -10,8 +10,10 @@ public class AccountMapping : Profile
     {
         CreateMap<UserAccount, UserAccountDto>().ReverseMap();
         CreateMap<UserAccount, UserAccountInfoDto>().ReverseMap();
+        CreateMap<UserAccountDto, UserAccountInfoDto>().ReverseMap();
         
         CreateMap<UserThirdParty, UserThirdPartyDto>().ReverseMap();
         CreateMap<UserThirdParty, UserThirdPartyInfoDto>().ReverseMap();
+        CreateMap<UserThirdPartyDto, UserThirdPartyInfoDto>().ReverseMap();
     }
 }
