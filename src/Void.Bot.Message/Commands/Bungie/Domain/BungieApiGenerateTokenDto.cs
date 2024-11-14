@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Void.Bot.Message.Commands.Bungie.Domain;
 
-public class BungieGenerateTokenRequestDto
+public class BungieApiGenerateTokenRequest
 {
     [JsonPropertyName("client_id")]
     public string ClientId { get; set; } = string.Empty;
@@ -26,7 +26,7 @@ public class BungieGenerateTokenRequestDto
     public string RefreshToken { get; set; } = string.Empty;
 }
 
-public class BungieGenerateTokenResponseDto
+public class BungieApiGenerateTokenResponse
 {
     /// <summary>
     /// 授权类型

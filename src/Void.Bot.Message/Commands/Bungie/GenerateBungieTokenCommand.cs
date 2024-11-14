@@ -9,6 +9,6 @@ public class GenerateBungieTokenCommand : ICommand
     public required string OAuthCode { get; set; }
 }
 
-public class GenerateBungieTokenResponse : VoidBotResponse<BungieGenerateTokenResponseDto>
+public class GenerateBungieTokenResponse : VoidBotResponse<BungieApiGenerateTokenResponse>
 {
 }

@@ -1,16 +1,9 @@
-using System.Web;
-using Serilog;
-using Void.Bot.Core.Extension;
-using Void.Bot.Core.Services.Http;
-using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Commands.Bungie;
-using Void.Bot.Message.Commands.Bungie.Domain;
-using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Dto.Authorization;
 
 namespace Void.Bot.Core.Services.Bungie;
 
-public interface IBungieService : IScope
+public partial interface IBungieService : IScope
 {
     string GenerateAuthenticateUrl(AuthorizationDto dto);
 
@@ -19,76 +12,39 @@ public interface IBungieService : IScope
     Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken);
 }
 
-public class BungieService : IBungieService
+public partial class BungieService : IBungieService
 {
-    private readonly ILogger _logger;
-    private readonly BungieSetting _setting;
-    private readonly IVoidBotHttpClientFactory _httpClientFactory;
+    private readonly IBungieDataProvider _dataProvider;
     
-    public BungieService(ILogger logger, BungieSetting setting, IVoidBotHttpClientFactory httpClientFactory)
+    public BungieService(IBungieDataProvider dataProvider)
     {
-        _logger = logger;
-        _setting = setting;
-        _httpClientFactory = httpClientFactory;
+        _dataProvider = dataProvider;
     }
     
     public string GenerateAuthenticateUrl(AuthorizationDto dto)
     {
-        var parameters = HttpUtility.ParseQueryString(string.Empty);
-        parameters["client_id"] = _setting.ClientId;
-        parameters["response_type"] = "code";
-        parameters["state"] = $"{nameof(dto.Platform)}:{dto.Platform}|{nameof(dto.AccountId)}:{dto.AccountId}";
+        var authUrl = _dataProvider.GenerateAuthenticateUrl(dto.Platform, dto.AccountId);
 
-        return $"{BungieConstants.AuthorizeUrl}?{parameters}";
+        return authUrl;
     }
 
     public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken)
     {
-        var headers = new Dictionary<string, string>
-        {
-            ["X-API-Key"] = $"{_setting.ApiKey}"
-        };
-
-        var dto = new BungieGenerateTokenRequestDto
-        {
-            ClientId = _setting.ClientId,
-            GrantType = "authorization_code",
-            Code = command.OAuthCode
-        };
-
-        var content = new FormUrlEncodedContent(dto.ToDictionary());
-
-        var response = await _httpClientFactory.PostAsync<BungieGenerateTokenResponseDto>(
-            BungieConstants.GenerateTokenUrl, content, cancellationToken, headers: headers);
+        var result = await _dataProvider.GenerateTokenAsync(command.OAuthCode, cancellationToken).ConfigureAwait(false);
 
         return new GenerateBungieTokenResponse
         {
-            Data = response.Data
+            Data = result
         };
     }
     
     public async Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken)
     {
-        var headers = new Dictionary<string, string>
-        {
-            ["X-API-Key"] = $"{_setting.ApiKey}"
-        };
-
-        var dto = new BungieGenerateTokenRequestDto
-        {
-            ClientId = _setting.ClientId,
-            GrantType = "refresh_token",
-            RefreshToken = command.Token
-        };
-        
-        var content = new FormUrlEncodedContent(dto.ToDictionary());
-        
-        var response = await _httpClientFactory.PostAsync<BungieGenerateTokenResponseDto>(
-            BungieConstants.RefreshTokenUrl, content, cancellationToken, headers: headers);
+        var result = await _dataProvider.RefreshTokenAsync(command.Token, cancellationToken).ConfigureAwait(false);
 
         return new RefreshBungieTokenResponse
         {
-            Data = response.Data
+            Data = result
         };
     }
 }

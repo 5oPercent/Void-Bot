@@ -9,6 +9,6 @@ public class RefreshBungieTokenCommand : ICommand
     public required string Token { get; set; }
 }
 
-public class RefreshBungieTokenResponse : VoidBotResponse<BungieGenerateTokenResponseDto>
+public class RefreshBungieTokenResponse : VoidBotResponse<BungieApiGenerateTokenResponse>
 {
 }
