@@ -61,7 +61,7 @@ public class AccountService : IAccountService
         RegisterUserAccountCommand command, CancellationToken cancellationToken)
     {
         var user = await _dataProvider.RegisterUserAccountAsync(
-            command.Name, command.Password.Md5Encrypt(), cancellationToken).ConfigureAwait(false);
+            command.Name, command.Password.SHAEncrypt(), cancellationToken).ConfigureAwait(false);
 
         return new RegisterUserAccountResponse
         {
