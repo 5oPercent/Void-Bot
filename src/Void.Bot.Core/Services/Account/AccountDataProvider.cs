@@ -134,10 +134,10 @@ public class AccountDataProvider : IAccountDataProvider
         await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
     }
 
-	public async Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken)
-	{
-		var item = _mapper.Map<UserAccount>(userAccountDto);
+    public async Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken)
+    {
+        var item = _mapper.Map<UserAccount>(userAccountDto);
 
-		await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
-	}
+        await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+    }
 }

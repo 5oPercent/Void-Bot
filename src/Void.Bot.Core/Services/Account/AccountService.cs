@@ -143,30 +143,30 @@ public class AccountService : IAccountService
 		return new LinkUserAccountFromThirdPartyResponse();
 	}
 
-	public async Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
-	ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken)
-	{
-		//先获取账户 需要ID
-		var user = await _dataProvider.GetUserAccountAsync(
-		   command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+    public async Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
+        ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken)
+    {
+        //先获取账户 需要ID
+        var user = await _dataProvider.GetUserAccountAsync(
+        command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
 
-		//先判断用户是否为空
-		if (user == null)
-		{
-			return new ChangeUserAccountPasswordResponse();
-		}
+        //先判断用户是否为空
+        if (user == null)
+        {
+            return new ChangeUserAccountPasswordResponse();
+        }
 
-		//然后判断输入的密码是否正确,再验证新密码与确认密码是否一致
-		if (!command.OldPassword.SHAEncrypt().Equals(user.Password) || !command.NewPassword.Equals(command.NewPasswordConfirm))
-		{
-			return new ChangeUserAccountPasswordResponse();
-		}
+        //然后判断输入的密码是否正确,再验证新密码与确认密码是否一致
+        if (!command.OldPassword.SHAEncrypt().Equals(user.Password) || !command.NewPassword.Equals(command.NewPasswordConfirm))
+        {
+            return new ChangeUserAccountPasswordResponse();
+        }
 
-		//最后保存数据库
-		user.Password = command.NewPassword.SHAEncrypt();
+        //最后保存数据库
+        user.Password = command.NewPassword.SHAEncrypt();
 
-		await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
 
-		return new ChangeUserAccountPasswordResponse();
-	}
+        return new ChangeUserAccountPasswordResponse();
+    }
 }
