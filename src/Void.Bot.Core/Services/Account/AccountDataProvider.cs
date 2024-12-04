@@ -24,6 +24,8 @@ public interface IAccountDataProvider : IScope
     Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
     
     Task UpdateThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
+
+    Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken);
 }
 
 public class AccountDataProvider : IAccountDataProvider
@@ -129,6 +131,13 @@ public class AccountDataProvider : IAccountDataProvider
     {
         var item = _mapper.Map<UserThirdParty>(thirdParty);
         
+        await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken)
+    {
+        var item = _mapper.Map<UserAccount>(userAccountDto);
+
         await _repository.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
     }
 }
