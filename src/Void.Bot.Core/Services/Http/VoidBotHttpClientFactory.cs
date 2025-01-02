@@ -1,7 +1,6 @@
-using System.Net;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using Autofac;
+using Void.Bot.Core.Extension;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.HttpClient;
 
@@ -46,84 +45,28 @@ public class VoidBotHttpClientFactory(ILifetimeScope scope) : IVoidBotHttpClient
     
     public async Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
-        return await SafeProcessAsync(async () =>
-        {
-            var response = await CreateClient(token, headers, timeout, beginScope)
-                .GetAsync(url, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+        var client = CreateClient(token, headers, timeout, beginScope);
+        
+        var response = await client.GetAsync<T>(url, cancellationToken).ConfigureAwait(false);
 
-            return new VoidBotResponse<T>
-            {
-                Code = response.StatusCode,
-                Data = data
-            };
-        }, cancellationToken).ConfigureAwait(false);
+        return response;
     }
 
     public async Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
-        return await SafeProcessAsync(async () =>
-        {
-            var response = await CreateClient(token, headers, timeout, beginScope)
-                .PostAsync(url, content, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
-            
-            return new VoidBotResponse<T>
-            {
-                Code = response.StatusCode,
-                Data = data
-            };
-        }, cancellationToken).ConfigureAwait(false);
+        var client = CreateClient(token, headers, timeout, beginScope);
+        
+        var response = await client.PostAsync<T>(url, content, cancellationToken).ConfigureAwait(false);
+
+        return response;
     }
 
     public async Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken, TimeSpan? timeout = null, TokenModel? token = null, Dictionary<string, string>? headers = null, bool beginScope = false)
     {
-        return await SafeProcessAsync(async () =>
-        {
-            var response = await CreateClient(token, headers, timeout, beginScope)
-                .PostAsJsonAsync(url, content, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+        var client = CreateClient(token, headers, timeout, beginScope);
+        
+        var response = await client.PostAsync<T>(url, content, cancellationToken).ConfigureAwait(false);
 
-            return new VoidBotResponse<T>
-            {
-                Code = response.StatusCode,
-                Data = data
-            };
-        }, cancellationToken).ConfigureAwait(false);
-    }
-    
-    private static async Task<VoidBotResponse<T>> SafeProcessAsync<T>(Func<Task<VoidBotResponse<T>>> func, CancellationToken cancellationToken)
-    {
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            return await func().ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            return new VoidBotResponse<T>
-            {
-                Code = HttpStatusCode.BadRequest,
-                Message = ex.Message
-            };
-        }
-    }
-    
-    private static async Task<T> ReadResponseContentAsAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
-        if (typeof(T) == typeof(string))
-            return (T)(object) await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        
-        if (typeof(T) == typeof(byte))
-            return (T)(object) await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-        
-        if (typeof(T) == typeof(Stream))
-            return (T)(object) await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException();
+        return response;
     }
 }
