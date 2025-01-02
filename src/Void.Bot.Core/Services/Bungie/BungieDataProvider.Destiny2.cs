@@ -23,8 +23,8 @@ public partial class BungieDataProvider : IBungieDataProvider
         BungieMembershipType membershipType, long membershipId, CancellationToken cancellationToken)
     {
         var url = BungieConstants.Destiny2LinkedProfiles
-            .Replace("{membershipType}", ((int)membershipType).ToString())
-            .Replace("{membershipId}", membershipId.ToString());
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{membershipId}", membershipId.ToString(), StringComparison.OrdinalIgnoreCase);
         
         var result = await GetBungieHttpClient().GetAsync<BungieApiLinkedProfilesResponse>(url, cancellationToken).ConfigureAwait(false);
         
@@ -36,8 +36,8 @@ public partial class BungieDataProvider : IBungieDataProvider
         List<DestinyComponentTypeEnum> components, CancellationToken cancellationToken)
     {
         var url = BungieConstants.Destiny2ProfileUrl
-            .Replace("{membershipType}", ((int)membershipType).ToString())
-            .Replace("{membershipId}", membershipId.ToString());
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{membershipId}", membershipId.ToString(), StringComparison.OrdinalIgnoreCase);
         
         var result = await GetBungieHttpClient().GetAsync<string>(url, cancellationToken).ConfigureAwait(false);
 
