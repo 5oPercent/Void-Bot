@@ -10,9 +10,9 @@ public class UserAccountInfoDto
     
     public string DisplayName => $"{Name}#{Suffix}";
     
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset CreatedAt { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset? UpdatedAt { get; set; }
     
     public List<UserThirdPartyInfoDto> ThirdParties { get; set; } = new();
 }

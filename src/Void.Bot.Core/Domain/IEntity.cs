@@ -19,5 +19,5 @@ public interface IEntityCreated : IEntityBase
 
 public interface IEntityModified : IEntityBase
 {
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 }

@@ -4,6 +4,7 @@ using Mediator.Net;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Request.Account;
 using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
@@ -31,6 +32,8 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
+        await commandCallback.DeferAsync(true).ConfigureAwait(false);
+        
         var authorization = new AuthorizationDto
         {
             Platform = AppPlatformEnum.Discord,
@@ -39,12 +42,10 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
         };
         
         var platformId = (long)commandCallback.Data.Options.FirstOrDefault(o => o.Name == "平台")!.Value;
-
+        
         if ((AppPlatformEnum)platformId == AppPlatformEnum.Void)
         {
             var masterDisplayName = commandCallback.Data.Options.FirstOrDefault(o => o.Name == "主账号完整名称")?.Value.ToString();
-
-            await commandCallback.DeferAsync(true).ConfigureAwait(false);
 
             try
             {
@@ -52,7 +53,7 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
                     new LinkUserAccountFromThirdPartyCommand
                     {
                         Authorization = authorization,
-                        MasterDisplayName = masterDisplayName
+                        MasterDisplayName = masterDisplayName ?? string.Empty
                     }, cancellationToken).ConfigureAwait(false);
                 
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
@@ -71,8 +72,26 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
             return;
         }
 
+        var findVoidAccountResponse = await mediator.RequestAsync<GetUserAccountByThirdPartyRequest, GetUserAccountByThirdPartyResponse>(new GetUserAccountByThirdPartyRequest
+        {
+            Platform = authorization.Platform,
+            ThirdPartyUserId = authorization.AccountId
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (findVoidAccountResponse.Data == null)
+        {
+            await commandCallback.ModifyOriginalResponseAsync(builder =>
+            {
+                builder.Content = $"请先绑定{AppPlatformEnum.Void}账号.";
+            }).ConfigureAwait(false);
+            
+            return;
+        }
+        
+        var bindToPlatform = (AppPlatformEnum)platformId;
+        
         string url;
-        switch ((AppPlatformEnum)platformId)
+        switch (bindToPlatform)
         {
             case AppPlatformEnum.Steam:
             {
@@ -101,6 +120,9 @@ public class LinkSlashCommand(IMediator mediator) : IGlobalSlashCommand
                 break;
         }
         
-        await commandCallback.RespondAsync("请点击以下链接进行绑定: \r" + url, ephemeral: true).ConfigureAwait(false);
+        await commandCallback.ModifyOriginalResponseAsync(builder =>
+        {
+            builder.Content = $"请点击以下链接进行绑定{bindToPlatform}: \r" + url;
+        }).ConfigureAwait(false);
     }
 }

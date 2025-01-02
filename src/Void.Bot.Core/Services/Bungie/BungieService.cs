@@ -1,35 +1,66 @@
-using System.Web;
-using Serilog;
-using Void.Bot.Core.Settings.Bungie;
+using System.Net;
+using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Dto.Authorization;
 
 namespace Void.Bot.Core.Services.Bungie;
 
-public interface IBungieService : IScope
+public partial interface IBungieService : IScope
 {
     string GenerateAuthenticateUrl(AuthorizationDto dto);
+
+    Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken);
+
+    Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken);
 }
 
-public class BungieService : IBungieService
+public partial class BungieService : IBungieService
 {
-    private readonly ILogger _logger;
-    private readonly BungieSetting _setting;
+    private readonly IBungieDataProvider _dataProvider;
     
-    public BungieService(ILogger logger, BungieSetting setting)
+    public BungieService(IBungieDataProvider dataProvider)
     {
-        _logger = logger;
-        _setting = setting;
+        _dataProvider = dataProvider;
     }
     
     public string GenerateAuthenticateUrl(AuthorizationDto dto)
     {
-        const string baseUrl = "https://www.bungie.net/zh-chs/OAuth/Authorize";
-        
-        var parameters = HttpUtility.ParseQueryString(string.Empty);
-        parameters["client_id"] = _setting.ClientId;
-        parameters["response_type"] = "code";
-        parameters["state"] = $"{nameof(dto.Platform)}:{dto.Platform}|{nameof(dto.AccountId)}:{dto.AccountId}";
+        var authUrl = _dataProvider.GenerateAuthenticateUrl(dto.Platform, dto.AccountId);
 
-        return $"{baseUrl}?{parameters}";
+        return authUrl;
+    }
+
+    public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken)
+    {
+        var response = new GenerateBungieTokenResponse();
+
+        var result = await _dataProvider.GenerateTokenAsync(command.OAuthCode, cancellationToken).ConfigureAwait(false);
+
+        if (result == null)
+        {
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = "Failed to generate token.";
+            return response;
+        }
+        
+        if (!string.IsNullOrEmpty(result.Error))
+        {
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = $"{result.Error}: {result.ErrorDescription}";
+            return response;
+        }
+
+        response.Code = HttpStatusCode.OK;
+        response.Data = result;
+        return response;
+    }
+    
+    public async Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken)
+    {
+        var result = await _dataProvider.RefreshTokenAsync(command.Token, cancellationToken).ConfigureAwait(false);
+
+        return new RefreshBungieTokenResponse
+        {
+            Data = result
+        };
     }
 }

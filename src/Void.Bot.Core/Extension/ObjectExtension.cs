@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Core.Extension;
 
 public static class ObjectExtension
@@ -32,5 +35,23 @@ public static class ObjectExtension
     public static string GetGenericTypeName(this object @object)
     {
         return @object.GetType().GetGenericTypeName();
+    }
+    
+    public static Dictionary<string, string> ToDictionary(this object source)
+    {
+        var dictionary = new Dictionary<string, string>();
+        var properties = source.GetType().GetProperties();
+
+        foreach (var property in properties)
+        {
+            var value = property.GetValue(source);
+            if (value == null) continue;
+            
+            var jsonPropertyAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
+            var key = jsonPropertyAttribute != null ? jsonPropertyAttribute.Name : property.Name;
+            dictionary.Add(key, value.ToString()!);
+        }
+
+        return dictionary;
     }
 }
