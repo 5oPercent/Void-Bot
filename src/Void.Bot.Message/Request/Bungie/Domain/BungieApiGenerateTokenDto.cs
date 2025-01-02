@@ -1,11 +1,14 @@
 using System.Text.Json.Serialization;
 
-namespace Void.Bot.Message.Commands.Bungie.Domain;
+namespace Void.Bot.Message.Request.Bungie.Domain;
 
 public class BungieApiGenerateTokenRequest
 {
     [JsonPropertyName("client_id")]
     public string ClientId { get; set; } = string.Empty;
+    
+    [JsonPropertyName("client_secret")]
+    public string ClientSecret { get; set; } = string.Empty;
     
     /// <summary>
     /// 可填 authorization_code / refresh_token

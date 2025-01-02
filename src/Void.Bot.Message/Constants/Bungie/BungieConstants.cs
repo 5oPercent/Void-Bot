@@ -6,9 +6,11 @@ public static class BungieConstants
     
     public static readonly string AuthorizeUrl = Domain + "/zh-chs/OAuth/Authorize";
     
-    public static readonly string GenerateTokenUrl = Domain + "/Platform/App/OAuth/token/";
+    public static readonly string GenerateTokenUrl = Domain + "/Platform/App/OAuth/token";
     
-    public static readonly string RefreshTokenUrl = Domain + "/Platform/App/OAuth/token/";
+    public static readonly string RefreshTokenUrl = Domain + "/Platform/App/OAuth/token";
     
-    public static readonly string Destiny2ProfileUrl = Domain + "/Platform/Destiny2/{membershipType}/Profile/{destinyMembershipId}/";
+    public static readonly string Destiny2ProfileUrl = Domain + "/Platform/Destiny2/{membershipType}/Profile/{membershipId}";
+    
+    public static readonly string Destiny2LinkedProfiles = Destiny2ProfileUrl + "/LinkedProfiles";
 }

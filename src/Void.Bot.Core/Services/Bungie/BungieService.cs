@@ -1,3 +1,4 @@
+using System.Net;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Dto.Authorization;
 
@@ -30,12 +31,27 @@ public partial class BungieService : IBungieService
 
     public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken)
     {
+        var response = new GenerateBungieTokenResponse();
+
         var result = await _dataProvider.GenerateTokenAsync(command.OAuthCode, cancellationToken).ConfigureAwait(false);
 
-        return new GenerateBungieTokenResponse
+        if (result == null)
         {
-            Data = result
-        };
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = "Failed to generate token.";
+            return response;
+        }
+        
+        if (!string.IsNullOrEmpty(result.Error))
+        {
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = $"{result.Error}: {result.ErrorDescription}";
+            return response;
+        }
+
+        response.Code = HttpStatusCode.OK;
+        response.Data = result;
+        return response;
     }
     
     public async Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken)
