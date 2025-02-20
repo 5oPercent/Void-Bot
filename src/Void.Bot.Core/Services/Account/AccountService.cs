@@ -15,13 +15,17 @@ public interface IAccountService : IScope
     Task<GetUserAccountByThirdPartyResponse> GetUserAccountByThirdPartyAsync(
         GetUserAccountByThirdPartyRequest request, CancellationToken cancellationToken);
 
+    Task<GetThirdPartyByThirdPartyResponse> GetThirdPartyByThirdPartyAsync(
+        GetThirdPartyByThirdPartyRequest request, CancellationToken cancellationToken);
+
     Task<RegisterUserAccountResponse> RegisterUserAccountAsync(
         RegisterUserAccountCommand command, CancellationToken cancellationToken);
 
     Task<LinkUserAccountFromThirdPartyResponse> LinkAccountFromThirdPartyAsync(
         LinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken);
 
-    Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken);
+    Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
+        ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken);
 }
 
 public class AccountService : IAccountService
@@ -56,6 +60,19 @@ public class AccountService : IAccountService
         return new GetUserAccountByThirdPartyResponse
         {
             Data = _mapper.Map<UserAccountInfoDto>(user)
+        };
+    }
+
+    public async Task<GetThirdPartyByThirdPartyResponse> GetThirdPartyByThirdPartyAsync(
+        GetThirdPartyByThirdPartyRequest request, CancellationToken cancellationToken)
+    {
+        var thirdParty = await _dataProvider.GetThirdPartyByThirdPartyAsync(
+            request.CurrentPlatform.ToString(), request.ThirdPartyUserId,
+            request.TargetPlatform.ToString(), cancellationToken).ConfigureAwait(false);
+
+        return new GetThirdPartyByThirdPartyResponse
+        {
+            Data = thirdParty
         };
     }
 

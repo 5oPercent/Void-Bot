@@ -54,4 +54,9 @@ public static class ObjectExtension
 
         return dictionary;
     }
+    
+    public static T ToEnum<T>(this object value)
+    {
+        return (T)Enum.ToObject(typeof(T), value);
+    }
 }

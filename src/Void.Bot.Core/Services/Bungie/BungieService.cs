@@ -1,4 +1,5 @@
 using System.Net;
+using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Dto.Authorization;
 
@@ -16,10 +17,14 @@ public partial interface IBungieService : IScope
 public partial class BungieService : IBungieService
 {
     private readonly IBungieDataProvider _dataProvider;
+    private readonly IAccountService _accountService;
+    private readonly IAccountDataProvider _accountDataProvider;
     
-    public BungieService(IBungieDataProvider dataProvider)
+    public BungieService(IBungieDataProvider dataProvider, IAccountService accountService, IAccountDataProvider accountDataProvider)
     {
         _dataProvider = dataProvider;
+        _accountService = accountService;
+        _accountDataProvider = accountDataProvider;
     }
     
     public string GenerateAuthenticateUrl(AuthorizationDto dto)

@@ -15,6 +15,9 @@ public interface IAccountDataProvider : IScope
     Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
         string provider, string thirdPartyUserId, CancellationToken cancellationToken);
     
+    Task<UserThirdPartyDto?> GetThirdPartyByThirdPartyAsync(
+        string currentProvider, string thirdPartyUserId, string targetProvider, CancellationToken cancellationToken);
+    
     Task<UserThirdPartyDto?> GetThirdPartyByUserIdAsync(
         Guid userId, string provider, CancellationToken cancellationToken);
     
@@ -47,6 +50,11 @@ public class AccountDataProvider : IAccountDataProvider
             [var n, var s] => (n, s),
             _ => (null, null)
         };
+
+        if (userId == null && string.IsNullOrEmpty(name) && string.IsNullOrEmpty(suffix))
+        {
+            return null;
+        }
         
         var user = await _repository.QueryNoTracking<UserAccount>()
             .WhereIF(userId.HasValue, x => x.Id == userId)
@@ -75,6 +83,25 @@ public class AccountDataProvider : IAccountDataProvider
             user = await GetUserAccountAsync(thirdParty.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
 
         return user;
+    }
+
+    public async Task<UserThirdPartyDto?> GetThirdPartyByThirdPartyAsync(
+        string currentProvider, string thirdPartyUserId, string targetProvider, CancellationToken cancellationToken)
+    {
+        var current = await _repository
+            .QueryNoTracking<UserThirdParty>(x => x.Provider.Equals(currentProvider) && x.ThirdPartyUserId.Equals(thirdPartyUserId))
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+        if (current == null)
+        {
+            return null;
+        }
+        
+        var target = await _repository
+            .QueryNoTracking<UserThirdParty>(x => x.UserId.Equals(current.UserId) && x.Provider.Equals(targetProvider))
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+        return _mapper.Map<UserThirdPartyDto>(target);
     }
 
     public async Task<UserThirdPartyDto?> GetThirdPartyByUserIdAsync(
