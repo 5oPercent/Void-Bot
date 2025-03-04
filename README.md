@@ -7,26 +7,21 @@ HI, Void 是一个查询机器人, 正处于早期开发阶段.
 3. 在线 Web 控制面板.
 
 ## 部署
-### 数据库
-> 项目所使用账号密码请自行修改 `appsettings.json` 文件.
+- 请注意, 请勿在生产环境中使用默认密码.
 
-```
-docker pull --platform linux/x86_64 mysql:8.0
-docker run -itd --name mysql-8-0 -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql:8.0
-```
+### Local
+- 维护 `appsettings.json` 配置文件, 如: `ConnectionStrings`、`Token`...
 
-> 请注意, 请勿在生产环境中使用默认密码.
+### Docker
+- 维护 `appsettings.Docker.json` 配置文件.
 
-- 端口: `3306`
-- 账号: `root`
-- 密码: `123456`
-
-### Seq日志
-> 项目所使用的日志系统, 请自行修改 `appsettings.json` 文件.
-
-```
-docker pull datalust/seq
-docker run --name seq -d --restart unless-stopped -e ACCEPT_EULA=Y -p 5341:80 datalust/seq:latest
+#### 仅构建项目和运行
+```shell
+docker build -t voidbot .
+docker run -d --name void_bot_app -p 3399:3399 voidbot
 ```
 
-- 访问地址: http://localhost:5341
+#### 一键部署环境和运行项目
+```shell
+docker-compose up -d
+```
