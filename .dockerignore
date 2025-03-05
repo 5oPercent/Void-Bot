@@ -1,0 +1,24 @@
+# 忽略 Git 相关文件
+.git
+.github
+.gitignore
+
+# 忽略编译生成的文件夹（适用于所有项目）
+**/bin/
+**/obj/
+
+# 忽略 NuGet 缓存文件夹
+.nuget/
+
+# 忽略临时文件和日志文件
+*.tmp
+*.log
+
+# 忽略 IDE 配置文件夹（如 VS Code、Visual Studio 以及 Rider 的 .idea 文件夹）
+.vscode/
+.vs/
+.idea/
+
+# 忽略 Dockerfile 相关文件（如果你不希望它们进入上下文）
+Dockerfile*
+.dockerignore
