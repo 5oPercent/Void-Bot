@@ -60,13 +60,6 @@ public class Repository(VoidBotDbContext dbContext) : IRepository
         return Task.CompletedTask;
     }
 
-    public async Task DeleteAsync<TEntity>(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntity
-    {
-        await dbContext.Set<TEntity>().Where(predicate).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-        dbContext.ShouldSaveChanges = true;
-    }
-    
     public Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default)
         where TEntity : class, IEntity
     {
