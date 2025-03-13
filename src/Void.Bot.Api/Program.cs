@@ -1,4 +1,3 @@
-using Autofac.Extensions.DependencyInjection;
 using Serilog;
 using Void.Bot.Core.Dbup;
 using Void.Bot.Core.Settings;
@@ -29,15 +28,8 @@ public class Program
         var connectionSetting = new ConnectionStringSetting(configuration);
         new DbUpRunner(connectionSetting.Mysql).Run(nameof(Core.Dbup));
         
-        Host.CreateDefaultBuilder(args)
-            .UseSerilog()
-            .ConfigureLogging(l => l.AddSerilog(Log.Logger))
-            .UseServiceProviderFactory(new AutofacServiceProviderFactory())
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            })
-            .Build()
+        WebApplication.CreateBuilder(args).ConfigureHost().AddServices()
+            .Build().ConfigureApp()
             .Run();
     }
 }

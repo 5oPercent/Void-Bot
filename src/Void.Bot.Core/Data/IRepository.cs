@@ -29,9 +29,6 @@ public interface IRepository
     Task UpdateAllAsync<TEntity>(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
         where TEntity : class, IEntity;
 
-    Task DeleteAsync<TEntity>(Expression<Func<TEntity, bool>> predicate,
-        CancellationToken cancellationToken = default) where TEntity : class, IEntity;
-    
     Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default)
         where TEntity : class, IEntity;
     
