@@ -1,23 +1,28 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Domain;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.System;
 
 namespace Void.Bot.Core.Data;
 
-public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbContext, IUnitOfWork
+public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrentUser currentUser) : DbContext, IUnitOfWork
 {
     private readonly string _dbConnectionString = connectionString.Mysql;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseMySql(_dbConnectionString, new MySqlServerVersion(new Version(8, 0, 3)));
+        optionsBuilder
+            .UseMySql(_dbConnectionString, new MySqlServerVersion(new Version(8, 0, 3)))
+            .EnableDetailedErrors()
+            .EnableSensitiveDataLogging()
+            .UseSnakeCaseNamingConvention();
     }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var allTypes = Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => t.IsClass && typeof(IEntity).IsAssignableFrom(t))
+            .Where(t => t.IsClass && typeof(IEntityBase).IsAssignableFrom(t))
             .ToList();
 
         foreach (var type in allTypes.Where(type => modelBuilder.Model.FindEntityType(type) == null))
@@ -30,6 +35,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbCont
     
     public override int SaveChanges()
     {
+        UpdateEntityAudit();
         UpdateCreatedFields();
         UpdateLastModifiedFields();
         return ShouldSaveChanges ? base.SaveChanges() : 0;
@@ -37,11 +43,30 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString) : DbCont
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
+        UpdateEntityAudit();
         UpdateCreatedFields();
         UpdateLastModifiedFields();
         return ShouldSaveChanges ? base.SaveChangesAsync(cancellationToken) : Task.FromResult(0);
     }
 
+    private void UpdateEntityAudit()
+    {
+        var userId = currentUser.Id ?? Guid.Empty;
+
+        foreach (var entry in ChangeTracker.Entries().Where(e => e is { Entity: IEntityAudit }))
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    ((IEntityAudit)entry.Entity).CreatedBy = userId;
+                    break;
+                case EntityState.Modified:
+                    ((IEntityAudit)entry.Entity).LastModifiedBy = userId;
+                    break;
+            }
+        }
+    }
+    
     private void UpdateCreatedFields()
     {
         foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Added, Entity: IEntityCreated }))
