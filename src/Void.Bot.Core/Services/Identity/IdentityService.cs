@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Account;
@@ -6,17 +7,21 @@ using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Commands.Identity;
+using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Account;
 using Void.Bot.Message.Request.Bungie;
+using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Core.Services.Identity;
 
 public interface IIdentityService : IScope
 {
+    Task<AuthenticateResponse> AuthenticateAsync(AuthenticateRequest request, CancellationToken cancellationToken);
+    
     Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken);
     
     Task<LoginBungieResponse> LinkToBungieAsync(LoginBungieCommand command, CancellationToken cancellationToken);
@@ -25,16 +30,67 @@ public interface IIdentityService : IScope
 public class IdentityService : IIdentityService
 {
     private readonly ILogger _logger;
+    private readonly ITokenClaimService _tokenClaimService;
     private readonly IAccountService _accountService;
     private readonly IBungieService _bungieService;
 
-    public IdentityService(ILogger logger, IAccountService accountService, IBungieService bungieService)
+    public IdentityService(ILogger logger, ITokenClaimService tokenClaimService, IAccountService accountService, IBungieService bungieService)
     {
         _logger = logger;
+        _tokenClaimService = tokenClaimService;
         _accountService = accountService;
         _bungieService = bungieService;
     }
+
+    private List<Claim> GetUserAllClaimsAsync(UserAccountInfoDto user, CancellationToken cancellationToken)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, user.DisplayName),
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+        };
+        
+        return claims;
+    }
     
+    public async Task<AuthenticateResponse> AuthenticateAsync(AuthenticateRequest request, CancellationToken cancellationToken)
+    {
+        var response = new AuthenticateResponse();
+        
+        var getUserAccountResponse = await _accountService.GetUserAccountAsync(
+            new GetUserAccountRequest
+            {
+                DisplayName = $"{request.UserName}#{request.Suffix}"
+            }, cancellationToken).ConfigureAwait(false);
+
+        if (getUserAccountResponse.Data == null)
+        {
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = "用户不存在";
+            return response;
+        }
+        
+        var userAccount = getUserAccountResponse.Data;
+        
+        var result = await _accountService.VerifyPassword(userAccount.Id, request.Password, cancellationToken).ConfigureAwait(false);
+        if (!result)
+        {
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = "密码错误";
+            return response;
+        }
+        
+        var accessToken = _tokenClaimService.GenerateAccessToken(GetUserAllClaimsAsync(userAccount, cancellationToken));
+        var refreshToken = _tokenClaimService.GenerateRefreshToken();
+        
+        response.Data = new JwtToken
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken
+        };
+        return response;
+    }
+
     public async Task<LoginSteamResponse> LinkToSteamAsync(LoginSteamCommand command, CancellationToken cancellationToken)
     {
         var claimedId = command.OpenId.Claimed_Id;

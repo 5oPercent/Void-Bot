@@ -1,9 +1,11 @@
 using Mediator.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Message.Request.MessageLogging;
 
 namespace Void.Bot.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class MessageLoggingController(IMediator mediator) : ControllerBase

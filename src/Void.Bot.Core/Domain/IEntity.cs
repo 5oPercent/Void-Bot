@@ -12,6 +12,13 @@ public interface IEntity<T> : IEntityBase
     T Id { get; set; }
 }
 
+public interface IEntityAudit : IEntityBase, IEntityCreated, IEntityModified
+{
+    public Guid CreatedBy { get; set; }
+
+    public Guid? LastModifiedBy { get; set; }
+}
+
 public interface IEntityCreated : IEntityBase
 {
     public DateTimeOffset CreatedAt { get; set; }

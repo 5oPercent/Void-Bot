@@ -1,9 +1,11 @@
 using Mediator.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Message.Request.Discord;
 
 namespace Void.Bot.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DiscordController : ControllerBase

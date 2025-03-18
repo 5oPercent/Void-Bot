@@ -51,7 +51,7 @@ public class IntegrationFixture : IntegrationTestBase, IAsyncLifetime
             var configuration = RegisterConfiguration(containerBuilder);
             
             containerBuilder.Populate(serviceCollection);
-            containerBuilder.RegisterModule(new VoidBotModule(logger, configuration, typeof(IntegrationFixture).Assembly));
+            containerBuilder.RegisterModule(new VoidBotModule(new IntegrationTestUser(), logger, configuration, typeof(IntegrationFixture).Assembly));
             containerBuilder.RegisterInstance(new MemoryCache(new MemoryCacheOptions())).AsSelf().As<IMemoryCache>().SingleInstance();
             
             container = containerBuilder.Build();

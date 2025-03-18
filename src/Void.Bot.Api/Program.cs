@@ -1,4 +1,5 @@
 using Serilog;
+using Void.Bot.Api.Extension;
 using Void.Bot.Core.Dbup;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.System;
