@@ -30,7 +30,7 @@ public static class HostExtension
         host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
         host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
         {
-            containerBuilder.RegisterModule(new VoidBotModule(Log.Logger, configuration, typeof(VoidBotModule).Assembly));
+            containerBuilder.RegisterModule(new VoidBotModule(null, Log.Logger, configuration, typeof(VoidBotModule).Assembly));
         });
         
         return builder;

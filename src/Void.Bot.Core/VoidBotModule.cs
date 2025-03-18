@@ -19,13 +19,14 @@ using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Services;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
 using Module = Autofac.Module;
 
 namespace Void.Bot.Core;
 
-public class VoidBotModule(ILogger logger, IConfiguration configuration, params Assembly[] assemblies) : Module
+public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfiguration configuration, params Assembly[] assemblies) : Module
 {
     private readonly Assembly[] _assemblies = assemblies.Length == 0
         ? new Assembly[] { typeof(VoidBotModule).Assembly }
@@ -33,6 +34,8 @@ public class VoidBotModule(ILogger logger, IConfiguration configuration, params 
     
     protected override void Load(ContainerBuilder builder)
     {
+        RegisterIdentity(builder);
+        
         RegisterLogger(builder);
         
         RegisterMediator(builder);
@@ -50,6 +53,14 @@ public class VoidBotModule(ILogger logger, IConfiguration configuration, params 
         RegisterDiscordBotClient(builder);
 
         RegisterJobs(builder);
+    }
+    
+    private void RegisterIdentity(ContainerBuilder builder)
+    {
+        if (currentUser != null)
+        {
+            builder.RegisterInstance(currentUser);
+        }
     }
     
     // 注册日志
