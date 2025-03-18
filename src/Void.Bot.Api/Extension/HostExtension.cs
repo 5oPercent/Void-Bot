@@ -3,15 +3,20 @@ using Autofac.Extensions.DependencyInjection;
 using Hangfire;
 using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Scalar.AspNetCore;
 using Serilog;
 using Void.Bot.Api.ActionFilters;
+using Void.Bot.Api.Authentication;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Enum;
 
-namespace Void.Bot.Api;
+namespace Void.Bot.Api.Extension;
 
 public static class HostExtension
 {
@@ -39,8 +44,33 @@ public static class HostExtension
         var hangfireSetting = new HangfireSetting(configuration);
         var connectionSetting = new ConnectionStringSetting(configuration);
         
-        services.AddAuthorization();
-        services.AddOpenApi();
+        services.AddHttpContextAccessor();
+        services.AddAuthentication("AuthenticationSchemes")
+            .AddPolicyScheme("AuthenticationSchemes", "ApiKey or Jwt", options =>
+            {
+                options.ForwardDefaultSelector = context => context.Request.Headers.ContainsKey(ApiKeyAuthenticationOptions.SchemeHeader)
+                    ? ApiKeyAuthenticationOptions.AuthenticationScheme
+                    : JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddApiKeyScheme()
+            .AddJwtScheme();
+        
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+            options.AddDocumentTransformer<ApiKeySecuritySchemeTransformer>();
+        });
+        
+        services.AddAuthorization(options =>
+        {
+            options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                JwtBearerDefaults.AuthenticationScheme,
+                ApiKeyAuthenticationOptions.AuthenticationScheme
+            ).RequireAuthenticatedUser().Build();
+        });
+
+        services.AddScoped<ICurrentUser, CurrentUser>();
+        
         services.AddControllers(options =>
         {
             options.Filters.Add<UnifyResponseFilter>();
@@ -70,15 +100,15 @@ public static class HostExtension
         var configuration = app.Configuration;
         var hangfireSetting = new HangfireSetting(configuration);
         
-        if (app.Environment.IsDevelopment())
+        if (AppSetting.EnableScalar)
         {
-            app.UseStaticFiles();
             app.MapOpenApi();
             app.MapScalarApiReference();
         }
         
         app.UseHttpsRedirection();
         app.UseRouting();
+        app.UseAuthentication();
         app.UseAuthorization();
         app.UseEndpoints(ep => ep.MapControllers());
         

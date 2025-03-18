@@ -26,6 +26,8 @@ public interface IAccountService : IScope
 
     Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
         ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken);
+    
+    Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken);
 }
 
 public class AccountService : IAccountService
@@ -184,5 +186,12 @@ public class AccountService : IAccountService
         await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
 
         return new ChangeUserAccountPasswordResponse();
+    }
+
+    public async Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken)
+    {
+        var user = await _dataProvider.GetUserAccountAsync(userId, string.Empty, cancellationToken).ConfigureAwait(false);
+
+        return user != null && user.Password == password.SHAEncrypt();
     }
 }
