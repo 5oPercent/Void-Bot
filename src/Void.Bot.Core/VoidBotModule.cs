@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using Autofac;
+using Autofac.Core;
 using AutoMapper.Contrib.Autofac.DependencyInjection;
 using Discord;
 using Discord.Net.Rest;
@@ -8,6 +9,7 @@ using Discord.Net.WebSockets;
 using Discord.WebSocket;
 using Mediator.Net;
 using Mediator.Net.Autofac;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -55,12 +57,34 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterJobs(builder);
     }
     
+    // 注册身份代理
     private void RegisterIdentity(ContainerBuilder builder)
     {
-        if (currentUser != null)
+        if (!builder.ComponentRegistryBuilder.IsRegistered(new TypedService(typeof(IHttpContextAccessor))))
         {
-            builder.RegisterInstance(currentUser);
+            builder.RegisterType<HttpContextAccessor>().As<IHttpContextAccessor>().SingleInstance();
         }
+        
+        builder.RegisterType<CurrentUserProvider>().AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
+        builder.Register(c =>
+        {
+            var provider = c.Resolve<ICurrentUserProvider>();
+            if (provider.CurrentUser != null)
+                return new CurrentUserProxy(provider);
+            
+            if (currentUser != null)
+            {
+                provider.SetCurrentUser(currentUser);
+            }
+            else
+            {
+                var httpContext = c.Resolve<IHttpContextAccessor>();
+                var httpContextUser = new HttpCurrentUser(httpContext);
+                provider.SetCurrentUser(httpContextUser);
+            }
+
+            return new CurrentUserProxy(provider);
+        }).As<ICurrentUser>().InstancePerLifetimeScope();
     }
     
     // 注册日志
@@ -101,12 +125,17 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
 
         foreach (var type in allServiceTypes)
         {
-            if (typeof(IScope).IsAssignableFrom(type))
-                builder.RegisterType(type).AsImplementedInterfaces().InstancePerLifetimeScope();
-            else if (typeof(ISingleton).IsAssignableFrom(type))
-                builder.RegisterType(type).AsImplementedInterfaces().SingleInstance();
-            else
-                builder.RegisterType(type).AsImplementedInterfaces();
+            var registration = builder.RegisterType(type).AsImplementedInterfaces();
+
+            switch (type)
+            {
+                case var _ when type == typeof(ISingleton):
+                    registration.SingleInstance();
+                    break;
+                case var _ when type == typeof(IScope):
+                    registration.InstancePerLifetimeScope();
+                    break;
+            }
         }
     }
     

@@ -3,7 +3,7 @@ using Discord.WebSocket;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public interface ISlashCommand : ISingleton
+public interface ISlashCommand : IScope
 {
     string Name => (string)Command.Name;
 

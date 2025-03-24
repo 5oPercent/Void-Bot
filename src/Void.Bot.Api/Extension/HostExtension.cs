@@ -11,7 +11,6 @@ using Void.Bot.Api.ActionFilters;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
-using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Enum;
@@ -69,8 +68,6 @@ public static class HostExtension
             ).RequireAuthenticatedUser().Build();
         });
 
-        services.AddScoped<ICurrentUser, CurrentUser>();
-        
         services.AddControllers(options =>
         {
             options.Filters.Add<UnifyResponseFilter>();

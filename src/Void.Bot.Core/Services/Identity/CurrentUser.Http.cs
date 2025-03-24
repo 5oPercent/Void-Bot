@@ -1,13 +1,13 @@
 using System.Security.Claims;
-using Void.Bot.Core.Services.Identity;
+using Microsoft.AspNetCore.Http;
 
-namespace Void.Bot.Api.Authentication;
+namespace Void.Bot.Core.Services.Identity;
 
-public class CurrentUser : ICurrentUser
+public class HttpCurrentUser : ICurrentUser
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public CurrentUser(IHttpContextAccessor httpContextAccessor)
+    public HttpCurrentUser(IHttpContextAccessor httpContextAccessor)
     {
         _httpContextAccessor = httpContextAccessor;
     }
@@ -18,12 +18,12 @@ public class CurrentUser : ICurrentUser
         {
             if (_httpContextAccessor.HttpContext == null)
             {
-                throw new ApplicationException("HttpContext is not available");
+                return null;
             }
 
             var idClaim = _httpContextAccessor.HttpContext.User.Claims.Single(x => x.Type == ClaimTypes.NameIdentifier);
 
-            return Guid.Parse(idClaim.Value);
+            return Guid.TryParse(idClaim.Value, out var id) ? id : null;
         }
     }
 
@@ -33,12 +33,12 @@ public class CurrentUser : ICurrentUser
         {
             if (_httpContextAccessor.HttpContext == null)
             {
-                throw new ApplicationException("HttpContext is not available");
+                return string.Empty;
             }
             
             var userNameClaim = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name);
 
-            return userNameClaim.Value;
+            return userNameClaim?.Value ?? string.Empty;
         }
     }
 }
