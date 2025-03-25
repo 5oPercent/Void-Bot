@@ -1,7 +1,12 @@
 using Discord;
 using Discord.WebSocket;
+using Microsoft.Extensions.DependencyInjection;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Discord.SlashCommand;
+using Void.Bot.Core.Services.Identity;
+using Void.Bot.Message.Enum;
+using Void.Bot.Message.Request.Account;
 
 namespace Void.Bot.Core.Services.Discord;
 
@@ -16,10 +21,12 @@ public interface IDiscordSlashCommandRoute : ISingleton
 
 public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
 {
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IEnumerable<ISlashCommand> _registerCommands;
 
-    public DiscordSlashCommandRoute(IEnumerable<ISlashCommand> commands)
+    public DiscordSlashCommandRoute(IServiceScopeFactory scopeFactory, IEnumerable<ISlashCommand> commands)
     {
+        _scopeFactory = scopeFactory;
         _registerCommands = commands;
     }
 
@@ -48,14 +55,31 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
 
     public async Task RouteAsync(SocketSlashCommand callback)
     {
-        var rc = _registerCommands.FirstOrDefault(x => x.Name == callback.CommandName);
-        if (rc != null)
-        {
-            await rc.ExecuteAsync(callback);
-        }
-        else
+        using var scope = _scopeFactory.CreateScope();
+        
+        var allSlashCommands = scope.ServiceProvider.GetRequiredService<IEnumerable<ISlashCommand>>();
+        var sc = allSlashCommands.FirstOrDefault(x => x.Name == callback.CommandName);
+        if (sc == null)
         {
             await callback.RespondAsync("未知命令!", ephemeral: true).ConfigureAwait(false);
+            return;
         }
+        
+        var accountService = scope.ServiceProvider.GetRequiredService<IAccountService>();
+        var userResponse = await accountService.GetUserAccountByThirdPartyAsync(
+            new GetUserAccountByThirdPartyRequest
+            {
+                Platform = AppPlatformEnum.Discord,
+                ThirdPartyUserId = callback.User.Id.ToString()
+            }, CancellationToken.None).ConfigureAwait(false);
+        
+        var user = userResponse.Data;
+        if (user != null)
+        {
+            var userProvider = scope.ServiceProvider.GetRequiredService<ICurrentUserProvider>();
+            userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName));
+        }
+        
+        await sc.ExecuteAsync(callback);
     }
 }
