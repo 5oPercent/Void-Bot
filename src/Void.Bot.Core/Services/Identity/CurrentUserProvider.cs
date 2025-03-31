@@ -1,5 +1,3 @@
-using Serilog;
-
 namespace Void.Bot.Core.Services.Identity;
 
 public interface ICurrentUserProvider : IScope
@@ -16,6 +14,5 @@ public class CurrentUserProvider : ICurrentUserProvider
     public void SetCurrentUser(ICurrentUser currentUser)
     {
         CurrentUser = currentUser;
-        Log.Error("=== Set Type {Type} Current User {UserId} {UserName}", currentUser, CurrentUser?.Id, CurrentUser?.UserName ?? "Unknown");
     }
 }
