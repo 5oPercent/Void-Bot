@@ -21,6 +21,7 @@ using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Services;
+using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
@@ -65,7 +66,6 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             builder.RegisterType<HttpContextAccessor>().As<IHttpContextAccessor>().SingleInstance();
         }
         
-        builder.RegisterType<CurrentUserProvider>().AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
         builder.Register(c =>
         {
             var provider = c.Resolve<ICurrentUserProvider>();
@@ -127,14 +127,13 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         {
             var registration = builder.RegisterType(type).AsImplementedInterfaces();
 
-            switch (type)
+            if (typeof(ISingleton).IsAssignableFrom(type))
             {
-                case var _ when type == typeof(ISingleton):
-                    registration.SingleInstance();
-                    break;
-                case var _ when type == typeof(IScope):
-                    registration.InstancePerLifetimeScope();
-                    break;
+                registration.SingleInstance();
+            }
+            else if (typeof(IScope).IsAssignableFrom(type))
+            {
+                registration.InstancePerLifetimeScope();
             }
         }
     }
@@ -213,7 +212,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
 
         #endregion
 
-        builder.RegisterInstance(client).AsSelf().SingleInstance();
+        builder.RegisterInstance(client).AsSelf().SingleInstance().OnActivated(e =>
+        {
+            var slashCommandRoute = e.Context.Resolve<IDiscordSlashCommandRoute>();
+            client.SlashCommandExecuted += slashCommandRoute.RouteAsync;
+        });
     }
     
     // 注册任务

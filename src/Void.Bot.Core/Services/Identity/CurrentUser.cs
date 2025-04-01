@@ -1,6 +1,6 @@
 namespace Void.Bot.Core.Services.Identity;
 
-public interface ICurrentUser : IScope
+public interface ICurrentUser
 {
     Guid? Id { get; }
     

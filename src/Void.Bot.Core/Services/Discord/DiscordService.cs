@@ -19,23 +19,18 @@ public interface IDiscordService : IScope
 
 public class DiscordService : IDiscordService
 {
-    private readonly ILogger _logger;
     private readonly DiscordSetting _setting;
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     
     private readonly DiscordSocketClient _client;
 
-    public DiscordService(ILogger logger, DiscordSetting setting, IDiscordDataProvider dataProvider, IDiscordSlashCommandRoute slashCommandRoute ,DiscordSocketClient client)
+    public DiscordService(DiscordSetting setting, IDiscordDataProvider dataProvider, IDiscordSlashCommandRoute slashCommandRoute, DiscordSocketClient client)
     {
-        _logger = logger;
         _setting = setting;
         _dataProvider = dataProvider;
         _slashCommandRoute = slashCommandRoute; 
-        
         _client = client;
-        
-        _client.SlashCommandExecuted += SlashCommandHandlerAsync;
     }
 
     public async Task<DiscordStartBotResponse> StartAsync(DiscordStartBotRequest request, CancellationToken cancellationToken)
@@ -74,10 +69,5 @@ public class DiscordService : IDiscordService
         {
             await guild.CreateApplicationCommandAsync(command).ConfigureAwait(false);
         }
-    }
-
-    private async Task SlashCommandHandlerAsync(SocketSlashCommand command)
-    {
-        await _slashCommandRoute.RouteAsync(command).ConfigureAwait(false);
     }
 }
