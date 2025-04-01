@@ -1,15 +1,16 @@
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
-using Mediator.Net;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Services.Bungie;
+using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Bungie;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
+public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
     
@@ -41,7 +42,7 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
             return;
         }
         
-        var profileResponse = await mediator.RequestAsync<GetDestinyBaseProfileRequest, GetDestinyBaseProfileResponse>(
+        var profileResponse = await bungieService.GetDestinyBaseProfileAsync(
             new GetDestinyBaseProfileRequest
             {
                 FindBungieName = findBungieName,
@@ -76,46 +77,26 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
         {
             case "生涯":
             {
-                var result = await mediator.RequestAsync<GetDestinyCareerRequest, GetDestinyCareerResponse>(
-                    new GetDestinyCareerRequest
-                    {
-                        MembershipType = membershipType,
-                        MembershipId = membershipId
-                    }, cancellationToken).ConfigureAwait(false);
-
-                if (result.Data == null)
+                var request = new GetDestinyCareerRequest
                 {
-                    await commandCallback.ModifyOriginalResponseAsync(builder =>
-                    {
-                        builder.Content = "查询异常: " + result.Message;
-                    }).ConfigureAwait(false);
-                    return;
+                    MembershipType = membershipType,
+                    MembershipId = membershipId
+                };
+                
+                //var embed = await dataProvider.Destiny2CareerBuildEmbedAsync(request, cancellationToken).ConfigureAwait(false);
+                
+                var imageStream = await dataProvider.Destiny2CareerGenerateImageAsync(request, cancellationToken).ConfigureAwait(false);
+
+                var fileList = new List<FileAttachment>();
+                if (imageStream is not null)
+                {
+                    fileList.Add(new FileAttachment(imageStream, "destiny2_career.png"));
                 }
-
-                var profileInfo = result.Data.Response.Profile.Data;
-                var commendationInfo = result.Data.Response.ProfileCommendations.Data;
-
-                var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
-                var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipType>().ToString()).ToList();
-                
-                var embed = new EmbedBuilder()
-                    .WithColor(139,139,255)
-                    .WithTitle($"{globalDisplayName} 的生涯信息")
-                    .AddField("当前赛季:", ">>>>>>>", true)
-                        .AddField("守护者等级", $"`{profileInfo.CurrentGuardianRank}`", true)
-                        .AddField("硬光上限", $"`{profileInfo.CurrentSeasonRewardPowerCap}`", true)
-                    .AddField("历史生涯:", ">>>>>>>", true)
-                        .AddField("最高守护者等级", $"`{profileInfo.LifetimeHighestGuardianRank}`", true)
-                        .AddField("嘉奖点赞", $"`{commendationInfo.TotalScore}`", true)
-                    .AddField("其它数据", ">>>>>>>", true)
-                        .AddField("角色数量", $"`{profileInfo.CharacterIds.Count}`", true)
-                        .AddField("遊玩平台", $"`{string.Join(",", targetPlatform)}`", true)
-                    .WithFooter("By Void Bot")
-                    .Build();
-                
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
                 {
-                    builder.Embed = embed;
+                    builder.Content = $"查询到生涯信息.";
+                    //builder.Embed = embed;
+                    builder.Attachments = fileList;
                 }).ConfigureAwait(false);
                 
                 break;
