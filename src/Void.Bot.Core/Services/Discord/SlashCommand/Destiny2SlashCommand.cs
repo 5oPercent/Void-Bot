@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using Mediator.Net;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Constants.Bungie;
-using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Bungie;
 
@@ -45,8 +44,6 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
         var profileResponse = await mediator.RequestAsync<GetDestinyBaseProfileRequest, GetDestinyBaseProfileResponse>(
             new GetDestinyBaseProfileRequest
             {
-                TriggerPlatform = AppPlatformEnum.Discord,
-                TriggerPlatformUserId = commandCallback.User.Id.ToString(),
                 FindBungieName = findBungieName,
                 MembershipType = findMembership
             }, cancellationToken).ConfigureAwait(false);
