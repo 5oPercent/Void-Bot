@@ -78,32 +78,31 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         {
             case "生涯":
             {
-                var embed = await dataProvider.Destiny2CareerBuildEmbedAsync(
+                var response = await bungieService.GetDestinyCareerAsync(
                     new GetDestinyCareerRequest
                     {
                         MembershipType = membershipType,
                         MembershipId = membershipId
                     }, cancellationToken).ConfigureAwait(false);
                 
-                var imageStream = await dataProvider.Destiny2CareerGenerateImageAsync(
-                    new GetDestinyCareerRequest
-                    {
-                        MembershipType = membershipType,
-                        MembershipId = membershipId
-                    }, cancellationToken).ConfigureAwait(false);
-
-                if (imageStream is not null)
+                if (response.Data == null)
                 {
                     await commandCallback.ModifyOriginalResponseAsync(builder =>
                     {
-                        builder.Content = $"查询到 `{displayName}` 的生涯信息.";
-                        builder.Embed = embed;
-                        builder.Attachments = new List<FileAttachment>()
-                        {
-                            new FileAttachment(imageStream, "destiny2_career.png")
-                        };
+                        builder.Content = $"{response.Message}";
                     }).ConfigureAwait(false);
+                    
+                    return;
                 }
+                
+                var result = await dataProvider.GenerateDestiny2CareerAsync(response.Data, cancellationToken).ConfigureAwait(false);
+
+                await commandCallback.ModifyOriginalResponseAsync(builder =>
+                {
+                    builder.Content = $"查询到 `{displayName}` 的生涯信息.";
+                    builder.Embed = result.Embed;
+                    builder.Attachments = result.Attachments;
+                }).ConfigureAwait(false);
                 break;
             }
         }
