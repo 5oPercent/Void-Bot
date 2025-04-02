@@ -92,7 +92,8 @@ public partial class BungieService : IBungieService
             if (onCrossSave)
             {
                 var profile = playerInfo.Profiles.First(x => x.IsCrossSavePrimary);
-                
+
+                findBungieName = $"{profile.BungieGlobalDisplayName}#{profile.BungieGlobalDisplayNameCode}";
                 membershipType = profile.CrossSaveOverride;
                 membershipId = long.Parse(profile.MembershipId);
             }
@@ -106,6 +107,7 @@ public partial class BungieService : IBungieService
                     return response;
                 }
                 
+                findBungieName = $"{profile.BungieGlobalDisplayName}#{profile.BungieGlobalDisplayNameCode}";
                 membershipType = profile.MembershipType;
                 membershipId = long.Parse(profile.MembershipId);
             }
@@ -159,6 +161,7 @@ public partial class BungieService : IBungieService
         
         response.Data = new DestinyBaseProfileDto
         {
+            DisplayName = findBungieName,
             OnCrossSave = onCrossSave,
             IsSinglePlatform = isSinglePlatform,
             MembershipType = membershipType,

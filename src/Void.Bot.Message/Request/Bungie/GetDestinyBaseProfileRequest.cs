@@ -20,6 +20,8 @@ public class GetDestinyBaseProfileResponse : VoidBotResponse<DestinyBaseProfileD
 
 public class DestinyBaseProfileDto
 {
+    public string DisplayName { get; set; }
+    
     public bool OnCrossSave { get; set; }
     
     public bool IsSinglePlatform { get; set; }

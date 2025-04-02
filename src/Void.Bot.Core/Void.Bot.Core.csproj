@@ -43,4 +43,9 @@
         </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <EmbeddedResource Include="Assets\Fonts\SourceHanSansSC-VF.ttf" />
+      <EmbeddedResource Include="Assets\Fonts\SourceHanSansTC-VF.ttf" />
+    </ItemGroup>
+
 </Project>

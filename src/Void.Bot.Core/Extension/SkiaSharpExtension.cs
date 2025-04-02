@@ -14,6 +14,9 @@ public static class SkiaSharpExtension
         return stream;
     }
     
+    /// <summary>
+    /// 创建基础画布
+    /// </summary>
     public static SKSurface CreateSurface(int width, int height, int margin = 0, SKColor? backgroundColor = null, float cornerRadius = 15f)
     {
         var surface = SKSurface.Create(new SKImageInfo(width + margin, height + margin, SKColorType.Rgba8888, SKAlphaType.Premul));

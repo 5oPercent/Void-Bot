@@ -59,6 +59,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
             return;
         }
         
+        var displayName = profileResponse.Data.DisplayName;
         var isSinglePlatform = profileResponse.Data.IsSinglePlatform;
         var onCrossSave = profileResponse.Data.OnCrossSave;
         var membershipType = profileResponse.Data.MembershipType;
@@ -77,28 +78,32 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         {
             case "生涯":
             {
-                var request = new GetDestinyCareerRequest
-                {
-                    MembershipType = membershipType,
-                    MembershipId = membershipId
-                };
+                var embed = await dataProvider.Destiny2CareerBuildEmbedAsync(
+                    new GetDestinyCareerRequest
+                    {
+                        MembershipType = membershipType,
+                        MembershipId = membershipId
+                    }, cancellationToken).ConfigureAwait(false);
                 
-                //var embed = await dataProvider.Destiny2CareerBuildEmbedAsync(request, cancellationToken).ConfigureAwait(false);
-                
-                var imageStream = await dataProvider.Destiny2CareerGenerateImageAsync(request, cancellationToken).ConfigureAwait(false);
+                var imageStream = await dataProvider.Destiny2CareerGenerateImageAsync(
+                    new GetDestinyCareerRequest
+                    {
+                        MembershipType = membershipType,
+                        MembershipId = membershipId
+                    }, cancellationToken).ConfigureAwait(false);
 
-                var fileList = new List<FileAttachment>();
                 if (imageStream is not null)
                 {
-                    fileList.Add(new FileAttachment(imageStream, "destiny2_career.png"));
+                    await commandCallback.ModifyOriginalResponseAsync(builder =>
+                    {
+                        builder.Content = $"查询到 `{displayName}` 的生涯信息.";
+                        builder.Embed = embed;
+                        builder.Attachments = new List<FileAttachment>()
+                        {
+                            new FileAttachment(imageStream, "destiny2_career.png")
+                        };
+                    }).ConfigureAwait(false);
                 }
-                await commandCallback.ModifyOriginalResponseAsync(builder =>
-                {
-                    builder.Content = $"查询到生涯信息.";
-                    //builder.Embed = embed;
-                    builder.Attachments = fileList;
-                }).ConfigureAwait(false);
-                
                 break;
             }
         }

@@ -33,7 +33,7 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             .WithColor(139,139,255)
             .WithTitle($"{globalDisplayName} 的生涯信息")
             .AddField("当前赛季:", ">>>>>>>", true)
-                .AddField("守护者等级", $"`{profileInfo.CurrentGuardianRank}`", true)
+                .AddField("守护者等级", $"`{profileInfo.RenewedGuardianRank}`", true)
                 .AddField("硬光上限", $"`{profileInfo.CurrentSeasonRewardPowerCap}`", true)
             .AddField("历史生涯:", ">>>>>>>", true)
                 .AddField("最高守护者等级", $"`{profileInfo.LifetimeHighestGuardianRank}`", true)
@@ -72,30 +72,33 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         #region 绘制名称
 
         // 设置字体
-        using var font = new SKFont(SKTypeface.Default, 16);
-        font.Edging = SKFontEdging.Antialias;
-        font.Typeface = SKTypeface.FromFamilyName("PingFang SC");
+        using var font = new SKFont
+        {
+            Typeface = SKTypeface.FromStream(FontExtension.SourceHanSansSCFontStream),
+            Size = 16,
+            Edging = SKFontEdging.Antialias
+        };
         font.GetFontMetrics(out var metrics);
-        
-        // 绘制文本背景矩形
-        using var textBackgroundPaint = new SKPaint();
-        textBackgroundPaint.Color = new SKColor(123, 104, 238, 255);
-        textBackgroundPaint.IsAntialias = true;
         
         // 计算文本长度
         font.MeasureText(globalDisplayName, out var bounds);
         var textWidth = bounds.Width + textPadding * 3;
         var textHeight = bounds.Height + textPadding * 2;
 
-        var textRect = new SKRect(textPadding, textPadding, textWidth, textHeight);
+        // 绘制文本背景矩形
+        using var textBackgroundPaint = new SKPaint();
+        textBackgroundPaint.Color = new SKColor(123, 104, 238, 255);
+        textBackgroundPaint.IsAntialias = true;
+
         var textPath = new SKPath();
+        var textRect = new SKRect(textPadding, textPadding, textWidth, textHeight);
         textPath.AddRoundRect(textRect, 10, 10);
         
         canvas.DrawPath(textPath, textBackgroundPaint);
         
         // 绘制文本
         var textX = textRect.Left + textPadding;
-        var textY = textRect.Top - metrics.Ascent + textPadding;
+        var textY = textRect.Top - metrics.Ascent + textPadding / 2;
         
         using var textPaint = new SKPaint();
         textPaint.Color = SKColors.White;
