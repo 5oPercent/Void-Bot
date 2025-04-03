@@ -11,7 +11,7 @@ public class GetDestinyBaseProfileRequest : IRequest
     [RegularExpression(BungieConstants.IdPattern)]
     public string? FindBungieName { get; set; }
 
-    public BungieMembershipType? MembershipType { get; set; }
+    public BungieMembershipType MembershipType { get; set; } = BungieMembershipType.All;
 }
 
 public class GetDestinyBaseProfileResponse : VoidBotResponse<DestinyBaseProfileDto>

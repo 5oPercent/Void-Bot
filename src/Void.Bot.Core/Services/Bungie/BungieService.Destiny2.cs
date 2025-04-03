@@ -118,7 +118,7 @@ public partial class BungieService : IBungieService
                 new GetDestinyProfileListByBungieNameRequest
                 {
                     FindBungieName = findBungieName,
-                    MembershipType = findMembershipType ?? BungieMembershipType.All
+                    MembershipType = findMembershipType
                 }, cancellationToken).ConfigureAwait(false);
             
             if (searchResult.Data == null || searchResult.Data.Response.Count == 0)

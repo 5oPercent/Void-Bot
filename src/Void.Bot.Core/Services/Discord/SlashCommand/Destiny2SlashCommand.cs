@@ -46,7 +46,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
             new GetDestinyBaseProfileRequest
             {
                 FindBungieName = findBungieName,
-                MembershipType = findMembership
+                MembershipType = findMembership ?? BungieMembershipType.All
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResponse.Data == null)
