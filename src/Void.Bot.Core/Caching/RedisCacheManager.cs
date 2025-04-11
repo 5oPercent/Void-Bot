@@ -1,5 +1,6 @@
 ﻿using Hangfire.MemoryStorage.Database;
 using StackExchange.Redis;
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,10 +14,11 @@ namespace Void.Bot.Core.Caching
         private readonly ConnectionMultiplexer _redisConnection;
         private readonly IDatabase _database;
 
-        public RedisCacheManager(string connection)
+        public RedisCacheManager(IConnectionMultiplexer redisConnection,string connection,int databaseIndex)
         {
-            _redisConnection = ConnectionMultiplexer.Connect(connection);
-            _database = _redisConnection.GetDatabase();
+            var config = ConfigurationOptions.Parse(connection);
+            config.DefaultDatabase = databaseIndex;
+            _database = _redisConnection.GetDatabase(databaseIndex);
         }
 
         public byte[] Serialize(object obj)
@@ -25,7 +27,7 @@ namespace Void.Bot.Core.Caching
             {
                 return Array.Empty<byte>();
             }
-            return System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(obj);
+            return JsonSerializer.SerializeToUtf8Bytes(obj);
         }
 
         public async Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class
@@ -35,7 +37,7 @@ namespace Void.Bot.Core.Caching
             {
                 return null;
             }
-            return System.Text.Json.JsonSerializer.Deserialize<T>(redisValue);
+            return JsonSerializer.Deserialize<T>(redisValue);
         }
 
         public async Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
@@ -54,10 +56,10 @@ namespace Void.Bot.Core.Caching
             var endpoints = _redisConnection.GetEndPoints();
             var server = _redisConnection.GetServer(endpoints[0]);
 
-            var keys = server.Keys(pattern: pattern);
-            foreach(var key in keys)
+            var keys = server.Keys(pattern: pattern).ToList();
+            if(keys.Any())
             {
-                await _database.KeyDeleteAsync(key);
+                await _database.KeyDeleteAsync(keys.ToArray());
             }
         }
 
@@ -66,9 +68,10 @@ namespace Void.Bot.Core.Caching
             var endpoints = _redisConnection.GetEndPoints();
             var server = _redisConnection.GetServer(endpoints[0]);
 
-            foreach(var key in server.Keys())
+            var keys = server.Keys().ToList();
+            if(keys.Any())
             {
-                await _database.KeyDeleteAsync(key);
+                await _database.KeyDeleteAsync(keys.ToArray());
             }
         }
 
