@@ -100,8 +100,8 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
                 {
                     builder.Content = $"查询到 `{displayName}` 的生涯信息.";
-                    builder.Embed = result.Embed;
-                    builder.Attachments = result.Attachments;
+                    builder.Embeds = result.Embeds.ToArray();
+                    //builder.Attachments = result.Attachments;
                 }).ConfigureAwait(false);
                 break;
             }

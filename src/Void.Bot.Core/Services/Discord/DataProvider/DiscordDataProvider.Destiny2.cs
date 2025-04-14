@@ -8,13 +8,13 @@ namespace Void.Bot.Core.Services.Discord.DataProvider;
 
 public partial interface IDiscordDataProvider : IScope
 {
-    public Task<(Embed? Embed, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
         BungieApiGetProfileFullResponse data, CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
 {
-    public async Task<(Embed? Embed, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
+    public async Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
         BungieApiGetProfileFullResponse data, CancellationToken cancellationToken = default)
     {
         var profileInfo = data.Response.Profile.Data;
@@ -24,22 +24,27 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipType>().ToString()).ToList();
 
         #region Embed
+        
+        var currentSeasonContext = $"""
+                                    > 赛季名称: 
+                                    > 赛季天数: 
+                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
+                                    > 守护者等级: `{profileInfo.RenewedGuardianRank}`
+                                    """;
+        
+        var historyCareerContext = $"""
+                                    > 守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
+                                    > 嘉奖得分: `{commendationInfo.TotalScore}`
+                                    """;
 
-        var embed = new EmbedBuilder()
+        var embedCareer = new EmbedBuilder()
             .WithColor(139,139,255)
             .WithTitle($"{globalDisplayName} 的生涯信息")
-            .AddField("当前赛季:", ">>>>>>>", true)
-            .AddField("守护者等级", $"`{profileInfo.RenewedGuardianRank}`", true)
-            .AddField("硬光上限", $"`{profileInfo.CurrentSeasonRewardPowerCap}`", true)
-            .AddField("历史生涯:", ">>>>>>>", true)
-            .AddField("最高守护者等级", $"`{profileInfo.LifetimeHighestGuardianRank}`", true)
-            .AddField("嘉奖点赞", $"`{commendationInfo.TotalScore}`", true)
-            .AddField("其它数据", ">>>>>>>", true)
-            .AddField("角色数量", $"`{profileInfo.CharacterIds.Count}`", true)
-            .AddField("遊玩平台", $"`{string.Join(",", targetPlatform)}`", true)
+            .AddField("当前赛季", currentSeasonContext)
+            .AddField("历史生涯", historyCareerContext)
             .WithFooter("By Void Bot")
             .Build();
-
+        
         #endregion
         
         #region Image
@@ -89,6 +94,6 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         
         #endregion
         
-        return (embed, [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
+        return ([embedCareer], [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
     }
 }
