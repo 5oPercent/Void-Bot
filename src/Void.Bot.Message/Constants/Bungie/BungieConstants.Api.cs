@@ -10,9 +10,13 @@ public partial class BungieConstants
     
     public const string RefreshTokenUrl = Domain + "/Platform/App/OAuth/token";
     
-    public const string Destiny2ProfileUrl = Domain + "/Platform/Destiny2/{membershipType}/Profile/{membershipId}";
+    public const string Destiny2ApiUrl = Domain + "/Platform/Destiny2";
+    
+    public const string Destiny2Manifest = Destiny2ApiUrl + "/Manifest";
+    
+    public const string Destiny2ProfileUrl = Destiny2ApiUrl + "/{membershipType}/Profile/{membershipId}";
     
     public const string Destiny2LinkedProfiles = Destiny2ProfileUrl + "/LinkedProfiles";
     
-    public const string Destiny2SearchPlayerProfile = Domain + "/platform/Destiny2/SearchDestinyPlayerByBungieName/{membershipType}/";
+    public const string Destiny2SearchPlayerProfile = Destiny2ApiUrl + "/SearchDestinyPlayerByBungieName/{membershipType}/";
 }

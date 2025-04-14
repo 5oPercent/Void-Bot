@@ -8,6 +8,8 @@ namespace Void.Bot.Core.Services.Bungie;
 
 public partial interface IBungieDataProvider : IScope
 {
+    Task<BungieApiGetDestiny2ManifestResponse?> GetManifestAsync(CancellationToken cancellationToken);
+    
     Task<BungieApiLinkedProfilesResponse?> GetLinkedProfilesAsync(
         BungieMembershipType membershipType, long membershipId, CancellationToken cancellationToken, string accessToken = "");
     
@@ -22,6 +24,15 @@ public partial interface IBungieDataProvider : IScope
 
 public partial class BungieDataProvider : IBungieDataProvider
 {
+    public async Task<BungieApiGetDestiny2ManifestResponse?> GetManifestAsync(CancellationToken cancellationToken)
+    {
+        var url = BungieConstants.Destiny2Manifest;
+        
+        var result = await GetBungieHttpClient().GetAsync<BungieApiGetDestiny2ManifestResponse>(url, cancellationToken).ConfigureAwait(false);
+        
+        return result.Data;
+    }
+
     public async Task<BungieApiLinkedProfilesResponse?> GetLinkedProfilesAsync(
         BungieMembershipType membershipType, long membershipId, CancellationToken cancellationToken, string accessToken = "")
     {
