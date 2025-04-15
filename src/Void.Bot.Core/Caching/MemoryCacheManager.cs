@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -62,13 +60,11 @@ public class MemoryCacheManager(IMemoryCache memoryCache) : ICacheManager
         var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
         var keys = new List<string>();
         
-        const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-        var coherentState = memoryCache.GetType().GetField("_coherentState", flags)?.GetValue(memoryCache);
-        var entries = coherentState?.GetType().GetField("_entries", flags)?.GetValue(coherentState);
-
-        if (entries is IDictionary cacheItems)
+        if (memoryCache is MemoryCache cache)
         {
-            keys.AddRange(cacheItems.Keys.Cast<string>().Where(x => string.IsNullOrEmpty(pattern) || regex.IsMatch(x)));
+            keys.AddRange(cache.Keys
+                .OfType<string>()
+                .Where(key => string.IsNullOrEmpty(pattern) || regex.IsMatch(key)));
         }
 
         return keys;
