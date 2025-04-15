@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Message.Dto.Bungie;
 
 public class BungieLanguageComponentContentDto
@@ -8,6 +10,7 @@ public class BungieLanguageComponentContentDto
 
     public BungieLanguageComponentContentPathDto? ES { get; set; }
 
+    [JsonPropertyName("es-mx")]
     public BungieLanguageComponentContentPathDto? ES_MX { get; set; }
 
     public BungieLanguageComponentContentPathDto? DE { get; set; }
@@ -16,6 +19,7 @@ public class BungieLanguageComponentContentDto
 
     public BungieLanguageComponentContentPathDto? JA { get; set; }
 
+    [JsonPropertyName("pt-br")]
     public BungieLanguageComponentContentPathDto? PT_BR { get; set; }
 
     public BungieLanguageComponentContentPathDto? RU { get; set; }
@@ -24,8 +28,10 @@ public class BungieLanguageComponentContentDto
 
     public BungieLanguageComponentContentPathDto? KO { get; set; }
 
+    [JsonPropertyName("zh-cht")]
     public BungieLanguageComponentContentPathDto? ZH_CHT { get; set; }
 
+    [JsonPropertyName("zh-chs")]
     public BungieLanguageComponentContentPathDto? ZH_CHS { get; set; }
 }
 

@@ -22,5 +22,5 @@ public class BungieApiGetDestiny2ManifestDto
     /// <summary>
     /// 各个组件资源清单路径, 可根据不同组件请求专门的json数据内容.
     /// </summary>
-    public BungieLanguageComponentContentDto? JsonWorldComponentContentPaths { get; set; }
+    public BungieLanguageComponentContentDto JsonWorldComponentContentPaths { get; set; } = new();
 }
