@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运组件类型枚举
 /// </summary>
-public enum DestinyComponentTypeEnum
+public enum Destiny2ComponentTypeEnum
 {
     /// <summary>
     /// 无

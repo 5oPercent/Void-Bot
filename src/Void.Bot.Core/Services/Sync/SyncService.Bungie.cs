@@ -2,7 +2,7 @@ using System.Net;
 using Serilog;
 using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
-using Void.Bot.Message.Dto.Bungie;
+using Void.Bot.Message.Dto.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Sync;
 
@@ -19,7 +19,7 @@ public partial class SyncService : ISyncService
     {
         var response = new SynchronizeDestiny2ManifestResponse();
         
-        var result = await _bungieDataProvider.GetManifestAsync(cancellationToken);
+        var result = await _bungieDataProvider.GetDestiny2ManifestAsync(cancellationToken);
         if (result == null)
         {
             response.Code = HttpStatusCode.NoContent;
@@ -52,7 +52,7 @@ public partial class SyncService : ISyncService
     }
 
     public async Task SyncDestiny2ManifestToCache(
-        BungieLanguageComponentContentDto componentContentPaths,
+        Destiny2LanguageComponentContentDto componentContentPaths,
         List<string> languages, List<string>? components, CancellationToken cancellationToken)
     {
         for (var i = 0; i < languages.Count; i++)
@@ -73,7 +73,7 @@ public partial class SyncService : ISyncService
                 continue;
             }
         
-            var pathDto = languageProperty.GetValue(componentContentPaths) as BungieLanguageComponentContentPathDto;
+            var pathDto = languageProperty.GetValue(componentContentPaths) as Destiny2ManifestComponentContentPathDto;
             if (pathDto == null)
             {
                 Log.Warning("Failed to get component content paths for language: {Language}", language);
@@ -85,13 +85,13 @@ public partial class SyncService : ISyncService
     }
 
     private async Task SaveDestiny2ManifestToCache(
-        BungieLanguageComponentContentPathDto pathDto,
+        Destiny2ManifestComponentContentPathDto pathDto,
         string language, List<string>? components, CancellationToken cancellationToken)
     {
         Log.Information("Start saving Destiny 2 manifest to cache for language: {Language}", language);
         
         // 获取所有需要下载的组件
-        var properties = typeof(BungieLanguageComponentContentPathDto).GetProperties();
+        var properties = typeof(Destiny2ManifestComponentContentPathDto).GetProperties();
         if (components is { Count: > 0 })
         {
             properties = properties
@@ -115,7 +115,7 @@ public partial class SyncService : ISyncService
                 }
 
                 var componentUrl = $"{BungieConstants.Domain}{path}";
-                var componentName = property.Name;
+                var componentName = property.Name.Replace("Destiny", string.Empty).Replace("Definition", string.Empty);
 
                 // 下载组件数据
                 var jsonData = await DownloadDestiny2ManifestJsonDataAsync(componentUrl, cancellationToken);

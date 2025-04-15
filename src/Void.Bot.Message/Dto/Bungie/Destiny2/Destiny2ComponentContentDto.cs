@@ -1,41 +1,41 @@
 using System.Text.Json.Serialization;
 
-namespace Void.Bot.Message.Dto.Bungie;
+namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
-public class BungieLanguageComponentContentDto
+public class Destiny2LanguageComponentContentDto
 {
-    public BungieLanguageComponentContentPathDto? EN { get; set; }
+    public Destiny2ManifestComponentContentPathDto? EN { get; set; }
 
-    public BungieLanguageComponentContentPathDto? FR { get; set; }
+    public Destiny2ManifestComponentContentPathDto? FR { get; set; }
 
-    public BungieLanguageComponentContentPathDto? ES { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ES { get; set; }
 
     [JsonPropertyName("es-mx")]
-    public BungieLanguageComponentContentPathDto? ES_MX { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ES_MX { get; set; }
 
-    public BungieLanguageComponentContentPathDto? DE { get; set; }
+    public Destiny2ManifestComponentContentPathDto? DE { get; set; }
 
-    public BungieLanguageComponentContentPathDto? IT { get; set; }
+    public Destiny2ManifestComponentContentPathDto? IT { get; set; }
 
-    public BungieLanguageComponentContentPathDto? JA { get; set; }
+    public Destiny2ManifestComponentContentPathDto? JA { get; set; }
 
     [JsonPropertyName("pt-br")]
-    public BungieLanguageComponentContentPathDto? PT_BR { get; set; }
+    public Destiny2ManifestComponentContentPathDto? PT_BR { get; set; }
 
-    public BungieLanguageComponentContentPathDto? RU { get; set; }
+    public Destiny2ManifestComponentContentPathDto? RU { get; set; }
 
-    public BungieLanguageComponentContentPathDto? PL { get; set; }
+    public Destiny2ManifestComponentContentPathDto? PL { get; set; }
 
-    public BungieLanguageComponentContentPathDto? KO { get; set; }
+    public Destiny2ManifestComponentContentPathDto? KO { get; set; }
 
     [JsonPropertyName("zh-cht")]
-    public BungieLanguageComponentContentPathDto? ZH_CHT { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ZH_CHT { get; set; }
 
     [JsonPropertyName("zh-chs")]
-    public BungieLanguageComponentContentPathDto? ZH_CHS { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ZH_CHS { get; set; }
 }
 
-public class BungieLanguageComponentContentPathDto
+public class Destiny2ManifestComponentContentPathDto
 {
     public string DestinyArtDyeChannelDefinition { get; set; } = string.Empty;
     public string DestinyArtDyeReferenceDefinition { get; set; } = string.Empty;

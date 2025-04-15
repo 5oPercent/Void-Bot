@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运种族枚举
 /// </summary>
-public enum DestinyRaceEnum
+public enum Destiny2RaceEnum
 {
     /// <summary>
     /// 人类

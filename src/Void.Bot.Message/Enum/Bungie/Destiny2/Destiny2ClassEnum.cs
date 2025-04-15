@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运职业枚举
 /// </summary>
-public enum DestinyClassEnum
+public enum Destiny2ClassEnum
 {
     /// <summary>
     /// 泰坦

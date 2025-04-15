@@ -1,6 +1,6 @@
 namespace Void.Bot.Message.Enum.Bungie;
 
-public enum BungieMembershipType
+public enum BungieMembershipTypeEnum
 {
     None = 0,
     

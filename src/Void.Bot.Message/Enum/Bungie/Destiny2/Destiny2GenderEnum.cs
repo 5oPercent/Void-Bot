@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运性别枚举
 /// </summary>
-public enum DestinyGenderEnum
+public enum Destiny2GenderEnum
 {
     /// <summary>
     /// 男性

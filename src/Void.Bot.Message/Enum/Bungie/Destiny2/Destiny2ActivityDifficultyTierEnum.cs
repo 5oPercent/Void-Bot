@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运活动难度枚举
 /// </summary>
-public enum DestinyActivityDifficultyTierEnum
+public enum Destiny2ActivityDifficultyTierEnum
 {
     /// <summary>
     /// 微不足道

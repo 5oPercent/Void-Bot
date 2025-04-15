@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运无法装备失败原因枚举
 /// </summary>
-public enum DestinyEquipFailureReasonEnum
+public enum Destiny2EquipFailureReasonEnum
 {
     /// <summary>
     /// 允许装备

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Void.Bot.Message.Request.Bungie.Domain;
+namespace Void.Bot.Message.Dto.Bungie;
 
 public class BungieApiGenerateTokenRequest
 {

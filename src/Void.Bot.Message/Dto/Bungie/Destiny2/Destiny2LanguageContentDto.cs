@@ -1,6 +1,6 @@
-namespace Void.Bot.Message.Dto.Bungie;
+namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
-public class BungieLanguageContentDto
+public class Destiny2LanguageContentDto
 {
     public string EN { get; set; } = string.Empty;
     

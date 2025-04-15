@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace Void.Bot.Message.Enum.Bungie.Destiny;
+namespace Void.Bot.Message.Enum.Bungie.Destiny2;
 
 /// <summary>
 /// 命运活动模式枚举
 /// </summary>
-public enum DestinyActivityModeTypeEnum
+public enum Destiny2ActivityModeTypeEnum
 {
     /// <summary>
     /// 无活动

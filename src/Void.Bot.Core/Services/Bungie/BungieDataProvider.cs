@@ -3,9 +3,9 @@ using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Dto.Bungie;
 using Void.Bot.Message.Dto.HttpClient;
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Request.Bungie.Domain;
 
 namespace Void.Bot.Core.Services.Bungie;
 
