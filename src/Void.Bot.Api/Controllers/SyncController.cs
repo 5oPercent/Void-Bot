@@ -17,7 +17,6 @@ public class SyncController : ControllerBase
         _mediator = mediator;
     }
     
-    [AllowAnonymous]
     [HttpPost]
     [Route("destiny2/manifest")]
     public async Task<IActionResult> SynchronizeDestiny2ManifestAsync([FromBody]SynchronizeDestiny2ManifestCommand command)
