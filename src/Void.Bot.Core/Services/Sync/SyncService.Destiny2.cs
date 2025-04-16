@@ -2,6 +2,7 @@ using System.Net;
 using Serilog;
 using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Sync;
@@ -28,31 +29,30 @@ public partial class SyncService : ISyncService
         }
         
         var downloadFlag = false;
-        var version = await _cacheManager.Get<string>("Destiny2:Manifest:Version", cancellationToken);
+        var version = await _cacheManager.Get<string>(Destiny2ManifestConstants.VersionCacheKey, cancellationToken);
         
         if (command.ForceSync || string.IsNullOrEmpty(version) || result.Response.Version != version)
         {
             downloadFlag = true;
-            await _cacheManager.Set("Destiny2:Manifest:Version", result.Response.Version, cancellationToken: cancellationToken);
+            await _cacheManager.Set(Destiny2ManifestConstants.VersionCacheKey, result.Response.Version, cancellationToken: cancellationToken);
         }
 
         if (downloadFlag)
         {
             response.Message = $"Version {result.Response.Version} found. Downloading...";
-            _backgroundJob.Enqueue(() => SyncDestiny2ManifestToCache(
-                result.Response.JsonWorldComponentContentPaths,
-                command.Languages, command.Components, cancellationToken));
+            _backgroundJob.Enqueue(() => CacheDestiny2ManifestAsync(
+                result.Response.JsonWorldComponentContentPaths, command.Languages, command.Components, cancellationToken));
         }
         else
         {
-            response.Message = $"Version {result.Response.Version} already exists. No need to download.";
+            response.Message = $"Version {result.Response.Version} already exists.";
         }
 
         return response;
     }
 
-    public async Task SyncDestiny2ManifestToCache(
-        Destiny2LanguageComponentContentDto componentContentPaths,
+    public async Task CacheDestiny2ManifestAsync(
+        Destiny2LanguageComponentContentDto languageComponentContentDto,
         List<string> languages, List<string>? components, CancellationToken cancellationToken)
     {
         for (var i = 0; i < languages.Count; i++)
@@ -65,7 +65,7 @@ public partial class SyncService : ISyncService
         foreach (var language in languages)
         {
             // 使用反射获取特定语言的组件内容
-            var languageProperty = componentContentPaths.GetType().GetProperties()
+            var languageProperty = languageComponentContentDto.GetType().GetProperties()
                 .FirstOrDefault(p => string.Equals(p.Name, language, StringComparison.OrdinalIgnoreCase));
             if (languageProperty == null)
             {
@@ -73,78 +73,81 @@ public partial class SyncService : ISyncService
                 continue;
             }
         
-            var pathDto = languageProperty.GetValue(componentContentPaths) as Destiny2ManifestComponentContentPathDto;
-            if (pathDto == null)
+            var componentPathDto = languageProperty.GetValue(languageComponentContentDto) as Destiny2ManifestComponentContentPathDto;
+            if (componentPathDto == null)
             {
                 Log.Warning("Failed to get component content paths for language: {Language}", language);
                 continue;
             }
         
-            await SaveDestiny2ManifestToCache(pathDto, language, components, cancellationToken);
+            await CacheDestiny2ManifestComponentsAsync(componentPathDto, language, components, cancellationToken);
         }
     }
 
-    private async Task SaveDestiny2ManifestToCache(
-        Destiny2ManifestComponentContentPathDto pathDto,
+    private async Task CacheDestiny2ManifestComponentsAsync(
+        Destiny2ManifestComponentContentPathDto componentPathDto,
         string language, List<string>? components, CancellationToken cancellationToken)
     {
-        Log.Information("Start saving Destiny 2 manifest to cache for language: {Language}", language);
+        Log.Information("Start caching Destiny 2 manifest for language: {Language}", language);
         
         // 获取所有需要下载的组件
         var properties = typeof(Destiny2ManifestComponentContentPathDto).GetProperties();
         if (components is { Count: > 0 })
         {
             properties = properties
-                .Where(p => components.Any(c => string.Equals(p.Name, c, StringComparison.OrdinalIgnoreCase)))
+                .Where(p => components.Any(c => string.Equals(Destiny2ManifestConstants.ComponentPropertyNameMap[p], c, StringComparison.OrdinalIgnoreCase)))
                 .ToArray();
-        
-            Log.Information("Filtering components. Total components to download: {Count}", properties.Length);
         }
         var successCount = 0;
-        var failedCount = 0;
+        var failedComponents = new List<string>();
         
         foreach (var property in properties)
         {
+            var componentName = property.Name.Replace("Destiny", string.Empty).Replace("Definition", string.Empty);
+            
             try
             {
                 // 获取组件路由
-                var path = property.GetValue(pathDto)?.ToString() ?? string.Empty;
-                if (string.IsNullOrEmpty(path))
+                var componentPath = property.GetValue(componentPathDto)?.ToString() ?? string.Empty;
+                if (string.IsNullOrEmpty(componentPath))
                 {
                     continue;
                 }
+                
+                var componentData = await DownloadDestiny2ManifestComponentJsonDataAsync($"{BungieConstants.BungieUrl}{componentPath}", cancellationToken);
 
-                var componentUrl = $"{BungieConstants.Domain}{path}";
-                var componentName = property.Name.Replace("Destiny", string.Empty).Replace("Definition", string.Empty);
-
-                // 下载组件数据
-                var jsonData = await DownloadDestiny2ManifestJsonDataAsync(componentUrl, cancellationToken);
-
-                if (string.IsNullOrEmpty(jsonData))
+                if (string.IsNullOrEmpty(componentData))
                 {
                     Log.Warning("Failed to download component: {Component} for language: {Language}", componentName, language);
-                    failedCount++;
+                    failedComponents.Add(componentName);
                     continue;
                 }
 
-                // 保存到缓存
-                await _cacheManager.Set($"Destiny2:Manifest:{language}:{componentName}", jsonData, cancellationToken: cancellationToken);
+                await _cacheManager.Set($"{Destiny2ManifestConstants.ComponentPrefixCacheKey}:{componentName}:{language}", componentData, cancellationToken: cancellationToken);
                 successCount++;
 
                 Log.Information("Successfully cached component: {Component} for language: {Language}", componentName, language);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error while cached component: {PropertyName} for language: {Language}", property.Name, language);
-                failedCount++;
+                Log.Error(ex, "Error while cached component: {Component} for language: {Language}", componentName, language);
+                failedComponents.Add(componentName);
             }
         }
 
-        Log.Information("Finished cached Destiny 2 manifest to cache for language: {Language}. Success: {SuccessCount}, Failed: {FailedCount}",
-            language, successCount, failedCount);
+        if (failedComponents.Count == 0)
+        {
+            Log.Information("Finished cached Destiny 2 manifest to cache for language: {Language}. Success: {SuccessCount}",
+                language, successCount);
+        }
+        else
+        {
+            Log.Information("Finished cached Destiny 2 manifest to cache for language: {Language}. Success: {SuccessCount}, Failed: {FailedComponents}",
+                language, successCount, string.Join(", ", failedComponents));
+        }
     }
     
-    private async Task<string> DownloadDestiny2ManifestJsonDataAsync(string url, CancellationToken cancellationToken)
+    private async Task<string> DownloadDestiny2ManifestComponentJsonDataAsync(string url, CancellationToken cancellationToken)
     {
         var response = await _httpClientFactory.CreateClient().GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode)

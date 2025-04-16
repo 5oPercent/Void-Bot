@@ -2,7 +2,7 @@ namespace Void.Bot.Message.Constants.Bungie.Destiny2;
 
 public partial class Destiny2Constants
 {
-    public const string BaseUrl = BungieConstants.Domain + "/Platform/Destiny2";
+    public const string BaseUrl = BungieConstants.BungieUrl + "/Platform/Destiny2";
     
     public const string ManifestUrl = BaseUrl + "/Manifest";
     
