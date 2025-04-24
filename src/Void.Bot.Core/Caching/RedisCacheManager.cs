@@ -11,6 +11,7 @@ namespace Void.Bot.Core.Caching
 {
     public class RedisCacheManager : ICacheManager
     {
+
         private readonly ConnectionMultiplexer _redisConnection;
         private readonly IDatabase _database;
 
