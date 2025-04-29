@@ -26,9 +26,9 @@ public enum Destiny2DamageTypeEnum
     Arc = 2,
     
     /// <summary>
-    /// 灼烧
+    /// 烈焰
     /// </summary>
-    [Description("灼烧")]
+    [Description("烈焰")]
     Thermal = 3,
     
     /// <summary>

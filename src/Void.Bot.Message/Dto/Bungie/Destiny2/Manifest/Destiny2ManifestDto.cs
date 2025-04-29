@@ -20,7 +20,7 @@ public class Destiny2ManifestDefinitionDto
     public int Index { get; set; }
 
     /// <summary>
-    /// 是否已编辑
+    /// 是否被隐藏
     /// </summary>
     public bool Redacted { get; set; }
 
@@ -180,6 +180,8 @@ public class Destiny2ManifestStatOverrideDefinitionDto
 /// </summary>
 public class Destiny2ManifestColorDefinitionDto
 {
+    public uint ColorHash { get; set; }
+    
     public byte Red { get; set; }
     
     public byte Green { get; set; }
@@ -343,4 +345,219 @@ public class Destiny2ManifestBubbleDefinition
     /// 显示属性
     /// </summary>
     public Destiny2ManifestDisplayPropertiesDefinitionDto DisplayProperties { get; set; } = new();
+}
+
+/// <summary>
+/// 命运2进度奖励定义，描述完成进度时获得的奖励
+/// </summary>
+public class Destiny2ManifestProgressionRewardDefinitionDto
+{
+    /// <summary>
+    /// 进度映射哈希，关联到特定的进度系统
+    /// </summary>
+    public uint ProgressionMappingHash { get; set; }
+
+    /// <summary>
+    /// 奖励数量
+    /// </summary>
+    public int Amount { get; set; }
+
+    /// <summary>
+    /// 是否应用节流限制
+    /// </summary>
+    public bool ApplyThrottles { get; set; }
+}
+
+/// <summary>
+/// 命运2装备块定义，描述物品的装备属性和限制
+/// </summary>
+public class Destiny2ManifestEquippingBlockDefinition
+{
+    /// <summary>
+    /// 装备组物品哈希，关联到此装备所属的套装
+    /// </summary>
+    public uint GearsetItemHash { get; set; }
+
+    /// <summary>
+    /// 唯一标签，用于标识装备的唯一性
+    /// </summary>
+    public string UniqueLabel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 唯一标签哈希
+    /// </summary>
+    public uint UniqueLabelHash { get; set; }
+
+    /// <summary>
+    /// 装备槽类型哈希，定义物品可装备的位置
+    /// </summary>
+    public uint EquipmentSlotTypeHash { get; set; }
+
+    /// <summary>
+    /// 装备属性标识
+    /// </summary>
+    public int Attributes { get; set; }
+    
+    /// <summary>
+    /// 弹药类型
+    /// </summary>
+    public int AmmoType { get; set; }
+
+    /// <summary>
+    /// 显示字符串列表
+    /// </summary>
+    public List<string> DisplayStrings { get; set; } = [];
+}
+
+/// <summary>
+/// 命运2染色引用定义，描述装备的染色通道和染料
+/// </summary>
+public class Destiny2ManifestDyeReferenceDto
+{
+    /// <summary>
+    /// 染色通道哈希
+    /// </summary>
+    public uint ChannelHash { get; set; }
+    
+    /// <summary>
+    /// 染料哈希
+    /// </summary>
+    public uint DyeHash { get; set; }
+}
+
+/// <summary>
+/// 命运2装备艺术排列引用，关联装备到特定职业的视觉外观
+/// </summary>
+public class Destiny2ManifestGearArtArrangementReferenceDto
+{
+    /// <summary>
+    /// 职业哈希
+    /// </summary>
+    public uint ClassHash { get; set; }
+    
+    /// <summary>
+    /// 艺术排列哈希
+    /// </summary>
+    public uint ArtArrangementHash { get; set; }
+}
+
+/// <summary>
+/// 命运2衍生物品分类定义，描述从主物品衍生的物品类别
+/// </summary>
+public class Destiny2ManifestDerivedItemCategoryDefinitionDto
+{
+    /// <summary>
+    /// 分类描述
+    /// </summary>
+    public string CategoryDescription { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 分类中的物品列表
+    /// </summary>
+    public List<Destiny2ManifestDerivedItemDefinitionDto> Items { get; set; } = [];
+}
+
+/// <summary>
+/// 命运2衍生物品定义，描述从主物品衍生的单个物品
+/// </summary>
+public class Destiny2ManifestDerivedItemDefinitionDto
+{
+    /// <summary>
+    /// 物品哈希
+    /// </summary>
+    public uint ItemHash { get; set; }
+
+    /// <summary>
+    /// 物品名称
+    /// </summary>
+    public string ItemName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 物品详情
+    /// </summary>
+    public string ItemDetail { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 物品描述
+    /// </summary>
+    public string ItemDescription { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 图标路径
+    /// </summary>
+    public string IconPath { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 商人物品索引
+    /// </summary>
+    public int VendorItemIndex { get; set; }
+}
+
+/// <summary>
+/// 命运2目标显示属性，控制目标在界面中的显示方式
+/// </summary>
+public class Destiny2ManifestObjectiveDisplayPropertiesDto
+{
+    /// <summary>
+    /// 关联的活动哈希
+    /// </summary>
+    public uint ActivityHash { get; set; }
+
+    /// <summary>
+    /// 是否在物品预览屏幕上显示
+    /// </summary>
+    public bool DisplayOnItemPreviewScreen { get; set; }
+}
+
+/// <summary>
+/// 命运2动画引用，描述物品关联的动画资源
+/// </summary>
+public class Destiny2ManifestAnimationReferenceDto
+{
+    /// <summary>
+    /// 动画名称
+    /// </summary>
+    public string AnimName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 动画标识符
+    /// </summary>
+    public string AnimIdentifier { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 动画资源路径
+    /// </summary>
+    public string Path { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 命运2超链接引用，描述游戏内的超链接内容
+/// </summary>
+public class Destiny2ManifestHyperlinkReferenceDto
+{
+    /// <summary>
+    /// 超链接标题
+    /// </summary>
+    public string Title { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 超链接URL
+    /// </summary>
+    public string Url { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 命运2显示字符串，描述界面上显示的文本及其样式
+/// </summary>
+public class Destiny2ManifestDisplayStringDto
+{
+    /// <summary>
+    /// 显示的字符串内容
+    /// </summary>
+    public string DisplayString { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// 显示样式
+    /// </summary>
+    public string DisplayStyle { get; set; } = string.Empty;
 }
