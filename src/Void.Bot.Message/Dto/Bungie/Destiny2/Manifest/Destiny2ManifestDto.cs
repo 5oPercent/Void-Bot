@@ -140,23 +140,23 @@ public class Destiny2ManifestStatDisplayDefinitionDto
     /// <summary>
     /// 显示插值点
     /// </summary>
-    public Destiny2ManifestInterpolationPointDefinitionDto DisplayInterpolation { get; set; } = new();
+    public Destiny2ManifestInterpolationPointDefinitionDto<int> DisplayInterpolation { get; set; } = new();
 }
 
 /// <summary>
 /// 命运2清单插值点定义
 /// </summary>
-public class Destiny2ManifestInterpolationPointDefinitionDto
+public class Destiny2ManifestInterpolationPointDefinitionDto<T> where T : struct
 {
     /// <summary>
     /// 值
     /// </summary>
-    public int Value { get; set; }
+    public T Value { get; set; }
     
     /// <summary>
     /// 权重
     /// </summary>
-    public int Weight { get; set; }
+    public T Weight { get; set; }
 }
 
 /// <summary>
@@ -560,4 +560,46 @@ public class Destiny2ManifestDisplayStringDto
     /// 显示样式
     /// </summary>
     public string DisplayStyle { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 命运2艺术排列区域过滤器定义，描述模型外观区域的过滤和变化规则
+/// </summary>
+public class Destiny2ManifestArrangementRegionFilterDefinitionDto
+{
+    /// <summary>
+    /// 艺术排列区域哈希，唯一标识一个模型的特定区域
+    /// </summary>
+    public uint ArtArrangementRegionHash { get; set; }
+    
+    /// <summary>
+    /// 艺术排列区域索引，指定区域在模型中的位置序号
+    /// </summary>
+    public int ArtArrangementRegionIndex { get; set; }
+    
+    /// <summary>
+    /// 统计数据哈希，关联到控制此区域外观变化的统计属性
+    /// </summary>
+    public int StatHash { get; set; }
+
+    /// <summary>
+    /// 按统计值映射的排列索引，根据不同的统计值确定使用哪个外观变体
+    /// </summary>
+    public Dictionary<int, int> ArrangementIndexByStatValue { get; set; } = new();
+}
+
+/// <summary>
+/// 命运2日期范围定义，描述游戏内容的有效时间范围
+/// </summary>
+public class Destiny2ManifestDateRangeDefinitionDto
+{
+    /// <summary>
+    /// 开始时间，内容可用的起始日期和时间
+    /// </summary>
+    public DateTime Start { get; set; }
+    
+    /// <summary>
+    /// 结束时间，内容可用的截止日期和时间
+    /// </summary>
+    public DateTime End { get; set; }
 }

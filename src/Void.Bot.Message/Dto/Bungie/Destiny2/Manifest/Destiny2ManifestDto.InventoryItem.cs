@@ -775,6 +775,7 @@ public class Destiny2ManifestItemQuantityDto
     /// </summary>
     public bool HasConditionalVisibility { get; set; }
 }
+
 /// <summary>
 /// 物品来源块定义，描述物品的获取途径和来源信息
 /// </summary>
