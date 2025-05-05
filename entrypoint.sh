@@ -2,6 +2,14 @@
 set -e
 
 echo "=============================="
+check_port() {
+  local host=$1
+  local port=$2
+  
+  timeout 1 bash -c ">/dev/tcp/$1/$2" 2>/dev/null
+  return $?
+}
+
 wait_for() {
   local host=$1
   local port=$2
@@ -12,7 +20,8 @@ wait_for() {
 
   echo "Wait ${service_name} server (host: ${host}, port: ${port})..."
   for ((i=1; i<=retries; i++)); do
-    if nc -z ${host} ${port}; then
+    if check_port "${host}" "${port}"; then
+      echo "${service_name} is ready."
       sleep ${post_wait}
       return 0
     fi
