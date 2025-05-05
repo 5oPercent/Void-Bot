@@ -20,3 +20,14 @@ jobs:
       run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
     - name: Push image to aliyun docker repository
       run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+      
+  deployment:
+  
+    runs-on: [self-hosted, linux, x64]
+    needs: [build]
+    
+    steps:
+      - name: Export Environment variant
+        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}' > /home/void-bot/.env
+      - name: Deploy docker container
+        run: docker compose -f /home/void-bot/docker-compose.yml --project-directory /home/void-bot up -d
