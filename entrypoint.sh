@@ -26,9 +26,16 @@ wait_for() {
 
 # 注意：这里 host.docker.internal 在 macOS/Windows 下可用，在 Linux 下建议使用 extra_hosts 参数将 host.docker.internal 映射到宿主机 IP
 
-wait_for "host.docker.internal" 3306 "MySQL" 5
-wait_for "host.docker.internal" 6379 "Redis" 3
-wait_for "host.docker.internal" 5341 "Seq" 3
+MYSQL_HOST=${MYSQL_HOST:-"host.docker.internal"}
+MYSQL_PORT=${MYSQL_PORT:-3306}
+REDIS_HOST=${REDIS_HOST:-"host.docker.internal"}
+REDIS_PORT=${REDIS_PORT:-6379}
+SEQ_HOST=${SEQ_HOST:-"host.docker.internal"}
+SEQ_PORT=${SEQ_PORT:-5341}
+
+wait_for "${MYSQL_HOST}" "${MYSQL_PORT}" "MySQL" 5
+wait_for "${REDIS_HOST}" "${REDIS_PORT}" "Redis" 3
+wait_for "${SEQ_HOST}" "${SEQ_PORT}" "Seq" 3
 
 echo "Deps ready, starting app."
 echo "=============================="
