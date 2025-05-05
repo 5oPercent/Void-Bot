@@ -4,14 +4,14 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
 public class Destiny2PlayerByBungieNameRequest
 {
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     
     public int DisplayNameCode { get; set; }
 }
 
 public class Destiny2PlayerByBungieNameResponse : BungieApiResponse
 {
-    public List<Destiny2PlayerByBungieNameDto> Response { get; set; }
+    public List<Destiny2PlayerByBungieNameDto> Response { get; set; } = [];
 }
 
 public class Destiny2PlayerByBungieNameDto
@@ -19,8 +19,8 @@ public class Destiny2PlayerByBungieNameDto
     public string IconPath { get; set; } = string.Empty;
     
     public BungieMembershipTypeEnum CrossSaveOverride { get; set; }
-    
-    public List<BungieMembershipTypeEnum> ApplicableMembershipTypes { get; set; }
+
+    public List<BungieMembershipTypeEnum> ApplicableMembershipTypes { get; set; } = [];
     
     public bool IsPublic { get; set; }
     

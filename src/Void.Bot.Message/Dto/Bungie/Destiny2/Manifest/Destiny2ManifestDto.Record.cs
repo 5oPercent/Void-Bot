@@ -23,7 +23,7 @@ public class Destiny2ManifestRecordDefinitionDto : Destiny2ManifestDefinitionDto
     public uint LoreHash { get; set; }
 
     /// <summary>
-    /// 目标哈希列表，关联到完成此记录需要的目标任务
+    /// 目标哈希列表，关联到实现此记录需要的目标任务
     /// </summary>
     public List<uint> ObjectiveHashes { get; set; } = [];
 
@@ -135,7 +135,7 @@ public class Destiny2ManifestRecordTitleBlockDto
 public class Destiny2ManifestRecordCompletionBlockDto
 {
     /// <summary>
-    /// 部分完成目标计数阈值，达到此数量目标视为部分完成
+    /// 部分实现目标计数阈值，达到此数量目标视为部分完成
     /// </summary>
     public int PartialCompletionObjectiveCountThreshold { get; set; }
 
@@ -208,7 +208,7 @@ public class Destiny2ManifestRecordIntervalBlockDto
     public List<Destiny2ManifestRecordIntervalObjectiveDto> IntervalObjectives { get; set; } = [];
 
     /// <summary>
-    /// 间隔奖励列表，完成阶段性目标获得的奖励
+    /// 间隔奖励列表，实现阶段性目标获得的奖励
     /// </summary>
     public List<Destiny2ManifestRecordIntervalRewardsDto> IntervalRewards { get; set; } = [];
 
@@ -229,18 +229,18 @@ public class Destiny2ManifestRecordIntervalObjectiveDto
     public uint IntervalObjectiveHash { get; set; }
 
     /// <summary>
-    /// 间隔分数值，完成此阶段目标获得的分数
+    /// 间隔分数值，实现此阶段目标获得的分数
     /// </summary>
     public int IntervalScoreValue { get; set; }
 }
 
 /// <summary>
-/// 记录间隔奖励，定义完成阶段性目标获得的奖励
+/// 记录间隔奖励，定义实现阶段性目标获得的奖励
 /// </summary>
 public class Destiny2ManifestRecordIntervalRewardsDto
 {
     /// <summary>
-    /// 间隔奖励物品，完成阶段目标获得的物品列表
+    /// 间隔奖励物品，实现阶段目标获得的物品列表
     /// </summary>
     public List<Destiny2ManifestItemQuantityDto> IntervalRewardItems { get; set; } = [];
 }

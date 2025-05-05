@@ -13,7 +13,7 @@ public class Destiny2ManifestProgressionMappingDefinitionDto : Destiny2ManifestD
     /// <summary>
     /// 显示单位
     /// </summary>
-    public string DisplayUnits { get; set; }
+    public string DisplayUnits { get; set; } = string.Empty;
 }
 
 /// <summary>

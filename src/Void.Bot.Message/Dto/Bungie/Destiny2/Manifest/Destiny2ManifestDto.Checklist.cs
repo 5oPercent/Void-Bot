@@ -81,7 +81,7 @@ public class Destiny2ManifestChecklistEntryDefinitionDto
     /// <summary>
     /// 适用范围，定义此清单项在个人资料还是角色级别追踪
     /// </summary>
-    public int Scope { get; set; }
+    public Destiny2ScopeEnum Scope { get; set; }
 }
 
 /// <summary>

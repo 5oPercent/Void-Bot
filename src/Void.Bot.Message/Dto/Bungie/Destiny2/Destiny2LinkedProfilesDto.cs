@@ -5,15 +5,15 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
 public class Destiny2LinkedProfilesResponse : BungieApiResponse
 {
-    public Destiny2LinkedProfilesDataDto Response { get; set; }
+    public Destiny2LinkedProfilesDataDto Response { get; set; } = new();
 }
 
 public class Destiny2LinkedProfilesDataDto
 {
-    public List<Destiny2LinkedProfileItemDto> Profiles { get; set; }
-    
+    public List<Destiny2LinkedProfileItemDto> Profiles { get; set; } = [];
+
     [JsonPropertyName("bnetMembership")]
-    public BungieApiLinkedProfileNetMembershipDto BungieNetMembershipDto { get; set; }
+    public BungieApiLinkedProfileNetMembershipDto BungieNetMembershipDto { get; set; } = new();
 }
 
 /// <summary>
@@ -37,11 +37,11 @@ public class Destiny2LinkedProfileItemDto
     /// 主要跨平台数据游戏平台
     /// </summary>
     public BungieMembershipTypeEnum CrossSaveOverride { get; set; }
-    
+
     /// <summary>
     /// 已知游玩平台列表
     /// </summary>
-    public List<BungieMembershipTypeEnum> ApplicableMembershipTypes { get; set; }
+    public List<BungieMembershipTypeEnum> ApplicableMembershipTypes { get; set; } = [];
     
     public bool IsPublic { get; set; }
     

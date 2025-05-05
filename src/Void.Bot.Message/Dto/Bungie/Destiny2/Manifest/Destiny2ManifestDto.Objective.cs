@@ -48,7 +48,7 @@ public class Destiny2ManifestObjectiveDefinitionDto : Destiny2ManifestDefinition
     public Destiny2DestinyUnlockValueUIStyleEnum ValueStyle { get; set; }
 
     /// <summary>
-    /// 进度描述，解释如何完成目标的文本
+    /// 进度描述，解释如何实现目标的文本
     /// </summary>
     public string ProgressDescription { get; set; } = string.Empty;
 

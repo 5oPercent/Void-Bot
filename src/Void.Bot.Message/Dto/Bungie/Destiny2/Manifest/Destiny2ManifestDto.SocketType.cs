@@ -43,7 +43,7 @@ public class Destiny2ManifestSocketTypeDefinitionDto : Destiny2ManifestDefinitio
     public bool IsPreviewEnabled { get; set; }
 
     /// <summary>
-    /// 隐藏重复的可重用插件，避免在界面中显示相同的插件选项
+    /// 隐藏重复的可重用插件，避免在界面中显示相同插件选项
     /// </summary>
     public bool HideDuplicateReusablePlugs { get; set; }
 

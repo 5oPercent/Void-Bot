@@ -4,35 +4,35 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
 public class Destiny2LanguageComponentContentDto
 {
-    public Destiny2ManifestComponentContentPathDto? EN { get; set; }
+    public Destiny2ManifestComponentContentPathDto? En { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? FR { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Fr { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? ES { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Es { get; set; }
 
     [JsonPropertyName("es-mx")]
-    public Destiny2ManifestComponentContentPathDto? ES_MX { get; set; }
+    public Destiny2ManifestComponentContentPathDto? EsMx { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? DE { get; set; }
+    public Destiny2ManifestComponentContentPathDto? De { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? IT { get; set; }
+    public Destiny2ManifestComponentContentPathDto? It { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? JA { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Ja { get; set; }
 
     [JsonPropertyName("pt-br")]
-    public Destiny2ManifestComponentContentPathDto? PT_BR { get; set; }
+    public Destiny2ManifestComponentContentPathDto? PtBr { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? RU { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Ru { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? PL { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Pl { get; set; }
 
-    public Destiny2ManifestComponentContentPathDto? KO { get; set; }
+    public Destiny2ManifestComponentContentPathDto? Ko { get; set; }
 
     [JsonPropertyName("zh-cht")]
-    public Destiny2ManifestComponentContentPathDto? ZH_CHT { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ZhCht { get; set; }
 
     [JsonPropertyName("zh-chs")]
-    public Destiny2ManifestComponentContentPathDto? ZH_CHS { get; set; }
+    public Destiny2ManifestComponentContentPathDto? ZhChs { get; set; }
 }
 
 public class Destiny2ManifestComponentContentPathDto

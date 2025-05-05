@@ -17,7 +17,7 @@ public class Destiny2ManifestReportReasonCategoryDefinitionDto : Destiny2Manifes
 }
 
 /// <summary>
-/// 命运2举报原因定义，描述具体的举报原因及其详情
+/// 命运2举报原因定义，描述具体举报原因及其详情
 /// </summary>
 public class Destiny2ManifestReportReasonDefinitionDto
 {

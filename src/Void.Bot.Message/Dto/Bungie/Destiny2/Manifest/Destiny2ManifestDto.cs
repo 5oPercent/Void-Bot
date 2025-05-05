@@ -334,7 +334,7 @@ public class Destiny2ManifestPresentationChildBlockDefinitionDto
 /// <summary>
 /// 命运2清单气泡区域定义，用于描述目的地中的特定可探索区域
 /// </summary>
-public class Destiny2ManifestBubbleDefinition
+public class Destiny2ManifestBubbleDefinitionDto
 {
     /// <summary>
     /// 气泡区域的唯一哈希标识符
@@ -371,7 +371,7 @@ public class Destiny2ManifestProgressionRewardDefinitionDto
 /// <summary>
 /// 命运2装备块定义，描述物品的装备属性和限制
 /// </summary>
-public class Destiny2ManifestEquippingBlockDefinition
+public class Destiny2ManifestEquippingBlockDefinitionDto
 {
     /// <summary>
     /// 装备组物品哈希，关联到此装备所属的套装

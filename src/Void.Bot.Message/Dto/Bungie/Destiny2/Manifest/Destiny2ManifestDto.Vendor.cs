@@ -459,7 +459,7 @@ public class Destiny2ManifestVendorInteractionDefinitionDto
 }
 
 /// <summary>
-/// 命运2商人交互回复定义，描述玩家对商人交互的回应选项
+/// 命运2商人交互回复定义，描述玩家对商人交互回应选项
 /// </summary>
 public class Destiny2ManifestVendorInteractionReplyDefinitionDto
 {

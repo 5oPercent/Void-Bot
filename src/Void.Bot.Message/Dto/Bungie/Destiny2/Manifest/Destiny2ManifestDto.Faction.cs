@@ -50,11 +50,11 @@ public class Destiny2ManifestFactionVendorDto
     /// 目的地哈希
     /// </summary>
     public uint DestinationHash { get; set; }
-    
+
     /// <summary>
     /// 背景图片
     /// </summary>
-    public string BackgroundImagePath { get; set; }
+    public string BackgroundImagePath { get; set; } = string.Empty;
 }
 
 /// <summary>

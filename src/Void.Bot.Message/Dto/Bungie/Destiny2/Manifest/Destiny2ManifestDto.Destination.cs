@@ -28,7 +28,7 @@ public class Destiny2ManifestDestinationDefinitionDto : Destiny2ManifestDefiniti
     /// <summary>
     /// 气泡区域列表，描述目的地中的可探索区域
     /// </summary>
-    public List<Destiny2ManifestBubbleDefinition> Bubbles { get; set; } = [];
+    public List<Destiny2ManifestBubbleDefinitionDto> Bubbles { get; set; } = [];
 }
 
 

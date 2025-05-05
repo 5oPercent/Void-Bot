@@ -1,3 +1,5 @@
+using Void.Bot.Message.Enum.Bungie.Destiny2;
+
 namespace Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 
 /// <summary>
@@ -13,7 +15,7 @@ public class Destiny2ManifestUnlockValueDefinitionDto : Destiny2ManifestDefiniti
     /// <summary>
     /// 范围
     /// </summary>
-    public int Scope { get; set; }
+    public Destiny2ScopeEnum Scope { get; set; }
 
     /// <summary>
     /// 映射索引

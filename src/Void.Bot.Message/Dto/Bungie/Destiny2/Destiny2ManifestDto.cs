@@ -2,7 +2,7 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
 public class Destiny2ManifestResponse : BungieApiResponse
 {
-    public Destiny2ManifestDto Response { get; set; }
+    public Destiny2ManifestDto Response { get; set; } = new();
 }
 
 /// <summary>

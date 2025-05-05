@@ -120,7 +120,7 @@ public class Destiny2ManifestInventoryItemDefinitionDto : Destiny2ManifestDefini
     /// <summary>
     /// 装备块定义列表
     /// </summary>
-    public List<Destiny2ManifestEquippingBlockDefinition> EquippingBlock { get; set; } = [];
+    public List<Destiny2ManifestEquippingBlockDefinitionDto> EquippingBlock { get; set; } = [];
 
     /// <summary>
     /// 物品翻译块定义列表
@@ -471,7 +471,7 @@ public class Destiny2ManifestItemInventoryBlockDto
     public string ExpiredInOrbitMessage { get; set; } = string.Empty;
 
     /// <summary>
-    /// 完成目标时是否抑制过期
+    /// 实现目标时是否抑制过期
     /// </summary>
     public bool SuppressExpirationWhenObjectivesComplete { get; set; }
 
@@ -875,7 +875,7 @@ public class Destiny2ManifestItemObjectiveBlockDefinitionDto
     public List<uint> DisplayActivityHashes { get; set; } = [];
 
     /// <summary>
-    /// 是否需要完成所有目标才能视为完成
+    /// 是否需要实现所有目标才能视为完成
     /// </summary>
     public bool RequireFullObjectiveCompletion { get; set; }
 
@@ -1211,7 +1211,7 @@ public class Destiny2ManifestItemSocketEntryDefinitionDto
 public class Destiny2ManifestItemSocketEntryPlugItemDefinitionDto
 {
    /// <summary>
-   /// 插件物品哈希，关联到具体的插件物品
+   /// 插件物品哈希，关联到具体插件物品
    /// </summary>
    public uint PlugItemHash { get; set; }
 }

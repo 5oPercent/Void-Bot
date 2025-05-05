@@ -15,7 +15,7 @@ public class Destiny2ManifestActivityModeDefinitionDto : Destiny2ManifestDefinit
     /// <summary>
     /// 背景图路径
     /// </summary>
-    public string PgcrImage { get; set; }
+    public string PgcrImage { get; set; } = string.Empty;
 
     /// <summary>
     /// 模式类型
@@ -50,7 +50,7 @@ public class Destiny2ManifestActivityModeDefinitionDto : Destiny2ManifestDefinit
     /// <summary>
     /// 有好名称
     /// </summary>
-    public string FriendlyName { get; set; }
+    public string FriendlyName { get; set; } = string.Empty;
 
     /// <summary>
     /// 活动模式映射

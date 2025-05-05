@@ -20,7 +20,7 @@ public class Destiny2ManifestSandboxPerkDefinitionDto : Destiny2ManifestDefiniti
     /// <summary>
     /// 是否可显示，决定特性是否在界面中对玩家可见
     /// </summary>
-    public bool IsDiaplayable { get; set; }
+    public bool IsDisplayable { get; set; }
 
     /// <summary>
     /// 伤害类型，特性关联的伤害元素类型

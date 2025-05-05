@@ -7,7 +7,7 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 /// </summary>
 public class Destiny2ProfileResponse : BungieApiResponse
 {
-    public Destiny2ProfileDataDto Response { get; set; }
+    public Destiny2ProfileDataDto Response { get; set; } = new();
 }
 
 public class Destiny2ProfileDataDto
@@ -15,10 +15,10 @@ public class Destiny2ProfileDataDto
     /// <summary>
     /// 基本档案
     /// </summary>
-    public Destiny2ComponentProfilesDto Profiles { get; set; }
-    
+    public Destiny2ComponentProfilesDto Profiles { get; set; } = new();
+
     /// <summary>
     /// 社交表扬
     /// </summary>
-    public Destiny2ComponentSocialCommendationsDto ProfileCommendations { get; set; }
+    public Destiny2ComponentSocialCommendationsDto ProfileCommendations { get; set; } = new();
 }

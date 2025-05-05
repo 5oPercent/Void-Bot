@@ -8,7 +8,7 @@ public class Destiny2ManifestMedalTierDefinitionDto : Destiny2ManifestDefinition
     /// <summary>
     /// 级别名称
     /// </summary>
-    public string TierName { get; set; }
+    public string TierName { get; set; } = string.Empty;
 
     /// <summary>
     /// 排序

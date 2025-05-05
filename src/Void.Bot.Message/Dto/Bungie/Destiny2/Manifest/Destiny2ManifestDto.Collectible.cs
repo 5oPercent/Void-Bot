@@ -1,3 +1,5 @@
+using Void.Bot.Message.Enum.Bungie.Destiny2;
+
 namespace Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 
 /// <summary>
@@ -13,7 +15,7 @@ public class Destiny2ManifestCollectibleDefinitionDto : Destiny2ManifestDefiniti
     /// <summary>
     /// 范围
     /// </summary>
-    public int Scope { get; set; }
+    public Destiny2ScopeEnum Scope { get; set; }
 
     /// <summary>
     /// 来源字符串
@@ -48,7 +50,7 @@ public class Destiny2ManifestCollectibleDefinitionDto : Destiny2ManifestDefiniti
     /// <summary>
     /// 展示节点类型
     /// </summary>
-    public int PresentationNodeType { get; set; }
+    public Destiny2PresentationNodeTypeEnum PresentationNodeType { get; set; }
 
     /// <summary>
     /// 特性ID列表

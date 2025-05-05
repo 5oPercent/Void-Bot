@@ -315,7 +315,7 @@ public class Destiny2ManifestActivityLocationMappingDto
     /// <summary>
     /// 激活源
     /// </summary>
-    public string ActivationSource { get; set; }
+    public string ActivationSource { get; set; } = string.Empty;
 
     /// <summary>
     /// 活动哈希

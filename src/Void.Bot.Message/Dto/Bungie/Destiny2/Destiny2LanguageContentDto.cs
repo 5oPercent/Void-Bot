@@ -1,30 +1,36 @@
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Message.Dto.Bungie.Destiny2;
 
 public class Destiny2LanguageContentDto
 {
-    public string EN { get; set; } = string.Empty;
+    public string En { get; set; } = string.Empty;
     
-    public string FR { get; set; } = string.Empty;
+    public string Fr { get; set; } = string.Empty;
     
-    public string ES { get; set; } = string.Empty;
+    public string Es { get; set; } = string.Empty;
     
-    public string ES_MX { get; set; } = string.Empty;
+    [JsonPropertyName("es-mx")]
+    public string EsMx { get; set; } = string.Empty;
     
-    public string DE { get; set; } = string.Empty;
+    public string De { get; set; } = string.Empty;
     
-    public string IT { get; set; } = string.Empty;
+    public string It { get; set; } = string.Empty;
     
-    public string JA { get; set; } = string.Empty;
+    public string Ja { get; set; } = string.Empty;
     
-    public string PT_BR { get; set; } = string.Empty;
+    [JsonPropertyName("pt-br")]
+    public string PtBr { get; set; } = string.Empty;
     
-    public string RU { get; set; } = string.Empty;
+    public string Ru { get; set; } = string.Empty;
     
-    public string PL { get; set; } = string.Empty;
+    public string Pl { get; set; } = string.Empty;
     
-    public string KO { get; set; } = string.Empty;
+    public string Ko { get; set; } = string.Empty;
     
-    public string ZH_CHT { get; set; } = string.Empty;
+    [JsonPropertyName("zh-cht")]
+    public string ZhCht { get; set; } = string.Empty;
     
-    public string ZH_CHS { get; set; } = string.Empty;
+    [JsonPropertyName("zh-chs")]
+    public string ZhChs { get; set; } = string.Empty;
 }
