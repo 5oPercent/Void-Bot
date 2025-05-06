@@ -2,8 +2,7 @@
 {
     public enum CacheTypeEnum
     {
-        Memory,
-        Redis,
-        Index
+        Memory = 0,
+        Redis = 1,
     }
 }

@@ -28,6 +28,7 @@ public class Program
         
         var connectionSetting = new ConnectionStringSetting(configuration);
         new DbUpRunner(connectionSetting.Mysql).Run(nameof(Core.Dbup));
+
         WebApplication.CreateBuilder(args).ConfigureHost().AddServices()
             .Build().ConfigureApp()
             .Run();

@@ -16,12 +16,9 @@ namespace Void.Bot.Core.Settings.System
 
         public CacheSetting(IConfiguration configuration)
         {
-            var section = configuration.GetSection("CacheSetting");
-            Enum.TryParse(section["CacheType"], out CacheTypeEnum cacheType);
-            CacheType = cacheType;
-
-            RedisConnection = section["RedisConnection"] ?? "localhost:6379";
-            RedisDatabaseIndex = int.TryParse(section["RedisDatabaseIndex"], out var index) ? index : 0;
+            CacheType = configuration.GetValue<CacheTypeEnum>("CacheSetting:CacheType");
+            RedisConnection = configuration["CacheSetting:RedisConnection"] ?? "localhost:6379";
+            RedisDatabaseIndex = configuration.GetValue<int?>("CacheSetting:RedisDatabaseIndex") ?? 0;
         }
     }
 }
