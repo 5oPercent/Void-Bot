@@ -1,27 +1,27 @@
 using Discord;
 using SkiaSharp;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Request.Bungie.Domain;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
 public partial interface IDiscordDataProvider : IScope
 {
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
-        BungieApiGetProfileFullResponse data, CancellationToken cancellationToken = default);
+        Destiny2ProfileResponse data, CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
 {
     public async Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
-        BungieApiGetProfileFullResponse data, CancellationToken cancellationToken = default)
+        Destiny2ProfileResponse data, CancellationToken cancellationToken = default)
     {
-        var profileInfo = data.Response.Profile.Data;
+        var profileInfo = data.Response.Profiles.Data;
         var commendationInfo = data.Response.ProfileCommendations.Data;
 
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
-        var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipType>().ToString()).ToList();
+        var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
 
         #region Embed
         

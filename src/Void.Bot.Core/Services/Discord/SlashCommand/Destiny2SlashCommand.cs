@@ -6,7 +6,7 @@ using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Request.Bungie;
+using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
@@ -30,7 +30,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         
         var commandName = commandCallback.Data.Options.First().Name;
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
-        var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipType>();
+        var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
 
         if (!string.IsNullOrEmpty(findBungieName) && !Regex.IsMatch(findBungieName, BungieConstants.IdPattern))
         {
@@ -42,11 +42,11 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
             return;
         }
         
-        var profileResponse = await bungieService.GetDestinyBaseProfileAsync(
-            new GetDestinyBaseProfileRequest
+        var profileResponse = await bungieService.GetDestiny2BaseProfileAsync(
+            new GetDestiny2BaseProfileRequest
             {
                 FindBungieName = findBungieName,
-                MembershipType = findMembership ?? BungieMembershipType.All
+                MembershipType = findMembership ?? BungieMembershipTypeEnum.All
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResponse.Data == null)
@@ -62,7 +62,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         var displayName = profileResponse.Data.DisplayName;
         var isSinglePlatform = profileResponse.Data.IsSinglePlatform;
         var onCrossSave = profileResponse.Data.OnCrossSave;
-        var membershipType = profileResponse.Data.MembershipType;
+        var membershipType = profileResponse.Data.MembershipTypeEnum;
         var membershipId = profileResponse.Data.MembershipId;
         
         if (!isSinglePlatform && !onCrossSave && findMembership == null)
@@ -78,10 +78,10 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         {
             case "生涯":
             {
-                var response = await bungieService.GetDestinyCareerAsync(
-                    new GetDestinyCareerRequest
+                var response = await bungieService.GetDestiny2CareerAsync(
+                    new GetDestiny2CareerRequest
                     {
-                        MembershipType = membershipType,
+                        MembershipTypeEnum = membershipType,
                         MembershipId = membershipId
                     }, cancellationToken).ConfigureAwait(false);
                 

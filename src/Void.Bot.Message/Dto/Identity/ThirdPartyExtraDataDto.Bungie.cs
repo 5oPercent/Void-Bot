@@ -1,8 +1,8 @@
-using Void.Bot.Message.Request.Bungie.Domain;
+using Void.Bot.Message.Dto.Bungie.Destiny2;
 
 namespace Void.Bot.Message.Dto.Identity;
 
 public class ThirdPartyBungieExtraDataDto
 {
-    public List<BungieApiLinkedProfileItemDto> Profiles { get; set; } = new();
+    public List<Destiny2LinkedProfileItemDto> Profiles { get; set; } = new();
 }

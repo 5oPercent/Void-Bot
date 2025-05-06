@@ -1,71 +1,68 @@
 using System.Net;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Enum.Bungie.Destiny;
-using Void.Bot.Message.Request.Bungie;
-using Void.Bot.Message.Request.Bungie.Domain;
+using Void.Bot.Message.Enum.Bungie.Destiny2;
+using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Bungie;
 
 public partial interface IBungieService : IScope
 {
-    public Task<GetDestinyLinkedProfileResponse> GetDestinyLinkedProfileAsync(
-        GetDestinyLinkedProfileRequest request, CancellationToken cancellationToken);
+    public Task<GetDestiny2LinkedProfileResponse> GetDestiny2LinkedProfileAsync(
+        GetDestiny2LinkedProfileRequest request, CancellationToken cancellationToken);
     
-    public Task<GetDestinyProfileListByBungieNameResponse> GetDestinyProfileListByBungieNameAsync(
-        GetDestinyProfileListByBungieNameRequest request, CancellationToken cancellationToken);
+    public Task<GetDestiny2ProfileListByBungieNameResponse> GetDestiny2ProfileListByBungieNameAsync(
+        GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken);
 
-    public Task<GetDestinyBaseProfileResponse> GetDestinyBaseProfileAsync(
-        GetDestinyBaseProfileRequest request, CancellationToken cancellationToken);
+    public Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
+        GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken);
     
-    public Task<GetDestinyCareerResponse> GetDestinyCareerAsync(
-        GetDestinyCareerRequest request, CancellationToken cancellationToken);
+    public Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
+        GetDestiny2CareerRequest request, CancellationToken cancellationToken);
 }
 
 public partial class BungieService : IBungieService
 {
-    public async Task<GetDestinyLinkedProfileResponse> GetDestinyLinkedProfileAsync(
-        GetDestinyLinkedProfileRequest request, CancellationToken cancellationToken)
+    public async Task<GetDestiny2LinkedProfileResponse> GetDestiny2LinkedProfileAsync(
+        GetDestiny2LinkedProfileRequest request, CancellationToken cancellationToken)
     {
-        var result = await _dataProvider.GetLinkedProfilesAsync(
-            request.MembershipType, request.MembershipId, cancellationToken).ConfigureAwait(false);
+        var result = await _dataProvider.GetDestiny2LinkedProfilesAsync(
+            request.MembershipTypeEnum, request.MembershipId, cancellationToken).ConfigureAwait(false);
 
-        return new GetDestinyLinkedProfileResponse
+        return new GetDestiny2LinkedProfileResponse
         {
             Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
             Data = result
         };
     }
     
-    public async Task<GetDestinyProfileListByBungieNameResponse> GetDestinyProfileListByBungieNameAsync(
-        GetDestinyProfileListByBungieNameRequest request, CancellationToken cancellationToken)
+    public async Task<GetDestiny2ProfileListByBungieNameResponse> GetDestiny2ProfileListByBungieNameAsync(
+        GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken)
     {
-        var name = request.FindBungieName.Split("#")[0];
-        var code = int.Parse(request.FindBungieName.Split("#")[1]);
-        
-        var result = await _dataProvider.SearchDestinyPlayerByBungieNameAsync(
-            request.MembershipType, name, code, cancellationToken).ConfigureAwait(false);
+        var result = await _dataProvider.GetDestiny2PlayerByBungieNameAsync(
+            request.MembershipTypeEnum, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
 
-        return new GetDestinyProfileListByBungieNameResponse
+        return new GetDestiny2ProfileListByBungieNameResponse
         {
             Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
             Data = result
         };
     }
     
-    public async Task<GetDestinyBaseProfileResponse> GetDestinyBaseProfileAsync(
-        GetDestinyBaseProfileRequest request, CancellationToken cancellationToken)
+    public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
+        GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken)
     {
         var findBungieName = request.FindBungieName;
         var findMembershipType = request.MembershipType;
 
-        var response = new GetDestinyBaseProfileResponse();
+        var response = new GetDestiny2BaseProfileResponse();
         
         var isSinglePlatform = false;                       // 单个游玩平台信息
         var onCrossSave = false;                            // 是否启用跨平台
-        var membershipType = BungieMembershipType.None;     // 游玩平台类型
+        var membershipType = BungieMembershipTypeEnum.None;     // 游玩平台类型
         long membershipId = 0;                              // 游玩平台账号ID
         
         if (string.IsNullOrEmpty(findBungieName))
@@ -99,7 +96,7 @@ public partial class BungieService : IBungieService
             }
             else if (findMembershipType != null)
             {
-                var profile = playerInfo.Profiles.FirstOrDefault(x => x.MembershipType == findMembershipType);
+                var profile = playerInfo.Profiles.FirstOrDefault(x => x.MembershipTypeEnum == findMembershipType);
                 
                 if (profile == null)
                 {
@@ -107,18 +104,18 @@ public partial class BungieService : IBungieService
                     return response;
                 }
                 
-                findBungieName = $"{profile.BungieGlobalDisplayName}#{profile.BungieGlobalDisplayNameCode}";
-                membershipType = profile.MembershipType;
+                membershipType = profile.MembershipTypeEnum;
                 membershipId = long.Parse(profile.MembershipId);
             }
         }
         else
         {
-            var searchResult = await GetDestinyProfileListByBungieNameAsync(
-                new GetDestinyProfileListByBungieNameRequest
+            var searchResult = await GetDestiny2ProfileListByBungieNameAsync(
+                new GetDestiny2ProfileListByBungieNameRequest
                 {
-                    FindBungieName = findBungieName,
-                    MembershipType = findMembershipType
+                    DisplayName = findBungieName.Split("#")[0],
+                    DisplayNameCode = int.Parse(findBungieName.Split("#")[1]),
+                    MembershipTypeEnum = findMembershipType ?? BungieMembershipTypeEnum.All
                 }, cancellationToken).ConfigureAwait(false);
             
             if (searchResult.Data == null || searchResult.Data.Response.Count == 0)
@@ -127,7 +124,7 @@ public partial class BungieService : IBungieService
                 return response;
             }
             
-            BungieApiSearchDestinyPlayerByBungieNameDto? profile = null;
+            Destiny2PlayerByBungieNameDto? profile = null;
 
             isSinglePlatform = searchResult.Data.Response.Count == 1;
             
@@ -137,49 +134,49 @@ public partial class BungieService : IBungieService
             }
             else
             {
-                onCrossSave = searchResult.Data.Response.All(x => x.CrossSaveOverride != BungieMembershipType.None);
+                onCrossSave = searchResult.Data.Response.All(x => x.CrossSaveOverride != BungieMembershipTypeEnum.None);
                 switch (onCrossSave)
                 {
                     case true:
                     {
                         var crossType = searchResult.Data.Response.First().CrossSaveOverride;
-                        profile = searchResult.Data.Response.First(x => x.MembershipType == crossType);
+                        profile = searchResult.Data.Response.First(x => x.MembershipTypeEnum == crossType);
                         break;
                     }
-                    case false when findMembershipType != BungieMembershipType.None:
-                        profile = searchResult.Data.Response.FirstOrDefault(x => x.MembershipType == findMembershipType);
+                    case false when findMembershipType != BungieMembershipTypeEnum.None:
+                        profile = searchResult.Data.Response.FirstOrDefault(x => x.MembershipTypeEnum == findMembershipType);
                         break;
                 }
             }
             
             if (profile != null)
             {
-                membershipType = profile.MembershipType;
+                membershipType = profile.MembershipTypeEnum;
                 membershipId = long.Parse(profile.MembershipId);
             }
         }
         
-        response.Data = new DestinyBaseProfileDto
+        response.Data = new Destiny2BaseProfileDto
         {
             DisplayName = findBungieName,
             OnCrossSave = onCrossSave,
             IsSinglePlatform = isSinglePlatform,
-            MembershipType = membershipType,
+            MembershipTypeEnum = membershipType,
             MembershipId = membershipId
         };
 
         return response;
     }
 
-    public async Task<GetDestinyCareerResponse> GetDestinyCareerAsync(
-        GetDestinyCareerRequest request, CancellationToken cancellationToken)
+    public async Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
+        GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
-        var result = await _dataProvider.GetProfileAsync(
-            request.MembershipType, request.MembershipId,
-            [DestinyComponentTypeEnum.Profiles, DestinyComponentTypeEnum.SocialCommendations],
+        var result = await _dataProvider.GetDestiny2ProfileAsync(
+            request.MembershipTypeEnum, request.MembershipId,
+            [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
             cancellationToken).ConfigureAwait(false);
 
-        return new GetDestinyCareerResponse
+        return new GetDestiny2CareerResponse
         {
             Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
             Data = result

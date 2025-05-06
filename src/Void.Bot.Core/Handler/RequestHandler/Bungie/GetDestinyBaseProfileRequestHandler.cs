@@ -1,11 +1,11 @@
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Void.Bot.Core.Services.Bungie;
-using Void.Bot.Message.Request.Bungie;
+using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Handler.RequestHandler.Bungie;
 
-public class GetDestinyBaseProfileRequestHandler : IRequestHandler<GetDestinyBaseProfileRequest, GetDestinyBaseProfileResponse>
+public class GetDestinyBaseProfileRequestHandler : IRequestHandler<GetDestiny2BaseProfileRequest, GetDestiny2BaseProfileResponse>
 {
     private readonly IBungieService _service;
 
@@ -14,8 +14,8 @@ public class GetDestinyBaseProfileRequestHandler : IRequestHandler<GetDestinyBas
         _service = service;
     }
     
-    public async Task<GetDestinyBaseProfileResponse> Handle(IReceiveContext<GetDestinyBaseProfileRequest> context, CancellationToken cancellationToken)
+    public async Task<GetDestiny2BaseProfileResponse> Handle(IReceiveContext<GetDestiny2BaseProfileRequest> context, CancellationToken cancellationToken)
     {
-        return await _service.GetDestinyBaseProfileAsync(context.Message, cancellationToken).ConfigureAwait(false);
+        return await _service.GetDestiny2BaseProfileAsync(context.Message, cancellationToken).ConfigureAwait(false);
     }
 }

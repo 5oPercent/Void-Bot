@@ -13,7 +13,7 @@ using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Account;
-using Void.Bot.Message.Request.Bungie;
+using Void.Bot.Message.Request.Bungie.Destiny2;
 using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Core.Services.Identity;
@@ -174,10 +174,10 @@ public class IdentityService : IIdentityService
         }
         
         // 获取 Bungie 用户信息
-        var profileResponse = await _bungieService.GetDestinyLinkedProfileAsync(
-            new GetDestinyLinkedProfileRequest
+        var profileResponse = await _bungieService.GetDestiny2LinkedProfileAsync(
+            new GetDestiny2LinkedProfileRequest
             {
-                MembershipType = BungieMembershipType.BungieNext,
+                MembershipTypeEnum = BungieMembershipTypeEnum.BungieNext,
                 MembershipId = int.Parse(tokenResponse.Data!.MembershipId)
             }, cancellationToken).ConfigureAwait(false);
 

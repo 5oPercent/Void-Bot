@@ -1,6 +1,6 @@
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
-using Void.Bot.Message.Request.Bungie.Domain;
+using Void.Bot.Message.Dto.Bungie;
 
 namespace Void.Bot.Message.Commands.Bungie;
 
