@@ -147,7 +147,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     // 注册缓存
     private void RegisterCaching(ContainerBuilder builder)
     {
-        var cacheSetting = configuration.GetSection("CacheSetting").Get<CacheSetting>() ?? new CacheSetting(configuration);
+        var cacheSetting = new CacheSetting(configuration);
 
         if (cacheSetting.CacheType == CacheTypeEnum.Redis)
         {
@@ -163,8 +163,6 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             // 注册 Memory 缓存
             builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().SingleInstance();
         }
-
-        
     }
     
     // 注册配置

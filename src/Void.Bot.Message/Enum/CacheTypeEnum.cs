@@ -3,6 +3,7 @@
     public enum CacheTypeEnum
     {
         Memory,
-        Redis
+        Redis,
+        Index
     }
 }
