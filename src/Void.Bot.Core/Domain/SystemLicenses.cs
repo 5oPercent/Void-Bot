@@ -9,10 +9,10 @@ public class SystemLicenses : IEntityAudit
     public Guid Id { get; set; }
     
     [Column("api_key")]
-    public string ApiKey { get; set; }
+    public string ApiKey { get; set; } = string.Empty;
     
     [Column("user_name")]
-    public string UserName { get; set; }
+    public string UserName { get; set; } = string.Empty;
     
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

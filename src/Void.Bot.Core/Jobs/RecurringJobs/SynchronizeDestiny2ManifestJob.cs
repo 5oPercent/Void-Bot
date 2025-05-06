@@ -8,7 +8,7 @@ public class SynchronizeDestiny2ManifestJob(IMediator mediator) : IRecurringJob
 {
     public string JobId => nameof(SynchronizeDestiny2ManifestJob);
 
-    public string CronExpression => Cron.Daily(3);
+    public string CronExpression => Cron.Weekly(DayOfWeek.Wednesday, 3);
 
     public async Task Execute()
     {

@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Message.Request.Discord;
 

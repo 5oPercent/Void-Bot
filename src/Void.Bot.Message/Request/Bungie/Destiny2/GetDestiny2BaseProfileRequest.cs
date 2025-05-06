@@ -1,17 +1,15 @@
+using System.ComponentModel.DataAnnotations;
 using Mediator.Net.Contracts;
+using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Dto;
-using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
 public class GetDestiny2BaseProfileRequest : IRequest
 {
-    public AppPlatformEnum? TriggerPlatform { get; set; }
-    
-    public string? TriggerPlatformUserId { get; set; }
-
-    public string? FindBungieName { get; set; }
+    [RegularExpression(BungieConstants.IdPattern)]
+    public required string FindBungieName { get; set; }
 
     public BungieMembershipTypeEnum? MembershipType { get; set; }
 }
@@ -22,6 +20,8 @@ public class GetDestiny2BaseProfileResponse : VoidBotResponse<Destiny2BaseProfil
 
 public class Destiny2BaseProfileDto
 {
+    public string DisplayName { get; set; } = string.Empty;
+    
     public bool OnCrossSave { get; set; }
     
     public bool IsSinglePlatform { get; set; }

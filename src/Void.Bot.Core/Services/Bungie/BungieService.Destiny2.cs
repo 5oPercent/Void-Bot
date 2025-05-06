@@ -5,7 +5,6 @@ using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
-using Void.Bot.Message.Request.Account;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Bungie;
@@ -56,9 +55,6 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
         GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken)
     {
-        var triggerPlatform = request.TriggerPlatform;
-        var triggerPlatformUserId = request.TriggerPlatformUserId;
-        
         var findBungieName = request.FindBungieName;
         var findMembershipType = request.MembershipType;
 
@@ -71,59 +67,30 @@ public partial class BungieService : IBungieService
         
         if (string.IsNullOrEmpty(findBungieName))
         {
-            if (triggerPlatform == null || string.IsNullOrEmpty(triggerPlatformUserId))
+            if (_currentUser.Id == null || _currentUser.Id == Guid.Empty)
             {
-                response.Message = $"请提供触发平台的账号信息.";
+                response.Message = $"请先绑定{AppPlatformEnum.Void}账号.";
                 return response;
             }
-
-            ThirdPartyBungieExtraDataDto? playerInfo;
             
-            if (triggerPlatform == AppPlatformEnum.Void)
+            var bungieInfo = await _accountDataProvider.GetThirdPartyByUserIdAsync(
+                _currentUser.Id.Value, AppPlatformEnum.Bungie.ToString(), cancellationToken).ConfigureAwait(false);
+            
+            if (bungieInfo == null)
             {
-                var isOk = Guid.TryParse(triggerPlatformUserId, out var userId);
-
-                if (!isOk)
-                {
-                    response.Message = $"请提供正确的{AppPlatformEnum.Void}账号信息.";
-                    return response;
-                }
-
-                var bungieInfo = await _accountDataProvider.GetThirdPartyByUserIdAsync(userId, AppPlatformEnum.Bungie.ToString(), cancellationToken).ConfigureAwait(false);
-                
-                if (bungieInfo == null)
-                {
-                    response.Message = $"请先绑定{AppPlatformEnum.Bungie}账号.";
-                    return response;
-                }
-                
-                playerInfo = bungieInfo.ExtraData.DeserializeJson<ThirdPartyBungieExtraDataDto>();
+                response.Message = $"请先绑定{AppPlatformEnum.Bungie}账号.";
+                return response;
             }
-            else
-            {
-                var currentLinkBungieInfo = await _accountService.GetThirdPartyByThirdPartyAsync(
-                    new GetThirdPartyByThirdPartyRequest
-                    {
-                        CurrentPlatform = triggerPlatform.Value,
-                        ThirdPartyUserId = triggerPlatformUserId,
-                        TargetPlatform = AppPlatformEnum.Bungie
-                    }, cancellationToken).ConfigureAwait(false);
-
-                if (currentLinkBungieInfo.Data == null)
-                {
-                    response.Message = $"请先绑定{AppPlatformEnum.Bungie}账号.";
-                    return response;
-                }
-
-                playerInfo = currentLinkBungieInfo.Data.ExtraData.DeserializeJson<ThirdPartyBungieExtraDataDto>();
-            }
+            
+            var playerInfo = bungieInfo.ExtraData.DeserializeJson<ThirdPartyBungieExtraDataDto>();
             
             onCrossSave = playerInfo.Profiles.Any(x => x.IsCrossSavePrimary);
 
             if (onCrossSave)
             {
                 var profile = playerInfo.Profiles.First(x => x.IsCrossSavePrimary);
-                
+
+                findBungieName = $"{profile.BungieGlobalDisplayName}#{profile.BungieGlobalDisplayNameCode}";
                 membershipType = profile.CrossSaveOverride;
                 membershipId = long.Parse(profile.MembershipId);
             }
@@ -191,6 +158,7 @@ public partial class BungieService : IBungieService
         
         response.Data = new Destiny2BaseProfileDto
         {
+            DisplayName = findBungieName,
             OnCrossSave = onCrossSave,
             IsSinglePlatform = isSinglePlatform,
             MembershipTypeEnum = membershipType,
