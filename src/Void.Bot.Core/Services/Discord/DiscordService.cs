@@ -1,6 +1,5 @@
 using Discord;
 using Discord.WebSocket;
-using Serilog;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Message.Request.Discord;
 

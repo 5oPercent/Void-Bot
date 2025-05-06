@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Serilog;
 
 namespace Void.Bot.Core.Services.Identity;
 
@@ -21,9 +22,9 @@ public class HttpCurrentUser : ICurrentUser
                 return null;
             }
 
-            var idClaim = _httpContextAccessor.HttpContext.User.Claims.Single(x => x.Type == ClaimTypes.NameIdentifier);
+            var idClaim = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier);
 
-            return Guid.TryParse(idClaim.Value, out var id) ? id : null;
+            return Guid.TryParse(idClaim?.Value, out var id) ? id : null;
         }
     }
 
@@ -35,7 +36,7 @@ public class HttpCurrentUser : ICurrentUser
             {
                 return string.Empty;
             }
-            
+
             var userNameClaim = _httpContextAccessor.HttpContext.User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name);
 
             return userNameClaim?.Value ?? string.Empty;

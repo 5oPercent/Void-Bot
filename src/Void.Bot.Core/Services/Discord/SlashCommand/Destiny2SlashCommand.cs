@@ -6,7 +6,7 @@ using Void.Bot.Core.Extension;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Request.Bungie;
+using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
@@ -30,7 +30,7 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
         
         var commandName = commandCallback.Data.Options.First().Name;
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
-        var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipType>();
+        var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
 
         if (!string.IsNullOrEmpty(findBungieName) && !Regex.IsMatch(findBungieName, BungieConstants.IdPattern))
         {
@@ -42,8 +42,8 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
             return;
         }
         
-        var profileResponse = await mediator.RequestAsync<GetDestinyBaseProfileRequest, GetDestinyBaseProfileResponse>(
-            new GetDestinyBaseProfileRequest
+        var profileResponse = await mediator.RequestAsync<GetDestiny2BaseProfileRequest, GetDestiny2BaseProfileResponse>(
+            new GetDestiny2BaseProfileRequest
             {
                 TriggerPlatform = AppPlatformEnum.Discord,
                 TriggerPlatformUserId = commandCallback.User.Id.ToString(),
@@ -63,7 +63,7 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
         
         var isSinglePlatform = profileResponse.Data.IsSinglePlatform;
         var onCrossSave = profileResponse.Data.OnCrossSave;
-        var membershipType = profileResponse.Data.MembershipType;
+        var membershipType = profileResponse.Data.MembershipTypeEnum;
         var membershipId = profileResponse.Data.MembershipId;
         
         if (!isSinglePlatform && !onCrossSave && findMembership == null)
@@ -79,10 +79,10 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
         {
             case "生涯":
             {
-                var result = await mediator.RequestAsync<GetDestinyCareerRequest, GetDestinyCareerResponse>(
-                    new GetDestinyCareerRequest
+                var result = await mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(
+                    new GetDestiny2CareerRequest
                     {
-                        MembershipType = membershipType,
+                        MembershipTypeEnum = membershipType,
                         MembershipId = membershipId
                     }, cancellationToken).ConfigureAwait(false);
 
@@ -95,11 +95,11 @@ public class Destiny2SlashCommand(IMediator mediator) : IGuildSlashCommand
                     return;
                 }
 
-                var profileInfo = result.Data.Response.Profile.Data;
+                var profileInfo = result.Data.Response.Profiles.Data;
                 var commendationInfo = result.Data.Response.ProfileCommendations.Data;
 
                 var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
-                var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipType>().ToString()).ToList();
+                var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
                 
                 var embed = new EmbedBuilder()
                     .WithColor(139,139,255)
