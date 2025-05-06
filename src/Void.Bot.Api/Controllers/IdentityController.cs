@@ -13,7 +13,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/[controller]")]
 public class IdentityController : ControllerBase
 {
-    private IMediator _mediator;
+    private readonly IMediator _mediator;
 
     public IdentityController(IMediator mediator)
     {

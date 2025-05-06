@@ -11,7 +11,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/[controller]")]
 public class Destiny2Controller : ControllerBase
 {
-    private IMediator _mediator;
+    private readonly IMediator _mediator;
 
     public Destiny2Controller(IMediator mediator)
     {
