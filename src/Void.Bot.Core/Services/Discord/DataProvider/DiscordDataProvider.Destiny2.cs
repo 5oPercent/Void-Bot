@@ -1,7 +1,10 @@
 using Discord;
 using SkiaSharp;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
+using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
@@ -22,28 +25,45 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
-
+        
         #region Embed
+
+        var seasonDict = await _cacheManager.Get<Destiny2ManifestSeasonDto>(Destiny2ManifestConstants.SeasonCacheKey, cancellationToken);
+        var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
+        
+        var seasonTimeRange = $"`{currentSeason?.StartDate.ToLocalTime()}` - `{currentSeason?.EndDate.ToLocalTime()}`";
+        var seasonDays = $"`{currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0}`";
+        var seasonRemainingDays = $"`{currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0}`";
         
         var currentSeasonContext = $"""
-                                    > 赛季名称: 
-                                    > 赛季天数: 
-                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
-                                    > 守护者等级: `{profileInfo.RenewedGuardianRank}`
+                                    > 赛季名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
+                                    > 赛季时间: {(currentSeason != null ? seasonTimeRange : "未知")} | {seasonDays} 天
+                                    > 赛季天数: 剩余 {seasonRemainingDays} 天
+                                    > 赛季光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
                                     """;
         
         var historyCareerContext = $"""
-                                    > 守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
+                                    > 最后游玩时间: `{profileInfo.DateLastPlayed.ToLocalTime()}`
                                     > 嘉奖得分: `{commendationInfo.TotalScore}`
+                                    > 生涯守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
+                                    > 赛季守护者等级: `{profileInfo.RenewedGuardianRank}`
+                                    > 实际守护者等级: `{profileInfo.CurrentGuardianRank}`
                                     """;
 
-        var embedCareer = new EmbedBuilder()
-            .WithColor(139,139,255)
+        var embedBuilder = new EmbedBuilder()
+            .WithColor(139, 139, 255)
             .WithTitle($"{globalDisplayName} 的生涯信息")
             .AddField("当前赛季", currentSeasonContext)
-            .AddField("历史生涯", historyCareerContext)
-            .WithFooter("By Void Bot")
-            .Build();
+            .AddField("历史生涯", historyCareerContext);
+
+        if (currentSeason != null)
+        {
+            embedBuilder.WithImageUrl($"{BungieConstants.BungieUrl}{currentSeason.DisplayProperties.Icon}");
+        }
+            
+        var embedCareer = embedBuilder
+                .WithFooter("By Void Bot")
+                .Build();
         
         #endregion
         
