@@ -1,6 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Void.Bot.Core.Settings.System;
 
 namespace Void.Bot.Api.Authentication;
@@ -16,6 +19,7 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
 {
     private readonly JwtSetting _jwtSetting;
     
+    [Obsolete("Obsolete")]
     public CustomizeJwtAuthenticationHandler(
         IOptionsMonitor<CustomizeJwtAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock,
         JwtSetting jwtSetting)
@@ -24,31 +28,30 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
         _jwtSetting = jwtSetting;
     }
 
-    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(CustomizeJwtAuthenticationOptions.SchemeHeader, out var authHeader))
-            return AuthenticateResult.NoResult();
+            return Task.FromResult(AuthenticateResult.NoResult());
         
         var authHeaderValue = authHeader.ToString();
         if (!authHeaderValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            return AuthenticateResult.Fail("Invalid Authorization header format");
+            return Task.FromResult(AuthenticateResult.Fail("Invalid Authorization header format"));
         
         var token = authHeaderValue.Substring("Bearer ".Length).Trim();
         if (string.IsNullOrEmpty(token))
-            return AuthenticateResult.Fail("Token is missing");
+            return Task.FromResult(AuthenticateResult.Fail("Token is missing"));
         
         try
         {
-            var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+            var tokenHandler = new JwtSecurityTokenHandler();
             var jwtKey = _jwtSetting.Secret;
         
             if (string.IsNullOrEmpty(jwtKey))
-                return AuthenticateResult.Fail("JWT configuration is missing");
+                return Task.FromResult(AuthenticateResult.Fail("JWT configuration is missing"));
             
-            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                System.Text.Encoding.UTF8.GetBytes(jwtKey));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
-            var validationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            var validationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = key,
@@ -63,20 +66,20 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
             var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
             
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
-            return AuthenticateResult.Success(ticket);
+            return Task.FromResult(AuthenticateResult.Success(ticket));
         }
-        catch (Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException)
+        catch (SecurityTokenExpiredException)
         {
-            return AuthenticateResult.Fail("Token has expired");
+            return Task.FromResult(AuthenticateResult.Fail("Token has expired"));
         }
-        catch (Microsoft.IdentityModel.Tokens.SecurityTokenValidationException ex)
+        catch (SecurityTokenValidationException ex)
         {
-            return AuthenticateResult.Fail($"Token validation failed: {ex.Message}");
+            return Task.FromResult(AuthenticateResult.Fail($"Token validation failed: {ex.Message}"));
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Authentication failed");
-            return AuthenticateResult.Fail("Authentication failed");
+            return Task.FromResult(AuthenticateResult.Fail("Authentication failed"));
         }
     }
 }

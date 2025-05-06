@@ -1,7 +1,6 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Void.Bot.Message.Request.Bungie;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Api.Controllers;
@@ -29,9 +28,9 @@ public class Destiny2Controller : ControllerBase
     
     [HttpGet]
     [Route("player/profile/platform")]
-    public async Task<IActionResult> GetPlayerProfileByBungieName([FromQuery] GetDestinyProfileListByBungieNameRequest request)
+    public async Task<IActionResult> GetPlayerProfileByBungieName([FromQuery] GetDestiny2ProfileListByBungieNameRequest request)
     {
-        var response = await _mediator.RequestAsync<GetDestinyProfileListByBungieNameRequest, GetDestinyProfileListByBungieNameResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<GetDestiny2ProfileListByBungieNameRequest, GetDestiny2ProfileListByBungieNameResponse>(request).ConfigureAwait(false);
         
         return Ok(response);
     }

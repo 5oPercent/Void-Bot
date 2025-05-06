@@ -4,7 +4,7 @@ public class CustomCurrentUser : ICurrentUser
 {
     public Guid? Id { get; }
 
-    public string UserName { get; }
+    public string UserName { get; } = string.Empty;
 
     public CustomCurrentUser()
     {

@@ -9,7 +9,7 @@ public class AuthenticateRequest : IRequest
 {
     [Required]
     [MinLength(1)]
-    public string UserName { get; set; }
+    public required string UserName { get; set; }
     
     [Required]
     [MinLength(4)]
@@ -18,7 +18,7 @@ public class AuthenticateRequest : IRequest
     
     [Required]
     [MinLength(6)]
-    public string Password { get; set; }
+    public required string Password { get; set; }
 }
 
 public class AuthenticateResponse : VoidBotResponse<JwtToken>

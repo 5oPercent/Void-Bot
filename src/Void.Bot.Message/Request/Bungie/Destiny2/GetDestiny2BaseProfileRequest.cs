@@ -9,7 +9,7 @@ namespace Void.Bot.Message.Request.Bungie.Destiny2;
 public class GetDestiny2BaseProfileRequest : IRequest
 {
     [RegularExpression(BungieConstants.IdPattern)]
-    public string? FindBungieName { get; set; }
+    public required string FindBungieName { get; set; }
 
     public BungieMembershipTypeEnum? MembershipType { get; set; }
 }
@@ -20,7 +20,7 @@ public class GetDestiny2BaseProfileResponse : VoidBotResponse<Destiny2BaseProfil
 
 public class Destiny2BaseProfileDto
 {
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     
     public bool OnCrossSave { get; set; }
     

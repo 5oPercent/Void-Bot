@@ -11,7 +11,7 @@ public class GetThirdPartyByThirdPartyRequest : IRequest
     public AppPlatformEnum CurrentPlatform { get; set; }
     
     [Required]
-    public string ThirdPartyUserId { get; set; }
+    public required string ThirdPartyUserId { get; set; }
     
     public AppPlatformEnum TargetPlatform { get; set; }
 }

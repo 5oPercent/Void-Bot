@@ -10,7 +10,7 @@ using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProvider dataProvider) : IGuildSlashCommand
+public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
     
@@ -32,7 +32,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
         var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
 
-        if (!string.IsNullOrEmpty(findBungieName) && !Regex.IsMatch(findBungieName, BungieConstants.IdPattern))
+        if (string.IsNullOrEmpty(findBungieName) || !BungieIdRegex().IsMatch(findBungieName))
         {
             await commandCallback.ModifyOriginalResponseAsync(builder =>
             {
@@ -107,4 +107,7 @@ public class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProv
             }
         }
     }
+
+    [GeneratedRegex(BungieConstants.IdPattern)]
+    private static partial Regex BungieIdRegex();
 }

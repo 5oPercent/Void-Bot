@@ -16,12 +16,22 @@ public class SingleOrArrayConverter<T> : JsonConverter<List<T>>
                 if (reader.TokenType == JsonTokenType.EndArray)
                     break;
 
-                result.Add(JsonSerializer.Deserialize<T>(ref reader, options));
+                var value = JsonSerializer.Deserialize<T>(ref reader, options);
+
+                if (value != null)
+                {
+                    result.Add(value);
+                }
             }
         }
         else
         {
-            result.Add(JsonSerializer.Deserialize<T>(ref reader, options));
+            var value = JsonSerializer.Deserialize<T>(ref reader, options);
+
+            if (value != null)
+            {
+                result.Add(value);
+            }
         }
 
         return result;
