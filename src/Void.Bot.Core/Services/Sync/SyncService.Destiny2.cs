@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.RegularExpressions;
 using Serilog;
 using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
@@ -57,7 +58,7 @@ public partial class SyncService : ISyncService
     {
         for (var i = 0; i < languages.Count; i++)
         {
-            languages[i] = languages[i].Replace("-", "_");
+            languages[i] = Regex.Replace(languages[i], "[-_]", "");
         }
         languages = languages.Distinct().ToList();
         

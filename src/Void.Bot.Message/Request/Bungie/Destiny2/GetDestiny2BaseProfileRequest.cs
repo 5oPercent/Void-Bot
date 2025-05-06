@@ -9,7 +9,7 @@ namespace Void.Bot.Message.Request.Bungie.Destiny2;
 public class GetDestiny2BaseProfileRequest : IRequest
 {
     [RegularExpression(BungieConstants.IdPattern)]
-    public required string FindBungieName { get; set; }
+    public string FindBungieName { get; set; } = string.Empty;
 
     public BungieMembershipTypeEnum? MembershipType { get; set; }
 }
