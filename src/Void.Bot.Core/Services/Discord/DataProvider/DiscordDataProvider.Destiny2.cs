@@ -20,34 +20,34 @@ public partial class DiscordDataProvider : IDiscordDataProvider
     public async Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
         Destiny2ProfileResponse data, CancellationToken cancellationToken = default)
     {
-        var profileInfo = data.Response.Profiles.Data;
+        var profileInfo = data.Response.Profile.Data;
         var commendationInfo = data.Response.ProfileCommendations.Data;
 
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
         #region Embed
-
-        var seasonDict = await _cacheManager.Get<Destiny2ManifestSeasonDto>(Destiny2ManifestConstants.SeasonCacheKey, cancellationToken);
+        
+        var seasonJson = await _cacheManager.Get<string>(Destiny2ManifestConstants.SeasonCacheKey+":zhchs", cancellationToken);
+        var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         
         var seasonTimeRange = $"`{currentSeason?.StartDate.ToLocalTime()}` - `{currentSeason?.EndDate.ToLocalTime()}`";
-        var seasonDays = $"`{currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0}`";
-        var seasonRemainingDays = $"`{currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0}`";
+        var seasonDays = $"`{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}`";
+        var seasonRemainingDays = $"`{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}`";
         
         var currentSeasonContext = $"""
-                                    > 赛季名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
-                                    > 赛季时间: {(currentSeason != null ? seasonTimeRange : "未知")} | {seasonDays} 天
-                                    > 赛季天数: 剩余 {seasonRemainingDays} 天
-                                    > 赛季光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
+                                    > 名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
+                                    > 时间: {(currentSeason != null ? seasonTimeRange : "未知")}
+                                    > 天数: 剩余 {seasonRemainingDays} 天 | 总 {seasonDays} 天
+                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
                                     """;
         
         var historyCareerContext = $"""
-                                    > 最后游玩时间: `{profileInfo.DateLastPlayed.ToLocalTime()}`
                                     > 嘉奖得分: `{commendationInfo.TotalScore}`
                                     > 生涯守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
                                     > 赛季守护者等级: `{profileInfo.RenewedGuardianRank}`
-                                    > 实际守护者等级: `{profileInfo.CurrentGuardianRank}`
+                                    > 最后上线: `{profileInfo.DateLastPlayed.ToLocalTime()}`
                                     """;
 
         var embedBuilder = new EmbedBuilder()
@@ -58,7 +58,7 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
         if (currentSeason != null)
         {
-            embedBuilder.WithImageUrl($"{BungieConstants.BungieUrl}{currentSeason.DisplayProperties.Icon}");
+            embedBuilder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{currentSeason.DisplayProperties.Icon}");
         }
             
         var embedCareer = embedBuilder

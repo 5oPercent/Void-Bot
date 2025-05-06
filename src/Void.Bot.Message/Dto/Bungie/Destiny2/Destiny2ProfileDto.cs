@@ -15,7 +15,7 @@ public class Destiny2ProfileDataDto
     /// <summary>
     /// 基本档案
     /// </summary>
-    public Destiny2ComponentProfilesDto Profiles { get; set; } = new();
+    public Destiny2ComponentProfilesDto Profile { get; set; } = new();
 
     /// <summary>
     /// 社交表扬

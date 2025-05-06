@@ -32,7 +32,7 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
         var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
 
-        if (string.IsNullOrEmpty(findBungieName) || !BungieIdRegex().IsMatch(findBungieName))
+        if (!string.IsNullOrEmpty(findBungieName) && !BungieIdRegex().IsMatch(findBungieName))
         {
             await commandCallback.ModifyOriginalResponseAsync(builder =>
             {
@@ -45,7 +45,7 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
         var profileResponse = await bungieService.GetDestiny2BaseProfileAsync(
             new GetDestiny2BaseProfileRequest
             {
-                FindBungieName = findBungieName,
+                FindBungieName = findBungieName ?? string.Empty,
                 MembershipType = findMembership ?? BungieMembershipTypeEnum.All
             }, cancellationToken).ConfigureAwait(false);
 
