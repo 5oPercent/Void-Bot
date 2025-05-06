@@ -73,7 +73,7 @@ public class LinkSlashCommand(IMediator mediator, IAccountService accountService
             }
             
             var isCorrectPassword = await accountService.VerifyPassword(
-                userAccount.Data.Id, password.SHAEncrypt(), cancellationToken).ConfigureAwait(false);
+                userAccount.Data.Id, password, cancellationToken).ConfigureAwait(false);
 
             if (!isCorrectPassword)
             {
