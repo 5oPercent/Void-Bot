@@ -1,50 +1,28 @@
-﻿using Hangfire.MemoryStorage.Database;
-using StackExchange.Redis;
-using System.Text.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using StackExchange.Redis;
+using Void.Bot.Core.Extension;
 
 namespace Void.Bot.Core.Caching
 {
     public class RedisCacheManager : ICacheManager
     {
-
-        private readonly ConnectionMultiplexer _redisConnection;
+        private readonly IConnectionMultiplexer _redisConnection;
         private readonly IDatabase _database;
 
-        public RedisCacheManager(IConnectionMultiplexer redisConnection,string connection,int databaseIndex)
+        public RedisCacheManager(IConnectionMultiplexer redisConnection, int redisDatabaseIndex)
         {
-            var config = ConfigurationOptions.Parse(connection);
-            config.DefaultDatabase = databaseIndex;
-            _database = _redisConnection.GetDatabase(databaseIndex);
-        }
-
-        public byte[] Serialize(object obj)
-        {
-            if (obj == null)
-            {
-                return Array.Empty<byte>();
-            }
-            return JsonSerializer.SerializeToUtf8Bytes(obj);
+            _redisConnection = redisConnection;
+            _database = redisConnection.GetDatabase(redisDatabaseIndex);
         }
 
         public async Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class
         {
             var redisValue = await _database.StringGetAsync(key);
-            if(!redisValue.HasValue)
-            {
-                return null;
-            }
-            return JsonSerializer.Deserialize<T>(redisValue);
+            return redisValue.HasValue ? redisValue.ToString().DeserializeJson<T>() : null;
         }
 
         public async Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
         {
-            var value = Serialize(data);
-            await _database.StringSetAsync(key, value, expiry);
+            await _database.StringSetAsync(key, data.SerializeJson(), expiry);
         }
 
         public async Task Remove(string key, CancellationToken cancellationToken = default)
@@ -58,7 +36,7 @@ namespace Void.Bot.Core.Caching
             var server = _redisConnection.GetServer(endpoints[0]);
 
             var keys = server.Keys(pattern: pattern).ToList();
-            if(keys.Any())
+            if(keys.Count != 0)
             {
                 await _database.KeyDeleteAsync(keys.ToArray());
             }
@@ -70,7 +48,7 @@ namespace Void.Bot.Core.Caching
             var server = _redisConnection.GetServer(endpoints[0]);
 
             var keys = server.Keys().ToList();
-            if(keys.Any())
+            if(keys.Count != 0)
             {
                 await _database.KeyDeleteAsync(keys.ToArray());
             }

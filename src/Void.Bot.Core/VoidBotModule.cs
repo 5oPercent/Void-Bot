@@ -1,4 +1,3 @@
-using System.Diagnostics.Metrics;
 using System.Net;
 using System.Reflection;
 using Autofac;
@@ -12,7 +11,6 @@ using Mediator.Net;
 using Mediator.Net.Autofac;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using StackExchange.Redis;
@@ -149,13 +147,13 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     {
         var cacheSetting = new CacheSetting(configuration);
 
-        if (cacheSetting.CacheType == CacheTypeEnum.Redis)
+        if (cacheSetting.UseStorage == CacheTypeEnum.Redis)
         {
             // 注册 Redis 缓存
             builder.Register(context =>
             {
                 var connection = ConnectionMultiplexer.Connect(cacheSetting.RedisConnection);
-                return new RedisCacheManager(connection, cacheSetting.RedisConnection, cacheSetting.RedisDatabaseIndex);
+                return new RedisCacheManager(connection, cacheSetting.RedisDatabaseIndex);
             }).As<ICacheManager>().SingleInstance();
         }
         else
