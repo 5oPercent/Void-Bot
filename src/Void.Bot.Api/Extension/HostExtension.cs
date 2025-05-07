@@ -78,10 +78,10 @@ public static class HostExtension
         {
             switch(hangfireSetting.UseStorage)
             {
-                case HangfireStorageTypeEnum.Redis:
+                case CacheTypeEnum.Redis:
                     config.UseRedisStorage(connectionSetting.Redis);
                     break;
-                case HangfireStorageTypeEnum.Memory:
+                case CacheTypeEnum.Memory:
                 default:
                     config.UseMemoryStorage();
                     break;

@@ -7,12 +7,12 @@ public class HangfireSetting : IConfigurationSetting
 {
     public bool EnableDashboard { get; }
     
-    public HangfireStorageTypeEnum UseStorage { get; }
+    public CacheTypeEnum UseStorage { get; }
 
     public HangfireSetting(IConfiguration configuration)
     {
         EnableDashboard = configuration.GetValue<bool>("Hangfire:EnableDashboard");
         
-        UseStorage = configuration.GetValue<HangfireStorageTypeEnum>("Hangfire:UseStorage");
+        UseStorage = configuration.GetValue<CacheTypeEnum>("Cache:UseStorage");
     }
 }

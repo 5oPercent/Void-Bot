@@ -11,9 +11,10 @@ using Mediator.Net;
 using Mediator.Net.Autofac;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using StackExchange.Redis;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
@@ -25,6 +26,9 @@ using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
+using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Enum;
+
 using Module = Autofac.Module;
 
 namespace Void.Bot.Core;
@@ -141,7 +145,22 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     // 注册缓存
     private void RegisterCaching(ContainerBuilder builder)
     {
-        builder.RegisterType<MemoryCache>().As<IMemoryCache>().SingleInstance();
+        var cacheSetting = new CacheSetting(configuration);
+
+        if (cacheSetting.UseStorage == CacheTypeEnum.Redis)
+        {
+            // 注册 Redis 缓存
+            builder.Register(context =>
+            {
+                var connection = ConnectionMultiplexer.Connect(cacheSetting.RedisConnection);
+                return new RedisCacheManager(connection, cacheSetting.RedisDatabaseIndex);
+            }).As<ICacheManager>().SingleInstance();
+        }
+        else
+        {
+            // 注册 Memory 缓存
+            builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().SingleInstance();
+        }
     }
     
     // 注册配置
