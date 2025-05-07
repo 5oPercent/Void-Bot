@@ -1,24 +1,26 @@
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
-using Void.Bot.Message.Dto.Authorization;
 
 namespace Void.Bot.Message.Commands.Account;
 
 public class ChangeUserAccountPasswordCommand : ICommand
 {
     public Guid? UserId { get; set; }
+    
     /// <summary>
-    /// ¾ÉÃÜÂë
+    /// æ—§å¯†ç 
     /// </summary>
-    public string OldPassword { get; set; }
+    public required string OldPassword { get; set; }
+    
     /// <summary>
-    /// ĞÂÃÜÂë
+    /// æ–°å¯†ç 
     /// </summary>
-    public string NewPassword { get; set; }
+    public required string NewPassword { get; set; }
+    
     /// <summary>
-    /// ĞÂÃÜÂëÈ·ÈÏ
+    /// æ–°å¯†ç ç¡®è®¤
     /// </summary>
-    public string NewPasswordConfirm { get; set; }
+    public required string NewPasswordConfirm { get; set; }
 
 }
 

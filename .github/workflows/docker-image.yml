@@ -1,0 +1,33 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Docker image
+        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+      - name: Login to aliyun docker repository
+        run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
+      - name: Push image to aliyun docker repository
+        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+      
+  deployment:
+  
+    runs-on: [self-hosted, linux, x64]
+    needs: [build]
+    
+    steps:
+      - name: Export Environment variant
+        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}' > /home/void-bot/.env
+      - name: Login to aliyun docker repository
+        run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
+      - name: Deploy docker container
+        run: docker compose -f /home/void-bot/docker-compose.yml --project-directory /home/void-bot up -d

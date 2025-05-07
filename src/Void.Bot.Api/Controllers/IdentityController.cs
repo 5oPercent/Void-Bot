@@ -13,7 +13,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/[controller]")]
 public class IdentityController : ControllerBase
 {
-    private IMediator _mediator;
+    private readonly IMediator _mediator;
 
     public IdentityController(IMediator mediator)
     {
@@ -48,6 +48,7 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
     
+    [AllowAnonymous]
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
     public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand command)
@@ -63,6 +64,7 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
     
+    [AllowAnonymous]
     [HttpGet]
     [Route("link/bungie")]
     public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieCommand command)

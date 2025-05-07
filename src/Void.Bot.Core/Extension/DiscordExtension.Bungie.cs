@@ -14,9 +14,9 @@ public static partial class DiscordExtension
                 .WithName("Platform".ToLower())
                 .WithDescription("指定游玩平台, 已启用跨平台设置请忽略.")
                 .WithType(ApplicationCommandOptionType.Integer)
-                .AddChoice("steam", (long)BungieMembershipType.Steam)
-                .AddChoice("egs", (long)BungieMembershipType.Egs)
-                .AddChoice("xbox", (long)BungieMembershipType.Xbox)
-                .AddChoice("psn", (long)BungieMembershipType.Psn));
+                .AddChoice("steam", (long)BungieMembershipTypeEnum.Steam)
+                .AddChoice("egs", (long)BungieMembershipTypeEnum.Egs)
+                .AddChoice("xbox", (long)BungieMembershipTypeEnum.Xbox)
+                .AddChoice("psn", (long)BungieMembershipTypeEnum.Psn));
     }
 }

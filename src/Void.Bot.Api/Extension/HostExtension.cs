@@ -25,7 +25,7 @@ public static class HostExtension
         var configuration = builder.Configuration;
 
         host.UseSerilog();
-        host.ConfigureLogging(l => l.AddSerilog(Log.Logger));
+        host.UseSerilog(Log.Logger);
         host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
         host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
         {
@@ -107,7 +107,7 @@ public static class HostExtension
         app.UseRouting();
         app.UseAuthentication();
         app.UseAuthorization();
-        app.UseEndpoints(ep => ep.MapControllers());
+        app.MapControllers();
         
         if (hangfireSetting.EnableDashboard)
         {

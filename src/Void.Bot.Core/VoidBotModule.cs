@@ -36,8 +36,8 @@ namespace Void.Bot.Core;
 public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfiguration configuration, params Assembly[] assemblies) : Module
 {
     private readonly Assembly[] _assemblies = assemblies.Length == 0
-        ? new Assembly[] { typeof(VoidBotModule).Assembly }
-        : assemblies.Concat(new[] { typeof(VoidBotModule).Assembly }).Distinct().ToArray();
+        ? [typeof(VoidBotModule).Assembly]
+        : assemblies.Concat([typeof(VoidBotModule).Assembly]).Distinct().ToArray();
     
     protected override void Load(ContainerBuilder builder)
     {

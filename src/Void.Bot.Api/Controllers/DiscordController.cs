@@ -10,7 +10,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/[controller]")]
 public class DiscordController : ControllerBase
 {
-    private IMediator _mediator;
+    private readonly IMediator _mediator;
 
     public DiscordController(IMediator mediator)
     {
