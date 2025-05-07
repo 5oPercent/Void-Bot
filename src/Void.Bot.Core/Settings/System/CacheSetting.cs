@@ -17,7 +17,7 @@ namespace Void.Bot.Core.Settings.System
         public CacheSetting(IConfiguration configuration)
         {
             CacheType = configuration.GetValue<CacheTypeEnum>("CacheSetting:CacheType");
-            RedisConnection = configuration["CacheSetting:RedisConnection"] ?? "localhost:6379";
+            RedisConnection = configuration["ConnectionStrings:Redis"];
             RedisDatabaseIndex = configuration.GetValue<int?>("CacheSetting:RedisDatabaseIndex") ?? 0;
         }
     }
