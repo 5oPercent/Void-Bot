@@ -1,6 +1,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Hangfire;
+using Hangfire.Dashboard.BasicAuthorization;
 using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -111,7 +112,31 @@ public static class HostExtension
         
         if (hangfireSetting.EnableDashboard)
         {
-            app.UseHangfireDashboard();
+            var path = string.IsNullOrEmpty(hangfireSetting.DashboardPath) ? "/hangfire" : hangfireSetting.DashboardPath;
+            var user = string.IsNullOrEmpty(hangfireSetting.DashboardUser) ? "admin" : hangfireSetting.DashboardUser;
+            var password = string.IsNullOrEmpty(hangfireSetting.DashboardPassword) ? "hangfire" : hangfireSetting.DashboardPassword;
+            
+            var option = new DashboardOptions
+            {
+                Authorization = [
+                    new BasicAuthAuthorizationFilter(new BasicAuthAuthorizationFilterOptions
+                    {
+                        SslRedirect = false,
+                        RequireSsl = false,
+                        LoginCaseSensitive = true,
+                        Users =
+                        [
+                            new BasicAuthAuthorizationUser
+                            {
+                                Login = user,
+                                PasswordClear = password
+                            }
+                        ]
+                    })
+                ]
+            };
+            
+            app.UseHangfireDashboard(path, option);
         }
         app.UseForgetJobs();
         app.UseDelayedJobs();
