@@ -26,6 +26,7 @@ public partial class SyncService : ISyncService
         {
             response.Code = HttpStatusCode.NoContent;
             response.Message = "No manifest found.";
+            Log.Information(response.Message);
             return response;
         }
         
@@ -48,6 +49,7 @@ public partial class SyncService : ISyncService
         {
             response.Message = $"Version {result.Response.Version} already exists.";
         }
+        Log.Information(response.Message);
 
         return response;
     }
