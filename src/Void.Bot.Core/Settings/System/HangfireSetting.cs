@@ -19,11 +19,11 @@ public class HangfireSetting : IConfigurationSetting
     {
         EnableDashboard = configuration.GetValue<bool>("Hangfire:EnableDashboard");
         
-        DashboardPath = configuration.GetValue<string>("Hangfire:DashboardPath") ?? "/hangfire";
+        DashboardPath = configuration["Hangfire:DashboardPath"] ?? "/hangfire";
         
-        DashboardUser = configuration.GetValue<string>("Hangfire:DashboardUser") ?? "admin";
+        DashboardUser = configuration["Hangfire:DashboardUser"] ?? "admin";
         
-        DashboardPassword = configuration.GetValue<string>("Hangfire:DashboardPassword") ?? "hangfire";
+        DashboardPassword = configuration["Hangfire:DashboardPassword"] ?? "hangfire";
         
         UseStorage = configuration.GetValue<CacheTypeEnum>("Cache:UseStorage");
     }

@@ -112,10 +112,6 @@ public static class HostExtension
         
         if (hangfireSetting.EnableDashboard)
         {
-            var path = string.IsNullOrEmpty(hangfireSetting.DashboardPath) ? "/hangfire" : hangfireSetting.DashboardPath;
-            var user = string.IsNullOrEmpty(hangfireSetting.DashboardUser) ? "admin" : hangfireSetting.DashboardUser;
-            var password = string.IsNullOrEmpty(hangfireSetting.DashboardPassword) ? "hangfire" : hangfireSetting.DashboardPassword;
-            
             var option = new DashboardOptions
             {
                 Authorization = [
@@ -128,15 +124,15 @@ public static class HostExtension
                         [
                             new BasicAuthAuthorizationUser
                             {
-                                Login = user,
-                                PasswordClear = password
+                                Login = hangfireSetting.DashboardUser,
+                                PasswordClear = hangfireSetting.DashboardPassword
                             }
                         ]
                     })
                 ]
             };
             
-            app.UseHangfireDashboard(path, option);
+            app.UseHangfireDashboard(hangfireSetting.DashboardPath, option);
         }
         app.UseForgetJobs();
         app.UseDelayedJobs();
