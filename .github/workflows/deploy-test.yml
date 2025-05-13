@@ -13,11 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build the docker test image
-        run: docker build . --file Dockerfile --tag all-in-one:${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Push image to aliyun docker repository
-        run: docker push all-in-one:${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}
         
   deployment:
     
@@ -26,7 +26,7 @@ jobs:
     
     steps:
       - name: Export Environment variant
-        run: echo 'IMAGE=all-in-one:${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}' > /home/void-bot-test/.env
+        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}' > /home/void-bot-test/.env
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Deploy docker container
