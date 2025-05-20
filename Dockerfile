@@ -18,9 +18,8 @@ RUN apt-get update && apt-get install -y \
     libfreetype6 \
     libpng16-16 \
     libharfbuzz0b \
-    libicu67 \
+    libicu-dev \
     libexpat1 \
-    libdl2 \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
