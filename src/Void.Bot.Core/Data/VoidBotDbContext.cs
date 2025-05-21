@@ -53,15 +53,19 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     {
         var userId = currentUser.Id ?? Guid.Empty;
 
-        foreach (var entry in ChangeTracker.Entries().Where(e => e is { Entity: IEntityAudit }))
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(e => e.Entity.GetType().GetInterfaces()
+                         .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEntityAudit<>))))
         {
+            dynamic entity = entry.Entity;
+            
             switch (entry.State)
             {
                 case EntityState.Added:
-                    ((IEntityAudit)entry.Entity).CreatedBy = userId;
+                    entity.CreatedBy = userId;
                     break;
                 case EntityState.Modified:
-                    ((IEntityAudit)entry.Entity).LastModifiedBy = userId;
+                    entity.LastModifiedBy = userId;
                     break;
             }
         }

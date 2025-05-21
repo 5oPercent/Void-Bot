@@ -5,7 +5,7 @@ using Void.Bot.Core.Extension;
 namespace Void.Bot.Core.Domain.Account;
 
 [Table("user_account")]
-public class UserAccount : IEntity, IEntityCreated, IEntityModified
+public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
 {
     [Key] [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();

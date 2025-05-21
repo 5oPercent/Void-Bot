@@ -2,17 +2,12 @@ namespace Void.Bot.Core.Domain;
 
 public interface IEntityBase { }
 
-public interface IEntity : IEntityBase
-{
-    public Guid Id { get; set; }
-}
-
 public interface IEntity<T> : IEntityBase
 {
     T Id { get; set; }
 }
 
-public interface IEntityAudit : IEntityBase, IEntityCreated, IEntityModified
+public interface IEntityAudit<T> : IEntity<T>, IEntityCreated, IEntityModified
 {
     public Guid CreatedBy { get; set; }
 
