@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using Void.Bot.Core.Domain;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
 

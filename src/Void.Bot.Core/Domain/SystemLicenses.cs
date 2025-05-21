@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain;
 

@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Security;
 
 namespace Void.Bot.Core.Domain.Security;
 
 [Table("Menu")]
-public class Menu : IEntityAudit<Guid>
+public class Menu : ITreeEntityAudit<Guid, Menu>
 {
     public Guid Id { get; set; }
     

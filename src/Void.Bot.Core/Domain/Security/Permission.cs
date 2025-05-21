@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Security;
 
 namespace Void.Bot.Core.Domain.Security;
 
 [Table("Permission")]
-public class Permission : IEntityAudit<Guid>
+public class Permission : ITreeEntityAudit<Guid, Permission>
 {
     public Guid Id { get; set; }
     

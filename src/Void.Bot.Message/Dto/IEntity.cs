@@ -1,13 +1,13 @@
-namespace Void.Bot.Core.Domain;
+namespace Void.Bot.Message.Dto;
 
 public interface IEntityBase { }
 
-public interface IEntity<T> : IEntityBase
+public interface IEntity<TKey> : IEntityBase
 {
-    T Id { get; set; }
+    TKey Id { get; set; }
 }
 
-public interface IEntityAudit<T> : IEntity<T>, IEntityCreated, IEntityModified
+public interface IEntityAudit<TKey> : IEntity<TKey>, IEntityCreated, IEntityModified
 {
     public Guid CreatedBy { get; set; }
 

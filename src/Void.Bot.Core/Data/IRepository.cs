@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using Void.Bot.Core.Domain;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
 

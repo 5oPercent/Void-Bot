@@ -1,8 +1,8 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using Void.Bot.Core.Domain;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
 
