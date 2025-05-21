@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Void.Bot.Core.Domain;
 
 [Table("system_licenses")]
-public class SystemLicenses : IEntityAudit
+public class SystemLicenses : IEntityAudit<Guid>
 {
     [Column("id")]
     public Guid Id { get; set; }
