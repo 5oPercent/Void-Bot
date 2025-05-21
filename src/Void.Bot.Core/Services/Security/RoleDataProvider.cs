@@ -8,7 +8,7 @@ public interface IRoleDataProvider : IScope
 {
     public Task<Role?> GetRoleAsync(Guid id, CancellationToken cancellationToken);
     
-    public Task<List<Role>> GetRolesAsync(List<Guid> idList, CancellationToken cancellationToken);
+    public Task<List<Role>> GetRoleListAsync(List<Guid> idList, CancellationToken cancellationToken);
     
     public Task<List<Role>> GetAllRoleAsync(CancellationToken cancellationToken);
     
@@ -16,7 +16,11 @@ public interface IRoleDataProvider : IScope
     
     public Task UpdateRoleAsync(Role entity, CancellationToken cancellationToken);
     
-    public Task DeleteRolesAsync(List<Guid> idList, CancellationToken cancellationToken);
+    public Task DeleteRoleListAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
 }
 
 public class RoleDataProvider : IRoleDataProvider
@@ -33,7 +37,7 @@ public class RoleDataProvider : IRoleDataProvider
         return await _roleRep.QueryNoTracking(x => x.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<List<Role>> GetRolesAsync(List<Guid> idList, CancellationToken cancellationToken)
+    public async Task<List<Role>> GetRoleListAsync(List<Guid> idList, CancellationToken cancellationToken)
     {
         return await _roleRep.QueryNoTracking(x => idList.Contains(x.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -53,8 +57,18 @@ public class RoleDataProvider : IRoleDataProvider
         await _roleRep.UpdateAsync(entity, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task DeleteRolesAsync(List<Guid> idList, CancellationToken cancellationToken)
+    public async Task DeleteRoleListAsync(List<Guid> idList, CancellationToken cancellationToken)
     {
         await _roleRep.DeleteAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken)
+    {
+        return await _roleRep.AnyAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken)
+    {
+        return await _roleRep.AnyAsync(x => pidList.Contains(x.Pid), cancellationToken).ConfigureAwait(false);
     }
 }
