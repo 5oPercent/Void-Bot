@@ -106,6 +106,7 @@ public static class HostExtension
             app.MapScalarApiReference();
         }
         
+        app.UseEndpointScanner();
         app.UseHttpsRedirection();
         app.UseRouting();
         app.UseAuthentication();
