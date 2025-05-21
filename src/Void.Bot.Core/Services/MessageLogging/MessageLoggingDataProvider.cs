@@ -17,7 +17,7 @@ public interface IMessageLoggingDataProvider : IScope
     Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken);
 }
 
-public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggingDataProvider
+public class MessageLoggingDataProvider(IRepository<MessageLog> messageRep) : IMessageLoggingDataProvider
 {
     public async Task<PagedList<MessageLog>> GetFilterAsync(
         List<Guid>? ids = default,
@@ -27,7 +27,7 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
         int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var query = repository.QueryNoTracking<MessageLog>()
+        var query = messageRep.QueryNoTracking()
             .WhereIF(!ids.IsNullOrEmpty(), x => ids != null && ids.Contains(x.Id))
             .WhereIF(startDate != null, x => x.CreatedAt >= startDate)
             .WhereIF(endDate != null, x => x.CreatedAt <= endDate);
@@ -40,6 +40,6 @@ public class MessageLoggingDataProvider(IRepository repository) : IMessageLoggin
 
     public async Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken)
     {
-        await repository.InsertAllAsync(messageLogs, cancellationToken).ConfigureAwait(false);
+        await messageRep.InsertAllAsync(messageLogs, cancellationToken).ConfigureAwait(false);
     }
 }

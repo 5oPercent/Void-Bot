@@ -21,11 +21,23 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var allTypes = Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => t.IsClass && typeof(IEntityBase).IsAssignableFrom(t))
+        base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+        RegisterAllEntities(modelBuilder);
+    }
+    
+    private void RegisterAllEntities(ModelBuilder modelBuilder)
+    {
+        var entityTypes = Assembly.GetExecutingAssembly().GetTypes()
+            .Where(t => !t.IsAbstract &&
+                        t.IsClass &&
+                        typeof(IEntityBase).IsAssignableFrom(t) &&
+                        modelBuilder.Model.FindEntityType(t) == null)
             .ToList();
 
-        foreach (var type in allTypes.Where(type => modelBuilder.Model.FindEntityType(type) == null))
+        foreach (var type in entityTypes)
         {
             modelBuilder.Model.AddEntityType(type);
         }
@@ -77,7 +89,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         {
             if (((IEntityCreated)entry.Entity).CreatedAt == default)
             {
-                ((IEntityCreated)entry.Entity).CreatedAt= DateTimeOffset.Now;
+                ((IEntityCreated)entry.Entity).CreatedAt = DateTimeOffset.UtcNow;
             }
         }
     }
@@ -86,7 +98,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     {
         foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Modified, Entity: IEntityModified }))
         {
-            ((IEntityModified)entry.Entity).UpdatedAt= DateTimeOffset.Now;
+            ((IEntityModified)entry.Entity).UpdatedAt = DateTimeOffset.UtcNow;
         }
     }
 }

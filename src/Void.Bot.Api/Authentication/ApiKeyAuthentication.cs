@@ -19,16 +19,16 @@ public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
 public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
 {
     private readonly IApiKeyService _service;
-    private readonly IRepository _repository;
+    private readonly IRepository<SystemLicenses> _licensesRep;
     
 #pragma warning disable CS0618 // Type or member is obsolete
     public ApiKeyAuthenticationHandler(
         IOptionsMonitor<ApiKeyAuthenticationOptions> options, ILoggerFactory logger,
         UrlEncoder encoder, ISystemClock clock,
-        IApiKeyService service, IRepository repository) : base(options, logger, encoder, clock)
+        IApiKeyService service, IRepository<SystemLicenses> licensesRep) : base(options, logger, encoder, clock)
     {
         _service = service;
-        _repository = repository;
+        _licensesRep = licensesRep;
     }
 #pragma warning restore CS0618 // Type or member is obsolete
 
@@ -51,7 +51,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
             return AuthenticateResult.Fail("Invalid ApiKey.");
         }
         
-        var findApiKey = await _repository.QueryNoTracking<SystemLicenses>()
+        var findApiKey = await _licensesRep.QueryNoTracking()
             .FirstOrDefaultAsync(x => x.ApiKey == decryptedApiKey).ConfigureAwait(false);
         
         if (findApiKey is null)
