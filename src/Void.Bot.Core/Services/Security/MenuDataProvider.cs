@@ -8,7 +8,7 @@ public interface IMenuDataProvider : IScope
 {
     public Task<Menu?> GetMenuAsync(Guid id, CancellationToken cancellationToken);
     
-    public Task<List<Menu>> GetMenusAsync(List<Guid> idList, CancellationToken cancellationToken);
+    public Task<List<Menu>> GetMenuListAsync(List<Guid> idList, CancellationToken cancellationToken);
     
     public Task<List<Menu>> GetAllMenuAsync(CancellationToken cancellationToken);
     
@@ -17,6 +17,10 @@ public interface IMenuDataProvider : IScope
     public Task UpdateMenuAsync(Menu entity, CancellationToken cancellationToken);
     
     public Task DeleteMenusAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
 }
 
 public class MenuDataProvider : IMenuDataProvider
@@ -33,7 +37,7 @@ public class MenuDataProvider : IMenuDataProvider
         return await _menuRep.QueryNoTracking(x => x.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<List<Menu>> GetMenusAsync(List<Guid> idList, CancellationToken cancellationToken)
+    public async Task<List<Menu>> GetMenuListAsync(List<Guid> idList, CancellationToken cancellationToken)
     {
         return await _menuRep.QueryNoTracking(x => idList.Contains(x.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -56,5 +60,15 @@ public class MenuDataProvider : IMenuDataProvider
     public async Task DeleteMenusAsync(List<Guid> idList, CancellationToken cancellationToken)
     {
         await _menuRep.DeleteAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken)
+    {
+        return await _menuRep.AnyAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken)
+    {
+        return await _menuRep.AnyAsync(x => pidList.Contains(x.Pid), cancellationToken).ConfigureAwait(false);
     }
 }
