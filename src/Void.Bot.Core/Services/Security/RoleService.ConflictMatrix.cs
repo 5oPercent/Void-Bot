@@ -7,13 +7,13 @@ namespace Void.Bot.Core.Services.Security;
 
 public partial interface IRoleService : IScope
 {
-    public Task<GetRoleConflictMatrixListResponse> GetRoleConflictMatrixList(
+    public Task<GetRoleConflictMatrixListResponse> GetRoleConflictMatrixListAsync(
         GetRoleConflictMatrixListRequest request, CancellationToken cancellationToken = default);
  
-    public Task<AddRoleConflictMatrixResponse> AddRoleConflictMatrix(
+    public Task<AddRoleConflictMatrixResponse> AddRoleConflictMatrixAsync(
         AddRoleConflictMatrixCommand command, CancellationToken cancellationToken = default);
     
-    public Task<DeleteRoleConflictMatrixResponse> DeleteRoleConflictMatrix(
+    public Task<DeleteRoleConflictMatrixResponse> DeleteRoleConflictMatrixAsync(
         DeleteRoleConflictMatrixCommand command, CancellationToken cancellationToken = default);
     
     public Task<CheckRoleConflictExistsResponse> CheckRoleConflictExistsAsync(
@@ -22,7 +22,7 @@ public partial interface IRoleService : IScope
 
 public partial class RoleService : IRoleService
 {
-    public async Task<GetRoleConflictMatrixListResponse> GetRoleConflictMatrixList(
+    public async Task<GetRoleConflictMatrixListResponse> GetRoleConflictMatrixListAsync(
         GetRoleConflictMatrixListRequest request, CancellationToken cancellationToken = default)
     {
         var roleIdList = request.RoleIdList.Distinct().ToList();
@@ -36,7 +36,7 @@ public partial class RoleService : IRoleService
         };
     }
 
-    public async Task<AddRoleConflictMatrixResponse> AddRoleConflictMatrix(
+    public async Task<AddRoleConflictMatrixResponse> AddRoleConflictMatrixAsync(
         AddRoleConflictMatrixCommand command, CancellationToken cancellationToken = default)
     {
         var response = new AddRoleConflictMatrixResponse();
@@ -61,7 +61,7 @@ public partial class RoleService : IRoleService
         return response;
     }
 
-    public async Task<DeleteRoleConflictMatrixResponse> DeleteRoleConflictMatrix(
+    public async Task<DeleteRoleConflictMatrixResponse> DeleteRoleConflictMatrixAsync(
         DeleteRoleConflictMatrixCommand command, CancellationToken cancellationToken = default)
     {
         await _roleDataProvider.DeleteRoleConflictMatrixAsync([command.Id], cancellationToken).ConfigureAwait(false);
