@@ -4,7 +4,7 @@ using Void.Bot.Core.Domain.Security;
 
 namespace Void.Bot.Core.Services.Security;
 
-public interface IRoleDataProvider : IScope
+public partial interface IRoleDataProvider : IScope
 {
     public Task<Role?> GetRoleAsync(Guid id, CancellationToken cancellationToken);
     
@@ -23,13 +23,15 @@ public interface IRoleDataProvider : IScope
     public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
 }
 
-public class RoleDataProvider : IRoleDataProvider
+public partial class RoleDataProvider : IRoleDataProvider
 {
     private readonly IRepository<Role> _roleRep;
+    private readonly IRepository<RoleConflictMatrix> _roleConflictMatrixRep;
     
-    public RoleDataProvider(IRepository<Role> roleRep)
+    public RoleDataProvider(IRepository<Role> roleRep, IRepository<RoleConflictMatrix> roleConflictMatrixRep)
     {
         _roleRep = roleRep;
+        _roleConflictMatrixRep = roleConflictMatrixRep;
     }
     
     public async Task<Role?> GetRoleAsync(Guid id, CancellationToken cancellationToken)
