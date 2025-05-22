@@ -27,8 +27,7 @@ public partial class RoleService : IRoleService
     {
         var roleIdList = request.RoleIdList.Distinct().ToList();
         
-        var list = await _roleDataProvider.GetRoleConflictMatrixListAsync(
-            roleIdList, request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
+        var list = await _roleDataProvider.GetRoleConflictMatrixListAsync(roleIdList, cancellationToken).ConfigureAwait(false);
 
         return new GetRoleConflictMatrixListResponse
         {
