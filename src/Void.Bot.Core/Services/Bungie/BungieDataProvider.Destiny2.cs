@@ -11,14 +11,14 @@ public partial interface IBungieDataProvider : IScope
     Task<Destiny2ManifestResponse?> GetDestiny2ManifestAsync(CancellationToken cancellationToken);
     
     Task<Destiny2LinkedProfilesResponse?> GetDestiny2LinkedProfilesAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, long membershipId, CancellationToken cancellationToken, string accessToken = "");
+        BungieMembershipTypeEnum membershipType, long membershipId, CancellationToken cancellationToken, string accessToken = "");
     
     Task<Destiny2ProfileResponse?> GetDestiny2ProfileAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, long membershipId, List<Destiny2ComponentTypeEnum> components,
+        BungieMembershipTypeEnum membershipType, long membershipId, List<Destiny2ComponentTypeEnum> components,
         CancellationToken cancellationToken, string accessToken = "");
     
     Task<Destiny2PlayerByBungieNameResponse?> GetDestiny2PlayerByBungieNameAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, string displayName, int displayNameCode,
+        BungieMembershipTypeEnum membershipType, string displayName, int displayNameCode,
         CancellationToken cancellationToken, string accessToken = "");
 }
 
@@ -34,10 +34,10 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<Destiny2LinkedProfilesResponse?> GetDestiny2LinkedProfilesAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, long membershipId, CancellationToken cancellationToken, string accessToken = "")
+        BungieMembershipTypeEnum membershipType, long membershipId, CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.LinkedProfilesUrl
-            .Replace("{membershipType}", ((int)membershipTypeEnum).ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
             .Replace("{membershipId}", membershipId.ToString(), StringComparison.OrdinalIgnoreCase);
 
         var result = await GetBungieHttpClient(accessToken).GetAsync<Destiny2LinkedProfilesResponse>(url, cancellationToken).ConfigureAwait(false);
@@ -46,11 +46,11 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<Destiny2ProfileResponse?> GetDestiny2ProfileAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, long membershipId, List<Destiny2ComponentTypeEnum> components,
+        BungieMembershipTypeEnum membershipType, long membershipId, List<Destiny2ComponentTypeEnum> components,
         CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.ProfileUrl
-            .Replace("{membershipType}", ((int)membershipTypeEnum).ToString(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
             .Replace("{membershipId}", membershipId.ToString(), StringComparison.OrdinalIgnoreCase);
 
         url += $"?components={string.Join(",", components.Select(x => (int)x))}";
@@ -61,11 +61,11 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<Destiny2PlayerByBungieNameResponse?> GetDestiny2PlayerByBungieNameAsync(
-        BungieMembershipTypeEnum membershipTypeEnum, string displayName, int displayNameCode,
+        BungieMembershipTypeEnum membershipType, string displayName, int displayNameCode,
         CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.SearchPlayerProfileUrl
-            .Replace("{membershipType}", ((int)membershipTypeEnum).ToString(), StringComparison.OrdinalIgnoreCase);
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase);
 
         var request = new Destiny2PlayerByBungieNameRequest
         {

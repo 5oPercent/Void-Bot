@@ -30,7 +30,7 @@ public partial class BungieService : IBungieService
         GetDestiny2LinkedProfileRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2LinkedProfilesAsync(
-            request.MembershipTypeEnum, request.MembershipId, cancellationToken).ConfigureAwait(false);
+            request.MembershipType, request.MembershipId, cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2LinkedProfileResponse
         {
@@ -43,7 +43,7 @@ public partial class BungieService : IBungieService
         GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2PlayerByBungieNameAsync(
-            request.MembershipTypeEnum, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
+            request.MembershipType, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2ProfileListByBungieNameResponse
         {
@@ -96,7 +96,7 @@ public partial class BungieService : IBungieService
             }
             else if (findMembershipType != null)
             {
-                var profile = playerInfo.Profiles.FirstOrDefault(x => x.MembershipTypeEnum == findMembershipType);
+                var profile = playerInfo.Profiles.FirstOrDefault(x => x.MembershipType == findMembershipType);
                 
                 if (profile == null)
                 {
@@ -104,7 +104,7 @@ public partial class BungieService : IBungieService
                     return response;
                 }
                 
-                membershipType = profile.MembershipTypeEnum;
+                membershipType = profile.MembershipType;
                 membershipId = long.Parse(profile.MembershipId);
             }
         }
@@ -115,7 +115,7 @@ public partial class BungieService : IBungieService
                 {
                     DisplayName = findBungieName.Split("#")[0],
                     DisplayNameCode = int.Parse(findBungieName.Split("#")[1]),
-                    MembershipTypeEnum = findMembershipType ?? BungieMembershipTypeEnum.All
+                    MembershipType = findMembershipType ?? BungieMembershipTypeEnum.All
                 }, cancellationToken).ConfigureAwait(false);
             
             if (searchResult.Data == null || searchResult.Data.Response.Count == 0)
@@ -140,18 +140,18 @@ public partial class BungieService : IBungieService
                     case true:
                     {
                         var crossType = searchResult.Data.Response.First().CrossSaveOverride;
-                        profile = searchResult.Data.Response.First(x => x.MembershipTypeEnum == crossType);
+                        profile = searchResult.Data.Response.First(x => x.MembershipType == crossType);
                         break;
                     }
                     case false when findMembershipType != BungieMembershipTypeEnum.None:
-                        profile = searchResult.Data.Response.FirstOrDefault(x => x.MembershipTypeEnum == findMembershipType);
+                        profile = searchResult.Data.Response.FirstOrDefault(x => x.MembershipType == findMembershipType);
                         break;
                 }
             }
             
             if (profile != null)
             {
-                membershipType = profile.MembershipTypeEnum;
+                membershipType = profile.MembershipType;
                 membershipId = long.Parse(profile.MembershipId);
             }
         }
@@ -161,7 +161,7 @@ public partial class BungieService : IBungieService
             DisplayName = findBungieName,
             OnCrossSave = onCrossSave,
             IsSinglePlatform = isSinglePlatform,
-            MembershipTypeEnum = membershipType,
+            MembershipType = membershipType,
             MembershipId = membershipId
         };
 
@@ -172,7 +172,7 @@ public partial class BungieService : IBungieService
         GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2ProfileAsync(
-            request.MembershipTypeEnum, request.MembershipId,
+            request.MembershipType, request.MembershipId,
             [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
             cancellationToken).ConfigureAwait(false);
 
