@@ -62,7 +62,7 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
         var displayName = profileResponse.Data.DisplayName;
         var isSinglePlatform = profileResponse.Data.IsSinglePlatform;
         var onCrossSave = profileResponse.Data.OnCrossSave;
-        var membershipType = profileResponse.Data.MembershipTypeEnum;
+        var membershipType = profileResponse.Data.MembershipType;
         var membershipId = profileResponse.Data.MembershipId;
         
         if (!isSinglePlatform && !onCrossSave && findMembership == null)
@@ -81,7 +81,7 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
                 var response = await bungieService.GetDestiny2CareerAsync(
                     new GetDestiny2CareerRequest
                     {
-                        MembershipTypeEnum = membershipType,
+                        MembershipType = membershipType,
                         MembershipId = membershipId
                     }, cancellationToken).ConfigureAwait(false);
                 

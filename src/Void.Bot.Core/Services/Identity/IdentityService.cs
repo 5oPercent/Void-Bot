@@ -177,7 +177,7 @@ public class IdentityService : IIdentityService
         var profileResponse = await _bungieService.GetDestiny2LinkedProfileAsync(
             new GetDestiny2LinkedProfileRequest
             {
-                MembershipTypeEnum = BungieMembershipTypeEnum.BungieNext,
+                MembershipType = BungieMembershipTypeEnum.BungieNext,
                 MembershipId = int.Parse(tokenResponse.Data!.MembershipId)
             }, cancellationToken).ConfigureAwait(false);
 

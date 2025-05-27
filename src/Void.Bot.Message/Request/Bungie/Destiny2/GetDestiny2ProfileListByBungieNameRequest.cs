@@ -15,7 +15,7 @@ public class GetDestiny2ProfileListByBungieNameRequest : IRequest
     [Required]
     public int DisplayNameCode { get; set; }
 
-    public BungieMembershipTypeEnum MembershipTypeEnum { get; set; } = BungieMembershipTypeEnum.All;
+    public BungieMembershipTypeEnum MembershipType { get; set; } = BungieMembershipTypeEnum.All;
 }
 
 public class GetDestiny2ProfileListByBungieNameResponse : VoidBotResponse<Destiny2PlayerByBungieNameResponse>
