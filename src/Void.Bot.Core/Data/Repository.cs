@@ -32,7 +32,7 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
         dbContext.ShouldSaveChanges = true;
     }
 
-    public async Task InsertAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public async Task InsertManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         await dbContext.AddRangeAsync(entities, cancellationToken).ConfigureAwait(false);
         dbContext.ShouldSaveChanges = true;
@@ -45,7 +45,7 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
         return Task.CompletedTask;
     }
 
-    public Task UpdateAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public Task UpdateManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         dbContext.UpdateRange(entities);
         dbContext.ShouldSaveChanges = true;
@@ -59,7 +59,7 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
         return Task.CompletedTask;
     }
 
-    public Task DeleteAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public Task DeleteManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         dbContext.RemoveRange(entities);
         dbContext.ShouldSaveChanges = true;

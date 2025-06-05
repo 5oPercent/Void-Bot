@@ -15,15 +15,15 @@ public interface IRepository<TEntity>  where TEntity : class, IEntityBase
 
     Task InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-    Task InsertAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+    Task InsertManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-    Task UpdateAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+    Task UpdateManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
 
     Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default);
 
-    Task DeleteAllAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+    Task DeleteManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     
     Task DeleteAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 

@@ -40,6 +40,6 @@ public class MessageLoggingDataProvider(IRepository<MessageLog> messageRep) : IM
 
     public async Task AddMessageLogsAsync(List<MessageLog> messageLogs, CancellationToken cancellationToken)
     {
-        await messageRep.InsertAllAsync(messageLogs, cancellationToken).ConfigureAwait(false);
+        await messageRep.InsertManyAsync(messageLogs, cancellationToken).ConfigureAwait(false);
     }
 }
