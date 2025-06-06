@@ -75,7 +75,7 @@ public class RolePermissionService : IRolePermissionService
         var role = await _roleDataProvider.GetRoleAsync(command.RoleId, cancellationToken).ConfigureAwait(false);
         if (role == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Role with ID {command.RoleId} does not exist.";
             return response;
         }
@@ -87,7 +87,7 @@ public class RolePermissionService : IRolePermissionService
     
         if (nonExistentPermissionIds.Any())
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Permissions with IDs {string.Join(", ", nonExistentPermissionIds)} do not exist.";
             return response;
         }
@@ -123,7 +123,7 @@ public class RolePermissionService : IRolePermissionService
         var role = await _roleDataProvider.GetRoleAsync(command.RoleId, cancellationToken).ConfigureAwait(false);
         if (role == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Role with ID {command.RoleId} does not exist.";
             return response;
         }
@@ -159,7 +159,7 @@ public class RolePermissionService : IRolePermissionService
             .ToListAsync(cancellationToken);
         if (entities.Count == 0)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = "No matching role-permission relations found.";
             return response;
         }

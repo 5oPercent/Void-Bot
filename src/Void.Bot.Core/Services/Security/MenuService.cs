@@ -10,17 +10,23 @@ namespace Void.Bot.Core.Services.Security;
 
 public interface IMenuService : IScope
 {
-    public Task<GetMenuResponse> GetMenuAsync(GetMenuRequest request, CancellationToken cancellationToken = default);
+    public Task<GetMenuResponse> GetMenuAsync(
+        GetMenuRequest request, CancellationToken cancellationToken);
     
-    public Task<GetMenuListResponse> GetMenuListAsync(GetMenuListRequest request, CancellationToken cancellationToken = default);
+    public Task<GetMenuListResponse> GetMenuListAsync(
+        GetMenuListRequest request, CancellationToken cancellationToken);
     
-    public Task<GetMenuTreeResponse> GetMenuTreeAsync(GetMenuTreeRequest request, CancellationToken cancellationToken = default);
+    public Task<GetMenuTreeResponse> GetMenuTreeAsync(
+        GetMenuTreeRequest request, CancellationToken cancellationToken);
     
-    public Task<AddMenuResponse> AddMenuAsync(AddMenuCommand command, CancellationToken cancellationToken = default);
+    public Task<AddMenuResponse> AddMenuAsync(
+        AddMenuCommand command, CancellationToken cancellationToken);
     
-    public Task<UpdateMenuResponse> UpdateMenuAsync(UpdateMenuCommand command, CancellationToken cancellationToken = default);
+    public Task<UpdateMenuResponse> UpdateMenuAsync(
+        UpdateMenuCommand command, CancellationToken cancellationToken);
     
-    public Task<DeleteMenuListResponse> DeleteMenuListAsync(DeleteMenuListCommand command, CancellationToken cancellationToken = default);
+    public Task<DeleteMenuListResponse> DeleteMenuListAsync(
+        DeleteMenuListCommand command, CancellationToken cancellationToken);
 }
 
 public class MenuService : IMenuService
@@ -34,7 +40,8 @@ public class MenuService : IMenuService
         _menuDataProvider = menuDataProvider;
     }
 
-    public async Task<GetMenuResponse> GetMenuAsync(GetMenuRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetMenuResponse> GetMenuAsync(
+        GetMenuRequest request, CancellationToken cancellationToken)
     {
         var menu = await _menuDataProvider.GetMenuAsync(request.Id, cancellationToken).ConfigureAwait(false);
 
@@ -44,7 +51,8 @@ public class MenuService : IMenuService
         };
     }
 
-    public async Task<GetMenuListResponse> GetMenuListAsync(GetMenuListRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetMenuListResponse> GetMenuListAsync(
+        GetMenuListRequest request, CancellationToken cancellationToken)
     {
         var menuList = await _menuDataProvider.GetMenuListAsync(request.IdList, cancellationToken).ConfigureAwait(false);
 
@@ -54,7 +62,8 @@ public class MenuService : IMenuService
         };
     }
 
-    public async Task<GetMenuTreeResponse> GetMenuTreeAsync(GetMenuTreeRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetMenuTreeResponse> GetMenuTreeAsync(
+        GetMenuTreeRequest request, CancellationToken cancellationToken)
     {
         var list = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
 
@@ -66,7 +75,8 @@ public class MenuService : IMenuService
         };
     }
 
-    public async Task<AddMenuResponse> AddMenuAsync(AddMenuCommand command, CancellationToken cancellationToken = default)
+    public async Task<AddMenuResponse> AddMenuAsync(
+        AddMenuCommand command, CancellationToken cancellationToken)
     {
         var response = new AddMenuResponse();
         
@@ -85,9 +95,18 @@ public class MenuService : IMenuService
         return response;
     }
 
-    public async Task<UpdateMenuResponse> UpdateMenuAsync(UpdateMenuCommand command, CancellationToken cancellationToken = default)
+    public async Task<UpdateMenuResponse> UpdateMenuAsync(
+        UpdateMenuCommand command, CancellationToken cancellationToken)
     {
         var response = new UpdateMenuResponse();
+        
+        var menuSource = await _menuDataProvider.GetMenuAsync(command.Menu.Id, cancellationToken).ConfigureAwait(false);
+        if (menuSource == null)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Menu not found";
+            return response;
+        }
         
         var hasParent = await _menuDataProvider.GetAnyAsync([command.Menu.Pid], cancellationToken).ConfigureAwait(false);
         if (!hasParent)
@@ -104,7 +123,8 @@ public class MenuService : IMenuService
         return response;
     }
 
-    public async Task<DeleteMenuListResponse> DeleteMenuListAsync(DeleteMenuListCommand command, CancellationToken cancellationToken = default)
+    public async Task<DeleteMenuListResponse> DeleteMenuListAsync(
+        DeleteMenuListCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteMenuListResponse();
         

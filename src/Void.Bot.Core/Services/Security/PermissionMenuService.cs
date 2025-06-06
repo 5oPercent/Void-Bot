@@ -73,7 +73,7 @@ public class PermissionMenuService : IPermissionMenuService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Permission with ID {command.PermissionId} does not exist.";
             return response;
         }
@@ -86,7 +86,7 @@ public class PermissionMenuService : IPermissionMenuService
     
         if (nonExistentMenuIds.Count != 0)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Menu IDs do not exist: {string.Join(", ", nonExistentMenuIds)}";
             return response;
         }
@@ -123,7 +123,7 @@ public class PermissionMenuService : IPermissionMenuService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Permission with ID {command.PermissionId} does not exist.";
             return response;
         }
@@ -157,7 +157,7 @@ public class PermissionMenuService : IPermissionMenuService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Permission with ID {command.PermissionId} does not exist.";
             return response;
         }

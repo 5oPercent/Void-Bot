@@ -65,7 +65,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = "Permission not found.";
             return response;
         }
@@ -76,7 +76,7 @@ public class PermissionEndpointService : IPermissionEndpointService
 
         if (nonExistingEndpoints.Count != 0)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = $"Endpoints not found: {string.Join(", ", nonExistingEndpoints)}";
             return response;
         }
@@ -107,7 +107,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = "Permission not found.";
             return response;
         }
@@ -141,7 +141,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
         if (permission == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = "Permission not found.";
             return response;
         }

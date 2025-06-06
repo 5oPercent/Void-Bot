@@ -109,7 +109,7 @@ public partial class PermissionService : IPermissionService
         var permissionSource = await _permissionDataProvider.GetPermissionAsync(command.Permission.Id, cancellationToken).ConfigureAwait(false);
         if (permissionSource == null)
         {
-            response.Code = HttpStatusCode.NotFound;
+            response.Code = HttpStatusCode.BadRequest;
             response.Message = "Permission not found";
             return response;
         }

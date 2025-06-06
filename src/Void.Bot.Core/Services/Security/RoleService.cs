@@ -10,17 +10,23 @@ namespace Void.Bot.Core.Services.Security;
 
 public partial interface IRoleService : IScope
 {
-    public Task<GetRoleResponse> GetRoleAsync(GetRoleRequest request, CancellationToken cancellationToken = default);
+    public Task<GetRoleResponse> GetRoleAsync(
+        GetRoleRequest request, CancellationToken cancellationToken);
     
-    public Task<GetRoleListResponse> GetRoleListAsync(GetRoleListRequest request, CancellationToken cancellationToken = default);
+    public Task<GetRoleListResponse> GetRoleListAsync(
+        GetRoleListRequest request, CancellationToken cancellationToken);
     
-    public Task<GetRoleTreeResponse> GetRoleTreeAsync(GetRoleTreeRequest request, CancellationToken cancellationToken = default);
+    public Task<GetRoleTreeResponse> GetRoleTreeAsync(
+        GetRoleTreeRequest request, CancellationToken cancellationToken);
     
-    public Task<AddRoleResponse> AddRoleAsync(AddRoleCommand command, CancellationToken cancellationToken = default);
+    public Task<AddRoleResponse> AddRoleAsync(
+        AddRoleCommand command, CancellationToken cancellationToken);
     
-    public Task<UpdateRoleResponse> UpdateRoleAsync(UpdateRoleCommand command, CancellationToken cancellationToken = default);
+    public Task<UpdateRoleResponse> UpdateRoleAsync(
+        UpdateRoleCommand command, CancellationToken cancellationToken);
     
-    public Task<DeleteRoleListResponse> DeleteRoleListAsync(DeleteRoleListCommand command, CancellationToken cancellationToken = default);
+    public Task<DeleteRoleListResponse> DeleteRoleListAsync(
+        DeleteRoleListCommand command, CancellationToken cancellationToken);
 }
 
 public partial class RoleService : IRoleService
@@ -34,7 +40,8 @@ public partial class RoleService : IRoleService
         _roleDataProvider = roleDataProvider;
     }
 
-    public async Task<GetRoleResponse> GetRoleAsync(GetRoleRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetRoleResponse> GetRoleAsync(
+        GetRoleRequest request, CancellationToken cancellationToken)
     {
         var role = await _roleDataProvider.GetRoleAsync(request.Id, cancellationToken).ConfigureAwait(false);
 
@@ -44,7 +51,8 @@ public partial class RoleService : IRoleService
         };
     }
 
-    public async Task<GetRoleListResponse> GetRoleListAsync(GetRoleListRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetRoleListResponse> GetRoleListAsync(
+        GetRoleListRequest request, CancellationToken cancellationToken)
     {
         var roleList = await _roleDataProvider.GetRoleListAsync(request.IdList, cancellationToken).ConfigureAwait(false);
         
@@ -54,7 +62,8 @@ public partial class RoleService : IRoleService
         };
     }
 
-    public async Task<GetRoleTreeResponse> GetRoleTreeAsync(GetRoleTreeRequest request, CancellationToken cancellationToken = default)
+    public async Task<GetRoleTreeResponse> GetRoleTreeAsync(
+        GetRoleTreeRequest request, CancellationToken cancellationToken)
     {
         var list = await _roleDataProvider.GetAllRoleAsync(cancellationToken).ConfigureAwait(false);
 
@@ -66,7 +75,8 @@ public partial class RoleService : IRoleService
         };
     }
 
-    public async Task<AddRoleResponse> AddRoleAsync(AddRoleCommand command, CancellationToken cancellationToken = default)
+    public async Task<AddRoleResponse> AddRoleAsync(
+        AddRoleCommand command, CancellationToken cancellationToken)
     {
         var response = new AddRoleResponse();
         
@@ -85,16 +95,28 @@ public partial class RoleService : IRoleService
         return response;
     }
 
-    public async Task<UpdateRoleResponse> UpdateRoleAsync(UpdateRoleCommand command, CancellationToken cancellationToken = default)
+    public async Task<UpdateRoleResponse> UpdateRoleAsync(
+        UpdateRoleCommand command, CancellationToken cancellationToken)
     {
         var response = new UpdateRoleResponse();
         
-        var hasParent = await _roleDataProvider.GetAnyAsync([command.Role.Pid], cancellationToken).ConfigureAwait(false);
-        if (!hasParent)
+        var roleSource = await _roleDataProvider.GetRoleAsync(command.Role.Id, cancellationToken).ConfigureAwait(false);
+        if (roleSource == null)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Parent role not found";
+            response.Message = "Role not found";
             return response;
+        }
+
+        if (command.Role.Pid != Guid.Empty)
+        {
+            var hasParent = await _roleDataProvider.GetAnyAsync([command.Role.Pid], cancellationToken).ConfigureAwait(false);
+            if (!hasParent)
+            {
+                response.Code = HttpStatusCode.BadRequest;
+                response.Message = "Parent role not found";
+                return response;
+            }
         }
         
         var role = _mapper.Map<Role>(command.Role);
@@ -104,7 +126,8 @@ public partial class RoleService : IRoleService
         return response;
     }
 
-    public async Task<DeleteRoleListResponse> DeleteRoleListAsync(DeleteRoleListCommand command, CancellationToken cancellationToken = default)
+    public async Task<DeleteRoleListResponse> DeleteRoleListAsync(
+        DeleteRoleListCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteRoleListResponse();
         
