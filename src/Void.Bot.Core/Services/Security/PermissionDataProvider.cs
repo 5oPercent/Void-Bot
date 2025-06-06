@@ -17,6 +17,10 @@ public interface IPermissionDataProvider : IScope
     public Task UpdatePermissionAsync(Permission entity, CancellationToken cancellationToken);
     
     public Task DeletePermissionsAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
 }
 
 public class PermissionDataProvider : IPermissionDataProvider
@@ -56,5 +60,15 @@ public class PermissionDataProvider : IPermissionDataProvider
     public async Task DeletePermissionsAsync(List<Guid> idList, CancellationToken cancellationToken)
     {
         await _permissionRep.DeleteAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken)
+    {
+        return await _permissionRep.AnyAsync(x => idList.Contains(x.Id), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken)
+    {
+        return await _permissionRep.AnyAsync(x => pidList.Contains(x.Pid), cancellationToken).ConfigureAwait(false);
     }
 }
