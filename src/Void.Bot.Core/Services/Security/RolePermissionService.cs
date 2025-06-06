@@ -136,20 +136,11 @@ public class RolePermissionService : IRolePermissionService
         
         var permissionIds = command.PermissionIds.Distinct().ToList();
         var existingPermissions = await _permissionDataProvider.GetPermissionsAsync(permissionIds, cancellationToken).ConfigureAwait(false);
-        var existingPermissionIds = existingPermissions.Select(p => p.Id).ToHashSet();
-        var nonExistentPermissionIds = permissionIds.Where(id => !existingPermissionIds.Contains(id)).ToList();
         
-        if (nonExistentPermissionIds.Count != 0)
-        {
-            response.Code = HttpStatusCode.NotFound;
-            response.Message = $"Permissions with IDs {string.Join(", ", nonExistentPermissionIds)} do not exist.";
-            return response;
-        }
-        
-        var entities = permissionIds.Select(pid => new RolePermission
+        var entities = existingPermissions.Select(p => new RolePermission
         {
             RoleId = command.RoleId,
-            PermissionId = pid
+            PermissionId = p.Id
         }).ToList();
         
         await _rolePermissionRep.InsertManyAsync(entities, cancellationToken).ConfigureAwait(false);

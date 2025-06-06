@@ -137,20 +137,11 @@ public class PermissionMenuService : IPermissionMenuService
         
         var menuIds = command.MenuIds.Distinct().ToList();
         var existingMenus = await _menuDataProvider.GetMenuListAsync(menuIds, cancellationToken).ConfigureAwait(false);
-        var existingMenuIds = existingMenus.Select(m => m.Id).ToHashSet();
-        var nonExistentMenuIds = menuIds.Where(id => !existingMenuIds.Contains(id)).ToList();
-    
-        if (nonExistentMenuIds.Count != 0)
-        {
-            response.Code = HttpStatusCode.NotFound;
-            response.Message = $"Menu IDs do not exist: {string.Join(", ", nonExistentMenuIds)}";
-            return response;
-        }
         
-        var newPermissionMenus = menuIds.Select(menuId => new PermissionMenu
+        var newPermissionMenus = existingMenus.Select(m => new PermissionMenu
         {
             PermissionId = command.PermissionId,
-            MenuId = menuId
+            MenuId = m.Id
         }).ToList();
 
         await _permissionMenuRep.InsertManyAsync(newPermissionMenus, cancellationToken).ConfigureAwait(false);

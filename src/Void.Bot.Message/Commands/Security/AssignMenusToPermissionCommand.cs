@@ -10,7 +10,7 @@ public class AssignMenusToPermissionCommand : ICommand
     
     [Required]
     [MinLength(1)]
-    public List<Guid> MenuIds { get; set; }
+    public List<Guid> MenuIds { get; set; } = [];
 }
 
 public class AssignMenusToPermissionResponse : VoidBotResponse
