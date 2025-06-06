@@ -162,7 +162,7 @@ public class PermissionMenuService : IPermissionMenuService
             return response;
         }
 
-        await _permissionMenuRep.DeleteAsync(pm => command.MenuIds.Contains(pm.MenuId), cancellationToken).ConfigureAwait(false);
+        await _permissionMenuRep.DeleteAsync(pm => pm.PermissionId == command.PermissionId && command.MenuIds.Contains(pm.MenuId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }

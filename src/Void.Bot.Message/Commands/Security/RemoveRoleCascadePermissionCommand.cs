@@ -4,13 +4,13 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class DeleteRoleListCommand : ICommand
+public class RemoveRoleCascadePermissionCommand : ICommand
 {
     [Required]
     [MinLength(1)]
-    public List<Guid> IdList { get; set; } = [];
+    public List<Guid> RoleIds { get; set; } = [];
 }
 
-public class DeleteRoleListResponse : VoidBotResponse
+public class RemoveRoleCascadePermissionResponse : VoidBotResponse
 {
 }

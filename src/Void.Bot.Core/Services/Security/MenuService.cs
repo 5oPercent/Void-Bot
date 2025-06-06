@@ -136,6 +136,8 @@ public class MenuService : IMenuService
             return response;
         }
         
+        // TODO: Remove menu-permission data
+        
         await _menuDataProvider.DeleteMenusAsync(command.IdList, cancellationToken).ConfigureAwait(false);
 
         return response;

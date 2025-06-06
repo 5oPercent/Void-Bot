@@ -1,8 +1,10 @@
 using System.Net;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Message.Commands.Security;
+using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Request.Security;
 
 namespace Void.Bot.Core.Services.Security;
@@ -21,21 +23,27 @@ public interface IRolePermissionService : IScope
     Task<UpdateRolePermissionsResponse> UpdateRolePermissionsAsync(
         UpdateRolePermissionsCommand command, CancellationToken cancellationToken);
     
-    Task<RemovePermissionFromRoleResponse> RemovePermissionFromRoleAsync(
-        RemovePermissionFromRoleCommand command, CancellationToken cancellationToken);
+    Task<RemoveRoleCascadePermissionResponse> RemoveRoleCascadePermissionAsync(
+        RemoveRoleCascadePermissionCommand command, CancellationToken cancellationToken);
+    
+    Task<RemovePermissionCascadeRoleResponse> RemovePermissionCascadeRoleAsync(
+        RemovePermissionCascadeRoleCommand command, CancellationToken cancellationToken);
 }
 
 public class RolePermissionService : IRolePermissionService
 {
+    private readonly IMapper _mapper;
     private readonly IRoleDataProvider _roleDataProvider;
     private readonly IPermissionDataProvider _permissionDataProvider;
     private readonly IRepository<RolePermission> _rolePermissionRep;
 
     public RolePermissionService(
+        IMapper mapper,
         IRoleDataProvider roleDataProvider,
         IPermissionDataProvider permissionDataProvider,
         IRepository<RolePermission> rolePermissionRep)
     {
+        _mapper = mapper;
         _roleDataProvider = roleDataProvider;
         _permissionDataProvider = permissionDataProvider;
         _rolePermissionRep = rolePermissionRep;
@@ -48,10 +56,12 @@ public class RolePermissionService : IRolePermissionService
             .Where(x => x.RoleId == request.RoleId)
             .Select(x => x.PermissionId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+        
+        var permissions = await _permissionDataProvider.GetPermissionsAsync(list, cancellationToken).ConfigureAwait(false);
 
         return new GetPermissionsByRoleIdResponse
         {
-            Data = list
+            Data = _mapper.Map<List<PermissionDto>>(permissions)
         };
     }
 
@@ -148,22 +158,22 @@ public class RolePermissionService : IRolePermissionService
         return response;
     }
 
-    public async Task<RemovePermissionFromRoleResponse> RemovePermissionFromRoleAsync(
-        RemovePermissionFromRoleCommand command, CancellationToken cancellationToken)
+    public async Task<RemoveRoleCascadePermissionResponse> RemoveRoleCascadePermissionAsync(
+        RemoveRoleCascadePermissionCommand command, CancellationToken cancellationToken)
     {
-        var response = new RemovePermissionFromRoleResponse();
+        var response = new RemoveRoleCascadePermissionResponse();
         
-        var permissionIds = command.PermissionIds.Distinct().ToList();
-        var entities = await _rolePermissionRep.QueryNoTracking()
-            .Where(x => x.RoleId == command.RoleId && permissionIds.Contains(x.PermissionId))
-            .ToListAsync(cancellationToken);
-        if (entities.Count == 0)
-        {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "No matching role-permission relations found.";
-            return response;
-        }
-        await _rolePermissionRep.DeleteManyAsync(entities, cancellationToken);
+        await _rolePermissionRep.DeleteAsync(rp => command.RoleIds.Contains(rp.RoleId), cancellationToken).ConfigureAwait(false);
+        
+        return response;
+    }
+
+    public async Task<RemovePermissionCascadeRoleResponse> RemovePermissionCascadeRoleAsync(
+        RemovePermissionCascadeRoleCommand command, CancellationToken cancellationToken)
+    {
+        var response = new RemovePermissionCascadeRoleResponse();
+        
+        await _rolePermissionRep.DeleteAsync(rp => command.PermissionIds.Contains(rp.PermissionId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }

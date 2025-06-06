@@ -25,19 +25,27 @@ public partial interface IRoleService : IScope
     public Task<UpdateRoleResponse> UpdateRoleAsync(
         UpdateRoleCommand command, CancellationToken cancellationToken);
     
-    public Task<DeleteRoleListResponse> DeleteRoleListAsync(
-        DeleteRoleListCommand command, CancellationToken cancellationToken);
+    public Task<DeleteRoleCascadeResponse> DeleteRoleCascadeAsync(
+        DeleteRoleCascadeCommand command, CancellationToken cancellationToken);
 }
 
 public partial class RoleService : IRoleService
 {
     private readonly IMapper _mapper;
     private readonly IRoleDataProvider _roleDataProvider;
+    private readonly IUserRoleService _userRoleService;
+    private readonly IRolePermissionService _rolePermissionService;
     
-    public RoleService(IMapper mapper, IRoleDataProvider roleDataProvider)
+    public RoleService(
+        IMapper mapper,
+        IRoleDataProvider roleDataProvider,
+        IUserRoleService userRoleService,
+        IRolePermissionService rolePermissionService)
     {
         _mapper = mapper;
         _roleDataProvider = roleDataProvider;
+        _userRoleService = userRoleService;
+        _rolePermissionService = rolePermissionService;
     }
 
     public async Task<GetRoleResponse> GetRoleAsync(
@@ -126,10 +134,10 @@ public partial class RoleService : IRoleService
         return response;
     }
 
-    public async Task<DeleteRoleListResponse> DeleteRoleListAsync(
-        DeleteRoleListCommand command, CancellationToken cancellationToken)
+    public async Task<DeleteRoleCascadeResponse> DeleteRoleCascadeAsync(
+        DeleteRoleCascadeCommand command, CancellationToken cancellationToken)
     {
-        var response = new DeleteRoleListResponse();
+        var response = new DeleteRoleCascadeResponse();
         
         var hasChild = await _roleDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         if (hasChild)
@@ -138,8 +146,15 @@ public partial class RoleService : IRoleService
             response.Message = "Child role exists";
             return response;
         }
+
+        // TODO: Remove user-role data
+        
+        // Remove role-permission data
+        await _rolePermissionService.RemoveRoleCascadePermissionAsync(
+            new RemoveRoleCascadePermissionCommand { RoleIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
         await _roleDataProvider.DeleteRoleListAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        
 
         return response;
     }

@@ -34,13 +34,22 @@ public partial class PermissionService : IPermissionService
 {
     private readonly IMapper _mapper;
     private readonly IPermissionDataProvider _permissionDataProvider;
+    private readonly IRolePermissionService _rolePermissionService;
+    private readonly IPermissionMenuService _permissionMenuService;
+    private readonly IPermissionEndpointService _permissionEndpointService;
 
     public PermissionService(
         IMapper mapper,
-        IPermissionDataProvider permissionDataProvider)
+        IPermissionDataProvider permissionDataProvider,
+        IRolePermissionService rolePermissionService,
+        IPermissionMenuService permissionMenuService,
+        IPermissionEndpointService permissionEndpointService)
     {
         _mapper = mapper;
         _permissionDataProvider = permissionDataProvider;
+        _rolePermissionService = rolePermissionService;
+        _permissionMenuService = permissionMenuService;
+        _permissionEndpointService = permissionEndpointService;
     }
 
     public async Task<GetPermissionResponse> GetPermissionAsync(
@@ -155,6 +164,14 @@ public partial class PermissionService : IPermissionService
             response.Message = "Child permission exists";
             return response;
         }
+        
+        // Remove permission-role data
+        await _rolePermissionService.RemovePermissionCascadeRoleAsync(
+            new RemovePermissionCascadeRoleCommand {PermissionIds = command.IdList}, cancellationToken).ConfigureAwait(false);
+        
+        // TODO: Remove permission-menu data
+        
+        // TODO: Remove permission-endpoint data
         
         await _permissionDataProvider.DeletePermissionsAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         
