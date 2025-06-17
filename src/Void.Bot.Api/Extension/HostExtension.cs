@@ -41,6 +41,7 @@ public static class HostExtension
         var services = builder.Services;
         var configuration = builder.Configuration;
         
+        var cacheSetting = new CacheSetting(configuration);
         var hangfireSetting = new HangfireSetting(configuration);
         var connectionSetting = new ConnectionStringSetting(configuration);
         
@@ -80,7 +81,8 @@ public static class HostExtension
             switch(hangfireSetting.UseStorage)
             {
                 case CacheTypeEnum.Redis:
-                    config.UseRedisStorage(connectionSetting.Redis);
+                    var option = new RedisStorageOptions { Db = cacheSetting.RedisDatabaseIndex };
+                    config.UseRedisStorage(connectionSetting.Redis, option);
                     break;
                 case CacheTypeEnum.Memory:
                 default:

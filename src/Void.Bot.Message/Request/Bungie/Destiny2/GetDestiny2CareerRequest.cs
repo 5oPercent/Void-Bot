@@ -7,7 +7,7 @@ namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
 public class GetDestiny2CareerRequest : IRequest
 {
-    public BungieMembershipTypeEnum MembershipTypeEnum { get; set; }
+    public BungieMembershipTypeEnum MembershipType { get; set; }
     
     public long MembershipId { get; set; }
 }
