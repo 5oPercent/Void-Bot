@@ -7,6 +7,9 @@
     <main>
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <button class="btn btn-link" @onclick="ToggleTheme">
+                <i class="fa-solid @(_isDarkTheme ? "fa-sun" : "fa-moon")"></i>
+            </button>
         </div>
 
         <article class="content px-4">
@@ -14,3 +17,37 @@
         </article>
     </main>
 </div>
+
+@code {
+    [Inject]
+    private IJSRuntime JS { get; set; }
+    
+    private bool _isDarkTheme = false;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var systemDark = await GetSystemThemeAsync();
+            _isDarkTheme = systemDark;
+            RenderTheme();
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleTheme()
+    {
+        _isDarkTheme = !_isDarkTheme;
+        RenderTheme();
+    }
+
+    private void RenderTheme()
+    {
+        JS.InvokeVoidAsync(_isDarkTheme ? "document.body.classList.add" : "document.body.classList.remove", "dark-theme");
+    }
+    
+    private async Task<bool> GetSystemThemeAsync()
+    {
+        return await JS.InvokeAsync<bool>("eval", "window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches");
+    }
+}
