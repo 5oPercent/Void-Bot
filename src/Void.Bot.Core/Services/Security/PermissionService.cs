@@ -167,11 +167,15 @@ public partial class PermissionService : IPermissionService
         
         // Remove permission-role data
         await _rolePermissionService.RemovePermissionCascadeRoleAsync(
-            new RemovePermissionCascadeRoleCommand {PermissionIds = command.IdList}, cancellationToken).ConfigureAwait(false);
+            new RemovePermissionCascadeRoleCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
-        // TODO: Remove permission-menu data
+        // Remove permission-menu data
+        await _permissionMenuService.RemovePermissionsCascadeMenuAsync(
+            new RemovePermissionsCascadeMenuCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
-        // TODO: Remove permission-endpoint data
+        // Remove permission-endpoint data
+        await _permissionEndpointService.RemovePermissionsCascadeEndpointAsync(
+            new RemovePermissionsCascadeEndpointCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
         await _permissionDataProvider.DeletePermissionsAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         

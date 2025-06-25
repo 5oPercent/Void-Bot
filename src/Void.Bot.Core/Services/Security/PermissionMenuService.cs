@@ -20,8 +20,11 @@ public interface IPermissionMenuService : IScope
     Task<UpdatePermissionMenusResponse> UpdatePermissionMenusAsync(
         UpdatePermissionMenusCommand command, CancellationToken cancellationToken);
     
-    Task<RemoveMenusFromPermissionResponse> RemoveMenusFromPermissionAsync(
-        RemoveMenusFromPermissionCommand command, CancellationToken cancellationToken);
+    Task<RemoveMenusCascadePermissionResponse> RemoveMenusCascadePermissionAsync(
+        RemoveMenusCascadePermissionCommand command, CancellationToken cancellationToken);
+    
+    Task<RemovePermissionsCascadeMenuResponse> RemovePermissionsCascadeMenuAsync(
+        RemovePermissionsCascadeMenuCommand command, CancellationToken cancellationToken);
 }
 
 public class PermissionMenuService : IPermissionMenuService
@@ -149,20 +152,22 @@ public class PermissionMenuService : IPermissionMenuService
         return response;
     }
 
-    public async Task<RemoveMenusFromPermissionResponse> RemoveMenusFromPermissionAsync(
-        RemoveMenusFromPermissionCommand command, CancellationToken cancellationToken)
+    public async Task<RemoveMenusCascadePermissionResponse> RemoveMenusCascadePermissionAsync(
+        RemoveMenusCascadePermissionCommand command, CancellationToken cancellationToken)
     {
-        var response = new RemoveMenusFromPermissionResponse();
+        var response = new RemoveMenusCascadePermissionResponse();
 
-        var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
-        if (permission == null)
-        {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = $"Permission with ID {command.PermissionId} does not exist.";
-            return response;
-        }
+        await _permissionMenuRep.DeleteAsync(pm => command.MenuIds.Contains(pm.MenuId), cancellationToken).ConfigureAwait(false);
+        
+        return response;
+    }
 
-        await _permissionMenuRep.DeleteAsync(pm => pm.PermissionId == command.PermissionId && command.MenuIds.Contains(pm.MenuId), cancellationToken).ConfigureAwait(false);
+    public async Task<RemovePermissionsCascadeMenuResponse> RemovePermissionsCascadeMenuAsync(
+        RemovePermissionsCascadeMenuCommand command, CancellationToken cancellationToken)
+    {
+        var response = new RemovePermissionsCascadeMenuResponse();
+        
+        await _permissionMenuRep.DeleteAsync(pm => command.PermissionIds.Contains(pm.PermissionId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }

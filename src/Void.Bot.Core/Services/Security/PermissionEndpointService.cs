@@ -20,8 +20,11 @@ public interface IPermissionEndpointService : IScope
     Task<UpdatePermissionEndpointsResponse> UpdatePermissionEndpointsAsync(
         UpdatePermissionEndpointsCommand command, CancellationToken cancellationToken);
     
-    Task<RemoveEndpointsFromPermissionResponse> RemoveEndpointsFromPermissionAsync(
-        RemoveEndpointsFromPermissionCommand command, CancellationToken cancellationToken);
+    Task<RemovePermissionsCascadeEndpointResponse> RemovePermissionsCascadeEndpointAsync(
+        RemovePermissionsCascadeEndpointCommand command, CancellationToken cancellationToken);
+    
+    Task<RemoveEndpointsCascadePermissionResponse> RemoveEndpointsCascadePermissionAsync(
+        RemoveEndpointsCascadePermissionCommand command, CancellationToken cancellationToken);
 }
 
 public class PermissionEndpointService : IPermissionEndpointService
@@ -133,20 +136,22 @@ public class PermissionEndpointService : IPermissionEndpointService
         return response;
     }
 
-    public async Task<RemoveEndpointsFromPermissionResponse> RemoveEndpointsFromPermissionAsync(
-        RemoveEndpointsFromPermissionCommand command, CancellationToken cancellationToken)
+    public async Task<RemovePermissionsCascadeEndpointResponse> RemovePermissionsCascadeEndpointAsync(
+        RemovePermissionsCascadeEndpointCommand command, CancellationToken cancellationToken)
     {
-        var response = new RemoveEndpointsFromPermissionResponse();
+        var response = new RemovePermissionsCascadeEndpointResponse();
         
-        var permission = await _permissionDataProvider.GetPermissionAsync(command.PermissionId, cancellationToken).ConfigureAwait(false);
-        if (permission == null)
-        {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Permission not found.";
-            return response;
-        }
+        await _permissionEndpointRep.DeleteAsync(pe => command.PermissionIds.Contains(pe.PermissionId), cancellationToken).ConfigureAwait(false);
+        
+        return response;
+    }
 
-        await _permissionEndpointRep.DeleteAsync(pe => pe.PermissionId == command.PermissionId && command.Endpoints.Contains(pe.Endpoint), cancellationToken).ConfigureAwait(false);
+    public async Task<RemoveEndpointsCascadePermissionResponse> RemoveEndpointsCascadePermissionAsync(
+        RemoveEndpointsCascadePermissionCommand command, CancellationToken cancellationToken)
+    {
+        var response = new RemoveEndpointsCascadePermissionResponse();
+        
+        await _permissionEndpointRep.DeleteAsync(pe => command.Endpoints.Contains(pe.Endpoint), cancellationToken).ConfigureAwait(false);
         
         return response;
     }

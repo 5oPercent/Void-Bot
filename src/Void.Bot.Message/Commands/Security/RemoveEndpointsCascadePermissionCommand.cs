@@ -4,15 +4,13 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class RemoveEndpointsFromPermissionCommand : ICommand
+public class RemoveEndpointsCascadePermissionCommand : ICommand
 {
-    public Guid PermissionId { get; set; }
-
     [Required]
     [MinLength(1)] 
     public List<string> Endpoints { get; set; } = [];
 }
 
-public class RemoveEndpointsFromPermissionResponse : VoidBotResponse
+public class RemoveEndpointsCascadePermissionResponse : VoidBotResponse
 {
 }
