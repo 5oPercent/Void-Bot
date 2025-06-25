@@ -147,7 +147,9 @@ public partial class RoleService : IRoleService
             return response;
         }
 
-        // TODO: Remove user-role data
+        // Remove user-role data
+        await _userRoleService.RemoveRolesCascadeUserAsync(
+            new RemoveRolesCascadeUserCommand { RoleIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
         // Remove role-permission data
         await _rolePermissionService.RemoveRoleCascadePermissionAsync(
