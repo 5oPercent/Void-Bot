@@ -18,15 +18,17 @@ public interface IUserRoleService : IScope
     Task<AssignRolesToUserResponse> AssignRolesToUserAsync(
         AssignRolesToUserCommand command, CancellationToken cancellationToken);
     
-    Task<UpdateUserRolesResponse> UpdateUserRolesAsync(
-        UpdateUserRolesCommand command, CancellationToken cancellationToken);
+    Task<UnassignRolesFromUserResponse> UnassignRolesFromUserAsync(
+        UnassignRolesFromUserCommand command, CancellationToken cancellationToken);
     
+    Task<ReplaceUserRolesResponse> ReplaceUserRolesAsync(
+        ReplaceUserRolesCommand command, CancellationToken cancellationToken);
+
     Task<RemoveRolesCascadeUserResponse> RemoveRolesCascadeUserAsync(
         RemoveRolesCascadeUserCommand command, CancellationToken cancellationToken);
     
     Task<RemoveUsersCascadeRoleResponse> RemoveUsersCascadeRoleAsync(
         RemoveUsersCascadeRoleCommand command, CancellationToken cancellationToken);
-
 }
 
 public class UserRoleService : IUserRoleService
@@ -54,8 +56,8 @@ public class UserRoleService : IUserRoleService
         var response = new GetRolesByUserIdResponse();
         
         var roleIds = await _userRoleRep.QueryNoTracking()
-            .Where(ur => ur.UserId == request.UserId)
-            .Select(ur => ur.RoleId)
+            .Where(x => x.UserId == request.UserId)
+            .Select(x => x.RoleId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         if (roleIds.Count == 0)
@@ -97,8 +99,8 @@ public class UserRoleService : IUserRoleService
         }
 
         var existingRoleIdsForUser = await _userRoleRep.QueryNoTracking()
-            .Where(ur => ur.UserId == command.UserId && roleIds.Contains(ur.RoleId))
-            .Select(ur => ur.RoleId)
+            .Where(x => x.UserId == command.UserId && roleIds.Contains(x.RoleId))
+            .Select(x => x.RoleId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
         var newRoleIds = roleIds.Except(existingRoleIdsForUser).ToList();
@@ -119,10 +121,20 @@ public class UserRoleService : IUserRoleService
         return response;
     }
 
-    public async Task<UpdateUserRolesResponse> UpdateUserRolesAsync(
-        UpdateUserRolesCommand command, CancellationToken cancellationToken)
+    public async Task<UnassignRolesFromUserResponse> UnassignRolesFromUserAsync(
+        UnassignRolesFromUserCommand command, CancellationToken cancellationToken)
     {
-        var response = new UpdateUserRolesResponse();
+        var response = new UnassignRolesFromUserResponse();
+        
+        await _userRoleRep.DeleteAsync(x => x.UserId == command.UserId && command.RoleIds.Contains(x.RoleId), cancellationToken).ConfigureAwait(false);
+        
+        return response;
+    }
+    
+    public async Task<ReplaceUserRolesResponse> ReplaceUserRolesAsync(
+        ReplaceUserRolesCommand command, CancellationToken cancellationToken)
+    {
+        var response = new ReplaceUserRolesResponse();
         
         var user = await _accountDataProvider.GetUserAccountAsync(command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
         if (user == null)
@@ -132,7 +144,7 @@ public class UserRoleService : IUserRoleService
             return response;
         }
         
-        await _userRoleRep.DeleteAsync(ur => ur.UserId == command.UserId, cancellationToken).ConfigureAwait(false);
+        await _userRoleRep.DeleteAsync(x => x.UserId == command.UserId, cancellationToken).ConfigureAwait(false);
 
         if (command.RoleIds.Count == 0)
         {
@@ -158,7 +170,7 @@ public class UserRoleService : IUserRoleService
     {
         var response = new RemoveRolesCascadeUserResponse();
         
-        await _userRoleRep.DeleteAsync(ur => command.RoleIds.Contains(ur.RoleId), cancellationToken).ConfigureAwait(false);
+        await _userRoleRep.DeleteAsync(x => command.RoleIds.Contains(x.RoleId), cancellationToken).ConfigureAwait(false);
 
         return response;
     }
@@ -168,7 +180,7 @@ public class UserRoleService : IUserRoleService
     {
         var response = new RemoveUsersCascadeRoleResponse();
         
-        await _userRoleRep.DeleteAsync(ur => command.UserIds.Contains(ur.UserId), cancellationToken).ConfigureAwait(false);
+        await _userRoleRep.DeleteAsync(x => command.UserIds.Contains(x.UserId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }
