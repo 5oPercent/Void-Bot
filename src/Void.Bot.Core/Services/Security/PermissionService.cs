@@ -26,8 +26,8 @@ public partial interface IPermissionService : IScope
     Task<UpdatePermissionResponse> UpdatePermissionAsync(
         UpdatePermissionCommand command, CancellationToken cancellationToken);
     
-    Task<DeletePermissionListResponse> DeletePermissionListAsync(
-        DeletePermissionListCommand command, CancellationToken cancellationToken);
+    Task<DeletePermissionCascadeResponse> DeletePermissionCascadeAsync(
+        DeletePermissionCascadeCommand command, CancellationToken cancellationToken);
 }
 
 public partial class PermissionService : IPermissionService
@@ -152,10 +152,10 @@ public partial class PermissionService : IPermissionService
         return response;
     }
 
-    public async Task<DeletePermissionListResponse> DeletePermissionListAsync(
-        DeletePermissionListCommand command, CancellationToken cancellationToken)
+    public async Task<DeletePermissionCascadeResponse> DeletePermissionCascadeAsync(
+        DeletePermissionCascadeCommand command, CancellationToken cancellationToken)
     {
-        var response = new DeletePermissionListResponse();
+        var response = new DeletePermissionCascadeResponse();
         
         var hasChild = await _permissionDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         if (hasChild)

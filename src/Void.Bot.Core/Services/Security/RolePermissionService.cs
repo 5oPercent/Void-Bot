@@ -17,11 +17,14 @@ public interface IRolePermissionService : IScope
     Task<GetRoleHasPermissionResponse> GetRoleHasPermissionAsync(
         GetRoleHasPermissionRequest request, CancellationToken cancellationToken);
     
-    Task<AssignPermissionToRoleResponse> AssignPermissionToRoleAsync(
-        AssignPermissionToRoleCommand command, CancellationToken cancellationToken);
+    Task<AssignPermissionsToRoleResponse> AssignPermissionsToRoleAsync(
+        AssignPermissionsToRoleCommand command, CancellationToken cancellationToken);
     
-    Task<UpdateRolePermissionsResponse> UpdateRolePermissionsAsync(
-        UpdateRolePermissionsCommand command, CancellationToken cancellationToken);
+    Task<UnassignPermissionsFromRoleResponse> UnassignPermissionsFromRoleAsync(
+        UnassignPermissionsFromRoleCommand command, CancellationToken cancellationToken);
+    
+    Task<ReplaceRolePermissionsResponse> ReplaceRolePermissionsAsync(
+        ReplaceRolePermissionsCommand command, CancellationToken cancellationToken);
     
     Task<RemoveRoleCascadePermissionResponse> RemoveRoleCascadePermissionAsync(
         RemoveRoleCascadePermissionCommand command, CancellationToken cancellationToken);
@@ -77,10 +80,10 @@ public class RolePermissionService : IRolePermissionService
         };
     }
 
-    public async Task<AssignPermissionToRoleResponse> AssignPermissionToRoleAsync(
-        AssignPermissionToRoleCommand command, CancellationToken cancellationToken)
+    public async Task<AssignPermissionsToRoleResponse> AssignPermissionsToRoleAsync(
+        AssignPermissionsToRoleCommand command, CancellationToken cancellationToken)
     {
-        var response = new AssignPermissionToRoleResponse();
+        var response = new AssignPermissionsToRoleResponse();
         
         var role = await _roleDataProvider.GetRoleAsync(command.RoleId, cancellationToken).ConfigureAwait(false);
         if (role == null)
@@ -125,10 +128,20 @@ public class RolePermissionService : IRolePermissionService
         return response;
     }
 
-    public async Task<UpdateRolePermissionsResponse> UpdateRolePermissionsAsync(
-        UpdateRolePermissionsCommand command, CancellationToken cancellationToken)
+    public async Task<UnassignPermissionsFromRoleResponse> UnassignPermissionsFromRoleAsync(
+        UnassignPermissionsFromRoleCommand command, CancellationToken cancellationToken)
     {
-        var response = new UpdateRolePermissionsResponse();
+        var response = new UnassignPermissionsFromRoleResponse();
+        
+        await _rolePermissionRep.DeleteAsync(x => x.RoleId == command.RoleId && command.PermissionIds.Contains(x.PermissionId), cancellationToken).ConfigureAwait(false);
+        
+        return response;
+    }
+
+    public async Task<ReplaceRolePermissionsResponse> ReplaceRolePermissionsAsync(
+        ReplaceRolePermissionsCommand command, CancellationToken cancellationToken)
+    {
+        var response = new ReplaceRolePermissionsResponse();
         
         var role = await _roleDataProvider.GetRoleAsync(command.RoleId, cancellationToken).ConfigureAwait(false);
         if (role == null)
@@ -163,7 +176,7 @@ public class RolePermissionService : IRolePermissionService
     {
         var response = new RemoveRoleCascadePermissionResponse();
         
-        await _rolePermissionRep.DeleteAsync(rp => command.RoleIds.Contains(rp.RoleId), cancellationToken).ConfigureAwait(false);
+        await _rolePermissionRep.DeleteAsync(x => command.RoleIds.Contains(x.RoleId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }
@@ -173,7 +186,7 @@ public class RolePermissionService : IRolePermissionService
     {
         var response = new RemovePermissionCascadeRoleResponse();
         
-        await _rolePermissionRep.DeleteAsync(rp => command.PermissionIds.Contains(rp.PermissionId), cancellationToken).ConfigureAwait(false);
+        await _rolePermissionRep.DeleteAsync(x => command.PermissionIds.Contains(x.PermissionId), cancellationToken).ConfigureAwait(false);
         
         return response;
     }

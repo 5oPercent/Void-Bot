@@ -1,25 +1,32 @@
+using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Dto.Security;
+using Void.Bot.Message.Request.Security;
 
 namespace Void.Bot.Core.Services.Security;
 
 public interface IEndpointService : ISingleton
 {
-    public List<EndpointDto> GetEndpoints();
+    public Task<GetEndpointListResponse> GetEndpointListAsync(GetEndpointListRequest request);
     
-    public void UpdateEndpoints(List<EndpointDto> endpoints);
+    public Task ReplaceEndpointListAsync(ReplaceEndpointListCommand command);
 }
 
 public class EndpointService : IEndpointService
 {
     private List<EndpointDto> _endpoints = [];
 
-    public List<EndpointDto> GetEndpoints()
+    public async Task<GetEndpointListResponse> GetEndpointListAsync(GetEndpointListRequest request)
     {
-        return _endpoints;
+        return new GetEndpointListResponse
+        {
+            Data = _endpoints
+        };
     }
 
-    public void UpdateEndpoints(List<EndpointDto> endpoints)
+    public Task ReplaceEndpointListAsync(ReplaceEndpointListCommand command)
     {
-        _endpoints = endpoints;
+        _endpoints = command.Endpoints;
+        
+        return Task.CompletedTask;
     }
 }

@@ -4,7 +4,7 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class AssignPermissionToRoleCommand : ICommand
+public class AssignPermissionsToRoleCommand : ICommand
 {
     public Guid RoleId { get; set; }
     
@@ -13,6 +13,6 @@ public class AssignPermissionToRoleCommand : ICommand
     public List<Guid> PermissionIds { get; set; } = [];
 }
 
-public class AssignPermissionToRoleResponse : VoidBotResponse
+public class AssignPermissionsToRoleResponse : VoidBotResponse
 {
 }
