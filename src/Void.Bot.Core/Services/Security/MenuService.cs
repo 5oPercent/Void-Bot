@@ -33,11 +33,16 @@ public class MenuService : IMenuService
 {
     private readonly IMapper _mapper;
     private readonly MenuDataProvider _menuDataProvider;
+    private readonly IPermissionMenuService _permissionMenuService;
 
-    public MenuService(IMapper mapper, MenuDataProvider menuDataProvider)
+    public MenuService(
+        IMapper mapper,
+        MenuDataProvider menuDataProvider,
+        IPermissionMenuService permissionMenuService)
     {
         _mapper = mapper;
         _menuDataProvider = menuDataProvider;
+        _permissionMenuService = permissionMenuService;
     }
 
     public async Task<GetMenuResponse> GetMenuAsync(
@@ -136,7 +141,9 @@ public class MenuService : IMenuService
             return response;
         }
         
-        // TODO: Remove menu-permission data
+        // Remove menu-permission data
+        await _permissionMenuService.RemoveMenusCascadePermissionAsync(
+            new RemoveMenusCascadePermissionCommand { MenuIds = command.IdList }, cancellationToken).ConfigureAwait(false);
         
         await _menuDataProvider.DeleteMenusAsync(command.IdList, cancellationToken).ConfigureAwait(false);
 
