@@ -1,8 +1,8 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using Void.Bot.Core.Domain;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
 
@@ -21,11 +21,23 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var allTypes = Assembly.GetExecutingAssembly().GetTypes()
-            .Where(t => t.IsClass && typeof(IEntityBase).IsAssignableFrom(t))
+        base.OnModelCreating(modelBuilder);
+        
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+        RegisterAllEntities(modelBuilder);
+    }
+    
+    private void RegisterAllEntities(ModelBuilder modelBuilder)
+    {
+        var entityTypes = Assembly.GetExecutingAssembly().GetTypes()
+            .Where(t => !t.IsAbstract &&
+                        t.IsClass &&
+                        typeof(IEntityBase).IsAssignableFrom(t) &&
+                        modelBuilder.Model.FindEntityType(t) == null)
             .ToList();
 
-        foreach (var type in allTypes.Where(type => modelBuilder.Model.FindEntityType(type) == null))
+        foreach (var type in entityTypes)
         {
             modelBuilder.Model.AddEntityType(type);
         }
@@ -53,15 +65,19 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     {
         var userId = currentUser.Id ?? Guid.Empty;
 
-        foreach (var entry in ChangeTracker.Entries().Where(e => e is { Entity: IEntityAudit }))
+        foreach (var entry in ChangeTracker.Entries()
+                     .Where(e => e.Entity.GetType().GetInterfaces()
+                         .Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEntityAudit<>))))
         {
+            dynamic entity = entry.Entity;
+            
             switch (entry.State)
             {
                 case EntityState.Added:
-                    ((IEntityAudit)entry.Entity).CreatedBy = userId;
+                    entity.CreatedBy = userId;
                     break;
                 case EntityState.Modified:
-                    ((IEntityAudit)entry.Entity).LastModifiedBy = userId;
+                    entity.LastModifiedBy = userId;
                     break;
             }
         }
@@ -73,7 +89,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         {
             if (((IEntityCreated)entry.Entity).CreatedAt == default)
             {
-                ((IEntityCreated)entry.Entity).CreatedAt= DateTimeOffset.Now;
+                ((IEntityCreated)entry.Entity).CreatedAt = DateTimeOffset.UtcNow;
             }
         }
     }
@@ -82,7 +98,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
     {
         foreach (var entry in ChangeTracker.Entries().Where(e => e is { State: EntityState.Modified, Entity: IEntityModified }))
         {
-            ((IEntityModified)entry.Entity).UpdatedAt= DateTimeOffset.Now;
+            ((IEntityModified)entry.Entity).UpdatedAt = DateTimeOffset.UtcNow;
         }
     }
 }

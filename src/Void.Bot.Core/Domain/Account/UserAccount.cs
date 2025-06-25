@@ -1,11 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.Account;
 
 [Table("user_account")]
-public class UserAccount : IEntity, IEntityCreated, IEntityModified
+public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
 {
     [Key] [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();

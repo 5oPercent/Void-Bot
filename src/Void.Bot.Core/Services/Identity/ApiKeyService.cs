@@ -24,17 +24,17 @@ public interface IApiKeyService : IScope
 public class ApiKeyService : IApiKeyService
 {
     private readonly ICurrentUser _currentUser;
-    private readonly IRepository _repository;
+    private readonly IRepository<SystemLicenses> _licensesRep;
     
-    public ApiKeyService(ICurrentUser currentUser, IRepository repository)
+    public ApiKeyService(ICurrentUser currentUser, IRepository<SystemLicenses> licensesRep)
     {
         _currentUser = currentUser;
-        _repository = repository;
+        _licensesRep = licensesRep;
     }
 
     public async Task<CreateApiKeyResponse> CreateApiKeyAsync(CreateApiKeyCommand command, CancellationToken cancellationToken)
     {
-        var existingLicense = await _repository.QueryNoTracking<SystemLicenses>()
+        var existingLicense = await _licensesRep.QueryNoTracking()
             .FirstOrDefaultAsync(x => x.ApiKey == command.ApiKey, cancellationToken).ConfigureAwait(false);
         
         if (existingLicense is not null)
@@ -54,7 +54,7 @@ public class ApiKeyService : IApiKeyService
             UserName = _currentUser.UserName
         };
         
-        await _repository.InsertAsync(license, cancellationToken).ConfigureAwait(false);
+        await _licensesRep.InsertAsync(license, cancellationToken).ConfigureAwait(false);
 
         return new CreateApiKeyResponse
         {
@@ -64,13 +64,13 @@ public class ApiKeyService : IApiKeyService
 
     public async Task<DeleteApiKeyResponse> DeleteApiKeyAsync(DeleteApiKeyCommand command, CancellationToken cancellationToken)
     {
-        var existingLicense = await _repository.QueryNoTracking<SystemLicenses>()
+        var existingLicense = await _licensesRep.QueryNoTracking()
             .WhereIF(command.UserId.HasValue, x => x.CreatedBy == command.UserId)
             .FirstOrDefaultAsync(x => x.ApiKey == command.ApiKey, cancellationToken).ConfigureAwait(false);
 
         if (existingLicense is not null)
         {
-            await _repository.DeleteAsync(existingLicense, cancellationToken).ConfigureAwait(false);
+            await _licensesRep.DeleteAsync(existingLicense, cancellationToken).ConfigureAwait(false);
         }
         
         return new DeleteApiKeyResponse();
