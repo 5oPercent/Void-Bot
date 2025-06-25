@@ -4,13 +4,13 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class DeleteMenuListCommand : ICommand
+public class DeletePermissionCascadeCommand : ICommand
 {
     [Required]
     [MinLength(1)]
     public List<Guid> IdList { get; set; } = [];
 }
 
-public class DeleteMenuListResponse : VoidBotResponse
+public class DeletePermissionCascadeResponse : VoidBotResponse
 {
 }

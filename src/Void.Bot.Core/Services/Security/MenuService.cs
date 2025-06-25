@@ -25,8 +25,8 @@ public interface IMenuService : IScope
     public Task<UpdateMenuResponse> UpdateMenuAsync(
         UpdateMenuCommand command, CancellationToken cancellationToken);
     
-    public Task<DeleteMenuListResponse> DeleteMenuListAsync(
-        DeleteMenuListCommand command, CancellationToken cancellationToken);
+    public Task<DeleteMenuCascadeResponse> DeleteMenuCascadeAsync(
+        DeleteMenuCascadeCommand command, CancellationToken cancellationToken);
 }
 
 public class MenuService : IMenuService
@@ -128,10 +128,10 @@ public class MenuService : IMenuService
         return response;
     }
 
-    public async Task<DeleteMenuListResponse> DeleteMenuListAsync(
-        DeleteMenuListCommand command, CancellationToken cancellationToken)
+    public async Task<DeleteMenuCascadeResponse> DeleteMenuCascadeAsync(
+        DeleteMenuCascadeCommand command, CancellationToken cancellationToken)
     {
-        var response = new DeleteMenuListResponse();
+        var response = new DeleteMenuCascadeResponse();
         
         var hasChild = await _menuDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         if (hasChild)
