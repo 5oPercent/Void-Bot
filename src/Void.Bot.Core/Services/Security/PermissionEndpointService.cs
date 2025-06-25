@@ -59,7 +59,7 @@ public class PermissionEndpointService : IPermissionEndpointService
             .Select(x => x.Endpoint)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
-        response.Data = GetExistEndpointDtos(endpoints);
+        response.Data = await GetExistEndpointDtosAsync(endpoints).ConfigureAwait(false);
         return response;
     }
 
@@ -77,7 +77,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         }
         
         var endpoints = command.Endpoints.Distinct().ToList();
-        var existingEndpointDtos = GetExistEndpointDtos(endpoints);
+        var existingEndpointDtos = await GetExistEndpointDtosAsync(endpoints).ConfigureAwait(false);
         var nonExistingEndpoints = endpoints.Where(e => existingEndpointDtos.All(ed => ed.Endpoint != e)).ToList();
 
         if (nonExistingEndpoints.Count != 0)
@@ -136,7 +136,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         }
         
         var endpoints = command.Endpoints.Distinct().ToList();
-        var existingEndpointDtos = GetExistEndpointDtos(endpoints);
+        var existingEndpointDtos = await GetExistEndpointDtosAsync(endpoints).ConfigureAwait(false);
         
         var newPermissionEndpoints = existingEndpointDtos.Select(e => new PermissionEndpoint
         {
@@ -169,8 +169,12 @@ public class PermissionEndpointService : IPermissionEndpointService
         return response;
     }
 
-    private List<EndpointDto> GetExistEndpointDtos(List<string> endpoints)
+    private async Task<List<EndpointDto>> GetExistEndpointDtosAsync(List<string> endpoints)
     {
-        return _endpointService.GetEndpoints().Where(x => endpoints.Contains(x.Endpoint)).ToList();
+        var result = await _endpointService.GetEndpointListAsync(new GetEndpointListRequest()).ConfigureAwait(false);
+
+        return result.Data != null 
+            ? result.Data.Where(x => endpoints.Contains(x.Endpoint)).ToList()
+            : [];
     }
 }

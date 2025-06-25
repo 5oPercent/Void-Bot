@@ -10,6 +10,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Void.Bot.Api.ActionFilters;
 using Void.Bot.Api.Authentication;
+using Void.Bot.Api.HostedService;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Settings;
@@ -30,6 +31,7 @@ public static class HostExtension
         host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
         host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
         {
+            containerBuilder.RegisterType<InitializationHostedService>().As<IHostedService>().SingleInstance();
             containerBuilder.RegisterModule(new VoidBotModule(null, Log.Logger, configuration, typeof(VoidBotModule).Assembly));
         });
         
@@ -76,6 +78,8 @@ public static class HostExtension
             options.Filters.Add<UnifyResponseExceptionFilter>();
         });
         
+        
+        
         services.AddHangfire(config =>
         {
             switch(hangfireSetting.UseStorage)
@@ -106,7 +110,6 @@ public static class HostExtension
             app.MapScalarApiReference();
         }
         
-        app.UseEndpointScanner();
         app.UseHttpsRedirection();
         app.UseRouting();
         app.UseAuthentication();

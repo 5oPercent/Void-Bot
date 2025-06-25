@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto.Security;
 
@@ -10,13 +9,6 @@ namespace Void.Bot.Api.Extension;
 
 public static class ScannerExtensions
 {
-    public static void UseEndpointScanner(this IApplicationBuilder app)
-    {
-        var endpoints = ScanEndpoints();
-        var endpointService = app.ApplicationServices.GetRequiredService<IEndpointService>();
-        endpointService.UpdateEndpoints(endpoints);
-    }
-    
     public static List<EndpointDto> ScanEndpoints()
     {
         var endpoints = new List<EndpointDto>();
