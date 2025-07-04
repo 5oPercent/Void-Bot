@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Autofac;
 using Void.Bot.Core.Data;
 
