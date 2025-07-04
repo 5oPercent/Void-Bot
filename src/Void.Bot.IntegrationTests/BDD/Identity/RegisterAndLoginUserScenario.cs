@@ -8,12 +8,8 @@ using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.IntegrationTest.BDD.Identity;
 
-public class RegisterAndLoginUserScenario : IntegrationFixture
+public class RegisterAndLoginUserScenario(IntegrationTestBase testBase) : IntegrationFixture(testBase)
 {
-    public RegisterAndLoginUserScenario() : base("bdd", "bdd_test")
-    {
-    }
-
     private string _userName { get; set; } = "test";
     private string _password { get; set; } = "".GenerateRandomString();
     private string _suffix { get; set; } = string.Empty;

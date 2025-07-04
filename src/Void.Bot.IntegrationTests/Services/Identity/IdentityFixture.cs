@@ -5,7 +5,7 @@ using Void.Bot.Message.Commands.Account;
 
 namespace Void.Bot.IntegrationTest.Services.Identity;
 
-public class IdentityFixture() : IntegrationFixture("identity", "identity_test")
+public class IdentityFixture(IntegrationTestBase testBase) : IntegrationFixture(testBase)
 {
     [Fact]
     public async Task RegisterUserAccountAsync()

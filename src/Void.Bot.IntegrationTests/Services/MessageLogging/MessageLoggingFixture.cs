@@ -11,9 +11,9 @@ public class MessageLoggingFixture : MessageLoggingFixtureBase
 {
     private readonly MessageLoggingUtil _util;
     
-    public MessageLoggingFixture()
+    public MessageLoggingFixture(IntegrationTestBase testBase) : base(testBase)
     {
-        _util = new MessageLoggingUtil(CurrentScope);
+        _util = new MessageLoggingUtil(testBase);
     }
     
     [Theory]

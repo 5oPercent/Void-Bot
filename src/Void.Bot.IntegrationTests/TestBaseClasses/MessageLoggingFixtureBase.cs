@@ -1,3 +1,3 @@
 namespace Void.Bot.IntegrationTest.TestBaseClasses;
 
-public class MessageLoggingFixtureBase() : IntegrationFixture("messageLogging", "messageLogging_test");
+public class MessageLoggingFixtureBase(IntegrationTestBase testBase) : IntegrationFixture(testBase);
