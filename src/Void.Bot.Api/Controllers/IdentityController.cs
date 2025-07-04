@@ -1,6 +1,7 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
@@ -19,7 +20,17 @@ public class IdentityController : ControllerBase
     {
         _mediator = mediator;
     }
-    
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("register")]
+    public async Task<IActionResult> RegisterUserAccount([FromBody]RegisterUserAccountCommand command)
+    {
+        var response = await _mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
     [AllowAnonymous]
     [HttpGet]
     [Route("login")]
