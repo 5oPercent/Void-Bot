@@ -8,7 +8,7 @@ public class RegisterUserAccountCommandValidator : FluentMessageValidator<Regist
 {
     public RegisterUserAccountCommandValidator()
     {
-        RuleFor(command => command.Name)
+        RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Name is required")
             .MinimumLength(3).WithMessage("Name must be at least 3 characters long")
             .MaximumLength(64).WithMessage("Name cannot be longer than 64 characters")
