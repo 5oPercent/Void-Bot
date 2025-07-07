@@ -57,6 +57,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterSettings(builder);
 
         RegisterDbContext(builder);
+        
+        RegisterValidator(builder);
 
         RegisterDiscordBotClient(builder);
 
@@ -185,6 +187,14 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             .InstancePerLifetimeScope();
 
         builder.RegisterType<Repository>().As<IRepository>().InstancePerLifetimeScope();
+    }
+    
+    // 注册消息验证器
+    private void RegisterValidator(ContainerBuilder builder)
+    {
+        builder.RegisterAssemblyTypes(_assemblies)
+            .Where(t => t.IsClass && typeof(IFluentMessageValidator).IsAssignableFrom(t))
+            .AsSelf().AsImplementedInterfaces();
     }
     
     // 注册 Discord Bot 客户端
