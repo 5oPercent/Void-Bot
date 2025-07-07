@@ -28,10 +28,10 @@ public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
     public string Password { get; set; } = string.Empty;
     
     [Column("created_at")]
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 
     [Column("update_at")]
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; } = DateTimeOffset.Now;
     
     [NotMapped]
     public List<UserThirdParty> ThirdParties { get; set; } = new();
