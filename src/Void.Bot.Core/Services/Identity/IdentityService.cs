@@ -60,7 +60,7 @@ public class IdentityService : IIdentityService
         var getUserAccountResponse = await _accountService.GetUserAccountAsync(
             new GetUserAccountRequest
             {
-                DisplayName = $"{request.UserName}#{request.Suffix}"
+                DisplayName = $"{request.Name}#{request.Suffix}"
             }, cancellationToken).ConfigureAwait(false);
 
         if (getUserAccountResponse.Data == null)

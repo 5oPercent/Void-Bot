@@ -41,7 +41,7 @@ public class RegisterAndLoginUserScenario(IntegrationTestBase testBase) : Integr
             var response = await service.AuthenticateAsync(
                 new AuthenticateRequest
                 {
-                    UserName = _userName,
+                    Name = _userName,
                     Password = _password,
                     Suffix = _suffix
                 }, CancellationToken.None).ConfigureAwait(false);

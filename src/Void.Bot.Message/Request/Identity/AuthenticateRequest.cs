@@ -9,7 +9,7 @@ public class AuthenticateRequest : IRequest
 {
     [Required]
     [MinLength(1)]
-    public required string UserName { get; set; }
+    public required string Name { get; set; }
     
     [Required]
     [MinLength(4)]
