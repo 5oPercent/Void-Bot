@@ -11,7 +11,8 @@ public class RegisterUserAccountCommandValidator : FluentMessageValidator<Regist
         RuleFor(command => command.Name)
             .NotEmpty().WithMessage("Name is required")
             .MinimumLength(3).WithMessage("Name must be at least 3 characters long")
-            .MaximumLength(64).WithMessage("Name cannot be longer than 64 characters");
+            .MaximumLength(64).WithMessage("Name cannot be longer than 64 characters")
+            .Matches(@"^[a-zA-Z][a-zA-Z0-9]*$").WithMessage("Name must start with a letter and can only contain letters and numbers");
         
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required")
