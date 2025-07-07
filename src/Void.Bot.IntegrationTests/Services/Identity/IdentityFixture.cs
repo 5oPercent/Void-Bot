@@ -18,7 +18,7 @@ public class IdentityFixture(IntegrationTestBase testBase) : IntegrationFixture(
                 new RegisterUserAccountCommand
                 {
                     Name = userName,
-                    Password = "".GenerateRandomString()
+                    Password = StringExtension.GenerateRandomPassword()
                 }).ConfigureAwait(false);
             
             response.ShouldNotBeNull();

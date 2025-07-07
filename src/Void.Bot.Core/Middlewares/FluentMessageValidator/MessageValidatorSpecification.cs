@@ -18,12 +18,12 @@ public class MessageValidatorSpecification<TContext> : IPipeSpecification<TConte
     
     public bool ShouldExecute(TContext context, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        return true;
     }
 
     public Task BeforeExecute(TContext context, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        return Task.CompletedTask;
     }
 
     public Task Execute(TContext context, CancellationToken cancellationToken)
