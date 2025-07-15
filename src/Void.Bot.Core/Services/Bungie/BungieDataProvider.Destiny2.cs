@@ -14,11 +14,11 @@ public partial interface IBungieDataProvider : IScope
         BungieMembershipTypeEnum membershipType, long membershipId, CancellationToken cancellationToken, string accessToken = "");
     
     Task<Destiny2ProfileResponse?> GetDestiny2ProfileAsync(
-        BungieMembershipTypeEnum membershipType, long membershipId, List<Destiny2ComponentTypeEnum> components,
+        BungieMembershipTypeEnum membershipType, string membershipId, List<Destiny2ComponentTypeEnum> components,
         CancellationToken cancellationToken, string accessToken = "");
     
     Task<Destiny2PlayerByBungieNameResponse?> GetDestiny2PlayerByBungieNameAsync(
-        BungieMembershipTypeEnum membershipType, string displayName, int displayNameCode,
+        BungieMembershipTypeEnum membershipType, string displayName, string displayNameCode,
         CancellationToken cancellationToken, string accessToken = "");
 }
 
@@ -46,12 +46,12 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<Destiny2ProfileResponse?> GetDestiny2ProfileAsync(
-        BungieMembershipTypeEnum membershipType, long membershipId, List<Destiny2ComponentTypeEnum> components,
+        BungieMembershipTypeEnum membershipType, string membershipId, List<Destiny2ComponentTypeEnum> components,
         CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.ProfileUrl
             .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{membershipId}", membershipId.ToString(), StringComparison.OrdinalIgnoreCase);
+            .Replace("{membershipId}", membershipId, StringComparison.OrdinalIgnoreCase);
 
         url += $"?components={string.Join(",", components.Select(x => (int)x))}";
         
@@ -61,15 +61,18 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<Destiny2PlayerByBungieNameResponse?> GetDestiny2PlayerByBungieNameAsync(
-        BungieMembershipTypeEnum membershipType, string displayName, int displayNameCode,
+        BungieMembershipTypeEnum membershipType, string displayName, string displayNameCode,
         CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.SearchPlayerProfileUrl
             .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase);
-
+        
+        var convertCodeStatus = int.TryParse(displayNameCode, out var displayNameCodeValue);
+    
         var request = new Destiny2PlayerByBungieNameRequest
         {
-            DisplayName = displayName, DisplayNameCode = displayNameCode
+            DisplayName = displayName,
+            DisplayNameCode = convertCodeStatus ? displayNameCodeValue : 0
         };
         
         var result = await GetBungieHttpClient(accessToken)

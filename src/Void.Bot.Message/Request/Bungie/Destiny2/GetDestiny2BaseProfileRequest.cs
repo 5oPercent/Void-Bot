@@ -1,17 +1,18 @@
-using System.ComponentModel.DataAnnotations;
 using Mediator.Net.Contracts;
-using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
-public class GetDestiny2BaseProfileRequest : IRequest
+[LoadDestiny2Player]
+public class GetDestiny2BaseProfileRequest : IRequest, IRequestDestiny2ByPlayerNameCode
 {
-    [RegularExpression(BungieConstants.IdPattern)]
-    public string FindBungieName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    
+    public string DisplayNameCode { get; set; } = "0000";
 
-    public BungieMembershipTypeEnum? MembershipType { get; set; }
+    public BungieMembershipTypeEnum MembershipType { get; set; }
 }
 
 public class GetDestiny2BaseProfileResponse : VoidBotResponse<Destiny2BaseProfileDto>
@@ -28,5 +29,5 @@ public class Destiny2BaseProfileDto
     
     public BungieMembershipTypeEnum MembershipType { get; set; }
     
-    public long MembershipId { get; set; }
+    public string MembershipId { get; set; } = string.Empty;
 }

@@ -42,10 +42,13 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
             return;
         }
         
+        var parts = findBungieName?.Split('#', StringSplitOptions.RemoveEmptyEntries);
+        
         var profileResponse = await bungieService.GetDestiny2BaseProfileAsync(
             new GetDestiny2BaseProfileRequest
             {
-                FindBungieName = findBungieName ?? string.Empty,
+                DisplayName = parts?[0] ?? string.Empty,
+                DisplayNameCode = parts?[1] ?? "0000",
                 MembershipType = findMembership ?? BungieMembershipTypeEnum.All
             }, cancellationToken).ConfigureAwait(false);
 

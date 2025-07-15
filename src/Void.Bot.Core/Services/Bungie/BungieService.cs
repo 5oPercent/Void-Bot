@@ -17,12 +17,18 @@ public partial interface IBungieService : IScope
 
 public partial class BungieService : IBungieService
 {
+    private readonly Destiny2PlayerData _playerData;
     private readonly ICurrentUser _currentUser;
     private readonly IBungieDataProvider _dataProvider;
     private readonly IAccountDataProvider _accountDataProvider;
     
-    public BungieService(ICurrentUser currentUser, IBungieDataProvider dataProvider, IAccountDataProvider accountDataProvider)
+    public BungieService(
+        Destiny2PlayerData playerData,
+        ICurrentUser currentUser,
+        IBungieDataProvider dataProvider,
+        IAccountDataProvider accountDataProvider)
     {
+        _playerData = playerData;
         _currentUser = currentUser;
         _dataProvider = dataProvider;
         _accountDataProvider = accountDataProvider;
