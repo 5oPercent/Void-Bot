@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
+using Mediator.Net;
 using Void.Bot.Core.Extension;
-using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Enum.Bungie;
@@ -10,7 +10,7 @@ using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProvider dataProvider) : IGuildSlashCommand
+public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
     
@@ -42,10 +42,13 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
             return;
         }
         
-        var profileResponse = await bungieService.GetDestiny2BaseProfileAsync(
+        var parts = findBungieName?.Split('#', StringSplitOptions.RemoveEmptyEntries);
+        
+        var profileResponse = await mediator.RequestAsync<GetDestiny2BaseProfileRequest, GetDestiny2BaseProfileResponse>(
             new GetDestiny2BaseProfileRequest
             {
-                FindBungieName = findBungieName ?? string.Empty,
+                DisplayName = parts?[0] ?? string.Empty,
+                DisplayNameCode = parts?[1] ?? string.Empty,
                 MembershipType = findMembership ?? BungieMembershipTypeEnum.All
             }, cancellationToken).ConfigureAwait(false);
 
@@ -78,7 +81,7 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
         {
             case "生涯":
             {
-                var response = await bungieService.GetDestiny2CareerAsync(
+                var response = await mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(
                     new GetDestiny2CareerRequest
                     {
                         MembershipType = membershipType,

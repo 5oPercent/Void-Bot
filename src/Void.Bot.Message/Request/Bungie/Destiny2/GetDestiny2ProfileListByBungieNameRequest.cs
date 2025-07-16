@@ -6,14 +6,13 @@ using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
-public class GetDestiny2ProfileListByBungieNameRequest : IRequest
+public class GetDestiny2ProfileListByBungieNameRequest : IRequest, IRequestDestiny2ByPlayerNameCode
 {
-    [Required]
     [MinLength(1)]
     public required string DisplayName { get; set; }
     
-    [Required]
-    public int DisplayNameCode { get; set; }
+    [Length(4, 4)]
+    public required string DisplayNameCode { get; set; }
 
     public BungieMembershipTypeEnum MembershipType { get; set; } = BungieMembershipTypeEnum.All;
 }
