@@ -22,7 +22,10 @@ public class Destiny2PlayerData : IScope
     /// <summary>
     /// 唯一名称
     /// </summary>
-    public string UniqueName => $"{GlobalDisplayName}#{GlobalDisplayNameCode}";
+    public string UniqueName => 
+        !string.IsNullOrWhiteSpace(GlobalDisplayName) && !string.IsNullOrWhiteSpace(GlobalDisplayNameCode)
+            ? $"{GlobalDisplayName}#{GlobalDisplayNameCode}"
+            : string.Empty;
     
     /// <summary>
     /// 注册时间

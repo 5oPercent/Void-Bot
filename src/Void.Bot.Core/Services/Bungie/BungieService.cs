@@ -1,8 +1,7 @@
 using System.Net;
-using Void.Bot.Core.Services.Account;
-using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Dto.Authorization;
+using Void.Bot.Message.Request.Bungie;
 
 namespace Void.Bot.Core.Services.Bungie;
 
@@ -10,28 +9,30 @@ public partial interface IBungieService : IScope
 {
     string GenerateAuthenticateUrl(AuthorizationDto dto);
 
-    Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken);
+    Task<GenerateBungieTokenResponse> GenerateTokenAsync(
+        GenerateBungieTokenCommand command, CancellationToken cancellationToken);
 
-    Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken);
+    Task<RefreshBungieTokenResponse> RefreshTokenAsync(
+        RefreshBungieTokenCommand command, CancellationToken cancellationToken);
+    
+    Task<GetBungieNetUserResponse> GetBungieNetUserAsync(
+        GetBungieNetUserRequest request, CancellationToken cancellationToken);
+    
+    Task<GetBungieMembershipsByIdResponse> GetMembershipsByIdAsync(
+        GetBungieMembershipsByIdRequest request, CancellationToken cancellationToken);
 }
 
 public partial class BungieService : IBungieService
 {
-    private readonly Destiny2PlayerData _playerData;
-    private readonly ICurrentUser _currentUser;
     private readonly IBungieDataProvider _dataProvider;
-    private readonly IAccountDataProvider _accountDataProvider;
+    private readonly Destiny2PlayerData _playerData;
     
     public BungieService(
-        Destiny2PlayerData playerData,
-        ICurrentUser currentUser,
         IBungieDataProvider dataProvider,
-        IAccountDataProvider accountDataProvider)
+        Destiny2PlayerData playerData)
     {
-        _playerData = playerData;
-        _currentUser = currentUser;
         _dataProvider = dataProvider;
-        _accountDataProvider = accountDataProvider;
+        _playerData = playerData;
     }
     
     public string GenerateAuthenticateUrl(AuthorizationDto dto)
@@ -41,7 +42,8 @@ public partial class BungieService : IBungieService
         return authUrl;
     }
 
-    public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(GenerateBungieTokenCommand command, CancellationToken cancellationToken)
+    public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(
+        GenerateBungieTokenCommand command, CancellationToken cancellationToken)
     {
         var response = new GenerateBungieTokenResponse();
 
@@ -66,11 +68,36 @@ public partial class BungieService : IBungieService
         return response;
     }
     
-    public async Task<RefreshBungieTokenResponse> RefreshTokenAsync(RefreshBungieTokenCommand command, CancellationToken cancellationToken)
+    public async Task<RefreshBungieTokenResponse> RefreshTokenAsync(
+        RefreshBungieTokenCommand command, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.RefreshTokenAsync(command.Token, cancellationToken).ConfigureAwait(false);
 
         return new RefreshBungieTokenResponse
+        {
+            Data = result
+        };
+    }
+
+    public async Task<GetBungieNetUserResponse> GetBungieNetUserAsync(
+        GetBungieNetUserRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _dataProvider.GetNetUserAsync(
+            request.Id, cancellationToken).ConfigureAwait(false);
+        
+        return new GetBungieNetUserResponse
+        {
+            Data = result
+        };
+    }
+
+    public async Task<GetBungieMembershipsByIdResponse> GetMembershipsByIdAsync(
+        GetBungieMembershipsByIdRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _dataProvider.GetMembershipsByIdAsync(
+            request.MembershipType, request.MembershipId, cancellationToken).ConfigureAwait(false);
+
+        return new GetBungieMembershipsByIdResponse
         {
             Data = result
         };

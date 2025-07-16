@@ -10,7 +10,7 @@ public class GetDestiny2BaseProfileRequest : IRequest, IRequestDestiny2ByPlayerN
 {
     public string DisplayName { get; set; } = string.Empty;
     
-    public string DisplayNameCode { get; set; } = "0000";
+    public string DisplayNameCode { get; set; } = string.Empty;
 
     public BungieMembershipTypeEnum MembershipType { get; set; }
 }

@@ -10,7 +10,7 @@ namespace Void.Bot.Core.Middlewares.Preload;
 
 public static class LoadDestiny2PlayerMiddleware
 {
-    public static void UseMessageValidator<TContext>(this IPipeConfigurator<TContext> configurator, ICurrentUser? currentUser, Destiny2PlayerData? playerData = null, IBungieService? bungieService = null, IAccountDataProvider? accountDataProvider = null)
+    public static void UseLoadDestiny2Player<TContext>(this IPipeConfigurator<TContext> configurator, ICurrentUser? currentUser = null, Destiny2PlayerData? playerData = null, IBungieService? bungieService = null, IAccountDataProvider? accountDataProvider = null)
         where TContext : IContext<IMessage>
     {
         if (configurator.DependencyScope == null)

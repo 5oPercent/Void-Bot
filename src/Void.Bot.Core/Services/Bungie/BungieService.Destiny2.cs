@@ -50,16 +50,22 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
         GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetDestiny2BaseProfileResponse
+        var response = new GetDestiny2BaseProfileResponse();
+        
+        if (string.IsNullOrEmpty(_playerData.UniqueName))
         {
-            Data = new Destiny2BaseProfileDto
-            {
-                DisplayName = _playerData.UniqueName,
-                OnCrossSave = _playerData.OnCrossSave,
-                IsSinglePlatform = _playerData.IsSinglePlatform,
-                MembershipType = _playerData.PrimaryMembershipType,
-                MembershipId = _playerData.PrimaryMembershipId
-            }
+            response.Code = HttpStatusCode.InternalServerError;
+            response.Message = "Not Found";
+            return response;
+        }
+
+        response.Data = new Destiny2BaseProfileDto
+        {
+            DisplayName = _playerData.UniqueName,
+            OnCrossSave = _playerData.OnCrossSave,
+            IsSinglePlatform = _playerData.IsSinglePlatform,
+            MembershipType = _playerData.PrimaryMembershipType,
+            MembershipId = _playerData.PrimaryMembershipId
         };
         
         return response;
