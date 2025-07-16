@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
+using Serilog;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
@@ -22,17 +23,20 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
     private bool _isGetCurrentPlayerData = false;
     private bool _isGetPlayerDataByNameCode = false;
 
+    private readonly ILogger _logger;
     private readonly ICurrentUser _currentUser;
     private Destiny2PlayerData _playerData;
     private readonly IBungieService _bungieService;
     private readonly IAccountDataProvider _accountDataProvider;
 
     public LoadDestiny2PlayerSpecification(
+        ILogger logger,
         ICurrentUser currentUser,
         Destiny2PlayerData playerData,
         IBungieService bungieService,
         IAccountDataProvider accountDataProvider)
     {
+        _logger = logger;
         _currentUser = currentUser;
         _playerData = playerData;
         _bungieService = bungieService;
@@ -67,12 +71,18 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         {
             _playerData.GlobalDisplayName = request.DisplayName;
             _playerData.GlobalDisplayNameCode = request.DisplayNameCode;
-            
+
             if (!UniqueNameRegex().IsMatch(_playerData.UniqueName))
+            {
+                _logger.Warning("Invalid UniqueName: {UniqueName}", _playerData.UniqueName);
                 goto Break;
-            
+            }
+
             if (!await LoadPlayerProfilesAsync(request.MembershipType, cancellationToken))
+            {
+                _logger.Warning("Load player profiles failed for {UniqueName}", _playerData.UniqueName);
                 goto Break;
+            }
             
             var membershipResult = await _bungieService.GetMembershipsByIdAsync(
                 new GetBungieMembershipsByIdRequest
@@ -100,7 +110,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 _currentUser.Id.Value, nameof(AppPlatformEnum.Bungie), cancellationToken).ConfigureAwait(false);
             
             if (thirdResult == null)
+            {
+                _logger.Warning("Not found third party data for user {UserId}", _currentUser.Id);
                 goto Break;
+            }
             
             _playerData.BungieMembershipId = thirdResult.ThirdPartyUserId;
             
@@ -111,7 +124,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 }, cancellationToken).ConfigureAwait(false);
             
             if (bungieNetUserResponse.Data?.Response == null)
+            {
+                _logger.Warning("Not found BungieNet user for membership ID {MembershipId}", _playerData.BungieMembershipId);
                 goto Break;
+            }
             
             var bungieNetUser = bungieNetUserResponse.Data.Response;
             
@@ -162,7 +178,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResult.Data == null || profileResult.Data.Response.Count == 0)
+        {
+            _logger.Debug("No Destiny 2 profiles found for {UniqueName}", _playerData.UniqueName);
             return false;
+        }
         
         var profiles = profileResult.Data.Response;
         Destiny2PlayerByBungieNameDto? profile = null;
@@ -200,7 +219,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         }
 
         if (profile == null)
+        {
+            _logger.Debug("No primary membership found for {UniqueName}", _playerData.UniqueName);
             return false;
+        }
         
         _playerData.PrimaryMembershipType = profile.MembershipType;
         _playerData.PrimaryMembershipId = profile.MembershipId;
