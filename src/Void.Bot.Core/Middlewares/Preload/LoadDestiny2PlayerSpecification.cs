@@ -1,4 +1,4 @@
-using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
@@ -8,7 +8,6 @@ using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Constants.Bungie;
-using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
@@ -145,17 +144,8 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 
     public Task OnException(Exception ex, TContext context)
     {
-        var isExecute = !ShouldExecute(context, CancellationToken.None);
-        var isVoidResponse = !typeof(VoidBotResponse).IsAssignableFrom(context.ResultDataType);
-        
-        if (isExecute || isVoidResponse) throw ex;
-        
-        var response = (dynamic)context.Result;
-
-        response.Code = HttpStatusCode.InternalServerError;
-        response.Message = ex.Message;
-
-        throw ex;
+        ExceptionDispatchInfo.Capture(ex).Throw();
+        return Task.CompletedTask;
     }
 
     [GeneratedRegex(BungieConstants.IdPattern)]

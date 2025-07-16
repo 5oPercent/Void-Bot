@@ -37,7 +37,11 @@ public class UnifyResponseSpecification<TContext> : IPipeSpecification<TContext>
 
     public Task OnException(Exception ex, TContext context)
     {
-        if (!ShouldExecute(context, default) ||  context.Result is not VoidBotResponse) throw ex;
+        var shouldSkip = !ShouldExecute(context, CancellationToken.None);
+        var isNotVoidResponse = !typeof(VoidBotResponse).IsAssignableFrom(context.ResultDataType);
+        
+        if (shouldSkip || isNotVoidResponse)
+            throw ex;
         
         var response = (dynamic)context.Result;
 

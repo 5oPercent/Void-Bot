@@ -61,6 +61,6 @@ public class MessageLoggingSpecification<TContext> : IPipeSpecification<TContext
     public Task OnException(Exception ex, TContext context)
     {
         ExceptionDispatchInfo.Capture(ex).Throw();
-        throw ex;
+        return Task.CompletedTask;
     }
 }
