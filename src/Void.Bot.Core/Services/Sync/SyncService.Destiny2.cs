@@ -4,7 +4,7 @@ using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
-using Void.Bot.Message.Regexs.Bungie;
+using Void.Bot.Message.Regexs;
 
 namespace Void.Bot.Core.Services.Sync;
 

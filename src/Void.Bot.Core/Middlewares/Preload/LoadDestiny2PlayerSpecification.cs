@@ -10,7 +10,7 @@ using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Regexs.Bungie;
+using Void.Bot.Message.Regexs;
 using Void.Bot.Message.Request.Bungie;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 

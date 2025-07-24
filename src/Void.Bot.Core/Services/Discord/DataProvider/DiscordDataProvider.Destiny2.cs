@@ -6,7 +6,7 @@ using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Regexs.Bungie;
+using Void.Bot.Message.Regexs;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
