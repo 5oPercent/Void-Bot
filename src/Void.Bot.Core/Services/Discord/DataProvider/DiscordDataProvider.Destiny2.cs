@@ -6,6 +6,7 @@ using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Regexs.Bungie;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
@@ -26,9 +27,11 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
+        var language = BungieRegexs.Language().Replace(_destiny2PlayerData.Language, "");
+        
         #region Embed
         
-        var seasonJson = await _cacheManager.Get<string>(Destiny2ManifestConstants.SeasonCacheKey+":zhchs", cancellationToken);
+        var seasonJson = await _cacheManager.Get<string>($"{Destiny2ManifestConstants.SeasonCacheKey}:{language}", cancellationToken);
         var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         

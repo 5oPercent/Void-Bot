@@ -1,5 +1,4 @@
 using System.Runtime.ExceptionServices;
-using System.Text.RegularExpressions;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
@@ -8,10 +7,10 @@ using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Attributes;
-using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Regexs.Bungie;
 using Void.Bot.Message.Request.Bungie;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -72,7 +71,7 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             _playerData.GlobalDisplayName = request.DisplayName;
             _playerData.GlobalDisplayNameCode = request.DisplayNameCode;
 
-            if (!UniqueNameRegex().IsMatch(_playerData.UniqueName))
+            if (!BungieRegexs.UniqueName().IsMatch(_playerData.UniqueName))
             {
                 _logger.Warning("Invalid UniqueName: {UniqueName}", _playerData.UniqueName);
                 goto Break;
@@ -163,9 +162,6 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         ExceptionDispatchInfo.Capture(ex).Throw();
         return Task.CompletedTask;
     }
-
-    [GeneratedRegex(BungieConstants.IdPattern)]
-    private static partial Regex UniqueNameRegex();
 
     private async Task<bool> LoadPlayerProfilesAsync(BungieMembershipTypeEnum membershipType, CancellationToken cancellationToken)
     {
