@@ -1,27 +1,32 @@
-using Autofac;
 using Void.Bot.Core.Services.Language;
 
 namespace Void.Bot.Api.HostedService;
 
 public class InitializationHostedService : IHostedService
 {
-    private readonly ILifetimeScope _lifetimeScope;
+    private readonly IServiceProvider _serviceProvider;
 
-    public InitializationHostedService(ILifetimeScope lifetimeScope)
+    public InitializationHostedService(IServiceProvider serviceProvider)
     {
-        _lifetimeScope = lifetimeScope;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var scope = _lifetimeScope.BeginLifetimeScope();
-        
-        var languageService = scope.Resolve<ILanguageService>();
-        await languageService.GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
+        await GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
+    }
+    
+    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        
+        var languageService = scope.ServiceProvider.GetRequiredService<ILanguageService>();
+        
+        await languageService.GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
     }
 }
