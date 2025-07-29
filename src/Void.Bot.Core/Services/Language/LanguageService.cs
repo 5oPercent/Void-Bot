@@ -102,7 +102,6 @@ public class LanguageService : ILanguageService, IDisposable
     
     #endregion
     
-    
     #region Init Default Language Yaml
     
     public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
@@ -122,6 +121,8 @@ public class LanguageService : ILanguageService, IDisposable
             await File.WriteAllTextAsync(filePath, yamlContent, cancellationToken);
         }
     }
+    
+    #endregion
 
     public string GetContext(Type contextTemplateType, string key)
     {
@@ -129,9 +130,7 @@ public class LanguageService : ILanguageService, IDisposable
         
         return GetContext(yamlKey, key);
     }
-
-    #endregion
-
+    
     public string GetContext(string yamlKey, string key)
     {
         yamlKey = yamlKey.ToLower();

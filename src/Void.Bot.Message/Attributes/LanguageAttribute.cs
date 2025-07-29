@@ -14,5 +14,5 @@ public class LanguageAttribute(string system, string fileName) : Attribute
     
     public LanguageEnum Language { get; set; } = LanguageEnum.Default;
     
-    public string Key => $"/{System}/{FileName}.{nameof(Language)}.yaml";
+    public string Key => $"/{System}/{FileName}.{Language}.yaml";
 }
