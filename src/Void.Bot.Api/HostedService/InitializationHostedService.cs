@@ -21,7 +21,7 @@ public class InitializationHostedService : IHostedService
         return Task.CompletedTask;
     }
     
-    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
+    private async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
         
