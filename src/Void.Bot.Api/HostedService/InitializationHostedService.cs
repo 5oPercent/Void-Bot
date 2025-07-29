@@ -1,19 +1,27 @@
 using Void.Bot.Core.Services.Language;
+using Void.Bot.Core.Settings.Language;
 
 namespace Void.Bot.Api.HostedService;
 
 public class InitializationHostedService : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
+    private readonly LanguageSetting _languageSetting;
 
-    public InitializationHostedService(IServiceProvider serviceProvider)
+    public InitializationHostedService(
+        IServiceProvider serviceProvider,
+        LanguageSetting languageSetting)
     {
         _serviceProvider = serviceProvider;
+        _languageSetting = languageSetting;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
+        if (_languageSetting.GenerateDefaultYamlFile)
+        {
+            await GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
