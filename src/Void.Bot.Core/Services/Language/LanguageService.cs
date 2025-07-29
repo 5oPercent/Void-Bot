@@ -9,6 +9,8 @@ namespace Void.Bot.Core.Services.Language;
 public interface ILanguageService : ISingleton
 {
     public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken);
+
+    public string GetContext(Type contextTemplateType, string key);
     
     public string GetContext(string yamlKey, string key);
 }
@@ -120,7 +122,14 @@ public class LanguageService : ILanguageService, IDisposable
             await File.WriteAllTextAsync(filePath, yamlContent, cancellationToken);
         }
     }
-    
+
+    public string GetContext(Type contextTemplateType, string key)
+    {
+        var yamlKey = contextTemplateType.GetYamlKey();
+        
+        return GetContext(yamlKey, key);
+    }
+
     #endregion
 
     public string GetContext(string yamlKey, string key)

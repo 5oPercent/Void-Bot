@@ -1,6 +1,7 @@
 using Discord;
 using SkiaSharp;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
@@ -39,25 +40,32 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var seasonDays = $"`{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}`";
         var seasonRemainingDays = $"`{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}`";
         
-        var currentSeasonContext = $"""
-                                    > 名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
-                                    > 时间: {(currentSeason != null ? seasonTimeRange : "未知")}
-                                    > 天数: 剩余 {seasonRemainingDays} 天 | 总 {seasonDays} 天
-                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
-                                    """;
+        var seasonContext = string.Format(
+            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.SeasonBody)),
+            currentSeason?.DisplayProperties.Name ?? "???",
+            currentSeason != null ? seasonTimeRange : "???",
+            seasonRemainingDays, seasonDays,
+            profileInfo.CurrentSeasonRewardPowerCap);
         
-        var historyCareerContext = $"""
-                                    > 嘉奖得分: `{commendationInfo.TotalScore}`
-                                    > 生涯守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
-                                    > 赛季守护者等级: `{profileInfo.RenewedGuardianRank}`
-                                    > 最后上线: `{profileInfo.DateLastPlayed.ToLocalTime()}`
-                                    """;
+        var careerContext = string.Format(
+            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerBody)),
+            commendationInfo.TotalScore,
+            profileInfo.LifetimeHighestGuardianRank,
+            profileInfo.RenewedGuardianRank,
+            profileInfo.DateLastPlayed.ToLocalTime());
 
+        var careerTitle = string.Format(
+            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerTitle)),
+            globalDisplayName);
+        
+        var careerField = _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerField));
+        var seasonField = _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.SeasonField));
+        
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)
-            .WithTitle($"{globalDisplayName} 的生涯信息")
-            .AddField("当前赛季", currentSeasonContext)
-            .AddField("历史生涯", historyCareerContext);
+            .WithTitle(careerTitle)
+            .AddField(careerField, seasonContext)
+            .AddField(seasonField, careerContext);
 
         if (currentSeason != null)
         {
