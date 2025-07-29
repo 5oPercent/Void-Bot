@@ -36,30 +36,33 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         
-        var seasonTimeRange = $"`{currentSeason?.StartDate.ToLocalTime()}` - `{currentSeason?.EndDate.ToLocalTime()}`";
-        var seasonDays = $"`{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}`";
-        var seasonRemainingDays = $"`{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}`";
+        var seasonTimeRange = $"{currentSeason?.StartDate.ToLocalTime()} - {currentSeason?.EndDate.ToLocalTime()}";
+        var seasonDays = $"{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}";
+        var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
+
+        var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(language);
+        var destiny2ContextYamlKey = typeof(Destiny2ContextTemplate).GetYamlKey(languageEnum);
         
         var seasonContext = string.Format(
-            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.SeasonBody)),
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonBody)),
             currentSeason?.DisplayProperties.Name ?? "???",
             currentSeason != null ? seasonTimeRange : "???",
             seasonRemainingDays, seasonDays,
             profileInfo.CurrentSeasonRewardPowerCap);
         
         var careerContext = string.Format(
-            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerBody)),
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerBody)),
             commendationInfo.TotalScore,
             profileInfo.LifetimeHighestGuardianRank,
             profileInfo.RenewedGuardianRank,
             profileInfo.DateLastPlayed.ToLocalTime());
 
         var careerTitle = string.Format(
-            _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerTitle)),
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerTitle)),
             globalDisplayName);
         
-        var careerField = _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.CareerField));
-        var seasonField = _languageService.GetContext(typeof(Destiny2ContextTemplate), nameof(Destiny2ContextTemplate.SeasonField));
+        var careerField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerField));
+        var seasonField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonField));
         
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)
@@ -127,4 +130,5 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         
         return ([embedCareer], [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
     }
+
 }
