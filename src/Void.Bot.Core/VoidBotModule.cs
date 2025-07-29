@@ -23,6 +23,7 @@ using Void.Bot.Core.Middlewares.FluentMessageValidator;
 using Void.Bot.Core.Middlewares.Preload;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
+using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord;
@@ -30,6 +31,7 @@ using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Enum;
 
 using Module = Autofac.Module;
@@ -53,6 +55,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterAutoMapper(builder);
 
         RegisterDependency(builder);
+
+        RegisterContextTemplate(builder);
         
         RegisterCaching(builder);
         
@@ -133,7 +137,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     private void RegisterDependency(ContainerBuilder builder)
     {
         var allServiceTypes = _assemblies.SelectMany(a => a.GetTypes())
-            .Where(t => t.IsClass && t.GetInterfaces().Any(i => i == typeof(IService)))
+            .Where(t => t.IsClass && !t.IsAbstract && t.GetInterfaces().Any(i => i == typeof(IService)))
             .ToList();
 
         foreach (var type in allServiceTypes)
@@ -149,6 +153,17 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
                 registration.InstancePerLifetimeScope();
             }
         }
+    }
+    
+    // 注册内容模板
+    private void RegisterContextTemplate(ContainerBuilder builder)
+    {
+        var contextTemplateTypes = _assemblies.SelectMany(a => a.GetTypes())
+            .Where(t => t.IsClass && t.GetInterfaces().Any(i => i == typeof(IContextTemplate)))
+            .Where(t => t.GetCustomAttribute<LanguageAttribute>() != null)
+            .ToArray();
+
+        builder.RegisterTypes(contextTemplateTypes).AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
     }
     
     // 注册缓存

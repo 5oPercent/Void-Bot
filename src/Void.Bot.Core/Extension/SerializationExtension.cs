@@ -1,4 +1,5 @@
 using System.Text.Json;
+using YamlDotNet.Serialization;
 
 namespace Void.Bot.Core.Extension;
 
@@ -15,5 +16,18 @@ public static class SerializationExtension
         {
             PropertyNameCaseInsensitive = true
         })!;
+    }
+
+    private static readonly ISerializer YamlSerializer = new SerializerBuilder().Build();
+    private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
+
+    public static string SerializeYaml(this object source)
+    {
+        return YamlSerializer.Serialize(source);
+    }
+    
+    public static T? DeserializeYaml<T>(this string yaml)
+    {
+        return YamlDeserializer.Deserialize<T>(yaml);
     }
 }
