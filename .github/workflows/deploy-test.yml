@@ -21,7 +21,7 @@ jobs:
         
   deployment:
     
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux, x64, ubuntu]
     needs: [build]
     
     steps:
