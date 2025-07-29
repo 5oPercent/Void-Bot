@@ -24,4 +24,15 @@ public static class LanguageExtension
 
         return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.FileName}.{language}.yaml";
     }
+    
+    public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string language)
+    {
+        return language switch
+        {
+            "zh-chs" or "zhchs" => LanguageEnum.ZhChs,
+            "zh-cht" or "zhcht" => LanguageEnum.ZhCht,
+            "en" => LanguageEnum.En,
+            _ => LanguageEnum.Default
+        };
+    }
 }
