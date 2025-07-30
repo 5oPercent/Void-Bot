@@ -109,15 +109,11 @@ public static class HostExtension
         
         app.UseHttpsRedirection();
         app.UseRouting();
-
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapMetrics();
-        });
         
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
+        app.MapMetrics();
         
         if (hangfireSetting.EnableDashboard)
         {
