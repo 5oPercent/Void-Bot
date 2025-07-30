@@ -1,11 +1,13 @@
 using Discord;
 using SkiaSharp;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Regexs;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
@@ -26,35 +28,47 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
+        var language = BungieRegexs.Language().Replace(_destiny2PlayerData.Language, "");
+        
         #region Embed
         
-        var seasonJson = await _cacheManager.Get<string>(Destiny2ManifestConstants.SeasonCacheKey+":zhchs", cancellationToken);
+        var seasonJson = await _cacheManager.Get<string>($"{Destiny2ManifestConstants.SeasonCacheKey}:{language}", cancellationToken);
         var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         
-        var seasonTimeRange = $"`{currentSeason?.StartDate.ToLocalTime()}` - `{currentSeason?.EndDate.ToLocalTime()}`";
-        var seasonDays = $"`{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}`";
-        var seasonRemainingDays = $"`{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}`";
-        
-        var currentSeasonContext = $"""
-                                    > 名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
-                                    > 时间: {(currentSeason != null ? seasonTimeRange : "未知")}
-                                    > 天数: 剩余 {seasonRemainingDays} 天 | 总 {seasonDays} 天
-                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
-                                    """;
-        
-        var historyCareerContext = $"""
-                                    > 嘉奖得分: `{commendationInfo.TotalScore}`
-                                    > 生涯守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
-                                    > 赛季守护者等级: `{profileInfo.RenewedGuardianRank}`
-                                    > 最后上线: `{profileInfo.DateLastPlayed.ToLocalTime()}`
-                                    """;
+        var seasonTimeRange = $"{currentSeason?.StartDate.ToLocalTime()} - {currentSeason?.EndDate.ToLocalTime()}";
+        var seasonDays = $"{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}";
+        var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
 
+        var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(language);
+        var destiny2ContextYamlKey = typeof(Destiny2ContextTemplate).GetYamlKey(languageEnum);
+        
+        var seasonContext = string.Format(
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonBody)),
+            currentSeason?.DisplayProperties.Name ?? "???",
+            currentSeason != null ? seasonTimeRange : "???",
+            seasonRemainingDays, seasonDays,
+            profileInfo.CurrentSeasonRewardPowerCap);
+        
+        var careerContext = string.Format(
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerBody)),
+            commendationInfo.TotalScore,
+            profileInfo.LifetimeHighestGuardianRank,
+            profileInfo.RenewedGuardianRank,
+            profileInfo.DateLastPlayed.ToLocalTime());
+
+        var careerTitle = string.Format(
+            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerTitle)),
+            globalDisplayName);
+        
+        var careerField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerField));
+        var seasonField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonField));
+        
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)
-            .WithTitle($"{globalDisplayName} 的生涯信息")
-            .AddField("当前赛季", currentSeasonContext)
-            .AddField("历史生涯", historyCareerContext);
+            .WithTitle(careerTitle)
+            .AddField(careerField, seasonContext)
+            .AddField(seasonField, careerContext);
 
         if (currentSeason != null)
         {
@@ -116,4 +130,5 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         
         return ([embedCareer], [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
     }
+
 }
