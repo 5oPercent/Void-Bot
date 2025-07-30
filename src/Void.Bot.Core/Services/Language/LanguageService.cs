@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Message.Attributes;
@@ -89,7 +90,7 @@ public class LanguageService : ILanguageService, IDisposable
         }
         catch (Exception ex)
         {
-            // ignored
+            Log.Warning("Failed to load YAML file: {FilePath}. Error: {ErrorMessage}", fullPath, ex.Message);
         }
     }
     

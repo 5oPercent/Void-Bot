@@ -13,7 +13,7 @@ public static class LanguageExtension
         if (att == null)
             throw new InvalidOperationException($"Class {typeof(T).Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.FileName}.{language}.yaml";
+        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
     }
     
     public static string GetYamlKey(this Type type, LanguageEnum language = LanguageEnum.Default)
@@ -22,7 +22,7 @@ public static class LanguageExtension
         if (att == null)
             throw new InvalidOperationException($"Class {type.Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.FileName}.{language}.yaml";
+        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
     }
     
     public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string language)
