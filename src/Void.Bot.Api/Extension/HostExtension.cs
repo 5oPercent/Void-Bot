@@ -6,6 +6,7 @@ using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Prometheus;
 using Scalar.AspNetCore;
 using Serilog;
 using Void.Bot.Api.ActionFilters;
@@ -108,6 +109,12 @@ public static class HostExtension
         
         app.UseHttpsRedirection();
         app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapMetrics();
+        });
+        
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
