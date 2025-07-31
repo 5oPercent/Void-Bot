@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -58,5 +59,15 @@ public static class ObjectExtension
     public static T ToEnum<T>(this object value)
     {
         return (T)Enum.ToObject(typeof(T), value);
+    }
+    
+    public static string GetPropertyName<T>(this Expression<Func<T, object>> expression)
+    {
+        return expression.Body switch
+        {
+            MemberExpression member => member.Member.Name,
+            UnaryExpression { Operand: MemberExpression unaryMember } => unaryMember.Member.Name,
+            _ => string.Empty
+        };
     }
 }
