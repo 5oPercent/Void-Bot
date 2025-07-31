@@ -26,7 +26,7 @@ public class Destiny2BaseProfileDto
     
     public bool IsSinglePlatform { get; set; }
     
-    public BungieMembershipTypeEnum MembershipTypeEnum { get; set; }
+    public BungieMembershipTypeEnum MembershipType { get; set; }
     
     public long MembershipId { get; set; }
 }

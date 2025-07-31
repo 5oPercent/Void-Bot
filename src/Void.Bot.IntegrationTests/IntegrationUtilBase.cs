@@ -1,11 +1,8 @@
-using Autofac;
-
 namespace Void.Bot.IntegrationTest;
 
-public class IntegrationUtilBase : IntegrationTestBase
+public class IntegrationUtilBase : IntegrationFixture
 {
-    public IntegrationUtilBase(ILifetimeScope lifetimeScope)
+    public IntegrationUtilBase(IntegrationTestBase testBase) : base(testBase)
     {
-        SetupScope(lifetimeScope);
     }
 }

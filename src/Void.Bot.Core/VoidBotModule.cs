@@ -19,6 +19,7 @@ using Void.Bot.Core.Data;
 using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
+using Void.Bot.Core.Middlewares.FluentMessageValidator;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Services;
@@ -56,6 +57,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterSettings(builder);
 
         RegisterDbContext(builder);
+        
+        RegisterValidator(builder);
 
         RegisterDiscordBotClient(builder);
 
@@ -107,6 +110,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         {
             p.UseLogger();          // 统一日志记录
             p.UseMessageLogging();  // 特殊标记日志记录
+            p.UseMessageValidator();// 消息验证
             p.UseUnitOfWork();      // 事务处理
             p.UseUnifyResponse();   // 统一响应
         });
@@ -183,6 +187,14 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             .InstancePerLifetimeScope();
         
         builder.RegisterGeneric(typeof(Repository<>)).As(typeof(IRepository<>)).InstancePerLifetimeScope();
+    }
+    
+    // 注册消息验证器
+    private void RegisterValidator(ContainerBuilder builder)
+    {
+        builder.RegisterAssemblyTypes(_assemblies)
+            .Where(t => t.IsClass && typeof(IFluentMessageValidator).IsAssignableFrom(t))
+            .AsSelf().AsImplementedInterfaces();
     }
     
     // 注册 Discord Bot 客户端

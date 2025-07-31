@@ -76,7 +76,7 @@ public class DestinyComponentProfilesUserInfoDto
     
     public bool IsPublic { get; set; }
     
-    public BungieMembershipTypeEnum MembershipTypeEnum { get; set; }
+    public BungieMembershipTypeEnum MembershipType { get; set; }
     
     public string MembershipId { get; set; } = string.Empty;
     

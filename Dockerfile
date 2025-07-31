@@ -12,7 +12,16 @@ RUN dotnet publish Void.Bot.Api -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libfontconfig1 \
+    libfreetype6 \
+    libpng16-16 \
+    libharfbuzz0b \
+    libicu72 \
+    libexpat1 \
+    && update-ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-env /src/out ./
 

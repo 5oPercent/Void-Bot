@@ -5,7 +5,7 @@ using Void.Bot.IntegrationTest.TestBaseClasses;
 
 namespace Void.Bot.IntegrationTest.Managers;
 
-public class CacheManagerTest : ManagerFixtureBase
+public class CacheManagerTest(IntegrationTestBase testBase) : ManagerFixtureBase(testBase)
 {
     [Theory]
     [ClassData(typeof(CacheManagerSetDataProvider))]

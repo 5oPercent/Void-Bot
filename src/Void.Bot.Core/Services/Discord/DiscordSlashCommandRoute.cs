@@ -1,6 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Discord.SlashCommand;
@@ -80,6 +81,38 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
             userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName, user.Level, user.Source));
         }
         
+        Log.Information("Discord Slash Command executed: {@Detail}", new
+        {
+            SlashCommand = new
+            {
+                Name = callback.CommandName,
+                Options = ExtractSimplifiedOptions(callback.Data.Options)
+            },
+            User = new {
+                Void = new
+                {
+                    user?.Id,
+                    user?.DisplayName
+                },
+                Discord = new
+                {
+                    Id = callback.User.Id.ToString(),
+                    callback.User.GlobalName,
+                    callback.User.Username
+                }
+            }
+        });
+        
         await sc.ExecuteAsync(callback);
+    }
+    
+    private static IEnumerable<object> ExtractSimplifiedOptions(IEnumerable<IApplicationCommandInteractionDataOption> options)
+    {
+        return options.Select(o => new 
+        {
+            o.Name,
+            Options = ExtractSimplifiedOptions(o.Options?.ToList() ?? []),
+            o.Value
+        });
     }
 }

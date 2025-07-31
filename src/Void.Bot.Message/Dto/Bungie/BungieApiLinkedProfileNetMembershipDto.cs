@@ -18,7 +18,7 @@ public class BungieApiLinkedProfileNetMembershipDto
     
     public bool IsPublic { get; set; }
     
-    public BungieMembershipTypeEnum MembershipTypeEnum { get; set; }
+    public BungieMembershipTypeEnum MembershipType { get; set; }
     
     public long MembershipId { get; set; }
 

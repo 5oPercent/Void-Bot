@@ -62,7 +62,7 @@ public class IdentityService : IIdentityService
         var getUserAccountResponse = await _accountService.GetUserAccountAsync(
             new GetUserAccountRequest
             {
-                DisplayName = $"{request.UserName}#{request.Suffix}"
+                DisplayName = $"{request.Name}#{request.Suffix}"
             }, cancellationToken).ConfigureAwait(false);
 
         if (getUserAccountResponse.Data == null)
@@ -179,7 +179,7 @@ public class IdentityService : IIdentityService
         var profileResponse = await _bungieService.GetDestiny2LinkedProfileAsync(
             new GetDestiny2LinkedProfileRequest
             {
-                MembershipTypeEnum = BungieMembershipTypeEnum.BungieNext,
+                MembershipType = BungieMembershipTypeEnum.BungieNext,
                 MembershipId = int.Parse(tokenResponse.Data!.MembershipId)
             }, cancellationToken).ConfigureAwait(false);
 

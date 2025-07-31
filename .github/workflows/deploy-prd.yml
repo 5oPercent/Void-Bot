@@ -21,7 +21,7 @@ jobs:
       
   deployment:
   
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux, x64, ubuntu]
     needs: [build]
     
     steps:
@@ -31,3 +31,13 @@ jobs:
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Deploy docker container
         run: docker compose -f /home/void-bot/docker-compose.yml --project-directory /home/void-bot up -d
+      - name: Clean up old images
+        run: |
+          KEEP_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '${{ secrets.ALIYUN_DOCKER_REPO }}:' | grep -v 'all-in-one-' | sort -r | head -3)
+          ALL_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '${{ secrets.ALIYUN_DOCKER_REPO }}:' | grep -v 'all-in-one-')
+          for IMG in $ALL_IMAGES; do
+            if ! echo "$KEEP_IMAGES" | grep -q "$IMG"; then
+              echo "Removing old image: $IMG"
+              docker rmi "$IMG" || true
+            fi
+          done

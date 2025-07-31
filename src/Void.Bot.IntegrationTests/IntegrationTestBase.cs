@@ -1,61 +1,102 @@
-using System.Diagnostics;
+using System.Text.Json.Nodes;
 using Autofac;
+using Autofac.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
+using NSubstitute;
+using Respawn;
+using Serilog;
+using Void.Bot.Core;
 using Void.Bot.Core.Data;
+using Void.Bot.Core.Dbup;
+using Void.Bot.Core.Settings;
+using Void.Bot.Core.Settings.System;
 
 namespace Void.Bot.IntegrationTest;
 
-public class IntegrationTestBase
+public class IntegrationTestBase : IAsyncLifetime
 {
-    private ILifetimeScope? _lifetimeScope;
+    private const string Topic = "integration_test";
+    
+    public readonly ILifetimeScope LifetimeScope;
+    
+    private IConfiguration Configuration => LifetimeScope.Resolve<IConfiguration>();
+    
+    private Respawner _respawner;
 
-    protected IntegrationTestBase(ILifetimeScope? lifetimeScope = null)
+    public IntegrationTestBase()
     {
-        _lifetimeScope = lifetimeScope;
+        var logger = Substitute.For<ILogger>();
+        
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddLogging(l =>
+        {
+            l.AddSerilog();
+        });
+        
+        var containerBuilder = new ContainerBuilder();
+        
+        var configuration = RegisterConfiguration(containerBuilder);
+        
+        containerBuilder.Populate(serviceCollection);
+        containerBuilder.RegisterModule(new VoidBotModule(new IntegrationTestUser(), logger, configuration, typeof(IntegrationFixture).Assembly));
+        containerBuilder.RegisterInstance(new MemoryCache(new MemoryCacheOptions())).AsSelf().As<IMemoryCache>().SingleInstance();
+        
+        LifetimeScope = containerBuilder.Build();
+        
+        new DbUpRunner(new ConnectionStringSetting(Configuration).Mysql).Run("Dbup");
     }
     
-    protected void SetupScope(ILifetimeScope lifetimeScope) => _lifetimeScope = lifetimeScope;
-
-    protected async Task Run<T>(Func<T, Task> action, Action<ContainerBuilder>? extraRegistration = null)
-        where T : notnull
+    private IConfiguration RegisterConfiguration(ContainerBuilder containerBuilder)
     {
-        if (_lifetimeScope == null) return;
+        var targetJson = $"appsetting_{Topic}.json";
+        File.Copy("appsettings.json", targetJson, true);
+
+        var document = JsonNode.Parse(File.ReadAllText(targetJson)) ?? throw new InvalidOperationException();
+        document["ConnectionStrings"]!["Mysql"] = document["ConnectionStrings"]!["Mysql"]!.ToString()
+            .Replace("database=db_void_bot", $"database=db_void_bot_{Topic}");
         
-        var dependency = extraRegistration != null
-             ? _lifetimeScope.BeginLifetimeScope(extraRegistration).Resolve<T>()
-             : _lifetimeScope.BeginLifetimeScope().Resolve<T>();
-     
-         await action(dependency);
+        File.WriteAllText(targetJson, document.ToJsonString());
+        
+        var configuration = new ConfigurationBuilder().AddJsonFile(targetJson).Build();
+        containerBuilder.RegisterInstance(configuration).AsImplementedInterfaces();
+        
+        configuration.Get(typeof(AppSetting));
+        
+        return configuration;
     }
     
-    protected async Task Run<T, U>(Func<T, U, Task> action, Action<ContainerBuilder>? extraRegistration = null)
-        where T : notnull
-        where U : notnull
+    public async Task ResetDatabaseAsync()
     {
-        if (_lifetimeScope == null) return;
-
-        var lifetime = extraRegistration != null
-            ? _lifetimeScope.BeginLifetimeScope(extraRegistration)
-            : _lifetimeScope.BeginLifetimeScope();
-        
-        var dependency = lifetime.Resolve<T>();
-        var dependency2 = lifetime.Resolve<U>();
-        
-        await action(dependency, dependency2);
+        await using var conn = new MySqlConnection(new ConnectionStringSetting(Configuration).Mysql);
+        await conn.OpenAsync();
+        await _respawner.ResetAsync(conn);
     }
-    
-    protected async Task RunWithUnitOfWork<T>(Func<T, Task> action, Action<ContainerBuilder>? extraRegistration = null)
-        where T : notnull
-    {
-        if (_lifetimeScope == null) return;
-        
-        var scope = extraRegistration != null
-            ? _lifetimeScope.BeginLifetimeScope(extraRegistration)
-            : _lifetimeScope.BeginLifetimeScope();
 
-        var dependency = scope.Resolve<T>();
-        var unitOfWork = scope.Resolve<IUnitOfWork>();
+    public async Task InitializeAsync()
+    {
+        await using var conn = new MySqlConnection(new ConnectionStringSetting(Configuration).Mysql);
+        await conn.OpenAsync();
         
-        await action(dependency);
-        await unitOfWork.SaveChangesAsync();
+        _respawner = await Respawner.CreateAsync(conn, new RespawnerOptions
+        {
+            TablesToIgnore =
+            [
+                "schemaversions"
+            ],
+            SchemasToInclude =
+            [
+                $"db_void_bot_{Topic}"
+            ],
+            DbAdapter = DbAdapter.MySql
+        });
+    }
+
+    public Task DisposeAsync()
+    {
+        var context = LifetimeScope.Resolve<VoidBotDbContext>();
+        return context.Database.EnsureDeletedAsync();
     }
 }

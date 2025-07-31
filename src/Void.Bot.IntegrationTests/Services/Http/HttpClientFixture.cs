@@ -3,7 +3,7 @@ using Void.Bot.Core.Services.Http;
 
 namespace Void.Bot.IntegrationTest.Services.Http;
 
-public class HttpClientFixture() : IntegrationFixture("httpclient", "httpclient_test")
+public class HttpClientFixture(IntegrationTestBase testBase) : IntegrationFixture(testBase)
 {
     [Fact]
     public async Task RequestAsync()
