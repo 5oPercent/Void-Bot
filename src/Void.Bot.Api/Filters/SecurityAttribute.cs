@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Dto;
+using Void.Bot.Message.Enum.Account;
 
 namespace Void.Bot.Api.Filters;
 
@@ -12,7 +13,7 @@ public class SecurityAttribute : Attribute, IAsyncAuthorizationFilter
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var currentUser = context.HttpContext.RequestServices.GetService<ICurrentUser>();
-        if (currentUser?.Id == null || currentUser.Id == Guid.Empty)
+        if (currentUser?.Id == null || currentUser.Id == Guid.Empty || currentUser.Level == AccountLevelEnum.SuperAdmin)
         {
             return;
         }

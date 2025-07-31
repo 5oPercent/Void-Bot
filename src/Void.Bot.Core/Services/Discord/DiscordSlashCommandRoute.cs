@@ -77,7 +77,7 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
         if (user != null)
         {
             var userProvider = scope.ServiceProvider.GetRequiredService<ICurrentUserProvider>();
-            userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName));
+            userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName, user.Level, user.Source));
         }
         
         await sc.ExecuteAsync(callback);
