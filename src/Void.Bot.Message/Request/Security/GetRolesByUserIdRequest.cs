@@ -9,6 +9,13 @@ public class GetRolesByUserIdRequest : IRequest
     public Guid UserId { get; set; }
 }
 
-public class GetRolesByUserIdResponse : VoidBotResponse<List<RoleDto>>
+public class GetRolesByUserIdResponse : VoidBotResponse<GetRolesByUserIdData>
 {
+}
+
+public class GetRolesByUserIdData
+{
+    public List<UserRoleDto> UserRoles { get; set; } = [];
+    
+    public List<RoleDto> Roles { get; set; } = [];
 }
