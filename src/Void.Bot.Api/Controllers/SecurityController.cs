@@ -204,9 +204,9 @@ public class SecurityController : ControllerBase
     #region RolePermissions
     
     [HttpGet("role/permissions")]
-    public async Task<IActionResult> GetPermissionsByRoleIdAsync([FromQuery] GetPermissionsByRoleIdRequest request)
+    public async Task<IActionResult> GetPermissionsByRoleIdsAsync([FromQuery] GetPermissionsByRoleIdsRequest request)
     {
-        var response = await _mediator.RequestAsync<GetPermissionsByRoleIdRequest, GetPermissionsByRoleIdResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<GetPermissionsByRoleIdsRequest, GetPermissionsByRoleIdsResponse>(request).ConfigureAwait(false);
         return Ok(response);
     }
     
@@ -268,9 +268,9 @@ public class SecurityController : ControllerBase
     #region PermissionEndpoints
     
     [HttpGet("permission/endpoints")]
-    public async Task<IActionResult> GetEndpointsByPermissionIdAsync([FromQuery] GetEndpointsByPermissionIdRequest request)
+    public async Task<IActionResult> GetEndpointsByPermissionIdsAsync([FromQuery] GetEndpointsByPermissionIdsRequest request)
     {
-        var response = await _mediator.RequestAsync<GetEndpointsByPermissionIdRequest, GetEndpointsByPermissionIdResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<GetEndpointsByPermissionIdsRequest, GetEndpointsByPermissionIdsResponse>(request).ConfigureAwait(false);
         return Ok(response);
     }
     
