@@ -11,8 +11,8 @@ namespace Void.Bot.Core.Services.Security;
 
 public interface IPermissionEndpointService : IScope
 {
-    Task<GetEndpointsByPermissionIdResponse> GetEndpointsByPermissionIdAsync(
-        GetEndpointsByPermissionIdRequest request, CancellationToken cancellationToken);
+    Task<GetEndpointsByPermissionIdsResponse> GetEndpointsByPermissionIdsAsync(
+        GetEndpointsByPermissionIdsRequest request, CancellationToken cancellationToken);
     
     Task<AssignEndpointsToPermissionResponse> AssignEndpointsToPermissionAsync(
         AssignEndpointsToPermissionCommand command, CancellationToken cancellationToken);
@@ -49,13 +49,13 @@ public class PermissionEndpointService : IPermissionEndpointService
         _permissionEndpointRep = permissionEndpointRep;
     }
 
-    public async Task<GetEndpointsByPermissionIdResponse> GetEndpointsByPermissionIdAsync(
-        GetEndpointsByPermissionIdRequest request, CancellationToken cancellationToken)
+    public async Task<GetEndpointsByPermissionIdsResponse> GetEndpointsByPermissionIdsAsync(
+        GetEndpointsByPermissionIdsRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetEndpointsByPermissionIdResponse();
+        var response = new GetEndpointsByPermissionIdsResponse();
         
         var endpoints = await _permissionEndpointRep.QueryNoTracking()
-            .Where(x => x.PermissionId == request.PermissionId)
+            .Where(x => request.PermissionIds.Contains(x.Id))
             .Select(x => x.Endpoint)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         

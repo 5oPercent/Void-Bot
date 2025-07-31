@@ -47,7 +47,9 @@ public class IdentityService : IIdentityService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.DisplayName),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim("account_level", user.Level.ToString()),
+            new Claim("account_source", user.Source.ToString())
         };
         
         return claims;
