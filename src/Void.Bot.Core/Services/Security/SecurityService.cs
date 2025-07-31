@@ -35,13 +35,13 @@ public class SecurityService : ISecurityService
 
         var userRoles = await _userRoleService.GetRolesByUserIdAsync(
             new GetRolesByUserIdRequest { UserId = userId }, cancellationToken).ConfigureAwait(false);
-        if (userRoles.Data == null || userRoles.Data.Count == 0)
+        if (userRoles.Data == null || userRoles.Data.UserRoles.Count == 0)
         {
             Log.Warning("User with ID {UserId} has no roles assigned.", userId);
             return false;
         }
         
-        var roleIds = userRoles.Data.Select(r => r.Id).ToList();
+        var roleIds = userRoles.Data.UserRoles.Where(x=> x.Deadline > DateTimeOffset.Now).Select(r => r.RoleId).ToList();
         var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
             new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         if (rolePermissions.Data == null || rolePermissions.Data.Count == 0)

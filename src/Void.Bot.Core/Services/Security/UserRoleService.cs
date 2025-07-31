@@ -53,21 +53,25 @@ public class UserRoleService : IUserRoleService
     public async Task<GetRolesByUserIdResponse> GetRolesByUserIdAsync(
         GetRolesByUserIdRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetRolesByUserIdResponse();
+        var response = new GetRolesByUserIdResponse
+        {
+            Data = new GetRolesByUserIdData()
+        };
         
-        var roleIds = await _userRoleRep.QueryNoTracking()
+        var userRoles = await _userRoleRep.QueryNoTracking()
             .Where(x => x.UserId == request.UserId)
-            .Select(x => x.RoleId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        if (roleIds.Count == 0)
+        if (userRoles.Count == 0)
         {
-            response.Data = [];
             return response;
         }
         
+        var roleIds = userRoles.Select(x => x.RoleId).Distinct().ToList();
         var roles = await _roleDataProvider.GetRoleListAsync(roleIds, cancellationToken).ConfigureAwait(false);
-        response.Data = _mapper.Map<List<RoleDto>>(roles);
+        
+        response.Data.UserRoles = _mapper.Map<List<UserRoleDto>>(userRoles);
+        response.Data.Roles = _mapper.Map<List<RoleDto>>(roles);
         
         return response;
     }
