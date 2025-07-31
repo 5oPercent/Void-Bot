@@ -41,28 +41,27 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
 
         var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(language);
-        var destiny2ContextYamlKey = typeof(Destiny2ContextTemplate).GetYamlKey(languageEnum);
         
         var seasonContext = string.Format(
-            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonBody)),
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonBody, languageEnum),
             currentSeason?.DisplayProperties.Name ?? "???",
             currentSeason != null ? seasonTimeRange : "???",
             seasonRemainingDays, seasonDays,
             profileInfo.CurrentSeasonRewardPowerCap);
         
         var careerContext = string.Format(
-            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerBody)),
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerBody, languageEnum),
             commendationInfo.TotalScore,
             profileInfo.LifetimeHighestGuardianRank,
             profileInfo.RenewedGuardianRank,
             profileInfo.DateLastPlayed.ToLocalTime());
 
         var careerTitle = string.Format(
-            _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerTitle)),
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerTitle, languageEnum),
             globalDisplayName);
         
-        var careerField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.CareerField));
-        var seasonField = _languageService.GetContext(destiny2ContextYamlKey, nameof(Destiny2ContextTemplate.SeasonField));
+        var careerField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerField, languageEnum);
+        var seasonField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonField, languageEnum);
         
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)

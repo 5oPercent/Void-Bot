@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Reflection;
 using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Message.Attributes;
+using Void.Bot.Message.Enum;
 
 namespace Void.Bot.Core.Services.Language;
 
@@ -11,9 +13,8 @@ public interface ILanguageService : ISingleton
 {
     public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken);
 
-    public string GetContext(Type contextTemplateType, string key);
-    
-    public string GetContext(string yamlKey, string key);
+    public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
+        where T : IContextTemplate;
 }
 
 public class LanguageService : ILanguageService, IDisposable
@@ -125,19 +126,16 @@ public class LanguageService : ILanguageService, IDisposable
     
     #endregion
 
-    public string GetContext(Type contextTemplateType, string key)
+    public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
+        where T : IContextTemplate
     {
-        var yamlKey = contextTemplateType.GetYamlKey();
-        
-        return GetContext(yamlKey, key);
-    }
-    
-    public string GetContext(string yamlKey, string key)
-    {
-        yamlKey = yamlKey.ToLower();
+        var yamlKey = typeof(T).GetYamlKey(language).ToLower();
+        var key = expression.GetPropertyName();
 
         if (_languages.TryGetValue(yamlKey, out var languageDict) && languageDict.TryGetValue(key, out var context))
             return context;
+        
+        yamlKey = typeof(T).GetYamlKey().ToLower();
         
         if (!_contextTemplates.TryGetValue(yamlKey, out var contextTemplate))
             return string.Empty;
