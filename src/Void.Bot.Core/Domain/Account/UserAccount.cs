@@ -1,11 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Dto;
+using Void.Bot.Message.Enum.Account;
 
 namespace Void.Bot.Core.Domain.Account;
 
 [Table("user_account")]
-public class UserAccount : IEntity, IEntityCreated, IEntityModified
+public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
 {
     [Key] [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -15,7 +17,8 @@ public class UserAccount : IEntity, IEntityCreated, IEntityModified
     [Required]
     public string Name { get; set; } = string.Empty;
 
-    [Column("Suffix")] [StringLength(4)]
+    [Column("Suffix")]
+    [StringLength(4)]
     public string Suffix { get; set; } = "".GenerateNumberSuffix();
     
     [NotMapped]
@@ -25,6 +28,12 @@ public class UserAccount : IEntity, IEntityCreated, IEntityModified
     [StringLength(255)]
     [Required]
     public string Password { get; set; } = string.Empty;
+
+    [Column("level")]
+    public AccountLevelEnum Level { get; set; } = AccountLevelEnum.User;
+    
+    [Column("source")]
+    public AccountSourceEnum Source { get; set; } = AccountSourceEnum.Local;
     
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

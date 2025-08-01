@@ -1,52 +1,39 @@
 using System.Linq.Expressions;
-using Void.Bot.Core.Domain;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
 
-public interface IRepository
+public interface IRepository<TEntity>  where TEntity : class, IEntityBase
 {
-    Task<TEntity?> SingleOrDefaultAsync<TEntity>(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task<TEntity?> SingleOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
-    Task<TEntity?> FirstOrDefaultAsync<TEntity>(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task<TEntity?> FirstOrDefaultAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
+    Task<List<TEntity>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task<List<TEntity>> ToListAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
+
+    Task InsertAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+    Task InsertManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+    Task UpdateManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+    Task DeleteManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     
-    Task<List<TEntity>> GetAllAsync<TEntity>(CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task DeleteAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
-    Task<List<TEntity>> ToListAsync<TEntity>(Expression<Func<TEntity, bool>> predicate,
-        CancellationToken cancellationToken = default) where TEntity : class, IEntityBase;
-    
-    Task InsertAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task<int> CountAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
-    Task InsertAllAsync<TEntity>(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task<bool> AnyAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
-    Task UpdateAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    Task<List<TEntity>> SqlQueryAsync(string sql, params object[] parameters);
 
-    Task UpdateAllAsync<TEntity>(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
+    IQueryable<TEntity> Query(Expression<Func<TEntity, bool>>? predicate = null);
 
-    Task DeleteAsync<TEntity>(TEntity entity, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
-    
-    Task DeleteAllAsync<TEntity>(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
-    
-    Task<int> CountAsync<TEntity>(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
-    
-    Task<bool> AnyAsync<TEntity>(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
-        where TEntity : class, IEntityBase;
-
-    Task<List<T>> SqlQueryAsync<T>(string sql, params object[] parameters)
-        where T : class, IEntityBase;
-
-    IQueryable<TEntity> Query<TEntity>(Expression<Func<TEntity, bool>>? predicate = null)
-        where TEntity : class, IEntityBase;
-
-    IQueryable<TEntity> QueryNoTracking<TEntity>(Expression<Func<TEntity, bool>>? predicate = null)
-        where TEntity : class, IEntityBase;
+    IQueryable<TEntity> QueryNoTracking(Expression<Func<TEntity, bool>>? predicate = null);
 }

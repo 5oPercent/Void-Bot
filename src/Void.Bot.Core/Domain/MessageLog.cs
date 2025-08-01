@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain;
 
 [Table("message_log")]
-public class MessageLog : IEntity, IEntityCreated
+public class MessageLog : IEntity<Guid>, IEntityCreated
 {
     [Column("id")]
     public Guid Id { get; set; } = Guid.NewGuid();

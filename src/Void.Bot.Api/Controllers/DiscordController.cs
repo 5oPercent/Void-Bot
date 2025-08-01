@@ -1,6 +1,7 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Api.Filters;
 using Void.Bot.Message.Request.Discord;
 
 namespace Void.Bot.Api.Controllers;
@@ -8,6 +9,7 @@ namespace Void.Bot.Api.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
+[Security]
 public class DiscordController : ControllerBase
 {
     private readonly IMediator _mediator;
