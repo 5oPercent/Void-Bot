@@ -7,7 +7,7 @@ public class MessageLoggingUtil(IntegrationTestBase testBase) : IntegrationUtilB
 {
     public async Task AddMessageLoggingAsync(Guid id, string messageType, string messageJson, string resultType, string resultJson, DateTimeOffset createAt)
     {
-        await RunWithUnitOfWork<IRepository>(async rep =>
+        await RunWithUnitOfWork<IRepository<MessageLog>>(async rep =>
         {
             await rep.InsertAsync(new MessageLog
             {

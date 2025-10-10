@@ -1,5 +1,8 @@
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Settings.Language;
+using Void.Bot.Api.Extension;
+using Void.Bot.Core.Services.Security;
+using Void.Bot.Message.Commands.Security;
 
 namespace Void.Bot.Api.HostedService;
 
@@ -18,6 +21,8 @@ public class InitializationHostedService : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        await ScanEndpointsAsync(cancellationToken).ConfigureAwait(false);
+        
         if (_languageSetting.GenerateDefaultYamlFile)
         {
             await GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
@@ -27,6 +32,20 @@ public class InitializationHostedService : IHostedService
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
+    }
+
+    private async Task ScanEndpointsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+
+        var endpointService = scope.ServiceProvider.GetRequiredService<IEndpointService>();
+
+        var endpoints = ScannerExtensions.ScanEndpoints();
+
+        await endpointService.ReplaceEndpointListAsync(new ReplaceEndpointListCommand
+        {
+            Endpoints = endpoints
+        });
     }
     
     private async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)

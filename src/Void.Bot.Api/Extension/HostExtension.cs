@@ -78,6 +78,8 @@ public static class HostExtension
             options.Filters.Add<UnifyResponseExceptionFilter>();
         });
         
+        
+        
         services.AddHangfire(config =>
         {
             switch(hangfireSetting.UseStorage)

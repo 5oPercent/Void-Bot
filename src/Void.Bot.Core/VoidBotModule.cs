@@ -205,8 +205,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             .As<DbContext>()
             .AsImplementedInterfaces()
             .InstancePerLifetimeScope();
-
-        builder.RegisterType<Repository>().As<IRepository>().InstancePerLifetimeScope();
+        
+        builder.RegisterGeneric(typeof(Repository<>)).As(typeof(IRepository<>)).InstancePerLifetimeScope();
     }
     
     // 注册消息验证器

@@ -1,3 +1,5 @@
+using Void.Bot.Message.Enum.Account;
+
 namespace Void.Bot.Message.Dto.Account;
 
 public class UserAccountDto
@@ -11,6 +13,10 @@ public class UserAccountDto
     public string DisplayName => $"{Name}#{Suffix}";
     
     public string Password { get; set; } = string.Empty;
+    
+    public AccountLevelEnum Level { get; set; } = AccountLevelEnum.User;
+    
+    public AccountSourceEnum Source { get; set; } = AccountSourceEnum.Local;
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 

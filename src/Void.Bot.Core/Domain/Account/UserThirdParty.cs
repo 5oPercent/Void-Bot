@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.Account;
 
 [Table("user_third_party")]
-public class UserThirdParty : IEntity, IEntityCreated, IEntityModified
+public class UserThirdParty : IEntity<Guid>, IEntityCreated, IEntityModified
 {
     [Key]
     [Column("id")]
