@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Serilog;
 using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Extension;
@@ -8,7 +9,7 @@ public static class HttpClientExtension
 {
     public static async Task<VoidBotResponse<T>> GetAsync<T>(this HttpClient client, string url, CancellationToken cancellationToken)
     {
-        return await SafeProcessAsync(async () =>
+        return await SafeProcessAsync(url, async () =>
         {
             var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
             
@@ -24,7 +25,7 @@ public static class HttpClientExtension
     
     public static async Task<VoidBotResponse<T>> PostAsync<T>(this HttpClient client, string url, HttpContent content, CancellationToken cancellationToken)
     {
-        return await SafeProcessAsync(async () =>
+        return await SafeProcessAsync(url, async () =>
         {
             var response = await client.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
             
@@ -41,7 +42,7 @@ public static class HttpClientExtension
     
     public static async Task<VoidBotResponse<T>> PostAsync<T>(this HttpClient client, string url, object content, CancellationToken cancellationToken)
     {
-        return await SafeProcessAsync(async () =>
+        return await SafeProcessAsync(url, async () =>
         {
             var response = await client.PostAsJsonAsync(url, content, cancellationToken).ConfigureAwait(false);
             
@@ -55,7 +56,7 @@ public static class HttpClientExtension
         }, cancellationToken).ConfigureAwait(false);
     }
     
-    public static async Task<VoidBotResponse<T>> SafeProcessAsync<T>(Func<Task<VoidBotResponse<T>>> func, CancellationToken cancellationToken)
+    public static async Task<VoidBotResponse<T>> SafeProcessAsync<T>(string requestUrl, Func<Task<VoidBotResponse<T>>> func, CancellationToken cancellationToken, bool shouldLogError = true)
     {
         try
         {
@@ -65,6 +66,11 @@ public static class HttpClientExtension
         }
         catch (Exception ex)
         {
+            if (shouldLogError)
+                Log.Error(ex, "Error on requesting {RequestUrl}", requestUrl);
+            else
+                Log.Warning(ex, "Error on requesting {RequestUrl}", requestUrl);
+            
             return new VoidBotResponse<T>
             {
                 Code = HttpStatusCode.BadRequest,
