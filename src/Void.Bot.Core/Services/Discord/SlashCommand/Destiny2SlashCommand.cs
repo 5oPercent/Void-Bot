@@ -84,8 +84,9 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
                 var response = await mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(
                     new GetDestiny2CareerRequest
                     {
-                        MembershipType = membershipType,
-                        MembershipId = membershipId
+                        DisplayName = parts?[0] ?? string.Empty,
+                        DisplayNameCode = parts?[1] ?? string.Empty,
+                        MembershipType = membershipType
                     }, cancellationToken).ConfigureAwait(false);
                 
                 if (response.Data == null)

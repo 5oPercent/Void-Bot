@@ -1,18 +1,17 @@
-using System.ComponentModel.DataAnnotations;
 using Mediator.Net.Contracts;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
+[LoadDestiny2Player]
 public class GetDestiny2ProfileListByBungieNameRequest : IRequest, IRequestDestiny2ByPlayerNameCode
 {
-    [MinLength(1)]
-    public required string DisplayName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     
-    [Length(4, 4)]
-    public required string DisplayNameCode { get; set; }
+    public string DisplayNameCode { get; set; } = string.Empty;
 
     public BungieMembershipTypeEnum MembershipType { get; set; } = BungieMembershipTypeEnum.All;
 }
