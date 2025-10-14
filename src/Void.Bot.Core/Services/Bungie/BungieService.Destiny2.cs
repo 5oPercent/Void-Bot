@@ -38,7 +38,9 @@ public partial class BungieService : IBungieService
         GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2PlayerByBungieNameAsync(
-            request.MembershipType, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
+            _playerData.PrimaryMembershipType,
+            _playerData.GlobalDisplayName,
+            _playerData.GlobalDisplayNameCode, cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2ProfileListByBungieNameResponse
         {
