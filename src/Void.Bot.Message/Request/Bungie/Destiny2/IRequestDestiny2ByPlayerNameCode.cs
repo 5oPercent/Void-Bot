@@ -7,7 +7,6 @@ public interface IRequestDestiny2ByPlayerNameCode
 {
     string DisplayName { get; set; }
     
-    [Length(4, 4)]
     string DisplayNameCode { get; set; }
 
     BungieMembershipTypeEnum MembershipType { get; set; }
