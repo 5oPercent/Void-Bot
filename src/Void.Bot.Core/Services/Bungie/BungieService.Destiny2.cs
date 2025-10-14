@@ -68,15 +68,6 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetDestiny2CareerResponse();
-        
-        if (request.MembershipType == 0)
-        {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Not found a platform.";
-            return response;
-        }
-
         var result = await _dataProvider.GetDestiny2ProfileAsync(
             _playerData.PrimaryMembershipType,  _playerData.PrimaryMembershipId,
             [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
