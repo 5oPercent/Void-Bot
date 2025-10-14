@@ -50,22 +50,16 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
         GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetDestiny2BaseProfileResponse();
-        
-        if (string.IsNullOrEmpty(_playerData.UniqueName))
+        var response = new GetDestiny2BaseProfileResponse
         {
-            response.Code = HttpStatusCode.InternalServerError;
-            response.Message = "Not Found";
-            return response;
-        }
-
-        response.Data = new Destiny2BaseProfileDto
-        {
-            DisplayName = _playerData.UniqueName,
-            OnCrossSave = _playerData.OnCrossSave,
-            IsSinglePlatform = _playerData.IsSinglePlatform,
-            MembershipType = _playerData.PrimaryMembershipType,
-            MembershipId = _playerData.PrimaryMembershipId
+            Data = new Destiny2BaseProfileDto
+            {
+                DisplayName = _playerData.UniqueName,
+                OnCrossSave = _playerData.OnCrossSave,
+                IsSinglePlatform = _playerData.IsSinglePlatform,
+                MembershipType = _playerData.PrimaryMembershipType,
+                MembershipId = _playerData.PrimaryMembershipId
+            }
         };
         
         return response;
@@ -74,14 +68,22 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
+        var response = new GetDestiny2CareerResponse();
+        
+        if (request.MembershipType == 0)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Not found a platform.";
+            return response;
+        }
+
         var result = await _dataProvider.GetDestiny2ProfileAsync(
-            request.MembershipType, request.MembershipId,
+            _playerData.PrimaryMembershipType,  _playerData.PrimaryMembershipId,
             [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
             cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2CareerResponse
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
             Data = result
         };
     }
