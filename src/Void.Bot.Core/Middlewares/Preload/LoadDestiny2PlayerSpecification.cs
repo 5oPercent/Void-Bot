@@ -3,10 +3,14 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Serilog;
+using Void.Bot.Core.Caching;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Attributes;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
@@ -21,25 +25,36 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 {
     private bool _isGetCurrentPlayerData = false;
     private bool _isGetPlayerDataByNameCode = false;
+    
+    private const string BungieIdCachePrefix = $"{Destiny2Constants.Destiny2}:BungieId";
+    private const string PlayerCachePrefix = $"{Destiny2Constants.Destiny2}:Player";
+    
+    private readonly TimeSpan _expiryTime;
 
     private readonly ILogger _logger;
     private readonly ICurrentUser _currentUser;
-    private Destiny2PlayerData _playerData;
+    private readonly Destiny2PlayerData _playerData;
     private readonly IBungieService _bungieService;
     private readonly IAccountDataProvider _accountDataProvider;
+    private readonly ICacheManager _cacheManager;
 
     public LoadDestiny2PlayerSpecification(
         ILogger logger,
         ICurrentUser currentUser,
         Destiny2PlayerData playerData,
         IBungieService bungieService,
-        IAccountDataProvider accountDataProvider)
+        IAccountDataProvider accountDataProvider,
+        ICacheManager cacheManager,
+        Destiny2Setting destiny2Setting)
     {
         _logger = logger;
         _currentUser = currentUser;
         _playerData = playerData;
         _bungieService = bungieService;
         _accountDataProvider = accountDataProvider;
+        _cacheManager = cacheManager;
+
+        _expiryTime = new TimeSpan(0, destiny2Setting.CachePlayerDataMinutes, 0);
     }
     
     public bool ShouldExecute(TContext context, CancellationToken cancellationToken)
@@ -74,6 +89,15 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             if (!BungieRegexs.UniqueName().IsMatch(_playerData.UniqueName))
             {
                 _logger.Warning("Invalid UniqueName: {UniqueName}", _playerData.UniqueName);
+                goto Break;
+            }
+            
+            var playerCache = await _cacheManager.Get<Destiny2PlayerData>(
+                $"{PlayerCachePrefix}:{_playerData.UniqueName}", cancellationToken).ConfigureAwait(false);
+            if (playerCache != null)
+            {
+                isOk = true;
+                _playerData.AssignFrom(playerCache);
                 goto Break;
             }
 
@@ -116,6 +140,20 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             
             _playerData.BungieMembershipId = thirdResult.ThirdPartyUserId;
             
+            var playerUniqueName = await _cacheManager.Get<string>(
+                $"{BungieIdCachePrefix}:{_playerData.BungieMembershipId}", cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(playerUniqueName))
+            {
+                var playerCache = await _cacheManager.Get<Destiny2PlayerData>(
+                    $"{PlayerCachePrefix}:{playerUniqueName}", cancellationToken).ConfigureAwait(false);;
+                if (playerCache != null)
+                {
+                    isOk = true;
+                    _playerData.AssignFrom(playerCache);
+                    goto Break;
+                }
+            }
+            
             var bungieNetUserResponse = await _bungieService.GetBungieNetUserAsync(
                 new GetBungieNetUserRequest
                 {
@@ -138,6 +176,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             _playerData.Language = bungieNetUser.Locale;
             
             isOk = await LoadPlayerProfilesAsync(BungieMembershipTypeEnum.None, cancellationToken);
+            if (isOk)
+            {
+                await _cacheManager.Set($"{BungieIdCachePrefix}:{_playerData.BungieMembershipId}", _playerData.UniqueName, _expiryTime, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         Break:
@@ -145,6 +187,9 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         {
             throw new ArgumentException("Not found destiny player data.");
         }
+
+        await _cacheManager.Set(
+            $"{PlayerCachePrefix}:{_playerData.UniqueName}", _playerData, _expiryTime, cancellationToken).ConfigureAwait(false);
     }
 
     public Task Execute(TContext context, CancellationToken cancellationToken)

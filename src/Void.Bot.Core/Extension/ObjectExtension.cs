@@ -70,4 +70,19 @@ public static class ObjectExtension
             _ => string.Empty
         };
     }
+    
+    public static void AssignFrom<T>(this T target, T source)
+    {
+        if (target == null || source == null)
+            return;
+
+        var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        foreach (var prop in properties)
+        {
+            if (!prop.CanWrite) continue;
+            
+            var value = prop.GetValue(source, null);
+            prop.SetValue(target, value, null);
+        }
+    }
 }
