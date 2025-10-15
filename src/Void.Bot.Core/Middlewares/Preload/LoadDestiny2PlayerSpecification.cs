@@ -96,6 +96,7 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 {
                     _playerData.AssignFrom(playerCache);
                     ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                    PopulateMissingRequestFields(_playerData, request);
                     return;
                 }
 
@@ -141,6 +142,7 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                     {
                         _playerData.AssignFrom(playerCache);
                         ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                        PopulateMissingRequestFields(_playerData, request);
                         return;
                     }
                 }
@@ -175,6 +177,7 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             await _cacheManager.Set(cacheKey, _playerData, _expiryTime, cancellationToken).ConfigureAwait(false);
             
             ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+            PopulateMissingRequestFields(_playerData, request);
         }
     }
 
@@ -256,10 +259,29 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         }
 
         // 主数据为当前查询的平台
-        if (profile != null)
+        if (profile == null)
         {
-            _playerData.PrimaryMembershipType = profile.MembershipType;
-            _playerData.PrimaryMembershipId = profile.MembershipId;
+            Log.Warning("Not found Destiny 2 profile for {UniqueName} by {MembershipType} platform", playerData.UniqueName, membershipType);
+            return;
+        }
+        
+        _playerData.PrimaryMembershipType = profile.MembershipType;
+        _playerData.PrimaryMembershipId = profile.MembershipId;
+    }
+
+    private static void PopulateMissingRequestFields(Destiny2PlayerData playerData, IRequestDestiny2ByPlayerNameCode request)
+    {
+        if (string.IsNullOrEmpty(request.DisplayName))
+        {
+            request.DisplayName = playerData.GlobalDisplayName;
+        }
+        if (string.IsNullOrEmpty(request.DisplayNameCode))
+        {
+            request.DisplayNameCode = playerData.GlobalDisplayNameCode;
+        }
+        if (request.MembershipType == BungieMembershipTypeEnum.None)
+        {
+            request.MembershipType = playerData.PrimaryMembershipType;
         }
     }
 
