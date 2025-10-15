@@ -49,7 +49,7 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             {
                 DisplayName = parts?[0] ?? string.Empty,
                 DisplayNameCode = parts?[1] ?? string.Empty,
-                MembershipType = findMembership ?? BungieMembershipTypeEnum.All
+                MembershipType = findMembership ?? BungieMembershipTypeEnum.None
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResponse.Data == null)
