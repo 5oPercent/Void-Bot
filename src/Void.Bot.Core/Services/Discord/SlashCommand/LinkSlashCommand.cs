@@ -12,7 +12,7 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
 public class LinkSlashCommand(IMediator mediator, IAccountService accountService) : IGlobalSlashCommand
 {
-    public bool ShouldDefer => true;
+    public bool Ephemeral => true;
 
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("link")

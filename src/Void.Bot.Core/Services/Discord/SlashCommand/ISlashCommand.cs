@@ -9,7 +9,7 @@ public interface ISlashCommand : IScope
 
     string Description => (string)Command.Description;
 
-    bool ShouldDefer { get; }
+    bool Ephemeral { get; }
 
     SlashCommandProperties Command { get; }
     

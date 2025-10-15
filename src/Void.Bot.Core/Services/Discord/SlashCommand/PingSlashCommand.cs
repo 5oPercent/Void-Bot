@@ -7,7 +7,7 @@ public class PingSlashCommand : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
 
-    public bool ShouldDefer => false;
+    public bool Ephemeral => true;
 
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("ping")
@@ -16,6 +16,9 @@ public class PingSlashCommand : IGuildSlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        await commandCallback.RespondAsync("Pong!", ephemeral: true).ConfigureAwait(false);
+        await commandCallback.ModifyOriginalResponseAsync(builder =>
+        {
+            builder.Content = "Pong!";
+        }).ConfigureAwait(false);
     }
 }

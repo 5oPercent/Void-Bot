@@ -66,10 +66,7 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
             return;
         }
 
-        if (sc.ShouldDefer)
-        {
-            await callback.DeferAsync().ConfigureAwait(false);
-        }
+        await callback.DeferAsync(sc.Ephemeral).ConfigureAwait(false);
         
         var accountService = scope.ServiceProvider.GetRequiredService<IAccountService>();
         var userResponse = await accountService.GetUserAccountByThirdPartyAsync(
@@ -115,17 +112,10 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
         catch (Exception e)
         {
             Log.Error(e, "Execute Discord Slash Command {CommandName} error", callback.CommandName);
-            if (sc.ShouldDefer)
+            await callback.ModifyOriginalResponseAsync(builder =>
             {
-                await callback.ModifyOriginalResponseAsync(builder =>
-                {
-                    builder.Content = "Error: " + e.Message;
-                }).ConfigureAwait(false);
-            }
-            else
-            {
-                await callback.RespondAsync("Error: " + e.Message, ephemeral: true).ConfigureAwait(false);
-            }
+                builder.Content = "Error: " + e.Message;
+            }).ConfigureAwait(false);
         }
     }
     
