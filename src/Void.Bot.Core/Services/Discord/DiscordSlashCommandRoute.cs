@@ -107,8 +107,26 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
                 }
             }
         });
-        
-        await sc.ExecuteAsync(callback);
+
+        try
+        {
+            await sc.ExecuteAsync(callback);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Execute Discord Slash Command {CommandName} error", callback.CommandName);
+            if (sc.ShouldDefer)
+            {
+                await callback.ModifyOriginalResponseAsync(builder =>
+                {
+                    builder.Content = "Error: " + e.Message;
+                }).ConfigureAwait(false);
+            }
+            else
+            {
+                await callback.RespondAsync("Error: " + e.Message, ephemeral: true).ConfigureAwait(false);
+            }
+        }
     }
     
     private static IEnumerable<object> ExtractSimplifiedOptions(IEnumerable<IApplicationCommandInteractionDataOption> options)
