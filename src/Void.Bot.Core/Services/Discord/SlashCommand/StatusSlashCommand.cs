@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
 public class StatusSlashCommand(DiscordSocketClient client) : IGlobalSlashCommand
 {
+    public bool ShouldDefer => false;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("状态")
         .WithDescription("更改机器人线上状态.")

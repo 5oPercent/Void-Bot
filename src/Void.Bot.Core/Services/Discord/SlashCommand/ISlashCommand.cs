@@ -8,7 +8,9 @@ public interface ISlashCommand : IScope
     string Name => (string)Command.Name;
 
     string Description => (string)Command.Description;
-    
+
+    bool ShouldDefer { get; }
+
     SlashCommandProperties Command { get; }
     
     Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default);
