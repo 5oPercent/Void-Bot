@@ -29,7 +29,7 @@ public partial class BungieService : IBungieService
 
         return new GetDestiny2LinkedProfileResponse
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
+            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
             Data = result
         };
     }
@@ -38,13 +38,11 @@ public partial class BungieService : IBungieService
         GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2PlayerByBungieNameAsync(
-            _playerData.PrimaryMembershipType,
-            _playerData.GlobalDisplayName,
-            _playerData.GlobalDisplayNameCode, cancellationToken).ConfigureAwait(false);
+            request.MembershipType, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2ProfileListByBungieNameResponse
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
+            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
             Data = result
         };
     }
@@ -52,16 +50,22 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
         GetDestiny2BaseProfileRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetDestiny2BaseProfileResponse
+        var response = new GetDestiny2BaseProfileResponse();
+        
+        if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
         {
-            Data = new Destiny2BaseProfileDto
-            {
-                DisplayName = _playerData.UniqueName,
-                OnCrossSave = _playerData.OnCrossSave,
-                IsSinglePlatform = _playerData.IsSinglePlatform,
-                MembershipType = _playerData.PrimaryMembershipType,
-                MembershipId = _playerData.PrimaryMembershipId
-            }
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType}.";
+            return response;
+        }
+        
+        response.Data = new Destiny2BaseProfileDto
+        {
+            DisplayName = _playerData.UniqueName,
+            OnCrossSave = _playerData.OnCrossSave,
+            IsSinglePlatform = _playerData.IsSinglePlatform,
+            MembershipType = _playerData.PrimaryMembershipType,
+            MembershipId = _playerData.PrimaryMembershipId
         };
         
         return response;
@@ -71,12 +75,13 @@ public partial class BungieService : IBungieService
         GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
         var result = await _dataProvider.GetDestiny2ProfileAsync(
-            _playerData.PrimaryMembershipType,  _playerData.PrimaryMembershipId,
+            request.MembershipType,  _playerData.PrimaryMembershipId,
             [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
             cancellationToken).ConfigureAwait(false);
 
         return new GetDestiny2CareerResponse
         {
+            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
             Data = result
         };
     }
