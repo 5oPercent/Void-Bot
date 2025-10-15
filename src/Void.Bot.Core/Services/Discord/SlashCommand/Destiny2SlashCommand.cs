@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Mediator.Net;
 using Void.Bot.Core.Extension;
@@ -24,6 +25,7 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             .AddDestinyPlayerOptions())
         .Build();
     
+    [SlashCommand("d2", "Destiny2 Slash Command", runMode: RunMode.Async)]
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
         await commandCallback.DeferAsync().ConfigureAwait(false);
