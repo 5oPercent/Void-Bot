@@ -56,6 +56,8 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
 
     public async Task RouteAsync(SocketSlashCommand callback)
     {
+        await callback.DeferAsync().ConfigureAwait(false);
+        
         using var scope = _scopeFactory.CreateScope();
         
         var allSlashCommands = scope.ServiceProvider.GetRequiredService<IEnumerable<ISlashCommand>>();

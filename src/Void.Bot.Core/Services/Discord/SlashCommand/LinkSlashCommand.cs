@@ -1,7 +1,6 @@
 using Discord;
 using Discord.WebSocket;
 using Mediator.Net;
-using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto.Authorization;
@@ -34,8 +33,6 @@ public class LinkSlashCommand(IMediator mediator, IAccountService accountService
 
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        await commandCallback.DeferAsync(true).ConfigureAwait(false);
-        
         var authorization = new AuthorizationDto
         {
             Platform = AppPlatformEnum.Discord,
