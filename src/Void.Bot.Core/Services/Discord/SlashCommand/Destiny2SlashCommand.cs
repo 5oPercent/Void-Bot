@@ -13,7 +13,9 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
-    
+
+    public bool ShouldDefer => true;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("d2")
         .WithDescription("提供一系列 Destiny2 相关指令.")

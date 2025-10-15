@@ -56,8 +56,6 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
 
     public async Task RouteAsync(SocketSlashCommand callback)
     {
-        await callback.DeferAsync().ConfigureAwait(false);
-        
         using var scope = _scopeFactory.CreateScope();
         
         var allSlashCommands = scope.ServiceProvider.GetRequiredService<IEnumerable<ISlashCommand>>();
@@ -66,6 +64,11 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
         {
             await callback.RespondAsync("未知命令!", ephemeral: true).ConfigureAwait(false);
             return;
+        }
+
+        if (sc.ShouldDefer)
+        {
+            await callback.DeferAsync().ConfigureAwait(false);
         }
         
         var accountService = scope.ServiceProvider.GetRequiredService<IAccountService>();
