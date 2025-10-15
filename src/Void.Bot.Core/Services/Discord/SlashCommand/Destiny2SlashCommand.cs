@@ -14,7 +14,7 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
 
-    public bool ShouldDefer => true;
+    public bool Ephemeral => false;
 
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("d2")
