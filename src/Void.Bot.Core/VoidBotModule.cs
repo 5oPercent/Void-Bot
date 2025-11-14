@@ -31,6 +31,7 @@ using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Enum;
 
 using Module = Autofac.Module;
+using ContainerBuilder = Autofac.ContainerBuilder;
 
 namespace Void.Bot.Core;
 
