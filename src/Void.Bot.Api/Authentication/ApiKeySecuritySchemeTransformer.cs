@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace Void.Bot.Api.Authentication;
 
@@ -14,23 +14,22 @@ public class ApiKeySecuritySchemeTransformer(IAuthenticationSchemeProvider authe
         var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync();
         if (authenticationSchemes.Any(authScheme => authScheme.Name == SchemeName))
         {
-            document.Components ??= new OpenApiComponents();
-            document.Components.SecuritySchemes.TryAdd(SchemeName, new OpenApiSecurityScheme
+            var scheme = new OpenApiSecurityScheme
             {
                 Type = SecuritySchemeType.ApiKey,
                 In = ParameterLocation.Header,
                 Name = SchemeHeader
-            });
+            };
             
-            foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations))
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes?[SchemeName] = scheme;
+            
+            foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations.Values))
             {
-                operation.Value.Security.Add(new OpenApiSecurityRequirement
+                operation.Security ??= new List<OpenApiSecurityRequirement>();
+                operation.Security.Add(new OpenApiSecurityRequirement
                 {
-                    [new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference { Id = SchemeName, Type = ReferenceType.SecurityScheme }
-                        }
-                    ] = Array.Empty<string>()
+                    [new OpenApiSecuritySchemeReference(SchemeName)] = []
                 });
             }
         }
