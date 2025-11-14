@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libfreetype6 \
     libpng16-16 \
     libharfbuzz0b \
-    libicu72 \
+    libicu74 \
     libexpat1 \
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
