@@ -1,4 +1,6 @@
-﻿@inherits LayoutComponentBase
+﻿@inject IJSRuntime JS
+
+@inherits LayoutComponentBase
 <div class="page">
     <div class="sidebar">
         <NavMenu/>
@@ -18,9 +20,6 @@
 </div>
 
 @code {
-    [Inject]
-    private IJSRuntime JS { get; set; }
-    
     private bool _isDarkTheme = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)

@@ -24,7 +24,7 @@ public class ApiKeySecuritySchemeTransformer(IAuthenticationSchemeProvider authe
             document.Components ??= new OpenApiComponents();
             document.Components.SecuritySchemes?[SchemeName] = scheme;
             
-            foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations.Values))
+            foreach (var operation in document.Paths.Values.SelectMany(path => path.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>()))
             {
                 operation.Security ??= new List<OpenApiSecurityRequirement>();
                 operation.Security.Add(new OpenApiSecurityRequirement
