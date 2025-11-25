@@ -19,13 +19,16 @@ public interface ILanguageService : ISingleton
 
 public class LanguageService : ILanguageService, IDisposable
 {
-    private readonly string _basePath = Path.Combine(AppContext.BaseDirectory, "Resources", "i18n");
+    private readonly string _basePath;
     private readonly FileSystemWatcher _watcher;
     private readonly ConcurrentDictionary<string, IContextTemplate> _contextTemplates = new();
     private readonly ConcurrentDictionary<string, Dictionary<string, string>> _languages = new();
     
-    public LanguageService(IEnumerable<IContextTemplate> contextTemplates)
+    public LanguageService(IEnumerable<IContextTemplate> contextTemplates, string? rootPath = null)
     {
+        var baseDir = rootPath ?? AppContext.BaseDirectory;
+        _basePath = Path.Combine(baseDir, "Resources", "i18n");
+        
         foreach (var contextTemplate in contextTemplates)
         {
             var attribute = contextTemplate.GetType().GetCustomAttribute<LanguageAttribute>();
@@ -110,7 +113,11 @@ public class LanguageService : ILanguageService, IDisposable
     {
         foreach (var ct in _contextTemplates)
         {
-            var filePath = Path.Combine(_basePath, ct.Key.TrimStart('/'));
+            var key = ct.Key.TrimStart('/', '\\');
+            
+            var relativePath = key.Replace('/', Path.DirectorySeparatorChar);
+            
+            var filePath = Path.Combine(_basePath, relativePath);
             
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
