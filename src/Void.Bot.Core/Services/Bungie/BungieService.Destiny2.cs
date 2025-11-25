@@ -29,7 +29,7 @@ public partial class BungieService : IBungieService
 
         return new GetDestiny2LinkedProfileResponse
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
+            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
             Data = result
         };
     }
@@ -37,14 +37,21 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2ProfileListByBungieNameResponse> GetDestiny2ProfileListByBungieNameAsync(
         GetDestiny2ProfileListByBungieNameRequest request, CancellationToken cancellationToken)
     {
+        var response = new GetDestiny2ProfileListByBungieNameResponse();
+        
         var result = await _dataProvider.GetDestiny2PlayerByBungieNameAsync(
             request.MembershipType, request.DisplayName, request.DisplayNameCode, cancellationToken).ConfigureAwait(false);
 
-        return new GetDestiny2ProfileListByBungieNameResponse
+        if (result is not { ErrorCode: 1 } or { Response.Count: 0 })
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
-            Data = result
-        };
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = result?.Message ?? $"Not found Destiny 2 profiles by {request.MembershipType} platform";
+            return response;
+        }
+        
+        response.Data = result;
+
+        return response;
     }
     
     public async Task<GetDestiny2BaseProfileResponse> GetDestiny2BaseProfileAsync(
@@ -52,13 +59,13 @@ public partial class BungieService : IBungieService
     {
         var response = new GetDestiny2BaseProfileResponse();
         
-        if (string.IsNullOrEmpty(_playerData.UniqueName))
+        if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
         {
-            response.Code = HttpStatusCode.InternalServerError;
-            response.Message = "Not Found";
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
             return response;
         }
-
+        
         response.Data = new Destiny2BaseProfileDto
         {
             DisplayName = _playerData.UniqueName,
@@ -74,15 +81,29 @@ public partial class BungieService : IBungieService
     public async Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken)
     {
+        var response = new GetDestiny2CareerResponse();
+
+        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
+            return response;
+        }
+        
         var result = await _dataProvider.GetDestiny2ProfileAsync(
-            request.MembershipType, request.MembershipId,
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
             [Destiny2ComponentTypeEnum.Profiles, Destiny2ComponentTypeEnum.SocialCommendations],
             cancellationToken).ConfigureAwait(false);
 
-        return new GetDestiny2CareerResponse
+        if (result is not { ErrorCode: 1 })
         {
-            Code = result != null ? HttpStatusCode.OK : HttpStatusCode.InternalServerError,
-            Data = result
-        };
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 career by {request.MembershipType} platform.";
+            return response;
+        }
+
+        response.Data = result;
+
+        return response;
     }
 }

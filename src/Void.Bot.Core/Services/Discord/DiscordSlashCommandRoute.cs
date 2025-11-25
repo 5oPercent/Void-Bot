@@ -65,6 +65,8 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
             await callback.RespondAsync("未知命令!", ephemeral: true).ConfigureAwait(false);
             return;
         }
+
+        await callback.DeferAsync(sc.Ephemeral).ConfigureAwait(false);
         
         var accountService = scope.ServiceProvider.GetRequiredService<IAccountService>();
         var userResponse = await accountService.GetUserAccountByThirdPartyAsync(
@@ -102,8 +104,19 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
                 }
             }
         });
-        
-        await sc.ExecuteAsync(callback);
+
+        try
+        {
+            await sc.ExecuteAsync(callback);
+        }
+        catch (Exception e)
+        {
+            Log.Error(e, "Execute Discord Slash Command {CommandName} error", callback.CommandName);
+            await callback.ModifyOriginalResponseAsync(builder =>
+            {
+                builder.Content = "Error: " + e.Message;
+            }).ConfigureAwait(false);
+        }
     }
     
     private static IEnumerable<object> ExtractSimplifiedOptions(IEnumerable<IApplicationCommandInteractionDataOption> options)

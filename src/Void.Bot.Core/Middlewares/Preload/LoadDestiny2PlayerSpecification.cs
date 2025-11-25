@@ -3,11 +3,14 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Serilog;
+using Void.Bot.Core.Caching;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Attributes;
-using Void.Bot.Message.Dto.Bungie.Destiny2;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Regexs;
@@ -21,25 +24,36 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 {
     private bool _isGetCurrentPlayerData = false;
     private bool _isGetPlayerDataByNameCode = false;
+    
+    private const string BungieIdCachePrefix = $"{Destiny2Constants.Destiny2}:BungieId";
+    private const string PlayerCachePrefix = $"{Destiny2Constants.Destiny2}:Player";
+    
+    private readonly TimeSpan _expiryTime;
 
     private readonly ILogger _logger;
     private readonly ICurrentUser _currentUser;
-    private Destiny2PlayerData _playerData;
+    private readonly Destiny2PlayerData _playerData;
     private readonly IBungieService _bungieService;
     private readonly IAccountDataProvider _accountDataProvider;
+    private readonly ICacheManager _cacheManager;
 
     public LoadDestiny2PlayerSpecification(
         ILogger logger,
         ICurrentUser currentUser,
         Destiny2PlayerData playerData,
         IBungieService bungieService,
-        IAccountDataProvider accountDataProvider)
+        IAccountDataProvider accountDataProvider,
+        ICacheManager cacheManager,
+        Destiny2Setting destiny2Setting)
     {
         _logger = logger;
         _currentUser = currentUser;
         _playerData = playerData;
         _bungieService = bungieService;
         _accountDataProvider = accountDataProvider;
+        _cacheManager = cacheManager;
+
+        _expiryTime = new TimeSpan(0, destiny2Setting.CachePlayerDataMinutes, 0);
     }
     
     public bool ShouldExecute(TContext context, CancellationToken cancellationToken)
@@ -50,9 +64,9 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             .GetCustomAttributes(typeof(LoadDestiny2PlayerAttribute), inherit: true)
             .Length != 0;
 
-        if (message is IRequestDestiny2ByPlayerNameCode dto)
+        if (message is IRequestDestiny2ByPlayerNameCode request)
         {
-            _isGetPlayerDataByNameCode = !string.IsNullOrEmpty(dto.DisplayName) || !string.IsNullOrEmpty(dto.DisplayNameCode);
+            _isGetPlayerDataByNameCode = !string.IsNullOrEmpty(request.DisplayName) || !string.IsNullOrEmpty(request.DisplayNameCode);
         }
         
         return _isGetCurrentPlayerData || _isGetPlayerDataByNameCode;
@@ -63,87 +77,107 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         if (!ShouldExecute(context, cancellationToken))
             return;
 
-        var isOk = false;
-        
-        // 优先按参数查获取应玩家数据
-        if (_isGetPlayerDataByNameCode && context.Message is IRequestDestiny2ByPlayerNameCode request)
+        if (context.Message is IRequestDestiny2ByPlayerNameCode request)
         {
-            _playerData.GlobalDisplayName = request.DisplayName;
-            _playerData.GlobalDisplayNameCode = request.DisplayNameCode;
-
-            if (!BungieRegexs.UniqueName().IsMatch(_playerData.UniqueName))
+            if (_isGetPlayerDataByNameCode)
             {
-                _logger.Warning("Invalid UniqueName: {UniqueName}", _playerData.UniqueName);
-                goto Break;
-            }
+                _playerData.GlobalDisplayName = request.DisplayName;
+                _playerData.GlobalDisplayNameCode = request.DisplayNameCode;
 
-            if (!await LoadPlayerProfilesAsync(request.MembershipType, cancellationToken))
-            {
-                _logger.Warning("Load player profiles failed for {UniqueName}", _playerData.UniqueName);
-                goto Break;
-            }
-            
-            var membershipResult = await _bungieService.GetMembershipsByIdAsync(
-                new GetBungieMembershipsByIdRequest
+                if (!BungieRegexs.UniqueName().IsMatch(_playerData.UniqueName))
                 {
-                    MembershipType = _playerData.PrimaryMembershipType,
-                    MembershipId = _playerData.PrimaryMembershipId
-                }, cancellationToken).ConfigureAwait(false);
+                    _logger.Warning("Invalid UniqueName: {UniqueName}", _playerData.UniqueName);
+                    throw new ArgumentException("Invalid UniqueName.");
+                }
 
-            if (membershipResult.Data is { Response.BungieNetUser: not null })
+                var playerCacheKey = $"{PlayerCachePrefix}:{_playerData.UniqueName}";
+                var playerCache = await _cacheManager.Get<Destiny2PlayerData>(playerCacheKey, cancellationToken).ConfigureAwait(false);
+                if (playerCache != null)
+                {
+                    _playerData.AssignFrom(playerCache);
+                    ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                    PopulateMissingRequestFields(_playerData, request);
+                    return;
+                }
+
+                await LoadPlayerProfilesAsync(_playerData, request.MembershipType, cancellationToken).ConfigureAwait(false);
+
+                var membershipResult = await _bungieService.GetMembershipsByIdAsync(
+                    new GetBungieMembershipsByIdRequest
+                    {
+                        MembershipType = _playerData.PrimaryMembershipType,
+                        MembershipId = _playerData.PrimaryMembershipId
+                    }, cancellationToken).ConfigureAwait(false);
+
+                if (membershipResult.Data is { Response.BungieNetUser: not null })
+                {
+                    var bungieNetUser = membershipResult.Data.Response.BungieNetUser;
+
+                    _playerData.BungieMembershipId = bungieNetUser.MembershipId;
+                    _playerData.FirstAccess = bungieNetUser.FirstAccess;
+                    _playerData.LastUpdate = bungieNetUser.LastUpdate;
+                    _playerData.ShowActivity = bungieNetUser.ShowActivity;
+                    _playerData.Language = bungieNetUser.Locale;
+                }
+            }
+            else if (_isGetCurrentPlayerData && _currentUser.Id.HasValue)
             {
-                var bungieNetUser = membershipResult.Data.Response.BungieNetUser;
-                
-                _playerData.BungieMembershipId = bungieNetUser.MembershipId;
+                var thirdResult = await _accountDataProvider.GetThirdPartyByUserIdAsync(
+                    _currentUser.Id.Value, nameof(AppPlatformEnum.Bungie), cancellationToken).ConfigureAwait(false);
+                if (thirdResult == null)
+                {
+                    _logger.Warning("Not found third party {Platform} data for user {UserId}", AppPlatformEnum.Bungie, _currentUser.Id);
+                    throw new ArgumentException($"Not found third party {nameof(AppPlatformEnum.Bungie)} data.");
+                }
+
+                _playerData.BungieMembershipId = thirdResult.ThirdPartyUserId;
+
+                var playerUniqueNameCacheKey = $"{BungieIdCachePrefix}:{_playerData.BungieMembershipId}";
+                var playerUniqueName = await _cacheManager.Get<string>(playerUniqueNameCacheKey, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(playerUniqueName))
+                {
+                    var playerCacheKey = $"{PlayerCachePrefix}:{playerUniqueName}";
+                    var playerCache = await _cacheManager.Get<Destiny2PlayerData>(playerCacheKey, cancellationToken).ConfigureAwait(false);;
+                    if (playerCache != null)
+                    {
+                        _playerData.AssignFrom(playerCache);
+                        ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                        PopulateMissingRequestFields(_playerData, request);
+                        return;
+                    }
+                }
+
+                var bungieNetUserResponse = await _bungieService.GetBungieNetUserAsync(
+                    new GetBungieNetUserRequest
+                    {
+                        Id = _playerData.BungieMembershipId
+                    }, cancellationToken).ConfigureAwait(false);
+
+                if (bungieNetUserResponse.Data?.Response == null)
+                {
+                    _logger.Warning("Not found BungieNet user for membership ID {MembershipId}", _playerData.BungieMembershipId);
+                    throw new ArgumentException("Not found BungieNet user.");
+                }
+
+                var bungieNetUser = bungieNetUserResponse.Data.Response;
+
+                _playerData.GlobalDisplayName = bungieNetUser.CachedBungieGlobalDisplayName;
+                _playerData.GlobalDisplayNameCode = bungieNetUser.CachedBungieGlobalDisplayNameCode.ToString().PadLeft(4, '0');
                 _playerData.FirstAccess = bungieNetUser.FirstAccess;
                 _playerData.LastUpdate = bungieNetUser.LastUpdate;
-                _playerData.ShowActivity =bungieNetUser.ShowActivity;
+                _playerData.ShowActivity = bungieNetUser.ShowActivity;
                 _playerData.Language = bungieNetUser.Locale;
-            }
-                
-            isOk = true;
-        }
-        else if (_isGetCurrentPlayerData && _currentUser.Id.HasValue) // 根据绑定的信息查询玩家数据
-        {
-            var thirdResult = await _accountDataProvider.GetThirdPartyByUserIdAsync(
-                _currentUser.Id.Value, nameof(AppPlatformEnum.Bungie), cancellationToken).ConfigureAwait(false);
-            
-            if (thirdResult == null)
-            {
-                _logger.Warning("Not found third party data for user {UserId}", _currentUser.Id);
-                goto Break;
-            }
-            
-            _playerData.BungieMembershipId = thirdResult.ThirdPartyUserId;
-            
-            var bungieNetUserResponse = await _bungieService.GetBungieNetUserAsync(
-                new GetBungieNetUserRequest
-                {
-                    Id = _playerData.BungieMembershipId
-                }, cancellationToken).ConfigureAwait(false);
-            
-            if (bungieNetUserResponse.Data?.Response == null)
-            {
-                _logger.Warning("Not found BungieNet user for membership ID {MembershipId}", _playerData.BungieMembershipId);
-                goto Break;
-            }
-            
-            var bungieNetUser = bungieNetUserResponse.Data.Response;
-            
-            _playerData.GlobalDisplayName = bungieNetUser.CachedBungieGlobalDisplayName;
-            _playerData.GlobalDisplayNameCode = bungieNetUser.CachedBungieGlobalDisplayNameCode.ToString().PadLeft(4, '0');
-            _playerData.FirstAccess = bungieNetUser.FirstAccess;
-            _playerData.LastUpdate = bungieNetUser.LastUpdate;
-            _playerData.ShowActivity = bungieNetUser.ShowActivity;
-            _playerData.Language = bungieNetUser.Locale;
-            
-            isOk = await LoadPlayerProfilesAsync(BungieMembershipTypeEnum.None, cancellationToken);
-        }
 
-        Break:
-        if (!isOk)
-        {
-            throw new ArgumentException("Not found destiny player data.");
+                await LoadPlayerProfilesAsync(_playerData, request.MembershipType, cancellationToken).ConfigureAwait(false);
+
+                await _cacheManager.Set(playerUniqueNameCacheKey, _playerData.UniqueName, _expiryTime, cancellationToken).ConfigureAwait(false);
+            }
+
+            var cacheKey = $"{PlayerCachePrefix}:{_playerData.UniqueName}";
+            await _cacheManager.Set(cacheKey, _playerData, _expiryTime, cancellationToken).ConfigureAwait(false);
+            
+            ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+            PopulateMissingRequestFields(_playerData, request);
         }
     }
 
@@ -159,70 +193,96 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 
     public Task OnException(Exception ex, TContext context)
     {
+        _playerData.GlobalDisplayName = string.Empty;
+        _playerData.GlobalDisplayNameCode = string.Empty;
+        _playerData.BungieMembershipId = string.Empty;
+        _playerData.PrimaryMembershipType = BungieMembershipTypeEnum.None;
+        _playerData.PrimaryMembershipId = string.Empty;
+        _playerData.Profiles = [];
+        
         ExceptionDispatchInfo.Capture(ex).Throw();
         return Task.CompletedTask;
     }
 
-    private async Task<bool> LoadPlayerProfilesAsync(BungieMembershipTypeEnum membershipType, CancellationToken cancellationToken)
+    private async Task LoadPlayerProfilesAsync(
+        Destiny2PlayerData playerData, BungieMembershipTypeEnum membershipType, CancellationToken cancellationToken)
     {
         var profileResult = await _bungieService.GetDestiny2ProfileListByBungieNameAsync(
             new GetDestiny2ProfileListByBungieNameRequest
             {
-                DisplayName = _playerData.GlobalDisplayName,
-                DisplayNameCode = _playerData.GlobalDisplayNameCode,
+                DisplayName = playerData.GlobalDisplayName,
+                DisplayNameCode = playerData.GlobalDisplayNameCode,
                 MembershipType = BungieMembershipTypeEnum.All
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResult.Data == null || profileResult.Data.Response.Count == 0)
         {
-            _logger.Debug("No Destiny 2 profiles found for {UniqueName}", _playerData.UniqueName);
-            return false;
+            throw new ArgumentException($"No Destiny 2 profiles found for {_playerData.UniqueName}");
         }
         
         var profiles = profileResult.Data.Response;
-        Destiny2PlayerByBungieNameDto? profile = null;
         
-        if (profiles.Count == 1)
+        playerData.Profiles = profiles.Select(x =>
+            new Destiny2PlayerDataMembershipItem
+            {
+                MembershipType = x.MembershipType,
+                MembershipId = x.MembershipId,
+                DisplayName = x.DisplayName
+            }).ToList();
+        
+        if (profiles.All(x => x.CrossSaveOverride != BungieMembershipTypeEnum.None))
+        {
+            _playerData.CrossSaveOverride = profiles.First().CrossSaveOverride;
+        }
+    }
+
+    private void ApplyPlayerProfileAsync(Destiny2PlayerData playerData, BungieMembershipTypeEnum membershipType)
+    {
+        var profiles = playerData.Profiles;
+
+        Destiny2PlayerDataMembershipItem? profile = null;
+        
+        // 当指定平台时，优先使用指定平台
+        if (membershipType != BungieMembershipTypeEnum.None)
+        {
+            profile = profiles.FirstOrDefault(x => x.MembershipType == membershipType);
+        }
+        // 未指定平台时，按规则选择
+        else if (profiles.Count == 1)
         {
             profile = profiles[0];
-            
-            _playerData.IsSinglePlatform = true;
-            _playerData.Profiles = profiles.Select(x =>
-                new Destiny2PlayerDataMembershipItem
-                {
-                    DisplayName = x.DisplayName,
-                    MembershipType = x.MembershipType,
-                    MembershipId = x.MembershipId
-                }).ToList();
         }
-        else
+        // 多平台时, 选择跨平台数据
+        else if (playerData.OnCrossSave)
         {
-            _playerData.OnCrossSave = profiles.All(x => x.CrossSaveOverride != BungieMembershipTypeEnum.None);
-            switch (_playerData.OnCrossSave)
-            {
-                case true:
-                {
-                    var crossType = profiles.First().CrossSaveOverride;
-                    profile = profiles.First(x => x.MembershipType == crossType);
-                    break;
-                }
-                case false when membershipType != BungieMembershipTypeEnum.None:
-                {
-                    profile = profiles.FirstOrDefault(x => x.MembershipType == membershipType);
-                    break;
-                }
-            }
+            profile = profiles.FirstOrDefault(x => x.MembershipType == playerData.CrossSaveOverride);
         }
 
+        // 主数据为当前查询的平台
         if (profile == null)
         {
-            _logger.Debug("No primary membership found for {UniqueName}", _playerData.UniqueName);
-            return false;
+            Log.Warning("Not found Destiny 2 profile for {UniqueName} by {MembershipType} platform", playerData.UniqueName, membershipType);
+            return;
         }
         
         _playerData.PrimaryMembershipType = profile.MembershipType;
         _playerData.PrimaryMembershipId = profile.MembershipId;
-        
-        return true;
     }
+
+    private static void PopulateMissingRequestFields(Destiny2PlayerData playerData, IRequestDestiny2ByPlayerNameCode request)
+    {
+        if (string.IsNullOrEmpty(request.DisplayName))
+        {
+            request.DisplayName = playerData.GlobalDisplayName;
+        }
+        if (string.IsNullOrEmpty(request.DisplayNameCode))
+        {
+            request.DisplayNameCode = playerData.GlobalDisplayNameCode;
+        }
+        if (request.MembershipType == BungieMembershipTypeEnum.None)
+        {
+            request.MembershipType = playerData.PrimaryMembershipType;
+        }
+    }
+
 }

@@ -7,11 +7,13 @@ using Void.Bot.Message.Enum.Bungie;
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
 [LoadDestiny2Player]
-public class GetDestiny2CareerRequest : IRequest
+public class GetDestiny2CareerRequest : IRequest, IRequestDestiny2ByPlayerNameCode
 {
-    public BungieMembershipTypeEnum MembershipType { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     
-    public string MembershipId { get; set; } = string.Empty;
+    public string DisplayNameCode { get; set; } = string.Empty;
+    
+    public BungieMembershipTypeEnum MembershipType { get; set; }
 }
 
 public class GetDestiny2CareerResponse : VoidBotResponse<Destiny2ProfileResponse>

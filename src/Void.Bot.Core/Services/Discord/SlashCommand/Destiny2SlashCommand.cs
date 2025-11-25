@@ -13,7 +13,9 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
-    
+
+    public bool Ephemeral => false;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("d2")
         .WithDescription("提供一系列 Destiny2 相关指令.")
@@ -26,8 +28,6 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
     
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        await commandCallback.DeferAsync().ConfigureAwait(false);
-        
         var commandName = commandCallback.Data.Options.First().Name;
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
         var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
@@ -49,7 +49,7 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             {
                 DisplayName = parts?[0] ?? string.Empty,
                 DisplayNameCode = parts?[1] ?? string.Empty,
-                MembershipType = findMembership ?? BungieMembershipTypeEnum.All
+                MembershipType = findMembership ?? BungieMembershipTypeEnum.None
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResponse.Data == null)
@@ -84,8 +84,9 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
                 var response = await mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(
                     new GetDestiny2CareerRequest
                     {
-                        MembershipType = membershipType,
-                        MembershipId = membershipId
+                        DisplayName = parts?[0] ?? string.Empty,
+                        DisplayNameCode = parts?[1] ?? string.Empty,
+                        MembershipType = membershipType
                     }, cancellationToken).ConfigureAwait(false);
                 
                 if (response.Data == null)
