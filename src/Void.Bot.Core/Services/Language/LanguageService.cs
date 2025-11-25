@@ -19,19 +19,22 @@ public interface ILanguageService : ISingleton
 
 public class LanguageService : ILanguageService, IDisposable
 {
-    private readonly string _basePath = Path.Combine(AppContext.BaseDirectory, "Resources", "i18n");
+    private readonly string _basePath;
     private readonly FileSystemWatcher _watcher;
-    private readonly ConcurrentDictionary<string, IContextTemplate> _contextTemplates = new();
-    private readonly ConcurrentDictionary<string, Dictionary<string, string>> _languages = new();
+    private readonly ConcurrentDictionary<string, IContextTemplate> _contextTemplates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Dictionary<string, string>> _languages = new(StringComparer.OrdinalIgnoreCase);
     
-    public LanguageService(IEnumerable<IContextTemplate> contextTemplates)
+    public LanguageService(IEnumerable<IContextTemplate> contextTemplates, string? rootPath = null)
     {
+        var baseDir = rootPath ?? AppContext.BaseDirectory;
+        _basePath = Path.Combine(baseDir, "Resources", "i18n");
+        
         foreach (var contextTemplate in contextTemplates)
         {
             var attribute = contextTemplate.GetType().GetCustomAttribute<LanguageAttribute>();
             if (attribute == null) continue;
 
-            _contextTemplates[attribute.Key.ToLower()] = contextTemplate;
+            _contextTemplates[attribute.Key] = contextTemplate;
         }
         
         if (!Directory.Exists(_basePath))
@@ -76,9 +79,11 @@ public class LanguageService : ILanguageService, IDisposable
     
     private void ReloadYamlFile(string fullPath)
     {
+        var relativeKey = GetRelativeKey(fullPath);
+        
         if (!File.Exists(fullPath))
         {
-            _languages.TryRemove(GetRelativeKey(fullPath), out _);
+            _languages.TryRemove(relativeKey, out _);
             return;
         }
 
@@ -87,7 +92,7 @@ public class LanguageService : ILanguageService, IDisposable
             var yaml = File.ReadAllText(fullPath);
             var dict = yaml.DeserializeYaml<Dictionary<string, string>>();
             if (dict != null)
-                _languages[GetRelativeKey(fullPath)] = dict;
+                _languages[relativeKey] = new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception ex)
         {
@@ -98,8 +103,8 @@ public class LanguageService : ILanguageService, IDisposable
     private string GetRelativeKey(string fullPath)
     {
         var relative = Path.GetRelativePath(_basePath, fullPath);
-        var normalized = relative.Replace('\\', '/').ToLower();
-        return "/" + normalized.TrimStart('/');
+        var normalized = "/" + relative.Replace('\\', '/').TrimStart('/');
+        return normalized.ToLower();
     }
     
     #endregion
@@ -110,7 +115,11 @@ public class LanguageService : ILanguageService, IDisposable
     {
         foreach (var ct in _contextTemplates)
         {
-            var filePath = Path.Combine(_basePath, ct.Key.TrimStart('/'));
+            var relativeKey = ct.Key.TrimStart('/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
+            
+            var filePath = Path.Combine(_basePath, relativeKey);
             
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -129,13 +138,13 @@ public class LanguageService : ILanguageService, IDisposable
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate
     {
-        var yamlKey = typeof(T).GetYamlKey(language).ToLower();
+        var yamlKey = typeof(T).GetYamlKey(language);
         var key = expression.GetPropertyName();
 
         if (_languages.TryGetValue(yamlKey, out var languageDict) && languageDict.TryGetValue(key, out var context))
             return context;
         
-        yamlKey = typeof(T).GetYamlKey().ToLower();
+        yamlKey = typeof(T).GetYamlKey();
         
         if (!_contextTemplates.TryGetValue(yamlKey, out var contextTemplate))
             return string.Empty;
