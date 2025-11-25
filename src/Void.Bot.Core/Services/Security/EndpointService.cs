@@ -15,12 +15,12 @@ public class EndpointService : IEndpointService
 {
     private List<EndpointDto> _endpoints = [];
 
-    public async Task<GetEndpointListResponse> GetEndpointListAsync(GetEndpointListRequest request)
+    public Task<GetEndpointListResponse> GetEndpointListAsync(GetEndpointListRequest request)
     {
-        return new GetEndpointListResponse
+        return Task.FromResult(new GetEndpointListResponse
         {
             Data = _endpoints
-        };
+        });
     }
 
     public Task ReplaceEndpointListAsync(ReplaceEndpointListCommand command)

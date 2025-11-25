@@ -8,7 +8,7 @@ namespace Void.Bot.Core.Middlewares.FluentMessageValidator;
 public static class MessageValidatorMiddleware
 {
     public static void UseMessageValidator<TContext>(this IPipeConfigurator<TContext> configurator,
-        IEnumerable<IFluentMessageValidator> messageValidators = null)
+        IEnumerable<IFluentMessageValidator>? messageValidators = null)
         where TContext : IContext<IMessage>
     {
         if (messageValidators == null && configurator.DependencyScope == null)
