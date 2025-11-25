@@ -15,7 +15,10 @@ public class FluentMessageValidator<T> : AbstractValidator<T>, IFluentMessageVal
 {
     public void ValidateMessage<TMessage>(TMessage message) where TMessage : IMessage
     {
-        var result = Validate(message as T);
+        if (message is not T instance)
+            return;
+        
+        var result = Validate(instance);
         if (!result.IsValid)
         {
             var validationErrors = new List<ValidationFailure>();
