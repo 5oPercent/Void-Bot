@@ -101,8 +101,8 @@ public class LanguageService : ILanguageService, IDisposable
     private string GetRelativeKey(string fullPath)
     {
         var relative = Path.GetRelativePath(_basePath, fullPath);
-        var normalized = relative.Replace('\\', '/').ToLower();
-        return "/" + normalized.TrimStart('/');
+        var normalized = "/" + relative.Replace('\\', '/').TrimStart('/');
+        return normalized.ToLower();
     }
     
     #endregion
@@ -113,11 +113,11 @@ public class LanguageService : ILanguageService, IDisposable
     {
         foreach (var ct in _contextTemplates)
         {
-            var key = ct.Key.TrimStart('/', '\\');
+            var relativeKey = ct.Key.TrimStart('/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
             
-            var relativePath = key.Replace('/', Path.DirectorySeparatorChar);
-            
-            var filePath = Path.Combine(_basePath, relativePath);
+            var filePath = Path.Combine(_basePath, relativeKey);
             
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
