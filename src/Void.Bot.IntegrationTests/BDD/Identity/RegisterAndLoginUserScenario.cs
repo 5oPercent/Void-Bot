@@ -16,7 +16,7 @@ public class RegisterAndLoginUserScenario(IntegrationTestBase testBase) : Integr
     private string _accessToken { get; set; } = string.Empty;
     private string _refreshToken { get; set; } = string.Empty;
     
-    public async Task GivenRegister()
+    private async Task GivenRegister()
     {
         await RunWithUnitOfWork<IAccountService>(async service =>
         {
@@ -34,7 +34,7 @@ public class RegisterAndLoginUserScenario(IntegrationTestBase testBase) : Integr
         });
     }
     
-    public async Task WhenLogin()
+    private async Task WhenLogin()
     {
         await Run<IIdentityService>(async service =>
         {
@@ -54,10 +54,12 @@ public class RegisterAndLoginUserScenario(IntegrationTestBase testBase) : Integr
         });
     }
 
-    public async Task ThenLogged()
+    private Task ThenLogged()
     {
         _accessToken.ShouldNotBeNullOrEmpty();
         _refreshToken.ShouldNotBeNullOrEmpty();
+        
+        return Task.CompletedTask;
     }
 
     [Fact]

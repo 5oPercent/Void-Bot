@@ -24,7 +24,7 @@ public class IntegrationTestBase : IAsyncLifetime
     
     private IConfiguration Configuration => LifetimeScope.Resolve<IConfiguration>();
     
-    private Respawner _respawner;
+    private Respawner _respawner = null!;
 
     public IntegrationTestBase()
     {
