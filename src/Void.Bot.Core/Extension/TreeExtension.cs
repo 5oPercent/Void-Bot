@@ -11,18 +11,31 @@ public static class TreeExtension
         var tree = new List<TEntity>();
 
         var list = sourceList.ToList();
-        var dict = list.ToDictionary(x => x.Id);
+        var dict = list.GroupBy(x => x.Id).ToDictionary(x => x.Key, x => x.First());
 
         foreach (var entity in list)
         {
-            if (entity.Pid.Equals(rootPid) || !dict.TryGetValue(entity.Pid, out var parent))
+            if (Equals(entity.Pid, rootPid))
             {
                 tree.Add(entity);
                 continue;
             }
-
-            parent.Children ??= new List<TEntity>();
-            parent.Children.Add(entity);
+            
+            if (dict.TryGetValue(entity.Pid, out var parent))
+            {
+                if (ReferenceEquals(parent, entity))
+                {
+                    tree.Add(entity); 
+                    continue;
+                }
+                
+                parent.Children ??= new List<TEntity>();
+                parent.Children.Add(entity);
+            }
+            else
+            {
+                tree.Add(entity);
+            }
         }
         
         return tree;
