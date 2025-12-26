@@ -43,14 +43,12 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         }
     }
     
-    public bool ShouldSaveChanges { get; set; }
-    
     public override int SaveChanges()
     {
         UpdateEntityAudit();
         UpdateCreatedFields();
         UpdateLastModifiedFields();
-        return ShouldSaveChanges ? base.SaveChanges() : 0;
+        return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
@@ -58,7 +56,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         UpdateEntityAudit();
         UpdateCreatedFields();
         UpdateLastModifiedFields();
-        return ShouldSaveChanges ? base.SaveChangesAsync(cancellationToken) : Task.FromResult(0);
+        return base.SaveChangesAsync(cancellationToken);
     }
 
     private void UpdateEntityAudit()

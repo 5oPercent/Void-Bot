@@ -2,13 +2,14 @@ using Mediator.Net;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
+using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 
 namespace Void.Bot.Core.Middlewares.UnitofWork;
 
 public static class UnitOfWorkMiddleWare
 {
-    public static void UseUnitOfWork<TContext>(this IPipeConfigurator<TContext> configurator, IUnitOfWork? unitOfWork = null)
+    public static void UseUnitOfWork<TContext>(this IPipeConfigurator<TContext> configurator, IUnitOfWork? unitOfWork = null, DbContext? dbContext = null)
         where TContext : IContext<IMessage>
     {
         if (unitOfWork == null && configurator.DependencyScope == null)
@@ -18,7 +19,8 @@ public static class UnitOfWorkMiddleWare
         }
 
         unitOfWork ??= configurator.DependencyScope.Resolve<IUnitOfWork>();
+        dbContext ??= configurator.DependencyScope.Resolve<DbContext>();
 
-        configurator.AddPipeSpecification(new UnitOfWorkSpecification<TContext>(unitOfWork));
+        configurator.AddPipeSpecification(new UnitOfWorkSpecification<TContext>(unitOfWork,  dbContext));
     }
 }
