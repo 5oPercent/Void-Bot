@@ -4,9 +4,9 @@ using Void.Bot.Message.Dto.Security;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class UpdateRoleCommand : ICommand
+public class UpdateRoleCommand : RoleBaseDto, ICommand
 {
-    public required RoleDto Role { get; set; }
+    public Guid Id { get; set; }
 }
 
 public class UpdateRoleResponse : VoidBotResponse
