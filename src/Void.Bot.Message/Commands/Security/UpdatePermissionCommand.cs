@@ -4,9 +4,9 @@ using Void.Bot.Message.Dto.Security;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class UpdatePermissionCommand : ICommand
+public class UpdatePermissionCommand : PermissionBaseDto, ICommand
 {
-    public required PermissionDto Permission { get; set; }
+    public Guid Id { get; set; }
 }
 
 public class UpdatePermissionResponse : VoidBotResponse

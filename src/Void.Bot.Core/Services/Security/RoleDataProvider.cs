@@ -36,7 +36,7 @@ public partial class RoleDataProvider : IRoleDataProvider
     
     public async Task<Role?> GetRoleAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _roleRep.QueryNoTracking(x => x.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return await _roleRep.Query(x => x.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<List<Role>> GetRoleListAsync(List<Guid> idList, CancellationToken cancellationToken)
