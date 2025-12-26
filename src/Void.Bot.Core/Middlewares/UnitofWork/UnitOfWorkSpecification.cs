@@ -64,6 +64,5 @@ public class UnitOfWorkSpecification<TContext>(IUnitOfWork unitOfWork, DbContext
         }
         
         ExceptionDispatchInfo.Capture(ex).Throw();
-        throw ex;
     }
 }
