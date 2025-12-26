@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.ExceptionServices;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
@@ -35,19 +36,8 @@ public class UnifyResponseSpecification<TContext> : IPipeSpecification<TContext>
         return Task.CompletedTask;
     }
 
-    public Task OnException(Exception ex, TContext context)
+    public async Task OnException(Exception ex, TContext context)
     {
-        var shouldSkip = !ShouldExecute(context, CancellationToken.None);
-        var isNotVoidResponse = !typeof(VoidBotResponse).IsAssignableFrom(context.ResultDataType);
-        
-        if (shouldSkip || isNotVoidResponse)
-            throw ex;
-        
-        var response = (dynamic)context.Result;
-
-        response.Code = HttpStatusCode.InternalServerError;
-        response.Message = ex.Message;
-
-        throw ex;
+        ExceptionDispatchInfo.Capture(ex).Throw();
     }
 }

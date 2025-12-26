@@ -34,9 +34,10 @@ public class LoggerSpecification<TContext>(ILogger logger) : IPipeSpecification<
         return Task.CompletedTask;
     }
 
-    public Task OnException(Exception ex, TContext context)
+    public async Task OnException(Exception ex, TContext context)
     {
+        logger.Error(ex, "----- Error handling message {MessageName}: {ErrorMessage}", context.Message.GetGenericTypeName(), ex.Message);
+        
         ExceptionDispatchInfo.Capture(ex).Throw();
-        return Task.CompletedTask;
     }
 }
