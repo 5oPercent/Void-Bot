@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.Security;
 
-[Table("Role_Permission")]
+[Table("role_permission")]
 public class RolePermission : IEntityAudit<Guid>
 {
     public Guid Id { get; set; }

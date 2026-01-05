@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.Security;
 
-[Table("Role_Conflict_Matrix")]
+[Table("role_conflict_matrix")]
 public class RoleConflictMatrix : IEntityAudit<Guid>
 {
     public Guid Id { get; set; }
