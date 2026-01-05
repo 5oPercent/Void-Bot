@@ -5,7 +5,7 @@ using Void.Bot.Message.Enum.Security;
 
 namespace Void.Bot.Core.Domain.Security;
 
-[Table("Menu")]
+[Table("menu")]
 public class Menu : ITreeEntityAudit<Guid, Menu>
 {
     public Guid Id { get; set; }
