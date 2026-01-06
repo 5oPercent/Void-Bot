@@ -21,6 +21,8 @@ public partial interface IRoleDataProvider : IScope
     public Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
     
     public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetBuiltAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
 }
 
 public partial class RoleDataProvider : IRoleDataProvider
@@ -72,5 +74,10 @@ public partial class RoleDataProvider : IRoleDataProvider
     public async Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken)
     {
         return await _roleRep.AnyAsync(x => pidList.Contains(x.Pid), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetBuiltAnyAsync(List<Guid> idList, CancellationToken cancellationToken)
+    {
+        return await  _roleRep.AnyAsync(x => idList.Contains(x.Id) && x.Built, cancellationToken).ConfigureAwait(false); 
     }
 }

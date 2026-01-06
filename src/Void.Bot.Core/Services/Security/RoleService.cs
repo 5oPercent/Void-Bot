@@ -111,6 +111,14 @@ public partial class RoleService : IRoleService
     {
         var response = new UpdateRoleResponse();
         
+        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync([command.Id], cancellationToken).ConfigureAwait(false);
+        if (hasBuilt)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "System built-in role cannot be modified.";
+            return response;
+        }
+        
         var role = await _roleDataProvider.GetRoleAsync(command.Id, cancellationToken).ConfigureAwait(false);
         if (role == null)
         {
@@ -140,6 +148,14 @@ public partial class RoleService : IRoleService
     {
         var response = new DeleteRoleCascadeResponse();
         
+        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        if (hasBuilt)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "System built-in roles cannot be deleted.";
+            return response;
+        }
+        
         var hasChild = await _roleDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         if (hasChild)
         {
@@ -158,7 +174,6 @@ public partial class RoleService : IRoleService
         
         await _roleDataProvider.DeleteRoleListAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         
-
         return response;
     }
 }
