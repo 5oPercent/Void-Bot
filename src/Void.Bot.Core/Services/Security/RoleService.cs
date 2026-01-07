@@ -62,7 +62,7 @@ public partial class RoleService : IRoleService
     public async Task<GetRoleListResponse> GetRoleListAsync(
         GetRoleListRequest request, CancellationToken cancellationToken)
     {
-        var roleList = await _roleDataProvider.GetRoleListAsync(request.IdList, cancellationToken).ConfigureAwait(false);
+        var roleList = await _roleDataProvider.GetRoleListAsync(request.IdList, [], cancellationToken).ConfigureAwait(false);
         
         return new GetRoleListResponse
         {

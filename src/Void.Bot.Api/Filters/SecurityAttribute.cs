@@ -4,28 +4,45 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Dto;
-using Void.Bot.Message.Enum.Account;
 
 namespace Void.Bot.Api.Filters;
 
-public class SecurityAttribute : Attribute, IAsyncAuthorizationFilter
+public class SecurityAttribute() : TypeFilterAttribute(typeof(SecurityAuthorizationFilter));
+
+public class SecurityAuthorizationFilter : IAsyncAuthorizationFilter
 {
+    private readonly ICurrentUser _currentUser;
+    private readonly IUserRoleService _userRoleService;
+    private readonly ISecurityService _securityService;
+
+    public SecurityAuthorizationFilter(
+        ICurrentUser currentUser, 
+        IUserRoleService userRoleService, 
+        ISecurityService securityService)
+    {
+        _currentUser = currentUser;
+        _userRoleService = userRoleService;
+        _securityService = securityService;
+    }
+    
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
-        var currentUser = context.HttpContext.RequestServices.GetService<ICurrentUser>();
-        if (currentUser?.Id == null || currentUser.Id == Guid.Empty || currentUser.Level == AccountLevelEnum.SuperAdmin)
+        if (_currentUser.Id == null || _currentUser.Id == Guid.Empty)
+        {
+            return;
+        }
+
+        if (await _userRoleService.CheckUserIsAdminAsync(_currentUser.Id.GetValueOrDefault(), CancellationToken.None))
         {
             return;
         }
         
         var path = context.HttpContext.Request.Path.Value?.ToLower() ?? string.Empty;
         var method = context.HttpContext.Request.Method.ToUpper();
-        
-        var securityService = context.HttpContext.RequestServices.GetService<ISecurityService>()!;
-        
-        var isAllow = await securityService.VerifyPermissionEndpointAsync(
-            currentUser.Id.Value, path, method, context.HttpContext.RequestAborted).ConfigureAwait(false);
-        
+
+        var isAllow = await _securityService.VerifyPermissionEndpointAsync(
+            _currentUser.Id.Value, path, method, context.HttpContext.RequestAborted);
+
         if (!isAllow)
         {
             var response = new VoidBotResponse
@@ -34,7 +51,10 @@ public class SecurityAttribute : Attribute, IAsyncAuthorizationFilter
                 Message = "You do not have permission to access."
             };
             
-            context.Result = new ObjectResult(response);
+            context.Result = new ObjectResult(response)
+            {
+                StatusCode = (int)HttpStatusCode.Forbidden
+            };
         }
     }
 }
