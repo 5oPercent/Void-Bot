@@ -8,7 +8,7 @@ public partial interface IRoleDataProvider : IScope
 {
     public Task<Role?> GetRoleAsync(Guid id, CancellationToken cancellationToken);
     
-    public Task<List<Role>> GetRoleListAsync(List<Guid> idList, CancellationToken cancellationToken);
+    public Task<List<Role>> GetRoleListAsync(List<Guid> idList, List<string> codeList, CancellationToken cancellationToken);
     
     public Task<List<Role>> GetAllRoleAsync(CancellationToken cancellationToken);
     
@@ -21,6 +21,8 @@ public partial interface IRoleDataProvider : IScope
     public Task<bool> GetAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
     
     public Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken);
+    
+    public Task<bool> GetBuiltAnyAsync(List<Guid> idList, CancellationToken cancellationToken);
 }
 
 public partial class RoleDataProvider : IRoleDataProvider
@@ -39,9 +41,26 @@ public partial class RoleDataProvider : IRoleDataProvider
         return await _roleRep.Query(x => x.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<List<Role>> GetRoleListAsync(List<Guid> idList, CancellationToken cancellationToken)
+    public async Task<List<Role>> GetRoleListAsync(List<Guid> idList, List<string> codeList, CancellationToken cancellationToken)
     {
-        return await _roleRep.QueryNoTracking(x => idList.Contains(x.Id)).ToListAsync(cancellationToken).ConfigureAwait(false);
+        if (idList.Count == 0 && codeList.Count == 0)
+        {
+            return [];
+        }
+
+        var query = _roleRep.QueryNoTracking();
+
+        if (idList.Count != 0)
+        {
+            query = query.Where(x => idList.Contains(x.Id));
+        }
+
+        if (codeList.Count != 0)
+        {
+            query = query.Where(x => codeList.Contains(x.Code));
+        }
+        
+        return await query.ToListAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<List<Role>> GetAllRoleAsync(CancellationToken cancellationToken)
@@ -72,5 +91,10 @@ public partial class RoleDataProvider : IRoleDataProvider
     public async Task<bool> GetChildAnyAsync(List<Guid> pidList, CancellationToken cancellationToken)
     {
         return await _roleRep.AnyAsync(x => pidList.Contains(x.Pid), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> GetBuiltAnyAsync(List<Guid> idList, CancellationToken cancellationToken)
+    {
+        return await  _roleRep.AnyAsync(x => idList.Contains(x.Id) && x.Built, cancellationToken).ConfigureAwait(false); 
     }
 }

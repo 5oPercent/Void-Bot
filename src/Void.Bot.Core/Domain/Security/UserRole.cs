@@ -12,7 +12,7 @@ public class UserRole : IEntityAudit<Guid>
 
     public Guid RoleId { get; set; }
     
-    public DateTimeOffset Deadline { get; set; }
+    public DateTimeOffset? Deadline { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; }
     
