@@ -11,8 +11,8 @@ namespace Void.Bot.Core.Services.Security;
 
 public interface IPermissionMenuService : IScope
 {
-    Task<GetMenusByPermissionIdResponse> GetMenusByPermissionIdAsync(
-        GetMenusByPermissionIdRequest request, CancellationToken cancellationToken);
+    Task<GetMenusByPermissionIdsResponse> GetMenusByPermissionIdsAsync(
+        GetMenusByPermissionIdsRequest request, CancellationToken cancellationToken);
     
     Task<AssignMenusToPermissionResponse> AssignMenusToPermissionAsync(
         AssignMenusToPermissionCommand command, CancellationToken cancellationToken);
@@ -49,14 +49,16 @@ public class PermissionMenuService : IPermissionMenuService
         _permissionMenuRep = permissionMenuRep;
     }
 
-    public async Task<GetMenusByPermissionIdResponse> GetMenusByPermissionIdAsync(
-        GetMenusByPermissionIdRequest request, CancellationToken cancellationToken)
+    public async Task<GetMenusByPermissionIdsResponse> GetMenusByPermissionIdsAsync(
+        GetMenusByPermissionIdsRequest request, CancellationToken cancellationToken)
     {
-        var response = new GetMenusByPermissionIdResponse();
+        var response = new GetMenusByPermissionIdsResponse();
+        
+        var permissionIdSet = new HashSet<Guid>(request.PermissionIds);
         
         var menuIds = await _permissionMenuRep.QueryNoTracking()
-            .Where(x => x.PermissionId == request.PermissionId)
-            .Select(x => x.MenuId)
+            .Where(x => permissionIdSet.Contains(x.PermissionId))
+            .Select(x => x.MenuId).Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
             
         if (menuIds.Count == 0)

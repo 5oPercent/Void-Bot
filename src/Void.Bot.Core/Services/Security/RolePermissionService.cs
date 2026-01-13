@@ -55,17 +55,20 @@ public class RolePermissionService : IRolePermissionService
     public async Task<GetPermissionsByRoleIdsResponse> GetPermissionsByRoleIdsAsync(
         GetPermissionsByRoleIdsRequest request, CancellationToken cancellationToken)
     {
+        var response = new GetPermissionsByRoleIdsResponse();
+        
+        var roleIdSet = new HashSet<Guid>(request.RoleIds);
+        
         var list = await _rolePermissionRep.QueryNoTracking()
-            .Where(x => request.RoleIds.Contains(x.Id))
-            .Select(x => x.PermissionId)
+            .Where(x => roleIdSet.Contains(x.Id))
+            .Select(x => x.PermissionId).Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
         var permissions = await _permissionDataProvider.GetPermissionsAsync(list, cancellationToken).ConfigureAwait(false);
 
-        return new GetPermissionsByRoleIdsResponse
-        {
-            Data = _mapper.Map<List<PermissionDto>>(permissions)
-        };
+        response.Data = _mapper.Map<List<PermissionDto>>(permissions);
+        
+        return response;
     }
 
     public async Task<GetRoleHasPermissionResponse> GetRoleHasPermissionAsync(
