@@ -32,9 +32,9 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
     
-    [HttpGet("role/list")]
+    [HttpPost("role/list")]
     [ProducesResponseType(typeof(GetRoleListResponse), 200)]
-    public async Task<IActionResult> GetRoleListAsync([FromQuery] GetRoleListRequest request)
+    public async Task<IActionResult> GetRoleListAsync([FromBody] GetRoleListRequest request)
     {
         var response = await _mediator.RequestAsync<GetRoleListRequest, GetRoleListResponse>(request).ConfigureAwait(false);
         return Ok(response);
@@ -84,9 +84,9 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
     
-    [HttpGet("permission/list")]
+    [HttpPost("permission/list")]
     [ProducesResponseType(typeof(GetPermissionListResponse), 200)]
-    public async Task<IActionResult> GetPermissionListAsync([FromQuery] GetPermissionListRequest request)
+    public async Task<IActionResult> GetPermissionListAsync([FromBody] GetPermissionListRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionListRequest, GetPermissionListResponse>(request).ConfigureAwait(false);
         return Ok(response);
@@ -136,9 +136,9 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
     
-    [HttpGet("menu/list")]
+    [HttpPost("menu/list")]
     [ProducesResponseType(typeof(GetMenuListResponse), 200)]
-    public async Task<IActionResult> GetMenuListAsync([FromQuery] GetMenuListRequest request)
+    public async Task<IActionResult> GetMenuListAsync([FromBody] GetMenuListRequest request)
     {
         var response = await _mediator.RequestAsync<GetMenuListRequest, GetMenuListResponse>(request).ConfigureAwait(false);
         return Ok(response);
@@ -229,9 +229,9 @@ public class SecurityController : ControllerBase
     
     #region RolePermissions
     
-    [HttpGet("role/permissions")]
+    [HttpPost("role/permissions")]
     [ProducesResponseType(typeof(GetPermissionsByRoleIdsResponse), 200)]
-    public async Task<IActionResult> GetPermissionsByRoleIdsAsync([FromQuery] GetPermissionsByRoleIdsRequest request)
+    public async Task<IActionResult> GetPermissionsByRoleIdsAsync([FromBody] GetPermissionsByRoleIdsRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionsByRoleIdsRequest, GetPermissionsByRoleIdsResponse>(request).ConfigureAwait(false);
         return Ok(response);
@@ -265,11 +265,11 @@ public class SecurityController : ControllerBase
     
     #region PermissionMenus
     
-    [HttpGet("permission/menus")]
-    [ProducesResponseType(typeof(GetMenusByPermissionIdResponse), 200)]
-    public async Task<IActionResult> GetMenusByPermissionIdAsync([FromQuery] GetMenusByPermissionIdRequest request)
+    [HttpPost("permission/menus")]
+    [ProducesResponseType(typeof(GetMenusByPermissionIdsResponse), 200)]
+    public async Task<IActionResult> GetMenusByPermissionIdAsync([FromBody] GetMenusByPermissionIdsRequest request)
     {
-        var response = await _mediator.RequestAsync<GetMenusByPermissionIdRequest, GetMenusByPermissionIdResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<GetMenusByPermissionIdsRequest, GetMenusByPermissionIdsResponse>(request).ConfigureAwait(false);
         return Ok(response);
     }
     
@@ -301,9 +301,9 @@ public class SecurityController : ControllerBase
     
     #region PermissionEndpoints
     
-    [HttpGet("permission/endpoints")]
+    [HttpPost("permission/endpoints")]
     [ProducesResponseType(typeof(GetEndpointsByPermissionIdsResponse), 200)]
-    public async Task<IActionResult> GetEndpointsByPermissionIdsAsync([FromQuery] GetEndpointsByPermissionIdsRequest request)
+    public async Task<IActionResult> GetEndpointsByPermissionIdsAsync([FromBody] GetEndpointsByPermissionIdsRequest request)
     {
         var response = await _mediator.RequestAsync<GetEndpointsByPermissionIdsRequest, GetEndpointsByPermissionIdsResponse>(request).ConfigureAwait(false);
         return Ok(response);
