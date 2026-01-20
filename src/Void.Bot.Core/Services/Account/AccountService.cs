@@ -1,6 +1,7 @@
 using AutoMapper;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Account;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
@@ -11,6 +12,9 @@ public interface IAccountService : IScope
 {
     Task<GetUserAccountResponse> GetUserAccountAsync(
         GetUserAccountRequest request, CancellationToken cancellationToken);
+    
+    Task<GetUserAccountPageResponse> GetUserAccountPageAsync(
+        GetUserAccountPageRequest request, CancellationToken cancellationToken);
 
     Task<GetUserAccountByThirdPartyResponse> GetUserAccountByThirdPartyAsync(
         GetUserAccountByThirdPartyRequest request, CancellationToken cancellationToken);
@@ -50,6 +54,18 @@ public class AccountService : IAccountService
         return new GetUserAccountResponse
         {
             Data = _mapper.Map<UserAccountInfoDto>(user)
+        };
+    }
+
+    public async Task<GetUserAccountPageResponse> GetUserAccountPageAsync(
+        GetUserAccountPageRequest request, CancellationToken cancellationToken)
+    {
+        var list = await _dataProvider.GetUserAccountPageAsync(
+            request.UserIds, request.PageIndex, request.PageSize, cancellationToken).ConfigureAwait(false);
+
+        return new GetUserAccountPageResponse
+        {
+            Data = _mapper.Map<PagedListDto<UserAccountInfoDto>>(list)
         };
     }
 

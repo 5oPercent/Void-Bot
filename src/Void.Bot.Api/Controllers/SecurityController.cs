@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.Security;
-using Void.Bot.Message.Dto.Security;
+using Void.Bot.Message.Request.Account;
 using Void.Bot.Message.Request.Security;
 
 namespace Void.Bot.Api.Controllers;
@@ -21,6 +21,18 @@ public class SecurityController : ControllerBase
     {
         _mediator = mediator;
     }
+
+    #region User
+
+    [HttpPost("user/list")]
+    [ProducesResponseType(typeof(GetUserAccountPageResponse), 200)]
+    public async Task<IActionResult> GetUserPageAsync([FromBody] GetUserAccountPageRequest request)
+    {
+        var response = await _mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(request).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    #endregion
     
     #region Role
     
