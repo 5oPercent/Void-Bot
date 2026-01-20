@@ -11,6 +11,9 @@ public interface IAccountDataProvider : IScope
 {
     Task<UserAccountDto?> GetUserAccountAsync(
         Guid? userId, string displayName, CancellationToken cancellationToken);
+
+    Task<PagedList<UserAccountDto>> GetUserAccountPageAsync(
+        List<Guid>? userIds = null, int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default);
     
     Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
         string provider, string thirdPartyUserId, CancellationToken cancellationToken);
@@ -70,6 +73,22 @@ public class AccountDataProvider : IAccountDataProvider
         }
         
         return _mapper.Map<UserAccountDto>(user);
+    }
+
+    public async Task<PagedList<UserAccountDto>> GetUserAccountPageAsync(
+        List<Guid>? userIds = null, int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default)
+    {
+        var query = _userAccountRep.QueryNoTracking();
+        
+        if (userIds is { Count: > 0 })
+        {
+            var userIdSet = new HashSet<Guid>(userIds);
+            query = query.Where(x => userIdSet.Contains(x.Id));
+        }
+        
+        var result = await query.ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
+        
+        return _mapper.Map<PagedList<UserAccountDto>>(result);
     }
 
     public async Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
