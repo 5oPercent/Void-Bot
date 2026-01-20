@@ -10,11 +10,22 @@
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="stylesheet" href="css/dark-theme.css" />
+    <link rel="stylesheet" href="css/light-theme.css" />
+    <link rel="stylesheet" href="css/login.css" />
     <link rel="stylesheet" href="Void.Bot.Blazor.WASM.styles.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" />
 </head>
 
-<body>
+<body class="dark-theme">
+    <script>
+        (function() {
+            var savedTheme = localStorage.getItem('app_theme');
+            if (savedTheme === 'light') {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+            }
+        })();
+    </script>
     <div id="app">
         <svg class="loading-progress">
             <circle r="40%" cx="50%" cy="50%" />

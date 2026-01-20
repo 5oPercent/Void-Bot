@@ -1,7 +1,197 @@
-﻿@page "/"
+@page "/dashboard"
+@layout DefaultLayout
+@inject AuthService AuthService
 
 <PageTitle>仪表板</PageTitle>
 
-<h1>仪表板</h1>
+<div class="dashboard">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-0">欢迎回来, @AuthService.Username</h1>
+        </div>
+    </div>
 
-欢迎使用仪表板界面来管理和监控您的 Void Bot 实例。
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">运行状态</h6>
+                            <h4 class="mb-0 text-success">在线</h4>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">运行时间</h6>
+                            <h4 class="mb-0">99.9%</h4>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-clock text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">处理消息</h6>
+                            <h4 class="mb-0">1,234</h4>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fa-solid fa-message text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">快捷操作</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary">
+                            <i class="fa-solid fa-gear me-2"></i>系统设置
+                        </button>
+                        <button class="btn btn-outline-primary">
+                            <i class="fa-solid fa-users me-2"></i>管理用户
+                        </button>
+                        <button class="btn btn-outline-primary">
+                            <i class="fa-solid fa-chart-line me-2"></i>查看统计
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">系统信息</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">版本</span>
+                            <span>v1.0.0</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">框架</span>
+                            <span>.NET 9.0</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-2 border-bottom">
+                            <span class="text-muted">内存使用</span>
+                            <span>128 MB</span>
+                        </li>
+                        <li class="d-flex justify-content-between py-2">
+                            <span class="text-muted">最后更新</span>
+                            <span>@DateTime.Now.ToString("yyyy-MM-dd HH:mm")</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">最近活动</h5>
+                    <a href="#" class="btn btn-sm btn-link">查看全部</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>类型</th>
+                                    <th>描述</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-muted">10:30</td>
+                                    <td><span class="badge bg-info">消息</span></td>
+                                    <td>处理来自用户的消息</td>
+                                    <td><span class="text-success">成功</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">10:25</td>
+                                    <td><span class="badge bg-warning">系统</span></td>
+                                    <td>定时任务执行</td>
+                                    <td><span class="text-success">成功</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">10:20</td>
+                                    <td><span class="badge bg-primary">命令</span></td>
+                                    <td>用户执行了 /status 命令</td>
+                                    <td><span class="text-success">成功</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="text-muted">10:15</td>
+                                    <td><span class="badge bg-danger">错误</span></td>
+                                    <td>API 请求失败</td>
+                                    <td><span class="text-warning">已重试</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dashboard {
+        padding: 1rem 0;
+    }
+
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-icon i {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+
+    .table {
+        font-size: 0.9rem;
+    }
+
+    .table thead th {
+        border-bottom: 2px solid;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+
+    .card .border-bottom {
+        border-bottom: 1px solid !important;
+    }
+</style>

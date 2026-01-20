@@ -1,0 +1,165 @@
+@inject ThemeService ThemeService
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+@inherits LayoutComponentBase
+@implements IDisposable
+
+<div class="default-layout">
+    <nav class="top-navbar">
+        <a class="navbar-brand" href="">
+            <i class="fa-solid fa-robot me-2"></i>Void.Bot
+        </a>
+
+        <div class="nav-links">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <i class="fa-solid fa-door-open"></i>
+                <span>门户</span>
+            </NavLink>
+            @if (AuthService.IsLoggedIn)
+            {
+                <NavLink class="nav-link" href="dashboard">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>仪表盘</span>
+                </NavLink>
+            }
+            <NavLink class="nav-link" href="about">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>关于</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn btn-link theme-toggle" @onclick="ToggleTheme" title="切换主题">
+                <i class="fa-solid @(_isDarkTheme ? "fa-sun" : "fa-moon")"></i>
+            </button>
+
+            @if (AuthService.IsLoggedIn)
+            {
+                <div class="user-dropdown">
+                    <button class="btn btn-link user-dropdown-toggle">
+                        <span class="user-name">@AuthService.Username</span>
+                    </button>
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item" @onclick="Logout">
+                            <i class="fa-solid fa-right-from-bracket me-2"></i>登出
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <NavLink class="btn btn-primary" href="login">登录</NavLink>
+            }
+        </div>
+
+        <button class="hamburger-menu d-md-none" @onclick="ToggleMobileMenu">
+            <i class="fa-solid @(_showMobileMenu ? "fa-xmark" : "fa-bars")"></i>
+        </button>
+    </nav>
+
+    @if (_showMobileMenu)
+    {
+        <div class="mobile-nav-menu">
+            <NavLink class="mobile-nav-link" href="" @onclick="CloseMobileMenu">
+                <i class="fa-solid fa-door-open"></i>
+                <span>门户</span>
+            </NavLink>
+            @if (AuthService.IsLoggedIn)
+            {
+                <NavLink class="mobile-nav-link" href="dashboard" @onclick="CloseMobileMenu">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>仪表盘</span>
+                </NavLink>
+            }
+            <NavLink class="mobile-nav-link" href="about" @onclick="CloseMobileMenu">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>关于</span>
+            </NavLink>
+        </div>
+    }
+
+    <main class="main-content">
+        <SkeletonOverlay IsLoading="_isLoading" IsExiting="_isExiting" />
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool _isDarkTheme = true;
+    private bool _showMobileMenu = false;
+    private bool _isLoading = false;
+    private bool _isExiting = false;
+    private System.Threading.Timer? _skeletonTimer;
+
+    protected override void OnInitialized()
+    {
+        _isDarkTheme = ThemeService.IsDarkTheme;
+        ThemeService.OnThemeChanged += OnThemeChanged;
+
+        // Show skeleton while initializing
+        _isLoading = true;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Start exit animation after initial display
+            _skeletonTimer?.Dispose();
+            _skeletonTimer = new System.Threading.Timer(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    _isLoading = false;
+                    _isExiting = true;
+                    StateHasChanged();
+
+                    // Remove element after exit animation completes
+                    _skeletonTimer?.Dispose();
+                    _skeletonTimer = new System.Threading.Timer(_ =>
+                    {
+                        InvokeAsync(() =>
+                        {
+                            _isExiting = false;
+                            StateHasChanged();
+                        });
+                    }, null, 400, System.Threading.Timeout.Infinite);
+                });
+            }, null, 800, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+        _skeletonTimer?.Dispose();
+    }
+
+    private void OnThemeChanged()
+    {
+        _isDarkTheme = ThemeService.IsDarkTheme;
+        StateHasChanged();
+    }
+
+    private void ToggleTheme()
+    {
+        _ = ThemeService.ToggleThemeAsync();
+    }
+
+    private void ToggleMobileMenu()
+    {
+        _showMobileMenu = !_showMobileMenu;
+    }
+
+    private void CloseMobileMenu()
+    {
+        _showMobileMenu = false;
+    }
+
+    private void Logout()
+    {
+        AuthService.Logout();
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

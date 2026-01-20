@@ -1,0 +1,417 @@
+/* ============================================
+   登录页面样式
+   ============================================ */
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+}
+
+/* 主题切换按钮 */
+.login-theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+body.light-theme .login-theme-toggle {
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #6c757d;
+}
+
+.login-theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+body.light-theme .login-theme-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 品牌标题 */
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.login-brand-icon {
+    font-size: 48px;
+    color: #58a6ff;
+}
+
+body.light-theme .login-brand-icon {
+    color: #2367d6;
+}
+
+.login-brand-name {
+    font-size: 42px;
+    font-weight: 700;
+    color: #e4e6eb;
+    letter-spacing: 2px;
+}
+
+body.light-theme .login-brand-name {
+    color: #212529;
+}
+
+.login-subtitle {
+    font-size: 16px;
+    color: #8a8d91;
+    margin-bottom: 40px;
+}
+
+body.light-theme .login-subtitle {
+    color: #6c757d;
+}
+
+/* 表单容器 */
+.login-form-container {
+    width: 100%;
+    max-width: 360px;
+}
+
+/* 轮廓型输入框 */
+.login-input-group {
+    margin-bottom: 16px;
+}
+
+/* 用户名+后缀同一行 - 统一外观 */
+.login-input-row {
+    display: flex;
+    border-radius: 8px;
+}
+
+.login-input-row.error {
+    box-shadow: 0 0 0 3px rgba(248, 81, 73, 0.2);
+}
+
+.login-input-row.error > .login-input-wrapper {
+    border-color: #f85149;
+}
+
+body.light-theme .login-input-row.error {
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+}
+
+body.light-theme .login-input-row.error > .login-input-wrapper {
+    border-color: #dc3545;
+}
+
+/* 用户名输入 - 右侧无边框，融入统一行 */
+.login-input-row .username-wrapper {
+    flex: 1;
+    border-radius: 0;
+    border-right: none;
+}
+
+/* 后缀输入 - 左侧无边框，融入统一行 */
+.login-input-row .suffix-wrapper {
+    flex: 0 0 auto;
+    width: 100px;
+    border-radius: 0;
+    border-left: none;
+}
+
+/* 统一行的第一个子元素左圆角 */
+.login-input-row > *:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+/* 统一行的最后一个子元素右圆角 */
+.login-input-row > *:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.login-input-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: #2d2e30;
+    border: 1px solid #3a3b3c;
+    border-radius: 8px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.light-theme .login-input-wrapper {
+    background-color: #fff;
+    border-color: #ced4da;
+}
+
+/* 统一行内获取焦点时，整行显示焦点状态 */
+.login-input-row:focus-within {
+    border: 1px solid #4a7dbf;
+    box-shadow: 0 0 0 0.2rem rgba(74, 125, 191, 0.25);
+}
+
+.login-input-row:focus-within > .login-input-wrapper {
+    border-color: #4a7dbf;
+}
+
+body.light-theme .login-input-row:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+body.light-theme .login-input-row:focus-within > .login-input-wrapper {
+    border-color: #86b7fe;
+}
+
+/* 非统一行的独立包装器保持原有的focus-within */
+.login-input-group:not(:has(.login-input-row)) .login-input-wrapper:focus-within {
+    border-color: #4a7dbf;
+    box-shadow: 0 0 0 0.2rem rgba(74, 125, 191, 0.25);
+}
+
+body.light-theme .login-input-group:not(:has(.login-input-row)) .login-input-wrapper:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.login-input-prefix {
+    padding: 0 8px;
+    color: #8a8d91;
+    font-size: 14px;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+body.light-theme .login-input-prefix {
+    color: #6c757d;
+}
+
+.login-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 14px 12px;
+    font-size: 15px;
+    color: #e4e6eb;
+}
+
+body.light-theme .login-input {
+    color: #212529;
+}
+
+.login-input::placeholder {
+    color: #8a8d91;
+}
+
+body.light-theme .login-input::placeholder {
+    color: #6c757d;
+}
+
+.login-input:focus {
+    outline: none;
+}
+
+/* 记住我 */
+.login-remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    cursor: pointer;
+}
+
+.login-remember-me input[type="checkbox"] {
+    display: none;
+}
+
+.login-checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #3a3b3c;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+body.light-theme .login-checkbox-custom {
+    border-color: #ced4da;
+}
+
+.login-remember-me input[type="checkbox"]:checked + .login-checkbox-custom {
+    background: #2367d6;
+    border-color: #2367d6;
+}
+
+.login-checkbox-custom::after {
+    content: '';
+    display: none;
+}
+
+.login-remember-me input[type="checkbox"]:checked + .login-checkbox-custom::after {
+    display: block;
+    width: 5px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-bottom: 2px;
+}
+
+.login-remember-text {
+    color: #8a8d91;
+    font-size: 14px;
+}
+
+body.light-theme .login-remember-text {
+    color: #6c757d;
+}
+
+/* 错误提示 */
+.login-error-message {
+    color: #f85149;
+    font-size: 13px;
+    margin-top: -8px;
+    margin-bottom: 16px;
+    padding-left: 4px;
+}
+
+body.light-theme .login-error-message {
+    color: #dc3545;
+}
+
+/* 登录按钮 */
+.login-submit-btn {
+    width: 100%;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.login-submit-btn.confirm {
+    background-color: #2d2e30;
+    color: #8a8d91;
+    cursor: not-allowed;
+    border: 1px solid #3a3b3c;
+}
+
+body.light-theme .login-submit-btn.confirm {
+    background-color: #e9ecef;
+    color: #6c757d;
+    border-color: #ced4da;
+}
+
+.login-submit-btn.login {
+    background-color: #2367d6;
+    color: #fff;
+    border: none;
+}
+
+.login-submit-btn.login:hover {
+    background-color: #1a4db8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(35, 103, 214, 0.4);
+}
+
+body.light-theme .login-submit-btn.login:hover {
+    background-color: #1a4db8;
+}
+
+.login-submit-btn.loading {
+    background-color: #2d2e30;
+    color: #8a8d91;
+    cursor: wait;
+}
+
+body.light-theme .login-submit-btn.loading {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+.login-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 响应式 */
+@media (max-width: 480px) {
+    .login-brand-icon {
+        font-size: 36px;
+    }
+
+    .login-brand-name {
+        font-size: 32px;
+    }
+
+    .login-subtitle {
+        font-size: 14px;
+        margin-bottom: 30px;
+    }
+
+    .login-form-container {
+        max-width: 100%;
+    }
+
+    /* 移动端垂直堆叠 */
+    .login-input-row {
+        flex-direction: column;
+        border-radius: 8px;
+    }
+
+    .login-input-row .username-wrapper {
+        border-radius: 8px 8px 0 0;
+        border-right: 1px solid #3a3b3c;
+        border-bottom: none;
+    }
+
+    body.light-theme .login-input-row .username-wrapper {
+        border-right-color: #ced4da;
+        border-bottom-color: transparent;
+    }
+
+    .login-input-row .suffix-wrapper {
+        width: 100%;
+        border-radius: 0 0 8px 8px;
+        border-top: none;
+        border-left: 1px solid #3a3b3c;
+    }
+
+    body.light-theme .login-input-row .suffix-wrapper {
+        border-left-color: #ced4da;
+    }
+
+    /* 移除移动端的统一行圆角继承 */
+    .login-input-row > *:first-child {
+        border-radius: 8px 8px 0 0;
+    }
+
+    .login-input-row > *:last-child {
+        border-radius: 0 0 8px 8px;
+    }
+}

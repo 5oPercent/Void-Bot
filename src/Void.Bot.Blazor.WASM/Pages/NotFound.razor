@@ -2,6 +2,24 @@
 
 <PageTitle>Not found</PageTitle>
 
-<h1>Not found</h1>
+<div class="notfound-container">
+    <div class="card">
+        <div class="card-header">
+            <h1 class="mb-0">404 - Not found</h1>
+        </div>
+        <div class="card-body">
+            <p class="card-text" role="alert">Sorry, there's nothing at this address.</p>
+            <a href="" class="btn btn-primary">返回首页</a>
+        </div>
+    </div>
+</div>
 
-<p role="alert">Sorry, there's nothing at this address.</p>
+<style>
+    .notfound-container {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+    }
+</style>

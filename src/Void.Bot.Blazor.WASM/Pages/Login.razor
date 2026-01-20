@@ -1,0 +1,170 @@
+@page "/login"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+@inject ThemeService ThemeService
+
+<PageTitle>登录 - Void.Bot</PageTitle>
+
+<div class="login-page">
+    <button class="login-theme-toggle" @onclick="ToggleTheme" title="切换主题">
+        <i class="fa-solid @(_isDarkTheme ? "fa-sun" : "fa-moon")"></i>
+    </button>
+
+    <div class="login-brand">
+        <i class="fa-solid fa-robot login-brand-icon"></i>
+        <span class="login-brand-name">Void.Bot</span>
+    </div>
+    <p class="login-subtitle">欢迎回来，请登录</p>
+
+    <div class="login-form-container">
+        <EditForm Model="@LoginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="login-input-group">
+                <div class="login-input-row @(_showError ? "error" : "")">
+                    <div class="login-input-wrapper username-wrapper">
+                        <input type="text" class="login-input" @bind:get="LoginModel.Name" @bind:set="OnNameChanged" placeholder="输入用户名" />
+                    </div>
+                    <div class="login-input-wrapper suffix-wrapper">
+                        <span class="login-input-prefix">#</span>
+                        <input type="text" class="login-input" @bind:get="LoginModel.Suffix" @bind:set="OnSuffixChanged" placeholder="0000" maxlength="4" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="login-input-group">
+                <div class="login-input-wrapper password-wrapper @(_showError ? "error" : "")">
+                    <input type="password" class="login-input" value="@LoginModel.Password" @oninput="e => OnPasswordChanged(e.Value?.ToString())" placeholder="输入密码" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <p class="login-error-message">@_errorMessage</p>
+            }
+
+            <label class="login-remember-me">
+                <input type="checkbox" @bind="_rememberMe" />
+                <span class="login-checkbox-custom"></span>
+                <span class="login-remember-text">记住我</span>
+            </label>
+
+            <button type="submit" class="login-submit-btn @_buttonState" disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <i class="fa-solid fa-circle-notch login-spinner"></i>
+                    <span>登录中...</span>
+                }
+                else if (_buttonState == "confirm")
+                {
+                    <span>确认</span>
+                }
+                else
+                {
+                    <span>登录</span>
+                }
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private class Model
+    {
+        public string Name { get; set; } = "";
+        public string Suffix { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    private Model LoginModel { get; set; } = new();
+    private bool _rememberMe;
+    private bool _isLoading;
+    private bool _showError;
+    private string? _errorMessage;
+    private string _buttonState = "confirm";
+    private bool _isDarkTheme = true;
+
+    protected override void OnInitialized()
+    {
+        _isDarkTheme = ThemeService.IsDarkTheme;
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        _isDarkTheme = ThemeService.IsDarkTheme;
+        StateHasChanged();
+    }
+
+    private void ToggleTheme()
+    {
+        _ = ThemeService.ToggleThemeAsync();
+    }
+
+    private void OnNameChanged(string? value)
+    {
+        LoginModel.Name = value ?? "";
+        UpdateButtonState();
+    }
+
+    private void OnSuffixChanged(string? value)
+    {
+        LoginModel.Suffix = value ?? "";
+        UpdateButtonState();
+    }
+
+    private void OnPasswordChanged(string? value)
+    {
+        LoginModel.Password = value ?? "";
+        UpdateButtonState();
+    }
+
+    private void UpdateButtonState()
+    {
+        var isValid = !string.IsNullOrWhiteSpace(LoginModel.Name)
+            && LoginModel.Suffix.Length == 4
+            && LoginModel.Password.Length >= 6;
+
+        _buttonState = isValid ? "login" : "confirm";
+        StateHasChanged();
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(LoginModel.Name) || LoginModel.Suffix.Length != 4 || LoginModel.Password.Length < 6)
+        {
+            return;
+        }
+
+        _showError = false;
+        _errorMessage = null;
+        _isLoading = true;
+        _buttonState = "loading";
+        StateHasChanged();
+
+        var (success, errorMessage) = await AuthService.LoginAsync(
+            LoginModel.Name,
+            LoginModel.Suffix,
+            LoginModel.Password,
+            _rememberMe);
+
+        _isLoading = false;
+
+        if (success)
+        {
+            NavigationManager.NavigateTo("", forceLoad: true);
+        }
+        else
+        {
+            _showError = true;
+            _errorMessage = errorMessage;
+            _buttonState = "login";
+            StateHasChanged();
+        }
+    }
+}
