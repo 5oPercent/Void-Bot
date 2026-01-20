@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Account;
 
 namespace Void.Bot.Core.Services.Account;
@@ -12,7 +13,7 @@ public interface IAccountDataProvider : IScope
     Task<UserAccountDto?> GetUserAccountAsync(
         Guid? userId, string displayName, CancellationToken cancellationToken);
 
-    Task<PagedList<UserAccountDto>> GetUserAccountPageAsync(
+    Task<PagedListDto<UserAccountDto>> GetUserAccountPageAsync(
         List<Guid>? userIds = null, int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default);
     
     Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
@@ -75,7 +76,7 @@ public class AccountDataProvider : IAccountDataProvider
         return _mapper.Map<UserAccountDto>(user);
     }
 
-    public async Task<PagedList<UserAccountDto>> GetUserAccountPageAsync(
+    public async Task<PagedListDto<UserAccountDto>> GetUserAccountPageAsync(
         List<Guid>? userIds = null, int pageIndex = 1, int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var query = _userAccountRep.QueryNoTracking();
@@ -88,7 +89,7 @@ public class AccountDataProvider : IAccountDataProvider
         
         var result = await query.ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
         
-        return _mapper.Map<PagedList<UserAccountDto>>(result);
+        return _mapper.Map<PagedListDto<UserAccountDto>>(result);
     }
 
     public async Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
