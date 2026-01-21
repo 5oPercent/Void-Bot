@@ -26,7 +26,7 @@ public class SecurityController : ControllerBase
 
     [HttpPost("user/list")]
     [ProducesResponseType(typeof(GetUserAccountPageResponse), 200)]
-    public async Task<IActionResult> GetUserPageAsync([FromBody] GetUserAccountPageRequest request)
+    public async Task<IActionResult> GetUserAccountPageAsync([FromBody] GetUserAccountPageRequest request)
     {
         var response = await _mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(request).ConfigureAwait(false);
         return Ok(response);
