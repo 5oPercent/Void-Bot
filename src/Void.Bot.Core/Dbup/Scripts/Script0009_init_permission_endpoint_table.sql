@@ -1,0 +1,6 @@
+-- 将 permission_api 表重命名为 permission_endpoint
+RENAME TABLE permission_api TO permission_endpoint;
+
+-- 重命名索引
+ALTER TABLE permission_endpoint RENAME INDEX IX_PERMISSION_API_PERMISSION_ID TO IX_PERMISSION_ENDPOINT_PERMISSION_ID;
+ALTER TABLE permission_endpoint RENAME INDEX IX_PERMISSION_API_ENDPOINT TO IX_PERMISSION_ENDPOINT_ENDPOINT;
