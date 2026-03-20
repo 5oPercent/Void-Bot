@@ -60,7 +60,7 @@ public class RolePermissionService : IRolePermissionService
         var roleIdSet = new HashSet<Guid>(request.RoleIds);
         
         var list = await _rolePermissionRep.QueryNoTracking()
-            .Where(x => roleIdSet.Contains(x.Id))
+            .Where(x => roleIdSet.Contains(x.RoleId))
             .Select(x => x.PermissionId).Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
@@ -74,8 +74,7 @@ public class RolePermissionService : IRolePermissionService
     public async Task<GetRoleHasPermissionResponse> GetRoleHasPermissionAsync(
         GetRoleHasPermissionRequest request, CancellationToken cancellationToken)
     {
-        var has = await _rolePermissionRep.QueryNoTracking()
-            .AnyAsync(x => x.RoleId == request.RoleId && x.PermissionId == request.PermissionId, cancellationToken).ConfigureAwait(false);
+        var has = await _rolePermissionRep.AnyAsync(x => x.RoleId == request.RoleId && x.PermissionId == request.PermissionId, cancellationToken).ConfigureAwait(false);
         
         return new GetRoleHasPermissionResponse
         {

@@ -57,7 +57,7 @@ public class PermissionEndpointService : IPermissionEndpointService
         var permissionIdSet = new HashSet<Guid>(request.PermissionIds);
         
         var endpoints = await _permissionEndpointRep.QueryNoTracking()
-            .Where(x => permissionIdSet.Contains(x.Id))
+            .Where(x => permissionIdSet.Contains(x.PermissionId))
             .Select(x => x.Endpoint).Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
