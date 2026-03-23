@@ -29,40 +29,34 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
     public async Task InsertAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         await dbContext.AddAsync(entity, cancellationToken).ConfigureAwait(false);
-        dbContext.ShouldSaveChanges = true;
     }
 
     public async Task InsertManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         await dbContext.AddRangeAsync(entities, cancellationToken).ConfigureAwait(false);
-        dbContext.ShouldSaveChanges = true;
     }
 
     public Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         dbContext.Update(entity);
-        dbContext.ShouldSaveChanges = true;
         return Task.CompletedTask;
     }
 
     public Task UpdateManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         dbContext.UpdateRange(entities);
-        dbContext.ShouldSaveChanges = true;
         return Task.CompletedTask;
     }
 
     public Task DeleteAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         dbContext.Remove(entity);
-        dbContext.ShouldSaveChanges = true;
         return Task.CompletedTask;
     }
 
     public Task DeleteManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         dbContext.RemoveRange(entities);
-        dbContext.ShouldSaveChanges = true;
         return Task.CompletedTask;
     }
 
@@ -72,7 +66,6 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
         if (entities.Count != 0)
         {
             dbContext.RemoveRange(entities);
-            dbContext.ShouldSaveChanges = true;
         }
     }
 

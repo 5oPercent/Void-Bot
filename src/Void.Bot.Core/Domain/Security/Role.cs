@@ -4,7 +4,7 @@ using Void.Bot.Message.Enum;
 
 namespace Void.Bot.Core.Domain.Security;
 
-[Table("Role")]
+[Table("role")]
 public class Role : ITreeEntityAudit<Guid, Role>
 {
     public Guid Id { get; set; }

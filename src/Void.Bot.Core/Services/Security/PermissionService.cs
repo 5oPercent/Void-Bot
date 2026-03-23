@@ -92,9 +92,9 @@ public partial class PermissionService : IPermissionService
     {
         var response = new AddPermissionResponse();
 
-        if (command.Permission.Pid != Guid.Empty)
+        if (command.Pid != Guid.Empty)
         {
-            var hasParent = await _permissionDataProvider.GetAnyAsync([command.Permission.Pid], cancellationToken).ConfigureAwait(false);
+            var hasParent = await _permissionDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
             if (!hasParent)
             {
                 response.Code = HttpStatusCode.BadRequest;
@@ -103,7 +103,7 @@ public partial class PermissionService : IPermissionService
             }
         }
 
-        var permission = _mapper.Map<Permission>(command.Permission);
+        var permission = _mapper.Map<Permission>(command);
         
         await _permissionDataProvider.CreatePermissionAsync(permission, cancellationToken).ConfigureAwait(false);
         
@@ -115,17 +115,17 @@ public partial class PermissionService : IPermissionService
     {
         var response = new UpdatePermissionResponse();
 
-        var permissionSource = await _permissionDataProvider.GetPermissionAsync(command.Permission.Id, cancellationToken).ConfigureAwait(false);
-        if (permissionSource == null)
+        var permission = await _permissionDataProvider.GetPermissionAsync(command.Id, cancellationToken).ConfigureAwait(false);
+        if (permission == null)
         {
             response.Code = HttpStatusCode.BadRequest;
             response.Message = "Permission not found";
             return response;
         }
         
-        if (command.Permission.Pid != Guid.Empty)
+        if (command.Pid != Guid.Empty)
         {
-            var hasParent = await _permissionDataProvider.GetAnyAsync([command.Permission.Pid], cancellationToken).ConfigureAwait(false);
+            var hasParent = await _permissionDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
             if (!hasParent)
             {
                 response.Code = HttpStatusCode.BadRequest;
@@ -134,9 +134,9 @@ public partial class PermissionService : IPermissionService
             }
         }
 
-        if (permissionSource.Type == PermissionTypeEnum.Module && command.Permission.Type == PermissionTypeEnum.Action)
+        if (permission.Type == PermissionTypeEnum.Module && command.Type == PermissionTypeEnum.Action)
         {
-            var hasChild = await _permissionDataProvider.GetChildAnyAsync([command.Permission.Id], cancellationToken).ConfigureAwait(false);
+            var hasChild = await _permissionDataProvider.GetChildAnyAsync([command.Id], cancellationToken).ConfigureAwait(false);
             if (hasChild)
             {
                 response.Code = HttpStatusCode.BadRequest;
@@ -145,9 +145,7 @@ public partial class PermissionService : IPermissionService
             }
         }
         
-        var permission = _mapper.Map<Permission>(command.Permission);
-        
-        await _permissionDataProvider.UpdatePermissionAsync(permission, cancellationToken).ConfigureAwait(false);
+        _mapper.Map(command, permission);
         
         return response;
     }

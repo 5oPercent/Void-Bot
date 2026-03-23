@@ -55,24 +55,26 @@ public class RolePermissionService : IRolePermissionService
     public async Task<GetPermissionsByRoleIdsResponse> GetPermissionsByRoleIdsAsync(
         GetPermissionsByRoleIdsRequest request, CancellationToken cancellationToken)
     {
+        var response = new GetPermissionsByRoleIdsResponse();
+        
+        var roleIdSet = new HashSet<Guid>(request.RoleIds);
+        
         var list = await _rolePermissionRep.QueryNoTracking()
-            .Where(x => request.RoleIds.Contains(x.Id))
-            .Select(x => x.PermissionId)
+            .Where(x => roleIdSet.Contains(x.RoleId))
+            .Select(x => x.PermissionId).Distinct()
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         
         var permissions = await _permissionDataProvider.GetPermissionsAsync(list, cancellationToken).ConfigureAwait(false);
 
-        return new GetPermissionsByRoleIdsResponse
-        {
-            Data = _mapper.Map<List<PermissionDto>>(permissions)
-        };
+        response.Data = _mapper.Map<List<PermissionDto>>(permissions);
+        
+        return response;
     }
 
     public async Task<GetRoleHasPermissionResponse> GetRoleHasPermissionAsync(
         GetRoleHasPermissionRequest request, CancellationToken cancellationToken)
     {
-        var has = await _rolePermissionRep.QueryNoTracking()
-            .AnyAsync(x => x.RoleId == request.RoleId && x.PermissionId == request.PermissionId, cancellationToken).ConfigureAwait(false);
+        var has = await _rolePermissionRep.AnyAsync(x => x.RoleId == request.RoleId && x.PermissionId == request.PermissionId, cancellationToken).ConfigureAwait(false);
         
         return new GetRoleHasPermissionResponse
         {

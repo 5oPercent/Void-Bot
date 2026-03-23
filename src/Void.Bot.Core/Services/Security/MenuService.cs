@@ -85,7 +85,7 @@ public class MenuService : IMenuService
     {
         var response = new AddMenuResponse();
         
-        var hasParent = await _menuDataProvider.GetAnyAsync([command.Menu.Pid], cancellationToken).ConfigureAwait(false);
+        var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
         if (!hasParent)
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -93,7 +93,7 @@ public class MenuService : IMenuService
             return response;
         }
         
-        var menu = _mapper.Map<Menu>(command.Menu);
+        var menu = _mapper.Map<Menu>(command);
         
         await _menuDataProvider.CreateMenuAsync(menu, cancellationToken).ConfigureAwait(false);
 
@@ -105,15 +105,15 @@ public class MenuService : IMenuService
     {
         var response = new UpdateMenuResponse();
         
-        var menuSource = await _menuDataProvider.GetMenuAsync(command.Menu.Id, cancellationToken).ConfigureAwait(false);
-        if (menuSource == null)
+        var menu = await _menuDataProvider.GetMenuAsync(command.Id, cancellationToken).ConfigureAwait(false);
+        if (menu == null)
         {
             response.Code = HttpStatusCode.BadRequest;
             response.Message = "Menu not found";
             return response;
         }
         
-        var hasParent = await _menuDataProvider.GetAnyAsync([command.Menu.Pid], cancellationToken).ConfigureAwait(false);
+        var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
         if (!hasParent)
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -121,9 +121,7 @@ public class MenuService : IMenuService
             return response;
         }
         
-        var menu = _mapper.Map<Menu>(command.Menu);
-        
-        await _menuDataProvider.UpdateMenuAsync(menu, cancellationToken).ConfigureAwait(false);
+        _mapper.Map(command, menu);
 
         return response;
     }

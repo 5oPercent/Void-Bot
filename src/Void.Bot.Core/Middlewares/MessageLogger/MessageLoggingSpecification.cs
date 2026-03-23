@@ -58,9 +58,8 @@ public class MessageLoggingSpecification<TContext> : IPipeSpecification<TContext
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public Task OnException(Exception ex, TContext context)
+    public async Task OnException(Exception ex, TContext context)
     {
         ExceptionDispatchInfo.Capture(ex).Throw();
-        throw ex;
     }
 }

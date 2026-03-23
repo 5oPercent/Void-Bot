@@ -8,7 +8,7 @@ public class UserRoleDto
 
     public Guid RoleId { get; set; }
     
-    public DateTimeOffset Deadline { get; set; }
+    public DateTimeOffset? Deadline { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; }
     
