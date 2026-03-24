@@ -80,7 +80,17 @@ public static class HostExtension
             options.Filters.Add<UnifyResponseFilter>();
             options.Filters.Add<UnifyResponseExceptionFilter>();
         });
-        
+
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
+
         services.AddCustomValidationErrorHandling();
         
         services.AddHangfire(config =>
@@ -115,7 +125,7 @@ public static class HostExtension
         
         app.UseHttpsRedirection();
         app.UseRouting();
-        
+        app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
