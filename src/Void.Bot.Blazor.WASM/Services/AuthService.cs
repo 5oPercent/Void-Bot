@@ -11,11 +11,13 @@ public class AuthService
     private const string UsernameKey = "auth_username";
     private const string AccessTokenKey = "auth_access_token";
     private const string RefreshTokenKey = "auth_refresh_token";
+    private const string RememberMeKey = "auth_remember_me";
 
     public bool IsLoggedIn { get; private set; }
     public string? Username { get; private set; }
     public string? AccessToken { get; private set; }
     public string? RefreshToken { get; private set; }
+    public bool RememberMe { get; private set; }
 
     public event Action? OnChange;
 
@@ -39,6 +41,8 @@ public class AuthService
                 username = await _js.InvokeAsync<string?>("localStorage.getItem", UsernameKey);
                 accessToken = await _js.InvokeAsync<string?>("localStorage.getItem", AccessTokenKey);
                 refreshToken = await _js.InvokeAsync<string?>("localStorage.getItem", RefreshTokenKey);
+                var rememberMeStr = await _js.InvokeAsync<string?>("localStorage.getItem", RememberMeKey);
+                RememberMe = rememberMeStr == "true";
             }
 
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(accessToken))
@@ -82,6 +86,7 @@ public class AuthService
             Username = $"{name}#{suffix}";
             AccessToken = content.Data.AccessToken;
             RefreshToken = content.Data.RefreshToken;
+            RememberMe = rememberMe;
 
             await SaveToStorageAsync(rememberMe);
             OnChange?.Invoke();
@@ -94,6 +99,32 @@ public class AuthService
     }
 
     public string? GetAccessToken() => AccessToken;
+
+    public async Task<(string? Name, string? Suffix)> GetStoredCredentialsAsync()
+    {
+        try
+        {
+            // 直接从 localStorage 读取，避免依赖 InitializeAsync 的 IsLoggedIn 状态
+            var username = await _js.InvokeAsync<string?>("localStorage.getItem", UsernameKey);
+            if (string.IsNullOrEmpty(username))
+            {
+                username = await _js.InvokeAsync<string?>("sessionStorage.getItem", UsernameKey);
+            }
+
+            if (string.IsNullOrEmpty(username))
+                return (null, null);
+
+            var parts = username.Split('#');
+            var name = parts.Length > 0 ? parts[0] : null;
+            var suffix = parts.Length > 1 ? parts[1] : null;
+
+            return (name, suffix);
+        }
+        catch
+        {
+            return (null, null);
+        }
+    }
 
     public async void Logout()
     {
@@ -116,6 +147,7 @@ public class AuthService
 
             if (rememberMe)
             {
+                await _js.InvokeVoidAsync("localStorage.setItem", RememberMeKey, "true");
                 await _js.InvokeVoidAsync("localStorage.setItem", $"{RefreshTokenKey}_expiry", DateTimeOffset.UtcNow.AddDays(30).ToString());
             }
         }
@@ -129,11 +161,28 @@ public class AuthService
     {
         try
         {
-            await _js.InvokeVoidAsync("localStorage.removeItem", UsernameKey);
+            // 检查 localStorage 中是否勾选了"记住我"
+            var rememberMeStr = await _js.InvokeAsync<string?>("localStorage.getItem", RememberMeKey);
+            var wasRememberMe = rememberMeStr == "true";
+
+            // 如果没有勾选"记住我"，则清除所有存储
+            if (!wasRememberMe)
+            {
+                await _js.InvokeVoidAsync("localStorage.removeItem", UsernameKey);
+                await _js.InvokeVoidAsync("localStorage.removeItem", RememberMeKey);
+            }
+            else
+            {
+                // 如果勾选了"记住我"，只清除 token，保留用户名
+                await _js.InvokeVoidAsync("localStorage.removeItem", AccessTokenKey);
+                await _js.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
+                await _js.InvokeVoidAsync("localStorage.removeItem", $"{RefreshTokenKey}_expiry");
+                await _js.InvokeVoidAsync("localStorage.removeItem", RememberMeKey);
+            }
+
+            // 清除 sessionStorage 中的所有内容
             await _js.InvokeVoidAsync("sessionStorage.removeItem", UsernameKey);
-            await _js.InvokeVoidAsync("localStorage.removeItem", AccessTokenKey);
             await _js.InvokeVoidAsync("sessionStorage.removeItem", AccessTokenKey);
-            await _js.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
             await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
         }
         catch

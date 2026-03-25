@@ -84,8 +84,16 @@
     private string _buttonState = "confirm";
     private bool _isDarkTheme = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var (name, suffix) = await AuthService.GetStoredCredentialsAsync();
+        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(suffix))
+        {
+            LoginModel.Name = name;
+            LoginModel.Suffix = suffix;
+            _rememberMe = true;
+        }
+
         _isDarkTheme = ThemeService.IsDarkTheme;
         ThemeService.OnThemeChanged += OnThemeChanged;
     }
