@@ -1,3 +1,4 @@
+using System.Net;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using Hangfire;
@@ -6,6 +7,7 @@ using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using Serilog;
 using Void.Bot.Api.ActionFilters;
@@ -15,6 +17,7 @@ using Void.Bot.Core;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Enum;
 
 namespace Void.Bot.Api.Extension;
@@ -77,8 +80,18 @@ public static class HostExtension
             options.Filters.Add<UnifyResponseFilter>();
             options.Filters.Add<UnifyResponseExceptionFilter>();
         });
-        
-        
+
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy.AllowAnyOrigin()
+                      .AllowAnyMethod()
+                      .AllowAnyHeader();
+            });
+        });
+
+        services.AddCustomValidationErrorHandling();
         
         services.AddHangfire(config =>
         {
@@ -112,6 +125,7 @@ public static class HostExtension
         
         app.UseHttpsRedirection();
         app.UseRouting();
+        app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
@@ -145,5 +159,37 @@ public static class HostExtension
         app.UseRecurringJobs();
 
         return app;
+    }
+    
+    private static IServiceCollection AddCustomValidationErrorHandling(this IServiceCollection services)
+    {
+        services.Configure<ApiBehaviorOptions>(options =>
+        {
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var errors = context.ModelState
+                    .Where(e => e.Value?.Errors.Count > 0)
+                    .Select(e =>
+                    {
+                        var msg = e.Value!.Errors.First().ErrorMessage;
+                        return $" -- {e.Key}: {msg} Severity: Error";
+                    });
+
+                var errorMessage = "Validation failed: \n" + string.Join("\n", errors);
+
+                var response = new VoidBotResponse
+                {
+                    Code = HttpStatusCode.BadRequest,
+                    Message = errorMessage
+                };
+
+                return new JsonResult(response)
+                {
+                    StatusCode = 200 
+                };
+            };
+        });
+
+        return services;
     }
 }

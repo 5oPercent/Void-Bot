@@ -4,9 +4,9 @@ using Void.Bot.Message.Dto.Security;
 
 namespace Void.Bot.Message.Commands.Security;
 
-public class UpdateMenuCommand : ICommand
+public class UpdateMenuCommand : MenuBaseDto, ICommand
 {
-    public required MenuDto Menu { get; set; }
+    public Guid Id { get; set; }
 }
 
 public class UpdateMenuResponse : VoidBotResponse

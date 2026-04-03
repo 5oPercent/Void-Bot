@@ -118,11 +118,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         mediatorBuilder.ConfigureGlobalReceivePipe(p =>
         {
             p.UseLogger();              // 统一日志记录
-            p.UseMessageLogging();      // 特殊标记日志记录
+            p.UseUnifyResponse();       // 统一响应
             p.UseMessageValidator();    // 消息验证
             p.UseLoadDestiny2Player();  // 预加载Bungie Player Data
             p.UseUnitOfWork();          // 事务处理
-            p.UseUnifyResponse();       // 统一响应
+            p.UseMessageLogging();      // 特殊标记日志记录
         });
 
         builder.RegisterMediator(mediatorBuilder);

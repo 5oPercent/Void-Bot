@@ -5,6 +5,7 @@ using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Security;
+using Void.Bot.Message.Constants.Security;
 using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Request.Security;
 
@@ -29,6 +30,8 @@ public interface IUserRoleService : IScope
     
     Task<RemoveUsersCascadeRoleResponse> RemoveUsersCascadeRoleAsync(
         RemoveUsersCascadeRoleCommand command, CancellationToken cancellationToken);
+    
+    Task<bool> CheckUserIsAdminAsync(Guid userId, CancellationToken cancellationToken);
 }
 
 public class UserRoleService : IUserRoleService
@@ -68,7 +71,7 @@ public class UserRoleService : IUserRoleService
         }
         
         var roleIds = userRoles.Select(x => x.RoleId).Distinct().ToList();
-        var roles = await _roleDataProvider.GetRoleListAsync(roleIds, cancellationToken).ConfigureAwait(false);
+        var roles = await _roleDataProvider.GetRoleListAsync(roleIds, [], cancellationToken).ConfigureAwait(false);
         
         response.Data.UserRoles = _mapper.Map<List<UserRoleDto>>(userRoles);
         response.Data.Roles = _mapper.Map<List<RoleDto>>(roles);
@@ -91,7 +94,7 @@ public class UserRoleService : IUserRoleService
         
         var roleIds = command.RoleIds.Distinct().ToList();
         
-        var existingRoles = await _roleDataProvider.GetRoleListAsync(roleIds, cancellationToken).ConfigureAwait(false);
+        var existingRoles = await _roleDataProvider.GetRoleListAsync(roleIds, [], cancellationToken).ConfigureAwait(false);
         var existingRoleIds = existingRoles.Select(r => r.Id).ToList();
         var nonExistingRoleIds = roleIds.Except(existingRoleIds).ToList();
 
@@ -156,7 +159,7 @@ public class UserRoleService : IUserRoleService
         }
         
         var roleIds = command.RoleIds.Distinct().ToList();
-        var existingRoles = await _roleDataProvider.GetRoleListAsync(roleIds, cancellationToken).ConfigureAwait(false);
+        var existingRoles = await _roleDataProvider.GetRoleListAsync(roleIds, [], cancellationToken).ConfigureAwait(false);
         
         var newUserRoles = existingRoles.Select(role => new UserRole
         {
@@ -187,5 +190,17 @@ public class UserRoleService : IUserRoleService
         await _userRoleRep.DeleteAsync(x => command.UserIds.Contains(x.UserId), cancellationToken).ConfigureAwait(false);
         
         return response;
+    }
+
+    public async Task<bool> CheckUserIsAdminAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var roles = await _roleDataProvider.GetRoleListAsync([], [RoleConstants.Admin], cancellationToken).ConfigureAwait(false);
+        var role = roles.FirstOrDefault();
+        if (role == null)
+            return false;
+        
+        var hasRole = await _userRoleRep.AnyAsync(x => x.UserId == userId && x.RoleId == role.Id, cancellationToken).ConfigureAwait(false);
+
+        return hasRole;
     }
 }

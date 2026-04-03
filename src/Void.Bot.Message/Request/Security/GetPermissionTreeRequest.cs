@@ -7,9 +7,6 @@ namespace Void.Bot.Message.Request.Security;
 
 public class GetPermissionTreeRequest : IRequest
 {
-    [Required]
-    [MinLength(1)]
-    public List<Guid> IdList { get; set; } = [];
 }
 
 public class GetPermissionTreeResponse : VoidBotResponse<List<PermissionDto>>

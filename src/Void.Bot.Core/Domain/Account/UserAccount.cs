@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Dto;
-using Void.Bot.Message.Enum.Account;
 
 namespace Void.Bot.Core.Domain.Account;
 
@@ -28,12 +27,6 @@ public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
     [StringLength(255)]
     [Required]
     public string Password { get; set; } = string.Empty;
-
-    [Column("level")]
-    public AccountLevelEnum Level { get; set; } = AccountLevelEnum.User;
-    
-    [Column("source")]
-    public AccountSourceEnum Source { get; set; } = AccountSourceEnum.Local;
     
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

@@ -41,7 +41,10 @@ public class SecurityService : ISecurityService
             return false;
         }
         
-        var roleIds = userRoles.Data.UserRoles.Where(x=> x.Deadline > DateTimeOffset.Now).Select(r => r.RoleId).ToList();
+        var roleIds = userRoles.Data.UserRoles
+            .Where(x => x.Deadline == null || x.Deadline > DateTimeOffset.Now)
+            .Select(r => r.RoleId)
+            .ToList();
         var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
             new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         if (rolePermissions.Data == null || rolePermissions.Data.Count == 0)

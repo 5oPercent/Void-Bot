@@ -1,5 +1,6 @@
 using AutoMapper;
 using Void.Bot.Core.Domain.Security;
+using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Dto.Security;
 
 namespace Void.Bot.Core.Mappings;
@@ -19,5 +20,13 @@ public class SecurityMapping : Profile
         CreateMap<PermissionEndpoint, PermissionEndpointDto>().ReverseMap();
         
         CreateMap<Menu, MenuDto>().ReverseMap();
+        
+        CreateMap<AddRoleCommand, Role>().ReverseMap();
+        CreateMap<AddMenuCommand, Menu>().ReverseMap();
+        CreateMap<AddPermissionCommand, Permission>().ReverseMap();
+        
+        CreateMap<UpdateRoleCommand, Role>().ReverseMap();
+        CreateMap<UpdateMenuCommand, Menu>().ReverseMap();
+        CreateMap<UpdatePermissionCommand, Permission>().ReverseMap();
     }
 }

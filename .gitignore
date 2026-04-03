@@ -134,5 +134,6 @@ _NCrunch*
 
 .idea
 .vs
+.claude
 
 appsettings.*.json

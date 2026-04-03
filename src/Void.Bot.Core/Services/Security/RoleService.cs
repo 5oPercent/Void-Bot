@@ -62,7 +62,7 @@ public partial class RoleService : IRoleService
     public async Task<GetRoleListResponse> GetRoleListAsync(
         GetRoleListRequest request, CancellationToken cancellationToken)
     {
-        var roleList = await _roleDataProvider.GetRoleListAsync(request.IdList, cancellationToken).ConfigureAwait(false);
+        var roleList = await _roleDataProvider.GetRoleListAsync(request.IdList, [], cancellationToken).ConfigureAwait(false);
         
         return new GetRoleListResponse
         {
@@ -87,16 +87,19 @@ public partial class RoleService : IRoleService
         AddRoleCommand command, CancellationToken cancellationToken)
     {
         var response = new AddRoleResponse();
-        
-        var hasParent = await _roleDataProvider.GetAnyAsync([command.Role.Pid], cancellationToken).ConfigureAwait(false);
-        if (!hasParent)
+
+        if (command.Pid != Guid.Empty)
         {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Parent role not found";
-            return response;
+            var hasParent = await _roleDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
+            if (!hasParent)
+            {
+                response.Code = HttpStatusCode.BadRequest;
+                response.Message = "Parent role not found";
+                return response;
+            }
         }
         
-        var role = _mapper.Map<Role>(command.Role);
+        var role = _mapper.Map<Role>(command);
         
         await _roleDataProvider.CreateRoleAsync(role, cancellationToken).ConfigureAwait(false);
 
@@ -108,17 +111,25 @@ public partial class RoleService : IRoleService
     {
         var response = new UpdateRoleResponse();
         
-        var roleSource = await _roleDataProvider.GetRoleAsync(command.Role.Id, cancellationToken).ConfigureAwait(false);
-        if (roleSource == null)
+        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync([command.Id], cancellationToken).ConfigureAwait(false);
+        if (hasBuilt)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "System built-in role cannot be modified.";
+            return response;
+        }
+        
+        var role = await _roleDataProvider.GetRoleAsync(command.Id, cancellationToken).ConfigureAwait(false);
+        if (role == null)
         {
             response.Code = HttpStatusCode.BadRequest;
             response.Message = "Role not found";
             return response;
         }
 
-        if (command.Role.Pid != Guid.Empty)
+        if (command.Pid != Guid.Empty && command.Pid != role.Pid)
         {
-            var hasParent = await _roleDataProvider.GetAnyAsync([command.Role.Pid], cancellationToken).ConfigureAwait(false);
+            var hasParent = await _roleDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
             if (!hasParent)
             {
                 response.Code = HttpStatusCode.BadRequest;
@@ -127,9 +138,7 @@ public partial class RoleService : IRoleService
             }
         }
         
-        var role = _mapper.Map<Role>(command.Role);
-        
-        await _roleDataProvider.UpdateRoleAsync(role, cancellationToken).ConfigureAwait(false);
+        _mapper.Map(command, role);
 
         return response;
     }
@@ -138,6 +147,14 @@ public partial class RoleService : IRoleService
         DeleteRoleCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteRoleCascadeResponse();
+        
+        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        if (hasBuilt)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "System built-in roles cannot be deleted.";
+            return response;
+        }
         
         var hasChild = await _roleDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         if (hasChild)
@@ -157,7 +174,6 @@ public partial class RoleService : IRoleService
         
         await _roleDataProvider.DeleteRoleListAsync(command.IdList, cancellationToken).ConfigureAwait(false);
         
-
         return response;
     }
 }

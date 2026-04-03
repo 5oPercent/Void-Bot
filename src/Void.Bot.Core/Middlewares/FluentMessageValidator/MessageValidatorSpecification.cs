@@ -35,18 +35,17 @@ public class MessageValidatorSpecification<TContext> : IPipeSpecification<TConte
                 validator.ValidateMessage(context.Message);
             }
         }
-
-        return Task.WhenAll();
+        
+        return Task.CompletedTask;
     }
 
     public Task AfterExecute(TContext context, CancellationToken cancellationToken)
     {
-        return Task.WhenAll();
+        return Task.CompletedTask;
     }
 
-    public Task OnException(Exception ex, TContext context)
+    public async Task OnException(Exception ex, TContext context)
     {
         ExceptionDispatchInfo.Capture(ex).Throw();
-        return Task.CompletedTask;
     }
 }
