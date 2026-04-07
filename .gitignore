@@ -137,3 +137,5 @@ _NCrunch*
 .claude
 
 appsettings.*.json
+
+.planning
