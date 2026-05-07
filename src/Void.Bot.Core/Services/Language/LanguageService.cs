@@ -11,7 +11,7 @@ namespace Void.Bot.Core.Services.Language;
 
 public interface ILanguageService : ISingleton
 {
-    public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken);
+    public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken, bool overwrite = false);
 
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate;
@@ -66,6 +66,7 @@ public class LanguageService : ILanguageService, IDisposable
     
     private void OnYamlFileRenamed(object sender, RenamedEventArgs e)
     {
+        RemoveYamlFile(e.OldFullPath);
         ReloadYamlFile(e.FullPath);
     }
     
@@ -83,7 +84,7 @@ public class LanguageService : ILanguageService, IDisposable
         
         if (!File.Exists(fullPath))
         {
-            _languages.TryRemove(relativeKey, out _);
+            RemoveYamlFile(fullPath);
             return;
         }
 
@@ -99,6 +100,12 @@ public class LanguageService : ILanguageService, IDisposable
             Log.Warning("Failed to load YAML file: {FilePath}. Error: {ErrorMessage}", fullPath, ex.Message);
         }
     }
+
+    private void RemoveYamlFile(string fullPath)
+    {
+        var relativeKey = GetRelativeKey(fullPath);
+        _languages.TryRemove(relativeKey, out _);
+    }
     
     private string GetRelativeKey(string fullPath)
     {
@@ -111,7 +118,7 @@ public class LanguageService : ILanguageService, IDisposable
     
     #region Init Default Language Yaml
     
-    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
+    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken, bool overwrite = false)
     {
         foreach (var ct in _contextTemplates)
         {
@@ -128,6 +135,11 @@ public class LanguageService : ILanguageService, IDisposable
             }
             
             var yamlContent = ct.Value.SerializeYaml();
+
+            if (!overwrite && File.Exists(filePath))
+            {
+                continue;
+            }
 
             await File.WriteAllTextAsync(filePath, yamlContent, cancellationToken);
         }

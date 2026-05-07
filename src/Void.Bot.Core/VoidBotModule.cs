@@ -164,7 +164,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             .Where(t => t.GetCustomAttribute<LanguageAttribute>() != null)
             .ToArray();
 
-        builder.RegisterTypes(contextTemplateTypes).AsSelf().AsImplementedInterfaces().InstancePerLifetimeScope();
+        builder.RegisterTypes(contextTemplateTypes).AsSelf().AsImplementedInterfaces().SingleInstance();
     }
     
     // 注册缓存

@@ -54,6 +54,8 @@ public class InitializationHostedService : IHostedService
         
         var languageService = scope.ServiceProvider.GetRequiredService<ILanguageService>();
         
-        await languageService.GenerateDefaultYamlFileAsync(cancellationToken).ConfigureAwait(false);
+        await languageService.GenerateDefaultYamlFileAsync(
+            cancellationToken,
+            _languageSetting.OverwriteDefaultYamlFile).ConfigureAwait(false);
     }
 }
