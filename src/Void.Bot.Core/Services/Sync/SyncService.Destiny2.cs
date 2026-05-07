@@ -4,7 +4,6 @@ using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
-using Void.Bot.Message.Regexs;
 
 namespace Void.Bot.Core.Services.Sync;
 
@@ -60,7 +59,11 @@ public partial class SyncService : ISyncService
     {
         for (var i = 0; i < languages.Count; i++)
         {
-            languages[i] = BungieRegexs.Language().Replace(languages[i], "");
+            languages[i] = languages[i]
+                .Trim()
+                .ToLowerInvariant()
+                .Replace("-", string.Empty)
+                .Replace("_", string.Empty);
         }
         languages = languages.Distinct().ToList();
         

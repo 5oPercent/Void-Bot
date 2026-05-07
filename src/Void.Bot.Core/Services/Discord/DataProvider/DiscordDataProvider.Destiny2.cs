@@ -7,7 +7,6 @@ using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
-using Void.Bot.Message.Regexs;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
@@ -28,11 +27,15 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
-        var language = BungieRegexs.Language().Replace(_destiny2PlayerData.Language, "");
+        var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(_destiny2PlayerData.Language);
+        var languageCode = Void.Bot.Message.Extension.LanguageExtension.ToLanguageCode(languageEnum);
+        var manifestLanguageCode = languageEnum == Void.Bot.Message.Enum.LanguageEnum.Default
+            ? "zhchs"
+            : languageCode.Replace("-", string.Empty);
         
         #region Embed
         
-        var seasonJson = await _cacheManager.Get<string>($"{Destiny2ManifestConstants.SeasonCacheKey}:{language}", cancellationToken);
+        var seasonJson = await _cacheManager.Get<string>($"{Destiny2ManifestConstants.SeasonCacheKey}:{manifestLanguageCode}", cancellationToken);
         var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         
@@ -40,8 +43,6 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var seasonDays = $"{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}";
         var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
 
-        var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(language);
-        
         var seasonContext = string.Format(
             _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonBody, languageEnum),
             currentSeason?.DisplayProperties.Name ?? "???",

@@ -5,9 +5,12 @@ namespace Void.Bot.Core.Settings.Language;
 public class LanguageSetting : IConfigurationSetting
 {
     public bool GenerateDefaultYamlFile { get; set; }
+
+    public bool OverwriteDefaultYamlFile { get; set; }
     
     public LanguageSetting(IConfiguration configuration)
     {
         GenerateDefaultYamlFile = configuration.GetValue<bool>("Language:GenerateDefaultYamlFile");
+        OverwriteDefaultYamlFile = configuration.GetValue<bool>("Language:OverwriteDefaultYamlFile");
     }
 }

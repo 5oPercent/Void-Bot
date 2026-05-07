@@ -2,6 +2,7 @@ using System.Reflection;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Extension;
 
 namespace Void.Bot.Core.Extension;
 
@@ -13,7 +14,7 @@ public static class LanguageExtension
         if (att == null)
             throw new InvalidOperationException($"Class {typeof(T).Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
+        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language.ToLanguageCode()}.yaml";
     }
     
     public static string GetYamlKey(this Type type, LanguageEnum language = LanguageEnum.Default)
@@ -22,15 +23,21 @@ public static class LanguageExtension
         if (att == null)
             throw new InvalidOperationException($"Class {type.Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
+        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language.ToLanguageCode()}.yaml";
     }
-    
-    public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string language)
+
+    public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string? language)
     {
-        return language switch
+        var normalizedLanguage = language?
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("-", string.Empty)
+            .Replace("_", string.Empty);
+
+        return normalizedLanguage switch
         {
-            "zh-chs" or "zhchs" => LanguageEnum.ZhChs,
-            "zh-cht" or "zhcht" => LanguageEnum.ZhCht,
+            "zhchs" => LanguageEnum.ZhChs,
+            "zhcht" => LanguageEnum.ZhCht,
             "en" => LanguageEnum.En,
             _ => LanguageEnum.Default
         };

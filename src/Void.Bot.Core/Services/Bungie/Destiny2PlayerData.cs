@@ -84,6 +84,21 @@ public class Destiny2PlayerData : IScope
     /// 所有平台会员信息
     /// </summary>
     public List<Destiny2PlayerDataMembershipItem> Profiles { get; set; } = [];
+
+    public void Reset()
+    {
+        BungieMembershipId = string.Empty;
+        GlobalDisplayName = string.Empty;
+        GlobalDisplayNameCode = string.Empty;
+        FirstAccess = default;
+        LastUpdate = default;
+        ShowActivity = false;
+        Language = "zh-chs";
+        CrossSaveOverride = BungieMembershipTypeEnum.None;
+        PrimaryMembershipType = BungieMembershipTypeEnum.None;
+        PrimaryMembershipId = string.Empty;
+        Profiles = [];
+    }
 }
 
 /// <summary>
