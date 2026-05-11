@@ -24,6 +24,11 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             .WithDescription("查询玩家生涯信息.")
             .WithType(ApplicationCommandOptionType.SubCommand)
             .AddDestinyPlayerOptions())
+        .AddOption(new SlashCommandOptionBuilder()
+            .WithName("赛季")
+            .WithDescription("查询赛季游玩时长.")
+            .WithType(ApplicationCommandOptionType.SubCommand)
+            .AddDestinyPlayerOptions())
         .Build();
     
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
@@ -106,6 +111,35 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
                     builder.Content = $"查询到 `{displayName}` 的生涯信息.";
                     builder.Embeds = result.Embeds.ToArray();
                     //builder.Attachments = result.Attachments;
+                }).ConfigureAwait(false);
+                break;
+            }
+            case "赛季":
+            {
+                var response = await mediator.RequestAsync<GetDestiny2SeasonRequest, GetDestiny2SeasonResponse>(
+                    new GetDestiny2SeasonRequest
+                    {
+                        DisplayName = parts?[0] ?? string.Empty,
+                        DisplayNameCode = parts?[1] ?? string.Empty,
+                        MembershipType = membershipType
+                    }, cancellationToken).ConfigureAwait(false);
+
+                if (response.Data == null)
+                {
+                    await commandCallback.ModifyOriginalResponseAsync(builder =>
+                    {
+                        builder.Content = $"{response.Message}";
+                    }).ConfigureAwait(false);
+                    
+                    return;
+                }
+
+                var result = await dataProvider.GenerateDestiny2SeasonAsync(response.Data, cancellationToken).ConfigureAwait(false);
+
+                await commandCallback.ModifyOriginalResponseAsync(builder =>
+                {
+                    builder.Content = $"查询到 `{displayName}` 的本赛季游玩数据.";
+                    builder.Embeds = result.Embeds.ToArray();
                 }).ConfigureAwait(false);
                 break;
             }

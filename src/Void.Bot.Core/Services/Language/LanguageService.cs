@@ -11,7 +11,7 @@ namespace Void.Bot.Core.Services.Language;
 
 public interface ILanguageService : ISingleton
 {
-    public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken);
+    public Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken, bool overwrite = false);
 
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate;
@@ -19,19 +19,22 @@ public interface ILanguageService : ISingleton
 
 public class LanguageService : ILanguageService, IDisposable
 {
-    private readonly string _basePath = Path.Combine(AppContext.BaseDirectory, "Resources", "i18n");
+    private readonly string _basePath;
     private readonly FileSystemWatcher _watcher;
-    private readonly ConcurrentDictionary<string, IContextTemplate> _contextTemplates = new();
-    private readonly ConcurrentDictionary<string, Dictionary<string, string>> _languages = new();
+    private readonly ConcurrentDictionary<string, IContextTemplate> _contextTemplates = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, Dictionary<string, string>> _languages = new(StringComparer.OrdinalIgnoreCase);
     
-    public LanguageService(IEnumerable<IContextTemplate> contextTemplates)
+    public LanguageService(IEnumerable<IContextTemplate> contextTemplates, string? rootPath = null)
     {
+        var baseDir = rootPath ?? AppContext.BaseDirectory;
+        _basePath = Path.Combine(baseDir, "Resources", "i18n");
+        
         foreach (var contextTemplate in contextTemplates)
         {
             var attribute = contextTemplate.GetType().GetCustomAttribute<LanguageAttribute>();
             if (attribute == null) continue;
 
-            _contextTemplates[attribute.Key.ToLower()] = contextTemplate;
+            _contextTemplates[contextTemplate.GetYamlKey()] = contextTemplate;
         }
         
         if (!Directory.Exists(_basePath))
@@ -63,6 +66,7 @@ public class LanguageService : ILanguageService, IDisposable
     
     private void OnYamlFileRenamed(object sender, RenamedEventArgs e)
     {
+        RemoveYamlFile(e.OldFullPath);
         ReloadYamlFile(e.FullPath);
     }
     
@@ -76,9 +80,11 @@ public class LanguageService : ILanguageService, IDisposable
     
     private void ReloadYamlFile(string fullPath)
     {
+        var relativeKey = GetRelativeKey(fullPath);
+        
         if (!File.Exists(fullPath))
         {
-            _languages.TryRemove(GetRelativeKey(fullPath), out _);
+            RemoveYamlFile(fullPath);
             return;
         }
 
@@ -87,30 +93,40 @@ public class LanguageService : ILanguageService, IDisposable
             var yaml = File.ReadAllText(fullPath);
             var dict = yaml.DeserializeYaml<Dictionary<string, string>>();
             if (dict != null)
-                _languages[GetRelativeKey(fullPath)] = dict;
+                _languages[relativeKey] = new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
         }
         catch (Exception ex)
         {
             Log.Warning("Failed to load YAML file: {FilePath}. Error: {ErrorMessage}", fullPath, ex.Message);
         }
     }
+
+    private void RemoveYamlFile(string fullPath)
+    {
+        var relativeKey = GetRelativeKey(fullPath);
+        _languages.TryRemove(relativeKey, out _);
+    }
     
     private string GetRelativeKey(string fullPath)
     {
         var relative = Path.GetRelativePath(_basePath, fullPath);
-        var normalized = relative.Replace('\\', '/').ToLower();
-        return "/" + normalized.TrimStart('/');
+        var normalized = "/" + relative.Replace('\\', '/').TrimStart('/');
+        return normalized.ToLower();
     }
     
     #endregion
     
     #region Init Default Language Yaml
     
-    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken)
+    public async Task GenerateDefaultYamlFileAsync(CancellationToken cancellationToken, bool overwrite = false)
     {
         foreach (var ct in _contextTemplates)
         {
-            var filePath = Path.Combine(_basePath, ct.Key.TrimStart('/'));
+            var relativeKey = ct.Key.TrimStart('/', '\\')
+                .Replace('/', Path.DirectorySeparatorChar)
+                .Replace('\\', Path.DirectorySeparatorChar);
+            
+            var filePath = Path.Combine(_basePath, relativeKey);
             
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -119,6 +135,11 @@ public class LanguageService : ILanguageService, IDisposable
             }
             
             var yamlContent = ct.Value.SerializeYaml();
+
+            if (!overwrite && File.Exists(filePath))
+            {
+                continue;
+            }
 
             await File.WriteAllTextAsync(filePath, yamlContent, cancellationToken);
         }
@@ -129,16 +150,17 @@ public class LanguageService : ILanguageService, IDisposable
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate
     {
-        var yamlKey = typeof(T).GetYamlKey(language).ToLower();
+        var contextTemplate = _contextTemplates.Values.FirstOrDefault(t => t.GetType() == typeof(T));
+        if (contextTemplate == null)
+            return string.Empty;
+        
+        var yamlKey = contextTemplate.GetYamlKey(language);
         var key = expression.GetPropertyName();
 
         if (_languages.TryGetValue(yamlKey, out var languageDict) && languageDict.TryGetValue(key, out var context))
             return context;
         
-        yamlKey = typeof(T).GetYamlKey().ToLower();
-        
-        if (!_contextTemplates.TryGetValue(yamlKey, out var contextTemplate))
-            return string.Empty;
+        yamlKey = contextTemplate.GetYamlKey();
         
         var propertyInfo = contextTemplate.GetType().GetProperties()
             .FirstOrDefault(p => string.Equals(p.Name, key, StringComparison.OrdinalIgnoreCase));

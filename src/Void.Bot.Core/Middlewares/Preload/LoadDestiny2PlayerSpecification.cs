@@ -9,7 +9,6 @@ using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.Bungie;
-using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
@@ -22,9 +21,6 @@ namespace Void.Bot.Core.Middlewares.Preload;
 public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecification<TContext>
     where TContext : IContext<IMessage>
 {
-    private bool _isGetCurrentPlayerData = false;
-    private bool _isGetPlayerDataByNameCode = false;
-    
     private const string BungieIdCachePrefix = $"{Destiny2Constants.Destiny2}:BungieId";
     private const string PlayerCachePrefix = $"{Destiny2Constants.Destiny2}:Player";
     
@@ -60,16 +56,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
     {
         var message = context.Message;
         
-        _isGetCurrentPlayerData = message.GetType()
-            .GetCustomAttributes(typeof(LoadDestiny2PlayerAttribute), inherit: true)
-            .Length != 0;
-
-        if (message is IRequestDestiny2ByPlayerNameCode request)
-        {
-            _isGetPlayerDataByNameCode = !string.IsNullOrEmpty(request.DisplayName) || !string.IsNullOrEmpty(request.DisplayNameCode);
-        }
+        var isGetCurrentPlayerData = IsGetCurrentPlayerData(message);
+        var isGetPlayerDataByNameCode = IsGetPlayerDataByNameCode(message);
         
-        return _isGetCurrentPlayerData || _isGetPlayerDataByNameCode;
+        return isGetCurrentPlayerData || isGetPlayerDataByNameCode;
     }
 
     public async Task BeforeExecute(TContext context, CancellationToken cancellationToken)
@@ -79,7 +69,10 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 
         if (context.Message is IRequestDestiny2ByPlayerNameCode request)
         {
-            if (_isGetPlayerDataByNameCode)
+            var isGetCurrentPlayerData = IsGetCurrentPlayerData(context.Message);
+            var isGetPlayerDataByNameCode = IsGetPlayerDataByNameCode(request);
+
+            if (isGetPlayerDataByNameCode)
             {
                 _playerData.GlobalDisplayName = request.DisplayName;
                 _playerData.GlobalDisplayNameCode = request.DisplayNameCode;
@@ -95,12 +88,12 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 if (playerCache != null)
                 {
                     _playerData.AssignFrom(playerCache);
-                    ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                    ApplyPlayerProfile(_playerData, request.MembershipType);
                     PopulateMissingRequestFields(_playerData, request);
                     return;
                 }
 
-                await LoadPlayerProfilesAsync(_playerData, request.MembershipType, cancellationToken).ConfigureAwait(false);
+                await LoadPlayerProfilesAsync(_playerData, cancellationToken).ConfigureAwait(false);
 
                 var membershipResult = await _bungieService.GetMembershipsByIdAsync(
                     new GetBungieMembershipsByIdRequest
@@ -120,7 +113,7 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                     _playerData.Language = bungieNetUser.Locale;
                 }
             }
-            else if (_isGetCurrentPlayerData && _currentUser.Id.HasValue)
+            else if (isGetCurrentPlayerData && _currentUser.Id.HasValue)
             {
                 var thirdResult = await _accountDataProvider.GetThirdPartyByUserIdAsync(
                     _currentUser.Id.Value, nameof(AppPlatformEnum.Bungie), cancellationToken).ConfigureAwait(false);
@@ -137,11 +130,11 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 if (!string.IsNullOrEmpty(playerUniqueName))
                 {
                     var playerCacheKey = $"{PlayerCachePrefix}:{playerUniqueName}";
-                    var playerCache = await _cacheManager.Get<Destiny2PlayerData>(playerCacheKey, cancellationToken).ConfigureAwait(false);;
+                    var playerCache = await _cacheManager.Get<Destiny2PlayerData>(playerCacheKey, cancellationToken).ConfigureAwait(false);
                     if (playerCache != null)
                     {
                         _playerData.AssignFrom(playerCache);
-                        ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+                        ApplyPlayerProfile(_playerData, request.MembershipType);
                         PopulateMissingRequestFields(_playerData, request);
                         return;
                     }
@@ -168,15 +161,20 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 _playerData.ShowActivity = bungieNetUser.ShowActivity;
                 _playerData.Language = bungieNetUser.Locale;
 
-                await LoadPlayerProfilesAsync(_playerData, request.MembershipType, cancellationToken).ConfigureAwait(false);
+                await LoadPlayerProfilesAsync(_playerData, cancellationToken).ConfigureAwait(false);
 
                 await _cacheManager.Set(playerUniqueNameCacheKey, _playerData.UniqueName, _expiryTime, cancellationToken).ConfigureAwait(false);
+            }
+            else if (isGetCurrentPlayerData)
+            {
+                _logger.Warning("Current user is required to load Destiny 2 player data.");
+                throw new ArgumentException("Current user is required to load Destiny 2 player data.");
             }
 
             var cacheKey = $"{PlayerCachePrefix}:{_playerData.UniqueName}";
             await _cacheManager.Set(cacheKey, _playerData, _expiryTime, cancellationToken).ConfigureAwait(false);
             
-            ApplyPlayerProfileAsync(_playerData, request.MembershipType);
+            ApplyPlayerProfile(_playerData, request.MembershipType);
             PopulateMissingRequestFields(_playerData, request);
         }
     }
@@ -193,19 +191,14 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
 
     public Task OnException(Exception ex, TContext context)
     {
-        _playerData.GlobalDisplayName = string.Empty;
-        _playerData.GlobalDisplayNameCode = string.Empty;
-        _playerData.BungieMembershipId = string.Empty;
-        _playerData.PrimaryMembershipType = BungieMembershipTypeEnum.None;
-        _playerData.PrimaryMembershipId = string.Empty;
-        _playerData.Profiles = [];
+        _playerData.Reset();
         
         ExceptionDispatchInfo.Capture(ex).Throw();
         return Task.CompletedTask;
     }
 
     private async Task LoadPlayerProfilesAsync(
-        Destiny2PlayerData playerData, BungieMembershipTypeEnum membershipType, CancellationToken cancellationToken)
+        Destiny2PlayerData playerData, CancellationToken cancellationToken)
     {
         var profileResult = await _bungieService.GetDestiny2ProfileListByBungieNameAsync(
             new GetDestiny2ProfileListByBungieNameRequest
@@ -230,13 +223,17 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
                 DisplayName = x.DisplayName
             }).ToList();
         
-        if (profiles.All(x => x.CrossSaveOverride != BungieMembershipTypeEnum.None))
+        var crossSaveOverride = profiles
+            .Select(x => x.CrossSaveOverride)
+            .FirstOrDefault(x => x != BungieMembershipTypeEnum.None);
+
+        if (crossSaveOverride != BungieMembershipTypeEnum.None)
         {
-            _playerData.CrossSaveOverride = profiles.First().CrossSaveOverride;
+            playerData.CrossSaveOverride = crossSaveOverride;
         }
     }
 
-    private void ApplyPlayerProfileAsync(Destiny2PlayerData playerData, BungieMembershipTypeEnum membershipType)
+    private void ApplyPlayerProfile(Destiny2PlayerData playerData, BungieMembershipTypeEnum membershipType)
     {
         var profiles = playerData.Profiles;
 
@@ -265,8 +262,8 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
             return;
         }
         
-        _playerData.PrimaryMembershipType = profile.MembershipType;
-        _playerData.PrimaryMembershipId = profile.MembershipId;
+        playerData.PrimaryMembershipType = profile.MembershipType;
+        playerData.PrimaryMembershipId = profile.MembershipId;
     }
 
     private static void PopulateMissingRequestFields(Destiny2PlayerData playerData, IRequestDestiny2ByPlayerNameCode request)
@@ -283,6 +280,21 @@ public partial class LoadDestiny2PlayerSpecification<TContext> : IPipeSpecificat
         {
             request.MembershipType = playerData.PrimaryMembershipType;
         }
+    }
+
+    private static bool IsGetCurrentPlayerData(IMessage message)
+    {
+        return message is ILoadDestiny2Player;
+    }
+
+    private static bool IsGetPlayerDataByNameCode(IMessage message)
+    {
+        return message is IRequestDestiny2ByPlayerNameCode request && IsGetPlayerDataByNameCode(request);
+    }
+
+    private static bool IsGetPlayerDataByNameCode(IRequestDestiny2ByPlayerNameCode request)
+    {
+        return !string.IsNullOrEmpty(request.DisplayName) || !string.IsNullOrEmpty(request.DisplayNameCode);
     }
 
 }

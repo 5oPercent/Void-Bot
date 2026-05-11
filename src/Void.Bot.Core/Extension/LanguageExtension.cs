@@ -9,30 +9,39 @@ public static class LanguageExtension
 {
     public static string GetYamlKey<T>(this T contextTemplate, LanguageEnum language = LanguageEnum.Default) where T : IContextTemplate
     {
-        var att = typeof(T).GetCustomAttribute<LanguageAttribute>();
-        if (att == null)
-            throw new InvalidOperationException($"Class {typeof(T).Name} is not marked with LanguageAttribute");
-
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
-    }
-    
-    public static string GetYamlKey(this Type type, LanguageEnum language = LanguageEnum.Default)
-    {
+        var type = contextTemplate.GetType();
         var att = type.GetCustomAttribute<LanguageAttribute>();
         if (att == null)
             throw new InvalidOperationException($"Class {type.Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language}.yaml";
+        return att.GetYamlKey(language);
     }
     
-    public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string language)
+    private static string GetYamlKey(this LanguageAttribute attribute, LanguageEnum language)
+    {
+        var targetLanguage = language == LanguageEnum.Default ? attribute.Language : language;
+        return $"/{attribute.System}/{attribute.ContextTemplateName}.{targetLanguage.ToI18nCode()}.yaml";
+    }
+    
+    public static LanguageEnum MapI18nCodeToEnum(string? language)
+    {
+        return language?.Trim().ToLowerInvariant() switch
+        {
+            "zh-chs" => LanguageEnum.ZhChs,
+            "zh-cht" => LanguageEnum.ZhCht,
+            "en" => LanguageEnum.En,
+            _ => LanguageEnum.Default
+        };
+    }
+
+    public static string ToI18nCode(this LanguageEnum language)
     {
         return language switch
         {
-            "zh-chs" or "zhchs" => LanguageEnum.ZhChs,
-            "zh-cht" or "zhcht" => LanguageEnum.ZhCht,
-            "en" => LanguageEnum.En,
-            _ => LanguageEnum.Default
+            LanguageEnum.ZhChs => "zh-chs",
+            LanguageEnum.ZhCht => "zh-cht",
+            LanguageEnum.En => "en",
+            _ => "zh-chs"
         };
     }
 }

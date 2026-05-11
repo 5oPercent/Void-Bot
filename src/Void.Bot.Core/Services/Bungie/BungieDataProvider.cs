@@ -1,4 +1,6 @@
 using System.Web;
+using Void.Bot.Core.Data;
+using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Bungie;
@@ -31,8 +33,12 @@ public partial class BungieDataProvider : IBungieDataProvider
     private readonly BungieSetting _setting;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
     private readonly Dictionary<string, string> _headers;
+    private readonly IRepository<Destiny2SeasonHistory> _seasonHistoryRepository;
     
-    public BungieDataProvider(BungieSetting setting, IVoidBotHttpClientFactory httpClientFactory)
+    public BungieDataProvider(
+        BungieSetting setting,
+        IVoidBotHttpClientFactory httpClientFactory,
+        IRepository<Destiny2SeasonHistory> seasonHistoryRepository)
     {
         _setting = setting;
         _httpClientFactory = httpClientFactory;
@@ -41,6 +47,8 @@ public partial class BungieDataProvider : IBungieDataProvider
         {
             ["X-API-Key"] = $"{_setting.ApiKey}"
         };
+        
+        _seasonHistoryRepository = seasonHistoryRepository;
     }
 
     public HttpClient GetBungieHttpClient(string token = "", TimeSpan? timeout = null, bool beginScope = false)
