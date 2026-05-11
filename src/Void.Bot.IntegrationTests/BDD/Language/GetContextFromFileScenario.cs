@@ -1,11 +1,11 @@
 using Autofac;
 using Shouldly;
 using TestStack.BDDfy;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.IntegrationTest.Services.Language;
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Extension;
 
 namespace Void.Bot.IntegrationTest.BDD.Language;
 
@@ -17,7 +17,7 @@ public class GetContextFromFileScenario(IntegrationTestBase testBase) : Integrat
 
     private async Task GivenFileExists()
     {
-        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToLanguageCode()}.yaml");
+        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToI18nCode()}.yaml");
         var fullPath = Path.Combine(_tempRootPath, relativePath);
 
         var directory = Path.GetDirectoryName(fullPath);

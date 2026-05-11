@@ -34,7 +34,7 @@ public class LanguageService : ILanguageService, IDisposable
             var attribute = contextTemplate.GetType().GetCustomAttribute<LanguageAttribute>();
             if (attribute == null) continue;
 
-            _contextTemplates[attribute.Key] = contextTemplate;
+            _contextTemplates[contextTemplate.GetYamlKey()] = contextTemplate;
         }
         
         if (!Directory.Exists(_basePath))
@@ -150,16 +150,17 @@ public class LanguageService : ILanguageService, IDisposable
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate
     {
-        var yamlKey = typeof(T).GetYamlKey(language);
+        var contextTemplate = _contextTemplates.Values.FirstOrDefault(t => t.GetType() == typeof(T));
+        if (contextTemplate == null)
+            return string.Empty;
+        
+        var yamlKey = contextTemplate.GetYamlKey(language);
         var key = expression.GetPropertyName();
 
         if (_languages.TryGetValue(yamlKey, out var languageDict) && languageDict.TryGetValue(key, out var context))
             return context;
         
-        yamlKey = typeof(T).GetYamlKey();
-        
-        if (!_contextTemplates.TryGetValue(yamlKey, out var contextTemplate))
-            return string.Empty;
+        yamlKey = contextTemplate.GetYamlKey();
         
         var propertyInfo = contextTemplate.GetType().GetProperties()
             .FirstOrDefault(p => string.Equals(p.Name, key, StringComparison.OrdinalIgnoreCase));

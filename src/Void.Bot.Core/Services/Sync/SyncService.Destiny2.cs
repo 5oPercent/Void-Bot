@@ -1,5 +1,7 @@
 using System.Net;
+using System.Text.Json.Serialization;
 using Serilog;
+using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
@@ -59,11 +61,7 @@ public partial class SyncService : ISyncService
     {
         for (var i = 0; i < languages.Count; i++)
         {
-            languages[i] = languages[i]
-                .Trim()
-                .ToLowerInvariant()
-                .Replace("-", string.Empty)
-                .Replace("_", string.Empty);
+            languages[i] = LanguageExtension.MapI18nCodeToEnum(languages[i]).ToI18nCode();
         }
         languages = languages.Distinct().ToList();
         
@@ -72,7 +70,11 @@ public partial class SyncService : ISyncService
         {
             // 使用反射获取特定语言的组件内容
             var languageProperty = languageComponentContentDto.GetType().GetProperties()
-                .FirstOrDefault(p => string.Equals(p.Name, language, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(p =>
+                    string.Equals(p.GetCustomAttributes(typeof(JsonPropertyNameAttribute), false)
+                            .OfType<JsonPropertyNameAttribute>()
+                            .FirstOrDefault()?.Name ?? p.Name,
+                        language, StringComparison.OrdinalIgnoreCase));
             if (languageProperty == null)
             {
                 Log.Warning("Language {Language} not found in manifest", language);

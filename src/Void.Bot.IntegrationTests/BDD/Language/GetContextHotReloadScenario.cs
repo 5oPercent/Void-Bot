@@ -1,11 +1,11 @@
 using Autofac;
 using Shouldly;
 using TestStack.BDDfy;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.IntegrationTest.Services.Language;
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Extension;
 
 namespace Void.Bot.IntegrationTest.BDD.Language;
 
@@ -21,7 +21,7 @@ public class GetContextHotReloadScenario(IntegrationTestBase testBase) : Integra
 
     private async Task GivenServiceRunningWithFile()
     {
-        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToLanguageCode()}.yaml");
+        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToI18nCode()}.yaml");
         _fullFilePath = Path.Combine(_tempRootPath, relativePath);
 
         var directory = Path.GetDirectoryName(_fullFilePath);
@@ -59,7 +59,7 @@ public class GetContextHotReloadScenario(IntegrationTestBase testBase) : Integra
 
             _renamedFilePath = Path.Combine(
                 Path.GetDirectoryName(_fullFilePath)!,
-                $"ShouldlySample.{LanguageEnum.En.ToLanguageCode()}.yaml");
+                $"ShouldlySample.{LanguageEnum.En.ToI18nCode()}.yaml");
 
             File.Move(_fullFilePath, _renamedFilePath);
             await File.WriteAllTextAsync(_renamedFilePath, _englishContent);

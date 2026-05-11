@@ -1,4 +1,5 @@
 using System.Net;
+using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -17,6 +18,9 @@ public partial interface IBungieService : IScope
     
     public Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
+    
+    Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
+        GetDestiny2SeasonRequest request, CancellationToken cancellationToken);
 }
 
 public partial class BungieService : IBungieService
@@ -103,6 +107,110 @@ public partial class BungieService : IBungieService
         }
 
         response.Data = result;
+
+        return response;
+    }
+
+    public async Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
+        GetDestiny2SeasonRequest request, CancellationToken cancellationToken)
+    {
+        var response = new GetDestiny2SeasonResponse();
+
+        if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Player not bound";
+            return response;
+        }
+
+        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform. Player's primary platform is {_playerData.PrimaryMembershipType}.";
+            return response;
+        }
+
+        var cacheKey = $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}:season";
+        var cached = await _cacheManager.Get<Destiny2SeasonStatsDto>(cacheKey, cancellationToken).ConfigureAwait(false);
+        if (cached != null)
+        {
+            response.Data = cached;
+            response.Code = HttpStatusCode.OK;
+            response.Message = "Cached";
+            return response;
+        }
+
+        var charactersResult = await _dataProvider.GetDestiny2ProfileAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            [Destiny2ComponentTypeEnum.Characters], cancellationToken).ConfigureAwait(false);
+
+        if (charactersResult is not { ErrorCode: 1 })
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = charactersResult?.Message ?? "Failed to fetch profile data from Bungie API";
+            return response;
+        }
+
+        var characterClassMap = charactersResult.Response.Characters.Data
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ClassType);
+
+        var accountStatsResult = await _dataProvider.GetAccountStatsAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, cancellationToken).ConfigureAwait(false);
+
+        if (accountStatsResult is not { ErrorCode: 1 })
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = accountStatsResult?.Message ?? "Failed to fetch playtime data from Bungie API";
+            return response;
+        }
+
+        // 10. Handle no data case (D-03: hasData: false case)
+        if (accountStatsResult.Response.Characters == null)
+        {
+            response.Data = new Destiny2SeasonStatsDto();
+            response.Code = HttpStatusCode.OK;
+            response.Message = "No playtime data available";
+            return response;
+        }
+
+        // 11. Build per-character breakdown (SEAS-03 requirement)
+        var characterStats = new List<CharacterPlaytimeDto>();
+        var characters = accountStatsResult.Response.Characters ?? [];
+
+        foreach (var charData in characters)
+        {
+            if (string.IsNullOrEmpty(charData?.CharacterId))
+                continue;
+
+            var characterId = charData.CharacterId;
+
+            // Get classType from the profile mapping
+            var classType = characterClassMap.TryGetValue(characterId, out var ct) ? ct : Destiny2ClassEnum.Unknown;
+
+            // Get playtime from merged stats
+            var playtimeSeconds = (long)(charData.Merged?.AllTime?.SecondsPlayed?.Basic?.Value ?? 0);
+
+            characterStats.Add(new CharacterPlaytimeDto
+            {
+                CharacterId = characterId,
+                Class = classType,
+                PlaytimeSeconds = playtimeSeconds
+            });
+        }
+
+        // 12. Calculate total playtime
+        var totalPlaytimeSeconds = characterStats.Sum(c => c.PlaytimeSeconds);
+
+        response.Data = new Destiny2SeasonStatsDto
+        {
+            TotalPlaytimeSeconds = totalPlaytimeSeconds,
+            Characters = characterStats
+        };
+        response.Code = HttpStatusCode.OK;
+        response.Message = "Success";
+
+        // 14. Cache result with 5-minute TTL (D-04)
+        await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
 
         return response;
     }

@@ -7,6 +7,7 @@ using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Enum.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
@@ -14,6 +15,9 @@ public partial interface IDiscordDataProvider : IScope
 {
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
         Destiny2ProfileResponse data, CancellationToken cancellationToken = default);
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
+        Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
@@ -27,11 +31,8 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
-        var languageEnum = LanguageExtension.MapDestiny2PlayerLanguageToEnum(_destiny2PlayerData.Language);
-        var languageCode = Void.Bot.Message.Extension.LanguageExtension.ToLanguageCode(languageEnum);
-        var manifestLanguageCode = languageEnum == Void.Bot.Message.Enum.LanguageEnum.Default
-            ? "zhchs"
-            : languageCode.Replace("-", string.Empty);
+        var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        var manifestLanguageCode = languageEnum.ToI18nCode();
         
         #region Embed
         
@@ -74,10 +75,8 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         {
             embedBuilder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{currentSeason.DisplayProperties.Icon}");
         }
-            
-        var embedCareer = embedBuilder
-                .WithFooter("By Void Bot")
-                .Build();
+        
+        var embedCareer = embedBuilder.BuildWithFooter();
         
         #endregion
         
@@ -129,6 +128,67 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         #endregion
         
         return ([embedCareer], [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
+    }
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
+        Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default)
+    {
+        var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        
+        if (!data.HasData)
+        {
+            var noDataText = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonNoData, languageEnum);
+
+            var noDataEmbed = new EmbedBuilder()
+                .WithColor(139, 139, 255)
+                .WithTitle(_languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum))
+                .WithDescription(noDataText)
+                .BuildWithFooter();
+            return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([noDataEmbed], new List<FileAttachment>()));
+        }
+
+        var totalMinutes = data.TotalPlaytimeSeconds / 60;
+        var totalValue = totalMinutes >= 60
+            ? $"{totalMinutes / 60}h {totalMinutes % 60}m"
+            : $"{totalMinutes}m";
+
+        static string FormatPlaytime(long seconds)
+        {
+            var minutes = seconds / 60;
+            return minutes >= 60
+                ? $"{minutes / 60}h {minutes % 60}m"
+                : $"{minutes}m";
+        }
+
+        var hunterValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter) is { } hunter
+            ? FormatPlaytime(hunter.PlaytimeSeconds)
+            : "N/A";
+
+        var titanValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Titan) is { } titan
+            ? FormatPlaytime(titan.PlaytimeSeconds)
+            : "N/A";
+
+        var warlockValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Warlock) is { } warlock
+            ? FormatPlaytime(warlock.PlaytimeSeconds)
+            : "N/A";
+
+        var seasonTitle = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
+        var totalField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
+        var hunterField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
+        var titanField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
+        var warlockField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.WarlockField, languageEnum);
+
+        var embedBuilder = new EmbedBuilder()
+            .WithColor(139, 139, 255)
+            .WithTitle(seasonTitle)
+            .AddField(totalField, totalValue)
+            .AddField(hunterField, hunterValue)
+            .AddField(titanField, titanValue)
+            .AddField(warlockField, warlockValue);
+
+        var embedSeason = embedBuilder.BuildWithFooter();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([embedSeason], new List<FileAttachment>()));
     }
 
 }

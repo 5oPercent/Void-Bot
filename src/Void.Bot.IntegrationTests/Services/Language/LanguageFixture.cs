@@ -1,9 +1,9 @@
 using Autofac;
 using Shouldly;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Extension;
 
 namespace Void.Bot.IntegrationTest.Services.Language;
 
@@ -13,7 +13,7 @@ public class LanguageFixture(IntegrationTestBase testBase) : IntegrationFixture(
     public async Task GenerateDefaultYamlFile_CheckPathAndContent()
     {
         var tempRootPath = Path.Combine(Path.GetTempPath(), "VoidBotTests", Guid.NewGuid().ToString());
-        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToLanguageCode()}.yaml");
+        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToI18nCode()}.yaml");
         var fullPath = Path.Combine(tempRootPath, relativePath);
 
         try
@@ -45,7 +45,7 @@ public class LanguageFixture(IntegrationTestBase testBase) : IntegrationFixture(
     public async Task GenerateDefaultYamlFile_ShouldNotOverwriteExistingFileByDefault()
     {
         var tempRootPath = Path.Combine(Path.GetTempPath(), "VoidBotTests", Guid.NewGuid().ToString());
-        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToLanguageCode()}.yaml");
+        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToI18nCode()}.yaml");
         var fullPath = Path.Combine(tempRootPath, relativePath);
         var existingContent = "Greeting: Customized";
 
@@ -78,7 +78,7 @@ public class LanguageFixture(IntegrationTestBase testBase) : IntegrationFixture(
     public async Task GenerateDefaultYamlFile_ShouldOverwriteExistingFileWhenEnabled()
     {
         var tempRootPath = Path.Combine(Path.GetTempPath(), "VoidBotTests", Guid.NewGuid().ToString());
-        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToLanguageCode()}.yaml");
+        var relativePath = Path.Combine("Resources", "i18n", "Test", $"ShouldlySample.{LanguageEnum.Default.ToI18nCode()}.yaml");
         var fullPath = Path.Combine(tempRootPath, relativePath);
 
         try

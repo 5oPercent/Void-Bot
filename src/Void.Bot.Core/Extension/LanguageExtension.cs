@@ -2,7 +2,6 @@ using System.Reflection;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Extension;
 
 namespace Void.Bot.Core.Extension;
 
@@ -10,36 +9,39 @@ public static class LanguageExtension
 {
     public static string GetYamlKey<T>(this T contextTemplate, LanguageEnum language = LanguageEnum.Default) where T : IContextTemplate
     {
-        var att = typeof(T).GetCustomAttribute<LanguageAttribute>();
-        if (att == null)
-            throw new InvalidOperationException($"Class {typeof(T).Name} is not marked with LanguageAttribute");
-
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language.ToLanguageCode()}.yaml";
-    }
-    
-    public static string GetYamlKey(this Type type, LanguageEnum language = LanguageEnum.Default)
-    {
+        var type = contextTemplate.GetType();
         var att = type.GetCustomAttribute<LanguageAttribute>();
         if (att == null)
             throw new InvalidOperationException($"Class {type.Name} is not marked with LanguageAttribute");
 
-        return language == LanguageEnum.Default ? att.Key : $"/{att.System}/{att.ContextTemplateName}.{language.ToLanguageCode()}.yaml";
+        return att.GetYamlKey(language);
     }
-
-    public static LanguageEnum MapDestiny2PlayerLanguageToEnum(string? language)
+    
+    private static string GetYamlKey(this LanguageAttribute attribute, LanguageEnum language)
     {
-        var normalizedLanguage = language?
-            .Trim()
-            .ToLowerInvariant()
-            .Replace("-", string.Empty)
-            .Replace("_", string.Empty);
-
-        return normalizedLanguage switch
+        var targetLanguage = language == LanguageEnum.Default ? attribute.Language : language;
+        return $"/{attribute.System}/{attribute.ContextTemplateName}.{targetLanguage.ToI18nCode()}.yaml";
+    }
+    
+    public static LanguageEnum MapI18nCodeToEnum(string? language)
+    {
+        return language?.Trim().ToLowerInvariant() switch
         {
-            "zhchs" => LanguageEnum.ZhChs,
-            "zhcht" => LanguageEnum.ZhCht,
+            "zh-chs" => LanguageEnum.ZhChs,
+            "zh-cht" => LanguageEnum.ZhCht,
             "en" => LanguageEnum.En,
             _ => LanguageEnum.Default
+        };
+    }
+
+    public static string ToI18nCode(this LanguageEnum language)
+    {
+        return language switch
+        {
+            LanguageEnum.ZhChs => "zh-chs",
+            LanguageEnum.ZhCht => "zh-cht",
+            LanguageEnum.En => "en",
+            _ => "zh-chs"
         };
     }
 }

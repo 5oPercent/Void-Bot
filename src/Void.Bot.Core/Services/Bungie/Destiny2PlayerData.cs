@@ -1,3 +1,5 @@
+using Void.Bot.Core.Extension;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Core.Services.Bungie;
@@ -93,7 +95,7 @@ public class Destiny2PlayerData : IScope
         FirstAccess = default;
         LastUpdate = default;
         ShowActivity = false;
-        Language = "zh-chs";
+        Language = LanguageEnum.Default.ToI18nCode();
         CrossSaveOverride = BungieMembershipTypeEnum.None;
         PrimaryMembershipType = BungieMembershipTypeEnum.None;
         PrimaryMembershipId = string.Empty;

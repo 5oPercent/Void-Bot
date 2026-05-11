@@ -45,4 +45,13 @@ public class Destiny2Controller : ControllerBase
         
         return Ok(response);
     }
+
+    [HttpGet]
+    [Route("player/season")]
+    public async Task<IActionResult> GetPlayerSeason([FromQuery] GetDestiny2SeasonRequest request)
+    {
+        var response = await _mediator.RequestAsync<GetDestiny2SeasonRequest, GetDestiny2SeasonResponse>(request).ConfigureAwait(false);
+
+        return Ok(response);
+    }
 }

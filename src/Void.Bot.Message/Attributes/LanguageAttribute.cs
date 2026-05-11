@@ -1,5 +1,4 @@
 using Void.Bot.Message.Enum;
-using Void.Bot.Message.Extension;
 
 namespace Void.Bot.Message.Attributes;
 
@@ -17,6 +16,4 @@ public class LanguageAttribute(
     public string ContextTemplateName { get; } = contextTemplateName;
     
     public LanguageEnum Language { get; } = language;
-    
-    public string Key => $"/{System}/{ContextTemplateName}.{Language.ToLanguageCode()}.yaml";
 }
