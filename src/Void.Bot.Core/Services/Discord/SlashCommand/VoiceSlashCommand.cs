@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
 public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) : IGlobalSlashCommand
 {
+    public bool Ephemeral => true;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("voice")
         .WithDescription("管理专属语音频道.")
@@ -48,8 +50,6 @@ public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) 
 
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        await commandCallback.DeferAsync(true).ConfigureAwait(false);
-
         if (commandCallback.User is not SocketGuildUser user)
         {
             await ModifyResponseAsync(commandCallback, "该指令只能在服务器内使用.").ConfigureAwait(false);
