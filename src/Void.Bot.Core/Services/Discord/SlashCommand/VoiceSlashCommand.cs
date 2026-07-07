@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
 public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) : IGlobalSlashCommand
 {
+    public bool Ephemeral => true;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("voice")
         .WithDescription("管理专属语音频道.")
