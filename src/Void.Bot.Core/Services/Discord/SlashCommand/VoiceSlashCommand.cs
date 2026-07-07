@@ -83,7 +83,7 @@ public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) 
         SocketGuildUser user,
         IApplicationCommandInteractionDataOption subCommand,
         Func<SocketGuildUser, SocketGuildUser, CancellationToken, Task<DiscordVoiceCommandResult>> executeAsync,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var targetUser = GetUserOption(user.Guild, subCommand, "user");
         if (targetUser == null)
@@ -91,9 +91,9 @@ public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) 
             return new DiscordVoiceCommandResult { Message = "未找到目标用户." };
         }
 
-        if (targetUser.IsBot)
+        if (targetUser.Id == user.Guild.CurrentUser.Id)
         {
-            return new DiscordVoiceCommandResult { Message = "不能对 bot 用户执行该操作." };
+            return new DiscordVoiceCommandResult { Message = "不能将机器人自身作为目标用户." };
         }
 
         return await executeAsync(user, targetUser, cancellationToken).ConfigureAwait(false);
