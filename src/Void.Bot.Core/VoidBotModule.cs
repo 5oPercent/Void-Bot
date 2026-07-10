@@ -202,6 +202,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     private void RegisterDiscordBotClient(ContainerBuilder builder)
     {
         var clientConfig = new DiscordSocketConfig();
+        clientConfig.GatewayIntents |= GatewayIntents.Guilds | GatewayIntents.GuildVoiceStates;
         
         var discordSetting = new DiscordSetting(configuration);
         if (discordSetting.EnableProxy)
@@ -247,7 +248,13 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         builder.RegisterInstance(client).AsSelf().SingleInstance().OnActivated(e =>
         {
             var slashCommandRoute = e.Context.Resolve<IDiscordSlashCommandRoute>();
-            client.SlashCommandExecuted += slashCommandRoute.RouteAsync;
+            var voiceStateRoute = e.Context.Resolve<IDiscordVoiceStateRoute>();
+            client.SlashCommandExecuted += callback =>
+            {
+                _ = Task.Run(() => slashCommandRoute.RouteAsync(callback));
+                return Task.CompletedTask;
+            };
+            client.UserVoiceStateUpdated += voiceStateRoute.RouteAsync;
         });
     }
     
