@@ -274,7 +274,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         {
             var slashCommandRoute = e.Context.Resolve<IDiscordSlashCommandRoute>();
             var voiceStateRoute = e.Context.Resolve<IDiscordVoiceStateRoute>();
-            client.SlashCommandExecuted += slashCommandRoute.RouteAsync;
+            client.SlashCommandExecuted += callback =>
+            {
+                _ = Task.Run(() => slashCommandRoute.RouteAsync(callback));
+                return Task.CompletedTask;
+            };
             client.UserVoiceStateUpdated += voiceStateRoute.RouteAsync;
         });
     }
