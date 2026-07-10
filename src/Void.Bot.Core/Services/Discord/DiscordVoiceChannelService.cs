@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using AutoMapper;
 using Discord;
+using Discord.Net;
 using Discord.WebSocket;
 using Serilog;
 using Void.Bot.Core.Data;
@@ -259,63 +260,165 @@ public class DiscordVoiceChannelService : IDiscordVoiceChannelService
 
     public async Task<DiscordVoiceCommandResult> AllowUserAsync(SocketGuildUser user, SocketGuildUser targetUser, CancellationToken cancellationToken = default)
     {
-        var (temporaryChannel, channel, error) = await GetOwnedActiveChannelAsync(user, cancellationToken).ConfigureAwait(false);
-        if (temporaryChannel == null || channel == null)
+        try
         {
-            return Fail(error);
-        }
-
-        if (targetUser.Id == user.Id)
-        {
-            return Fail("频道拥有者已经拥有频道权限.");
-        }
-
-        var allowedUser = await _dataProvider.GetAllowedUserAsync(temporaryChannel.Id, targetUser.Id, cancellationToken).ConfigureAwait(false);
-        if (allowedUser == null)
-        {
-            await _dataProvider.AddAllowedUserAsync(new DiscordTemporaryVoiceChannelAllowedUser
+            var (temporaryChannel, channel, error) = await GetOwnedActiveChannelAsync(user, cancellationToken).ConfigureAwait(false);
+            if (temporaryChannel == null || channel == null)
             {
-                TemporaryVoiceChannelId = temporaryChannel.Id,
-                GuildId = temporaryChannel.GuildId,
-                ChannelId = temporaryChannel.ChannelId,
-                UserId = targetUser.Id
-            }, cancellationToken).ConfigureAwait(false);
+                return Fail(error);
+            }
+
+            if (targetUser.Id == user.Id)
+            {
+                return Fail("频道拥有者已经拥有频道权限.");
+            }
+
+            var allowedUser = await _dataProvider.GetAllowedUserAsync(temporaryChannel.Id, targetUser.Id, cancellationToken).ConfigureAwait(false);
+            if (allowedUser == null)
+            {
+                await _dataProvider.AddAllowedUserAsync(new DiscordTemporaryVoiceChannelAllowedUser
+                {
+                    TemporaryVoiceChannelId = temporaryChannel.Id,
+                    GuildId = temporaryChannel.GuildId,
+                    ChannelId = temporaryChannel.ChannelId,
+                    UserId = targetUser.Id
+                }, cancellationToken).ConfigureAwait(false);
+            }
+
+            await channel.AddPermissionOverwriteAsync(targetUser, AllowVoiceAccessOverwrite()).ConfigureAwait(false);
+            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return Ok($"已允许 {targetUser.DisplayName} 查看和加入频道.");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (HttpException ex)
+        {
+            _logger.Warning(ex,
+                "Failed to allow Discord voice channel user. GuildId: {GuildId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}, HttpCode: {HttpCode}, DiscordCode: {DiscordCode}",
+                user.Guild.Id,
+                user.Id,
+                targetUser.Id,
+                ex.HttpCode,
+                ex.DiscordCode);
 
-        await channel.AddPermissionOverwriteAsync(targetUser, AllowVoiceAccessOverwrite()).ConfigureAwait(false);
-        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return Fail(ex.HttpCode == HttpStatusCode.Forbidden
+                ? "允许用户失败，请确认 Bot 拥有管理频道权限."
+                : "允许用户失败，Discord API 请求异常，请稍后重试.");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex,
+                "Failed to allow Discord voice channel user. GuildId: {GuildId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}",
+                user.Guild.Id,
+                user.Id,
+                targetUser.Id);
 
-        return Ok($"已允许 {targetUser.DisplayName} 查看和加入频道.");
+            return Fail("允许用户失败，请稍后重试.");
+        }
     }
 
     public async Task<DiscordVoiceCommandResult> DenyUserAsync(SocketGuildUser user, SocketGuildUser targetUser, CancellationToken cancellationToken = default)
     {
-        var (temporaryChannel, channel, error) = await GetOwnedActiveChannelAsync(user, cancellationToken).ConfigureAwait(false);
-        if (temporaryChannel == null || channel == null)
+        try
         {
-            return Fail(error);
-        }
+            var (temporaryChannel, channel, error) = await GetOwnedActiveChannelAsync(user, cancellationToken).ConfigureAwait(false);
+            if (temporaryChannel == null || channel == null)
+            {
+                return Fail(error);
+            }
 
-        if (targetUser.Id == user.Id)
+            if (targetUser.Id == user.Id)
+            {
+                return Fail("不能移除频道拥有者权限.");
+            }
+
+            var allowedUser = await _dataProvider.GetAllowedUserAsync(temporaryChannel.Id, targetUser.Id, cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await channel.RemovePermissionOverwriteAsync(targetUser).ConfigureAwait(false);
+            }
+            catch (HttpException ex)
+            {
+                _logger.Warning(ex,
+                    "Failed to remove Discord voice channel permission overwrite. GuildId: {GuildId}, ChannelId: {ChannelId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}, HttpCode: {HttpCode}, DiscordCode: {DiscordCode}",
+                    user.Guild.Id,
+                    channel.Id,
+                    user.Id,
+                    targetUser.Id,
+                    ex.HttpCode,
+                    ex.DiscordCode);
+
+                return Fail(ex.HttpCode == HttpStatusCode.Forbidden
+                    ? "移除用户权限失败，请确认 Bot 拥有管理频道权限."
+                    : "移除用户权限失败，Discord API 请求异常，请稍后重试.");
+            }
+
+            if (allowedUser != null)
+            {
+                await _dataProvider.DeleteAllowedUserAsync(allowedUser, cancellationToken).ConfigureAwait(false);
+                await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (targetUser.VoiceChannel?.Id != channel.Id)
+            {
+                return Ok($"已移除 {targetUser.DisplayName} 的允许权限.");
+            }
+
+            try
+            {
+                await targetUser.ModifyAsync(properties => properties.Channel = null).ConfigureAwait(false);
+            }
+            catch (HttpException ex)
+            {
+                _logger.Warning(ex,
+                    "Removed Discord voice channel permission but failed to disconnect user. GuildId: {GuildId}, ChannelId: {ChannelId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}, HttpCode: {HttpCode}, DiscordCode: {DiscordCode}",
+                    user.Guild.Id,
+                    channel.Id,
+                    user.Id,
+                    targetUser.Id,
+                    ex.HttpCode,
+                    ex.DiscordCode);
+
+                return Fail(ex.HttpCode == HttpStatusCode.Forbidden
+                    ? "已移除用户权限，但踢出失败，请确认 Bot 拥有移动成员权限."
+                    : "已移除用户权限，但踢出用户时 Discord API 请求异常.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex,
+                    "Removed Discord voice channel permission but failed to disconnect user. GuildId: {GuildId}, ChannelId: {ChannelId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}",
+                    user.Guild.Id,
+                    channel.Id,
+                    user.Id,
+                    targetUser.Id);
+
+                return Fail("已移除用户权限，但踢出用户失败，请稍后重试.");
+            }
+
+            return Ok($"已移除 {targetUser.DisplayName} 的允许权限并踢出频道.");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Fail("不能移除频道拥有者权限.");
+            throw;
         }
-
-        var allowedUser = await _dataProvider.GetAllowedUserAsync(temporaryChannel.Id, targetUser.Id, cancellationToken).ConfigureAwait(false);
-        if (allowedUser != null)
+        catch (Exception ex)
         {
-            await _dataProvider.DeleteAllowedUserAsync(allowedUser, cancellationToken).ConfigureAwait(false);
+            _logger.Error(ex,
+                "Failed to deny Discord voice channel user. GuildId: {GuildId}, OwnerUserId: {OwnerUserId}, TargetUserId: {TargetUserId}",
+                user.Guild.Id,
+                user.Id,
+                targetUser.Id);
+
+            return Fail("移除用户权限失败，请稍后重试.");
         }
-
-        await channel.RemovePermissionOverwriteAsync(targetUser).ConfigureAwait(false);
-        if (targetUser.VoiceChannel?.Id == channel.Id)
-        {
-            await targetUser.ModifyAsync(properties => properties.Channel = null).ConfigureAwait(false);
-        }
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return Ok($"已移除 {targetUser.DisplayName} 的允许权限并踢出频道.");
     }
 
     public async Task<DiscordVoiceCommandResult> KickUserAsync(SocketGuildUser user, SocketGuildUser targetUser, CancellationToken cancellationToken = default)
