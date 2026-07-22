@@ -5,6 +5,14 @@ namespace Void.Bot.Core.Caching
 {
     public class RedisCacheManager : ICacheManager
     {
+        private const string TakeScript = """
+            local value = redis.call('GET', KEYS[1])
+            if value then
+                redis.call('DEL', KEYS[1])
+            end
+            return value
+            """;
+
         private readonly IConnectionMultiplexer _redisConnection;
         private readonly IDatabase _database;
 
@@ -18,6 +26,17 @@ namespace Void.Bot.Core.Caching
         {
             var redisValue = await _database.StringGetAsync(key);
             return redisValue.HasValue ? redisValue.ToString().DeserializeJson<T>() : null;
+        }
+
+        public async Task<T?> Take<T>(string key, CancellationToken cancellationToken = default) where T : class
+        {
+            var result = await _database.ScriptEvaluateAsync(
+                    TakeScript,
+                    new RedisKey[] { key },
+                    Array.Empty<RedisValue>())
+                .WaitAsync(cancellationToken);
+
+            return result.IsNull ? null : result.ToString()!.DeserializeJson<T>();
         }
 
         public async Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default)

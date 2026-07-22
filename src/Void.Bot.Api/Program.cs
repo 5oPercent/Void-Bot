@@ -10,13 +10,8 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-        
-        var configuration = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json")
-            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
-            .AddEnvironmentVariables()
-            .Build();
+        var builder = WebApplication.CreateBuilder(args);
+        var configuration = builder.Configuration;
         
         configuration.Get(typeof(AppSetting));
         
@@ -29,7 +24,7 @@ public class Program
         var connectionSetting = new ConnectionStringSetting(configuration);
         new DbUpRunner(connectionSetting.Mysql).Run(nameof(Core.Dbup));
         
-        WebApplication.CreateBuilder(args).ConfigureHost().AddServices()
+        builder.ConfigureHost().AddServices()
             .Build().ConfigureApp()
             .Run();
     }

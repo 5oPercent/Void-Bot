@@ -15,7 +15,6 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         optionsBuilder
             .UseMySql(_dbConnectionString, new MySqlServerVersion(new Version(8, 0, 3)))
             .EnableDetailedErrors()
-            .EnableSensitiveDataLogging()
             .UseSnakeCaseNamingConvention();
     }
     
