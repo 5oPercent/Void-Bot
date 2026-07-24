@@ -17,7 +17,10 @@ public class LoggerSpecification<TContext>(ILogger logger) : IPipeSpecification<
 
     public Task BeforeExecute(TContext context, CancellationToken cancellationToken)
     {
-        logger.Information("----- Handling message {MessageName}: {@Message}", context.Message.GetGenericTypeName(), context.Message);
+        logger.Information(
+            "----- Handling message {MessageName}: {@Message}",
+            context.Message.GetGenericTypeName(),
+            LogRedactor.Redact(context.Message));
         
         return Task.CompletedTask;
     }
@@ -29,14 +32,30 @@ public class LoggerSpecification<TContext>(ILogger logger) : IPipeSpecification<
 
     public Task AfterExecute(TContext context, CancellationToken cancellationToken)
     {
-        logger.Information("----- Message {MessageName} handled response: {@Response}", context.Message.GetGenericTypeName(), context.Result);
+        logger.Information(
+            "----- Message {MessageName} handled response: {@Response}",
+            context.Message.GetGenericTypeName(),
+            LogRedactor.Redact(context.Result));
         
         return Task.CompletedTask;
     }
 
     public async Task OnException(Exception ex, TContext context)
     {
-        logger.Error(ex, "----- Error handling message {MessageName}: {ErrorMessage}", context.Message.GetGenericTypeName(), ex.Message);
+        if (LogRedactor.ContainsSensitiveValues(context.Message))
+        {
+            logger.Error(
+                "----- Error handling OAuth message {MessageName}: exception {ExceptionType}",
+                context.Message.GetGenericTypeName(),
+                ex.GetType().Name);
+        }
+        else
+        {
+            logger.Error(
+                ex,
+                "----- Error handling message {MessageName}",
+                context.Message.GetGenericTypeName());
+        }
         
         ExceptionDispatchInfo.Capture(ex).Throw();
     }

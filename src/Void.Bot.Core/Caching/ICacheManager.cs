@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Caching;
 public interface ICacheManager : IScope, IDisposable
 {
     Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class;
+
+    Task<T?> Take<T>(string key, CancellationToken cancellationToken = default) where T : class;
     
     Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default);
     

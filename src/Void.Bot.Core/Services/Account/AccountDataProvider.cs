@@ -24,6 +24,9 @@ public interface IAccountDataProvider : IScope
     
     Task<UserThirdPartyDto?> GetThirdPartyByUserIdAsync(
         Guid userId, string provider, CancellationToken cancellationToken);
+
+    Task<UserThirdPartyDto?> GetThirdPartyBindingAsync(
+        string provider, string thirdPartyUserId, CancellationToken cancellationToken);
     
     Task<UserAccountDto?> RegisterUserAccountAsync(
         string name, string encryptionPassword, CancellationToken cancellationToken);
@@ -31,6 +34,9 @@ public interface IAccountDataProvider : IScope
     Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
     
     Task UpdateThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
+
+    Task DeleteThirdPartyAsync(
+        Guid userId, string provider, CancellationToken cancellationToken);
 
     Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken);
 }
@@ -136,6 +142,16 @@ public class AccountDataProvider : IAccountDataProvider
         return _mapper.Map<UserThirdPartyDto>(thirdParty);
     }
 
+    public async Task<UserThirdPartyDto?> GetThirdPartyBindingAsync(
+        string provider, string thirdPartyUserId, CancellationToken cancellationToken)
+    {
+        var thirdParty = await _userThirdPartyRep
+            .QueryNoTracking(x => x.Provider == provider && x.ThirdPartyUserId == thirdPartyUserId)
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+        return _mapper.Map<UserThirdPartyDto>(thirdParty);
+    }
+
     public async Task<UserAccountDto?> RegisterUserAccountAsync(
         string name, string encryptionPassword, CancellationToken cancellationToken)
     {
@@ -181,6 +197,14 @@ public class AccountDataProvider : IAccountDataProvider
         var item = _mapper.Map<UserThirdParty>(thirdParty);
         
         await _userThirdPartyRep.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task DeleteThirdPartyAsync(
+        Guid userId, string provider, CancellationToken cancellationToken)
+    {
+        return _userThirdPartyRep.DeleteAsync(
+            x => x.UserId == userId && x.Provider == provider,
+            cancellationToken);
     }
 
     public async Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken)

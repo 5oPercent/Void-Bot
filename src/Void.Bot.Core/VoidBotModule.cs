@@ -60,7 +60,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterContextTemplate(builder);
         
         RegisterCaching(builder);
-        
+
         RegisterSettings(builder);
 
         RegisterDbContext(builder);
@@ -187,7 +187,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             builder.RegisterType<MemoryCacheManager>().As<ICacheManager>().SingleInstance();
         }
     }
-    
+
     // 注册配置
     private void RegisterSettings(ContainerBuilder builder)
     {

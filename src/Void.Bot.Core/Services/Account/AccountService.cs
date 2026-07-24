@@ -28,6 +28,9 @@ public interface IAccountService : IScope
     Task<LinkUserAccountFromThirdPartyResponse> LinkAccountFromThirdPartyAsync(
         LinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken);
 
+    Task<UnlinkUserAccountFromThirdPartyResponse> UnlinkAccountFromThirdPartyAsync(
+        UnlinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken);
+
     Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
         ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken);
     
@@ -175,6 +178,15 @@ public class AccountService : IAccountService
         }
 
         return new LinkUserAccountFromThirdPartyResponse();
+    }
+
+    public async Task<UnlinkUserAccountFromThirdPartyResponse> UnlinkAccountFromThirdPartyAsync(
+        UnlinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken)
+    {
+        await _dataProvider.DeleteThirdPartyAsync(
+            command.UserId, command.Platform.ToString(), cancellationToken).ConfigureAwait(false);
+
+        return new UnlinkUserAccountFromThirdPartyResponse();
     }
 
     public async Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(

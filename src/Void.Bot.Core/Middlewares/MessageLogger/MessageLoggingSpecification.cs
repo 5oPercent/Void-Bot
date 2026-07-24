@@ -5,6 +5,7 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Void.Bot.Core.Data;
+using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Services.MessageLogging;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.MessageLogging;
@@ -50,8 +51,8 @@ public class MessageLoggingSpecification<TContext> : IPipeSpecification<TContext
             {
                 MessageType = context.Message.GetType().ToString(),
                 ResultType = context.Result.GetType().ToString(),
-                MessageJson = JsonSerializer.Serialize(context.Message),
-                ResultJson = JsonSerializer.Serialize(context.Result)
+                MessageJson = JsonSerializer.Serialize(LogRedactor.Redact(context.Message)),
+                ResultJson = JsonSerializer.Serialize(LogRedactor.Redact(context.Result))
             }
         }, cancellationToken).ConfigureAwait(false);
         

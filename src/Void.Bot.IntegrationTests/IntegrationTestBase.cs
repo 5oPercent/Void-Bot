@@ -35,6 +35,7 @@ public class IntegrationTestBase : IAsyncLifetime
         {
             l.AddSerilog();
         });
+        serviceCollection.AddHttpClient();
         
         var containerBuilder = new ContainerBuilder();
         
