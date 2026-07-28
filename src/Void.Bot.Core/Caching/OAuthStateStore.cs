@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Serilog;
 using Void.Bot.Core.Services;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
@@ -26,11 +27,13 @@ public sealed class OAuthStateStore : IOAuthStateStore
     private const string KeyPrefix = "oauth:state:";
     private readonly ICacheManager _cacheManager;
     private readonly TimeProvider _timeProvider;
+    private readonly ILogger _logger;
 
-    public OAuthStateStore(ICacheManager cacheManager, TimeProvider timeProvider)
+    public OAuthStateStore(ICacheManager cacheManager, TimeProvider timeProvider, ILogger logger)
     {
         _cacheManager = cacheManager;
         _timeProvider = timeProvider;
+        _logger = logger;
     }
 
     public async Task<CreateOAuthStateResponse> CreateAsync(
@@ -48,6 +51,12 @@ public sealed class OAuthStateStore : IOAuthStateStore
                 _ => true
             })
         {
+            _logger.Warning(
+                "OAuth state creation rejected: {Platform}, flow {Flow}, account {AccountId}, TTL {TimeToLive}",
+                request.Platform,
+                request.Flow,
+                request.InitiatingAccountId,
+                request.TimeToLive);
             return new CreateOAuthStateResponse.Rejected();
         }
 
@@ -74,14 +83,24 @@ public sealed class OAuthStateStore : IOAuthStateStore
                 request.TimeToLive,
                 cancellationToken).ConfigureAwait(false);
 
+            _logger.Information(
+                "OAuth state stored: {Platform}, flow {Flow}, expires at {ExpiresAt}",
+                record.Platform,
+                record.Flow,
+                record.ExpiresAt);
             return new CreateOAuthStateResponse.Created(record);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (Exception exception)
         {
+            _logger.Warning(
+                exception,
+                "OAuth state creation failed because the state store is unavailable: {Platform}, flow {Flow}",
+                request.Platform,
+                request.Flow);
             return new CreateOAuthStateResponse.Unavailable();
         }
     }
@@ -95,6 +114,7 @@ public sealed class OAuthStateStore : IOAuthStateStore
             state.Length != EncodedStateLength ||
             state.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '-' and not '_'))
         {
+            _logger.Warning("OAuth state consumption rejected malformed input");
             return new TakeOAuthStateResponse.Missing();
         }
 
@@ -104,34 +124,56 @@ public sealed class OAuthStateStore : IOAuthStateStore
                 $"{KeyPrefix}{state}",
                 cancellationToken).ConfigureAwait(false);
 
+            if (record is null)
+            {
+                _logger.Warning("OAuth state was missing, expired, or already consumed");
+                return new TakeOAuthStateResponse.Missing();
+            }
+
             var now = _timeProvider.GetUtcNow();
-            return record is not null &&
-                   record.State == state &&
-                   record.Platform != AppPlatformEnum.Void &&
-                   Enum.IsDefined(record.Platform) &&
-                   (record.Flow switch
-                   {
-                       OAuthStateFlow.Login => record.InitiatingAccountId is null,
-                       OAuthStateFlow.Link => record.InitiatingAccountId is not null &&
-                                              record.InitiatingAccountId != Guid.Empty,
-                       _ => false
-                   }) &&
-                   record.IssuedAt <= now &&
-                   record.ExpiresAt > now &&
-                   record.ExpiresAt > record.IssuedAt
-                ? new TakeOAuthStateResponse.Found(record)
-                : new TakeOAuthStateResponse.Missing();
+            var isValid = record.State == state &&
+                          record.Platform != AppPlatformEnum.Void &&
+                          Enum.IsDefined(record.Platform) &&
+                          (record.Flow switch
+                          {
+                              OAuthStateFlow.Login => record.InitiatingAccountId is null,
+                              OAuthStateFlow.Link => record.InitiatingAccountId is not null &&
+                                                     record.InitiatingAccountId != Guid.Empty,
+                              _ => false
+                          }) &&
+                          record.IssuedAt <= now &&
+                          record.ExpiresAt > now &&
+                          record.ExpiresAt > record.IssuedAt;
+            if (!isValid)
+            {
+                _logger.Warning(
+                    "OAuth state record failed validation: {Platform}, flow {Flow}, issued at {IssuedAt}, expires at {ExpiresAt}",
+                    record.Platform,
+                    record.Flow,
+                    record.IssuedAt,
+                    record.ExpiresAt);
+                return new TakeOAuthStateResponse.Missing();
+            }
+
+            _logger.Information(
+                "OAuth state consumed: {Platform}, flow {Flow}, account {AccountId}",
+                record.Platform,
+                record.Flow,
+                record.InitiatingAccountId);
+            return new TakeOAuthStateResponse.Found(record);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            _logger.Warning(exception, "OAuth state record could not be deserialized");
             return new TakeOAuthStateResponse.Missing();
         }
-        catch
+        catch (Exception exception)
         {
+            _logger.Warning(exception, "OAuth state consumption failed because the state store is unavailable");
             return new TakeOAuthStateResponse.Unavailable();
         }
     }
