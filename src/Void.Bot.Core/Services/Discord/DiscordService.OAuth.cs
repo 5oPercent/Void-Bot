@@ -45,6 +45,7 @@ public partial class DiscordService
         AuthenticateDiscordOAuthRequest request,
         CancellationToken cancellationToken = default)
     {
+        _logger.Information("Starting Discord OAuth authorization-code exchange");
         var redirectUri = AppSetting.DomainUrl + CallbackPath;
         var tokenResult = await RequestTokenAsync(
             DiscordConstants.GenerateTokenUrl,
@@ -75,6 +76,7 @@ public partial class DiscordService
         RefreshDiscordOAuthTokenRequest request,
         CancellationToken cancellationToken = default)
     {
+        _logger.Information("Starting Discord OAuth token refresh");
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
             _logger.Warning("Discord OAuth request failed: {Failure}", OAuthFailure.RefreshTokenFailed);
@@ -140,10 +142,16 @@ public partial class DiscordService
 
             try
             {
-                return (
+                var result = (
                     token.AccessToken,
                     string.IsNullOrWhiteSpace(token.RefreshToken) ? fallbackRefreshToken : token.RefreshToken,
                     DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn.Value));
+                _logger.Information(
+                    "Discord OAuth token request succeeded: {Operation}, expires at {ExpiresAt}, has refresh token {HasRefreshToken}",
+                    requestFailure,
+                    result.Item3,
+                    !string.IsNullOrWhiteSpace(result.Item2));
+                return result;
             }
             catch (ArgumentOutOfRangeException exception)
             {
@@ -194,6 +202,9 @@ public partial class DiscordService
                 return new AuthenticateDiscordOAuthResponse.Failed();
             }
 
+            _logger.Information(
+                "Discord OAuth identity fetch succeeded: provider user {ProviderUserId}",
+                user.Id);
             return new AuthenticateDiscordOAuthResponse.Succeeded(new DiscordOAuthIdentity(
                 user.Id,
                 displayName,
