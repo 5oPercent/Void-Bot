@@ -7,6 +7,7 @@ using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
@@ -124,13 +125,24 @@ public static class HostExtension
     {
         var configuration = app.Configuration;
         var hangfireSetting = new HangfireSetting(configuration);
+        var scalarSetting = new ScalarSetting(configuration);
 
         app.UseForwardedHeaders();
         
-        if (AppSetting.EnableScalar)
+        if (scalarSetting.Enable)
         {
             app.MapOpenApi();
-            app.MapScalarApiReference();
+            app.MapScalarApiReference((options, context) =>
+            {
+                if (scalarSetting.ForceHttps)
+                {
+                    var serverUrl = UriHelper.BuildAbsolute(
+                        Uri.UriSchemeHttps,
+                        context.Request.Host,
+                        context.Request.PathBase);
+                    options.AddServer(serverUrl);
+                }
+            });
         }
         
         app.Use(async (context, next) =>
