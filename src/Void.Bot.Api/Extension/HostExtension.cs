@@ -7,6 +7,7 @@ using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using Serilog;
@@ -53,6 +54,11 @@ public static class HostExtension
         services.AddMemoryCache();
         services.AddHttpClient();
         services.AddHttpContextAccessor();
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                                       ForwardedHeaders.XForwardedProto;
+        });
         services.AddAuthentication("AuthenticationSchemes")
             .AddPolicyScheme("AuthenticationSchemes", "ApiKey or Jwt", options =>
             {
@@ -118,6 +124,8 @@ public static class HostExtension
     {
         var configuration = app.Configuration;
         var hangfireSetting = new HangfireSetting(configuration);
+
+        app.UseForwardedHeaders();
         
         if (AppSetting.EnableScalar)
         {
