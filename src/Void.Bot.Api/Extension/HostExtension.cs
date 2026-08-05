@@ -52,6 +52,8 @@ public static class HostExtension
         var hangfireSetting = new HangfireSetting(configuration);
         var connectionSetting = new ConnectionStringSetting(configuration);
         
+        services.AddMemoryCache();
+        services.AddHttpClient();
         services.AddHttpContextAccessor();
         services.Configure<ForwardedHeadersOptions>(options =>
         {
@@ -143,7 +145,16 @@ public static class HostExtension
             });
         }
         
-        app.UseHttpsRedirection();
+        app.Use(async (context, next) =>
+        {
+            if (ThirdPartyAuthenticationBase.IsAuthorizationPath(context.Request.Path))
+            {
+                context.Response.Headers["Referrer-Policy"] = "no-referrer";
+                context.Response.Headers.CacheControl = "no-store";
+            }
+
+            await next(context).ConfigureAwait(false);
+        });
         app.UseRouting();
         app.UseCors();
         app.UseAuthentication();

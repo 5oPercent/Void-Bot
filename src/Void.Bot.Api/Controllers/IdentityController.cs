@@ -43,6 +43,44 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
 
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("oauth/{platform}/authorize")]
+    public async Task<IActionResult> OAuthAuthorizeAsync(
+        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthAuthorizeCommand command)
+    {
+        command.Platform = platform;
+
+        var response = await _mediator.SendAsync<OAuthAuthorizeCommand, OAuthAuthorizeResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("oauth/{platform}/callback")]
+    public async Task<IActionResult> OAuthCallbackAsync(
+        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthCallbackCommand command)
+    {
+        command.Platform = platform;
+
+        var response = await _mediator.SendAsync<OAuthCallbackCommand, OAuthCallbackResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("oauth/{platform}/unlink")]
+    public async Task<IActionResult> OAuthUnlinkAsync(
+        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthUnlinkCommand command)
+    {
+        command.Platform = platform;
+
+        var response = await _mediator.SendAsync<OAuthUnlinkCommand, OAuthUnlinkResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
     [HttpGet]
     [Route("generate/url/steam")]
     public async Task<IActionResult> GenerateAuthenticateUrlFromSteam([FromQuery]GenerateAuthenticateUrlFromSteamRequest request)
