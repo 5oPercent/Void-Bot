@@ -1,12 +1,15 @@
 using Discord;
 using Discord.WebSocket;
+using Serilog;
 using Void.Bot.Core.Services.Discord.DataProvider;
+using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Discord;
+using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Request.Discord;
 
 namespace Void.Bot.Core.Services.Discord;
 
-public interface IDiscordService : IScope
+public partial interface IDiscordService : IScope
 {
     Task<DiscordStartBotResponse> StartAsync(DiscordStartBotRequest request, CancellationToken cancellationToken);
     
@@ -17,19 +20,32 @@ public interface IDiscordService : IScope
     Task ApplyGuildSlashCommandAsync(DiscordApplyGuildSlashCommandRequest request, CancellationToken cancellationToken);
 }
 
-public class DiscordService : IDiscordService
+public partial class DiscordService : IDiscordService
 {
     private readonly DiscordSetting _setting;
+    private readonly OAuthPlatformSetting _oauthSetting;
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
+    private readonly IVoidBotHttpClientFactory _httpClientFactory;
+    private readonly ILogger _logger;
     
     private readonly DiscordSocketClient _client;
 
-    public DiscordService(DiscordSetting setting, IDiscordDataProvider dataProvider, IDiscordSlashCommandRoute slashCommandRoute, DiscordSocketClient client)
+    public DiscordService(
+        DiscordSetting setting,
+        OAuthSetting oauthSetting,
+        IDiscordDataProvider dataProvider,
+        IDiscordSlashCommandRoute slashCommandRoute,
+        IVoidBotHttpClientFactory httpClientFactory,
+        ILogger logger,
+        DiscordSocketClient client)
     {
         _setting = setting;
+        _oauthSetting = oauthSetting.Discord;
         _dataProvider = dataProvider;
         _slashCommandRoute = slashCommandRoute; 
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
         _client = client;
     }
 

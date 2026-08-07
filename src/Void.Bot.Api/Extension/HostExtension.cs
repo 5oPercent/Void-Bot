@@ -7,6 +7,8 @@ using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Scalar.AspNetCore;
 using Serilog;
@@ -50,7 +52,14 @@ public static class HostExtension
         var hangfireSetting = new HangfireSetting(configuration);
         var connectionSetting = new ConnectionStringSetting(configuration);
         
+        services.AddMemoryCache();
+        services.AddHttpClient();
         services.AddHttpContextAccessor();
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor |
+                                       ForwardedHeaders.XForwardedProto;
+        });
         services.AddAuthentication("AuthenticationSchemes")
             .AddPolicyScheme("AuthenticationSchemes", "ApiKey or Jwt", options =>
             {
@@ -116,14 +125,36 @@ public static class HostExtension
     {
         var configuration = app.Configuration;
         var hangfireSetting = new HangfireSetting(configuration);
+        var scalarSetting = new ScalarSetting(configuration);
+
+        app.UseForwardedHeaders();
         
-        if (AppSetting.EnableScalar)
+        if (scalarSetting.Enable)
         {
             app.MapOpenApi();
-            app.MapScalarApiReference();
+            app.MapScalarApiReference((options, context) =>
+            {
+                if (scalarSetting.ForceHttps)
+                {
+                    var serverUrl = UriHelper.BuildAbsolute(
+                        Uri.UriSchemeHttps,
+                        context.Request.Host,
+                        context.Request.PathBase);
+                    options.AddServer(serverUrl);
+                }
+            });
         }
         
-        app.UseHttpsRedirection();
+        app.Use(async (context, next) =>
+        {
+            if (ThirdPartyAuthenticationBase.IsAuthorizationPath(context.Request.Path))
+            {
+                context.Response.Headers["Referrer-Policy"] = "no-referrer";
+                context.Response.Headers.CacheControl = "no-store";
+            }
+
+            await next(context).ConfigureAwait(false);
+        });
         app.UseRouting();
         app.UseCors();
         app.UseAuthentication();

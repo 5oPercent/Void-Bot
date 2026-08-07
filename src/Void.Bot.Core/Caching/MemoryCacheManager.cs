@@ -5,11 +5,29 @@ namespace Void.Bot.Core.Caching;
 
 public class MemoryCacheManager(IMemoryCache memoryCache) : ICacheManager
 {
+    private readonly object _takeLock = new();
+
     public Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class
     {
         memoryCache.TryGetValue<T>(key, out var result);
 
         return Task.FromResult(result);
+    }
+
+    public Task<T?> Take<T>(string key, CancellationToken cancellationToken = default) where T : class
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_takeLock)
+        {
+            if (!memoryCache.TryGetValue<T>(key, out var result))
+            {
+                return Task.FromResult<T?>(null);
+            }
+
+            memoryCache.Remove(key);
+            return Task.FromResult(result);
+        }
     }
 
     public Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default)

@@ -134,7 +134,20 @@ _NCrunch*
 
 .idea
 .vs
-.claude
+
+# AI tool folders
+.claude/
+.omo/
+.cursor/
+.windsurf/
+.gemini/
+.aider/
+**/.claude/
+**/.omo/
+**/.cursor/
+**/.windsurf/
+**/.gemini/
+**/.aider/
 
 appsettings.*.json
 
