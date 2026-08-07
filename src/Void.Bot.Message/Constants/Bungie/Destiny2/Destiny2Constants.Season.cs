@@ -2,6 +2,8 @@ namespace Void.Bot.Message.Constants.Bungie.Destiny2;
 
 public partial class Destiny2Constants
 {
+    public const string SeasonStatsCachePrefix = $"{Destiny2}:SeasonStats";
+
     public static readonly IReadOnlyDictionary<int, (DateTime StartDate, DateTime EndDate)> LegacySeasonDateRanges =
         new Dictionary<int, (DateTime StartDate, DateTime EndDate)>
         {
