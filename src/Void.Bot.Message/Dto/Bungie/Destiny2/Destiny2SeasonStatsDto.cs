@@ -59,6 +59,34 @@ internal static class Destiny2PlaytimeFormatter
     public static string Format(long seconds)
     {
         var playtime = TimeSpan.FromSeconds(Math.Max(0, seconds));
-        return $"{(long)playtime.TotalDays:D2} D {playtime.Hours:D2} H {playtime.Minutes:D2} M {playtime.Seconds:D2} S";
+        var days = (long)playtime.TotalDays;
+
+        if (days > 0)
+        {
+            var parts = new List<string> { $"{days}d" };
+            if (playtime.Hours > 0)
+                parts.Add($"{playtime.Hours}h");
+            if (playtime.Minutes > 0)
+                parts.Add($"{playtime.Minutes}m");
+            return string.Join(' ', parts);
+        }
+
+        if (playtime.Hours > 0)
+        {
+            var parts = new List<string> { $"{playtime.Hours}h" };
+            if (playtime.Minutes > 0)
+                parts.Add($"{playtime.Minutes}m");
+            return string.Join(' ', parts);
+        }
+
+        if (playtime.Minutes > 0)
+        {
+            var parts = new List<string> { $"{playtime.Minutes}m" };
+            if (playtime.Seconds > 0)
+                parts.Add($"{playtime.Seconds}s");
+            return string.Join(' ', parts);
+        }
+
+        return $"{playtime.Seconds}s";
     }
 }
