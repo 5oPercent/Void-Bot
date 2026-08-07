@@ -190,14 +190,13 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var embedSeason = embedBuilder.BuildWithFooter();
 
         const int seasonsPerEmbed = 20;
-        var playedSeasons = data.Seasons.Where(x => x.TotalPlaytimeSeconds > 0).ToList();
-        var historyEmbeds = playedSeasons
+        var historyEmbeds = data.Seasons
             .Chunk(seasonsPerEmbed)
             .Select((seasonChunk, index) =>
             {
                 var historyBuilder = new EmbedBuilder()
                     .WithColor(139, 139, 255)
-                    .WithTitle($"{seasonTitle} ({index + 1}/{(int)Math.Ceiling((double)playedSeasons.Count / seasonsPerEmbed)})");
+                    .WithTitle($"{seasonTitle} ({index + 1}/{(int)Math.Ceiling((double)data.Seasons.Count / seasonsPerEmbed)})");
 
                 foreach (var season in seasonChunk)
                 {
