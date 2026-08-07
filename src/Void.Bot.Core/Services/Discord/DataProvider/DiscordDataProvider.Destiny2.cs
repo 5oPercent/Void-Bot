@@ -134,6 +134,12 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default)
     {
         var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        var seasonTitleTemplate = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
+        var seasonTitle = string.Format(seasonTitleTemplate, "Destiny 2");
+        var dayUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeDayUnit, languageEnum);
+        var hourUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeHourUnit, languageEnum);
+        var minuteUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeMinuteUnit, languageEnum);
+        var secondUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeSecondUnit, languageEnum);
         
         if (!data.HasData)
         {
@@ -141,24 +147,47 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
             var noDataEmbed = new EmbedBuilder()
                 .WithColor(139, 139, 255)
-                .WithTitle(_languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum))
+                .WithTitle(seasonTitle)
                 .WithDescription(noDataText)
                 .BuildWithFooter();
             return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([noDataEmbed], new List<FileAttachment>()));
         }
 
-        var totalMinutes = data.TotalPlaytimeSeconds / 60;
-        var totalValue = totalMinutes >= 60
-            ? $"{totalMinutes / 60}h {totalMinutes % 60}m"
-            : $"{totalMinutes}m";
-
-        static string FormatPlaytime(long seconds)
+        string FormatPlaytime(long seconds)
         {
-            var minutes = seconds / 60;
-            return minutes >= 60
-                ? $"{minutes / 60}h {minutes % 60}m"
-                : $"{minutes}m";
+            var playtime = TimeSpan.FromSeconds(Math.Max(0, seconds));
+            var days = (long)playtime.TotalDays;
+
+            if (days > 0)
+            {
+                var parts = new List<string> { $"{days}{dayUnit}" };
+                if (playtime.Hours > 0)
+                    parts.Add($"{playtime.Hours}{hourUnit}");
+                if (playtime.Minutes > 0)
+                    parts.Add($"{playtime.Minutes}{minuteUnit}");
+                return string.Join(' ', parts);
+            }
+
+            if (playtime.Hours > 0)
+            {
+                var parts = new List<string> { $"{playtime.Hours}{hourUnit}" };
+                if (playtime.Minutes > 0)
+                    parts.Add($"{playtime.Minutes}{minuteUnit}");
+                return string.Join(' ', parts);
+            }
+
+            if (playtime.Minutes > 0)
+            {
+                var parts = new List<string> { $"{playtime.Minutes}{minuteUnit}" };
+                if (playtime.Seconds > 0)
+                    parts.Add($"{playtime.Seconds}{secondUnit}");
+                return string.Join(' ', parts);
+            }
+
+            return $"{playtime.Seconds}{secondUnit}";
         }
+
+        var totalValue = FormatPlaytime(data.TotalPlaytimeSeconds);
 
         var hunterValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter) is { } hunter
             ? FormatPlaytime(hunter.PlaytimeSeconds)
@@ -172,7 +201,6 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             ? FormatPlaytime(warlock.PlaytimeSeconds)
             : "N/A";
 
-        var seasonTitle = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
         var totalField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
         var hunterField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
         var titanField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
@@ -188,7 +216,35 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
         var embedSeason = embedBuilder.BuildWithFooter();
 
-        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([embedSeason], new List<FileAttachment>()));
+        const int seasonsPerEmbed = 20;
+        var historyEmbeds = data.Seasons
+            .Chunk(seasonsPerEmbed)
+            .Select((seasonChunk, index) =>
+            {
+                var historyBuilder = new EmbedBuilder()
+                    .WithColor(139, 139, 255)
+                    .WithTitle($"{seasonTitle} ({index + 1}/{(int)Math.Ceiling((double)data.Seasons.Count / seasonsPerEmbed)})");
+
+                foreach (var season in seasonChunk)
+                {
+                    var hunterSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter)?.PlaytimeSeconds ?? 0;
+                    var titanSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Titan)?.PlaytimeSeconds ?? 0;
+                    var warlockSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Warlock)?.PlaytimeSeconds ?? 0;
+                    var seasonName = string.IsNullOrWhiteSpace(season.Name) ? $"Season {season.SeasonNumber}" : season.Name;
+                    var seasonValue = $"{totalField}: `{FormatPlaytime(season.TotalPlaytimeSeconds)}`\n" +
+                                      $"{hunterField}: `{FormatPlaytime(hunterSeconds)}` · " +
+                                      $"{titanField}: `{FormatPlaytime(titanSeconds)}` · " +
+                                      $"{warlockField}: `{FormatPlaytime(warlockSeconds)}`";
+
+                    historyBuilder.AddField($"S{season.SeasonNumber} · {seasonName}", seasonValue);
+                }
+
+                return historyBuilder.BuildWithFooter();
+            })
+            .ToList();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(
+            ([embedSeason, .. historyEmbeds], new List<FileAttachment>()));
     }
 
 }
