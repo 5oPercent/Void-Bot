@@ -206,6 +206,15 @@ public partial class BungieService : IBungieService
         }
 
         var utcNow = DateTime.UtcNow;
+        foreach (var season in seasonManifest.Values)
+        {
+            if (!Destiny2Constants.LegacySeasonDateRanges.TryGetValue(season.SeasonNumber, out var dateRange))
+                continue;
+
+            season.StartDate = dateRange.StartDate;
+            season.EndDate = dateRange.EndDate;
+        }
+
         var seasons = seasonManifest.Values
             .Where(x => x.StartDate < x.EndDate && x.StartDate <= utcNow)
             .OrderBy(x => x.StartDate)
@@ -275,21 +284,25 @@ public partial class BungieService : IBungieService
             }
         }
 
-        var newHistories = missingCompletedSeasons.Select(season => new Destiny2SeasonHistory
-        {
-            Id = Guid.NewGuid(),
-            MembershipType = _playerData.PrimaryMembershipType,
-            MembershipId = _playerData.PrimaryMembershipId,
-            SeasonHash = season.Hash,
-            HunterSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Hunter],
-            TitanSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Titan],
-            WarlockSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Warlock]
-        }).ToList();
+        var newHistories = missingCompletedSeasons
+            .Select(season => new Destiny2SeasonHistory
+            {
+                Id = Guid.NewGuid(),
+                MembershipType = _playerData.PrimaryMembershipType,
+                MembershipId = _playerData.PrimaryMembershipId,
+                SeasonHash = season.Hash,
+                HunterSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Hunter],
+                TitanSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Titan],
+                WarlockSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Warlock]
+            })
+            .Where(x => x.HunterSeconds + x.TitanSeconds + x.WarlockSeconds > 0)
+            .ToList();
 
         await _dataProvider.SavePlayerSeasonHistoryToDatabaseAsync(newHistories, cancellationToken).ConfigureAwait(false);
         foreach (var history in newHistories)
             storedHistoryMap[history.SeasonHash] = history;
 
+        var currentSeasonHash = currentSeason?.Hash;
         var seasonStats = seasons
             .OrderByDescending(x => x.StartDate)
             .Select(season =>
@@ -327,6 +340,7 @@ public partial class BungieService : IBungieService
                     ]
                 };
             })
+            .Where(x => x.TotalPlaytimeSeconds > 0 || x.SeasonHash == currentSeasonHash)
             .ToList();
 
         response.Data = new Destiny2SeasonStatsDto
