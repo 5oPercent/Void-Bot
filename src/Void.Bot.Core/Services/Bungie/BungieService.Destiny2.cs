@@ -1,10 +1,14 @@
+using System.Collections.Concurrent;
 using System.Net;
+using Serilog;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
+using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -30,6 +34,8 @@ public partial interface IBungieService : IScope
 
 public partial class BungieService : IBungieService
 {
+    private static readonly ConcurrentDictionary<string, byte> ActiveSeasonCalculations = new();
+
     public async Task<GetDestiny2LinkedProfileResponse> GetDestiny2LinkedProfileAsync(
         GetDestiny2LinkedProfileRequest request, CancellationToken cancellationToken)
     {
@@ -120,6 +126,7 @@ public partial class BungieService : IBungieService
         GetDestiny2SeasonCommand command, CancellationToken cancellationToken)
     {
         const int activityPageSize = 250;
+        const int activityHistoryConcurrency = 3;
         var response = new GetDestiny2SeasonResponse();
 
         if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
@@ -147,6 +154,57 @@ public partial class BungieService : IBungieService
         {
             _logger.Information(
                 "Destiny 2 season playtime cache hit for {MembershipType}:{MembershipId}. SeasonCount: {SeasonCount}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, cached.Seasons.Count);
+            response.Data = cached;
+            response.Code = HttpStatusCode.OK;
+            response.Message = "Cached";
+            return response;
+        }
+
+        var lockKey = $"{cacheKey}:Lock";
+        if (!ActiveSeasonCalculations.TryAdd(lockKey, 0))
+        {
+            _logger.Information(
+                "Destiny 2 season playtime calculation is already in progress for {MembershipType}:{MembershipId}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId);
+            response.Code = HttpStatusCode.TooManyRequests;
+            response.Message = "Season playtime calculation is already in progress";
+            return response;
+        }
+
+        bool lockAcquired;
+        try
+        {
+            lockAcquired = await _cacheManager.TryLockAsync(
+                lockKey, TimeSpan.FromMinutes(10), cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            ActiveSeasonCalculations.TryRemove(lockKey, out _);
+            throw;
+        }
+
+        if (!lockAcquired)
+        {
+            ActiveSeasonCalculations.TryRemove(lockKey, out _);
+            _logger.Information(
+                "Destiny 2 season playtime calculation is already in progress for {MembershipType}:{MembershipId}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId);
+            response.Code = HttpStatusCode.TooManyRequests;
+            response.Message = "Season playtime calculation is already in progress";
+            return response;
+        }
+
+        await using var calculationLock = new Destiny2SeasonCalculationLock(
+            _cacheManager, _logger, lockKey,
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId);
+
+        cached = await _cacheManager.Get<Destiny2SeasonStatsDto>(cacheKey, cancellationToken).ConfigureAwait(false);
+        if (cached != null)
+        {
+            _logger.Information(
+                "Destiny 2 season playtime cache filled while waiting for calculation lock for " +
+                "{MembershipType}:{MembershipId}. SeasonCount: {SeasonCount}",
                 _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, cached.Seasons.Count);
             response.Data = cached;
             response.Code = HttpStatusCode.OK;
@@ -286,8 +344,16 @@ public partial class BungieService : IBungieService
         {
             var earliestRequiredDate = seasonsToCalculate.Min(x => x.StartDate);
 
-            foreach (var character in characterClassMap.Where(x => x.Value != Destiny2ClassEnum.Unknown))
+            async Task<(
+                string CharacterId,
+                Destiny2ClassEnum Class,
+                Dictionary<uint, long> Seconds,
+                int? FailedPage,
+                string? ErrorMessage)> CalculateCharacterActivityHistoryAsync(
+                KeyValuePair<string, Destiny2ClassEnum> character)
             {
+                var characterSeconds = seasonsToCalculate.ToDictionary(x => x.Hash, _ => 0L);
+
                 for (var page = 0; ; page++)
                 {
                     var activityResult = await _dataProvider.GetCharacterActivityHistoryAsync(
@@ -297,12 +363,12 @@ public partial class BungieService : IBungieService
 
                     if (activityResult is not { ErrorCode: 1 })
                     {
-                        _logger.Warning(
-                            "Failed to load Destiny 2 activity history for character {CharacterId}, page {Page}. Message: {Message}",
-                            character.Key, page, activityResult?.Message);
-                        response.Code = HttpStatusCode.BadRequest;
-                        response.Message = activityResult?.Message ?? "Failed to fetch activity history from Bungie API";
-                        return response;
+                        return (
+                            character.Key,
+                            character.Value,
+                            characterSeconds,
+                            page,
+                            activityResult?.Message ?? "Failed to fetch activity history from Bungie API");
                     }
 
                     var activities = activityResult.Response?.Activities ?? [];
@@ -315,12 +381,46 @@ public partial class BungieService : IBungieService
                             continue;
 
                         var durationSeconds = Math.Max(0, (long)(durationStat.Basic?.Value ?? 0));
-                        calculatedSeconds[season.Hash][character.Value] += durationSeconds;
+                        characterSeconds[season.Hash] += durationSeconds;
                     }
 
                     if (activities.Count < activityPageSize ||
                         activities.Min(x => x.Period.UtcDateTime) < earliestRequiredDate)
                         break;
+                }
+
+                return (character.Key, character.Value, characterSeconds, null, null);
+            }
+
+            var charactersToCalculate = characterClassMap
+                .Where(x => x.Value != Destiny2ClassEnum.Unknown)
+                .ToList();
+
+            _logger.Information(
+                "Loading Destiny 2 activity histories. CharacterCount: {CharacterCount}, MaxConcurrency: {MaxConcurrency}",
+                charactersToCalculate.Count, activityHistoryConcurrency);
+
+            foreach (var characterBatch in charactersToCalculate.Chunk(activityHistoryConcurrency))
+            {
+                var characterResults = await Task.WhenAll(
+                    characterBatch.Select(CalculateCharacterActivityHistoryAsync)).ConfigureAwait(false);
+                var failedResult = characterResults.FirstOrDefault(x => x.ErrorMessage != null);
+                if (failedResult.ErrorMessage != null)
+                {
+                    _logger.Warning(
+                        "Failed to load Destiny 2 activity history for character {CharacterId}, page {Page}. Message: {Message}",
+                        failedResult.CharacterId, failedResult.FailedPage, failedResult.ErrorMessage);
+                    response.Code = HttpStatusCode.BadRequest;
+                    response.Message = failedResult.ErrorMessage;
+                    return response;
+                }
+
+                foreach (var characterResult in characterResults)
+                {
+                    foreach (var seasonSeconds in characterResult.Seconds)
+                    {
+                        calculatedSeconds[seasonSeconds.Key][characterResult.Class] += seasonSeconds.Value;
+                    }
                 }
             }
         }
@@ -336,13 +436,12 @@ public partial class BungieService : IBungieService
                 TitanSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Titan],
                 WarlockSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Warlock]
             })
-            .Where(x => x.HunterSeconds + x.TitanSeconds + x.WarlockSeconds > 0)
             .ToList();
 
         await _dataProvider.SavePlayerSeasonHistoryToDatabaseAsync(newHistories, cancellationToken).ConfigureAwait(false);
 
         _logger.Information(
-            "Prepared {PersistedSeasonCount} non-empty completed Destiny 2 season histories for persistence",
+            "Prepared {PersistedSeasonCount} completed Destiny 2 season histories for persistence",
             newHistories.Count);
 
         foreach (var history in newHistories)
@@ -407,5 +506,33 @@ public partial class BungieService : IBungieService
             response.Data.Seasons.Count, response.Data.TotalPlaytimeSeconds);
 
         return response;
+    }
+
+    private sealed class Destiny2SeasonCalculationLock(
+        ICacheManager cacheManager,
+        ILogger logger,
+        string lockKey,
+        BungieMembershipTypeEnum membershipType,
+        string membershipId) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                await cacheManager.Remove(lockKey, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.Warning(
+                    ex,
+                    "Failed to release Destiny 2 season playtime calculation lock for " +
+                    "{MembershipType}:{MembershipId}",
+                    membershipType, membershipId);
+            }
+            finally
+            {
+                ActiveSeasonCalculations.TryRemove(lockKey, out _);
+            }
+        }
     }
 }
