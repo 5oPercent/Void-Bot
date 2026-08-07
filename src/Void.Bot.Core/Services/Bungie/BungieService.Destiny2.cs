@@ -136,11 +136,18 @@ public partial class BungieService : IBungieService
             return response;
         }
 
+        _logger.Information(
+            "Starting Destiny 2 season playtime query for {MembershipType}:{MembershipId}",
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId);
+
         var cacheKey = $"{Destiny2Constants.SeasonStatsCachePrefix}:" +
                        $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}";
         var cached = await _cacheManager.Get<Destiny2SeasonStatsDto>(cacheKey, cancellationToken).ConfigureAwait(false);
         if (cached != null)
         {
+            _logger.Information(
+                "Destiny 2 season playtime cache hit for {MembershipType}:{MembershipId}. SeasonCount: {SeasonCount}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, cached.Seasons.Count);
             response.Data = cached;
             response.Code = HttpStatusCode.OK;
             response.Message = "Cached";
@@ -153,6 +160,9 @@ public partial class BungieService : IBungieService
 
         if (charactersResult is not { ErrorCode: 1 })
         {
+            _logger.Warning(
+                "Failed to load Destiny 2 characters for {MembershipType}:{MembershipId}. Message: {Message}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, charactersResult?.Message);
             response.Code = HttpStatusCode.BadRequest;
             response.Message = charactersResult?.Message ?? "Failed to fetch profile data from Bungie API";
             return response;
@@ -161,11 +171,18 @@ public partial class BungieService : IBungieService
         var characterClassMap = charactersResult.Response.Characters.Data
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ClassType);
 
+        _logger.Information(
+            "Loaded {CharacterCount} Destiny 2 characters for season playtime query",
+            characterClassMap.Count);
+
         var accountStatsResult = await _dataProvider.GetAccountStatsAsync(
             _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, cancellationToken).ConfigureAwait(false);
 
         if (accountStatsResult is not { ErrorCode: 1 })
         {
+            _logger.Warning(
+                "Failed to load Destiny 2 account stats for {MembershipType}:{MembershipId}. Message: {Message}",
+                _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId, accountStatsResult?.Message);
             response.Code = HttpStatusCode.BadRequest;
             response.Message = accountStatsResult?.Message ?? "Failed to fetch playtime data from Bungie API";
             return response;
@@ -194,6 +211,10 @@ public partial class BungieService : IBungieService
 
         var totalPlaytimeSeconds = characterStats.Sum(c => c.PlaytimeSeconds);
 
+        _logger.Information(
+            "Loaded Destiny 2 lifetime playtime. CharacterCount: {CharacterCount}, TotalPlaytimeSeconds: {TotalPlaytimeSeconds}",
+            characterStats.Count, totalPlaytimeSeconds);
+
         var manifestLanguageCode = LanguageExtension.MapI18nCodeToEnum(_playerData.Language).ToI18nCode();
         var seasonJson = await _cacheManager.Get<string>(
             $"{Destiny2ManifestConstants.SeasonCacheKey}:{manifestLanguageCode}", cancellationToken).ConfigureAwait(false);
@@ -201,6 +222,9 @@ public partial class BungieService : IBungieService
 
         if (seasonManifest == null)
         {
+            _logger.Warning(
+                "Destiny 2 season manifest cache is unavailable for language {Language}",
+                manifestLanguageCode);
             response.Code = HttpStatusCode.ServiceUnavailable;
             response.Message = "Destiny 2 season manifest is unavailable";
             return response;
@@ -221,10 +245,18 @@ public partial class BungieService : IBungieService
             .OrderBy(x => x.StartDate)
             .ToList();
 
+        _logger.Information(
+            "Loaded Destiny 2 season manifest for {Language}. AvailableSeasonCount: {SeasonCount}",
+            manifestLanguageCode, seasons.Count);
+
         var storedHistories = await _dataProvider.GetPlayerSeasonHistoryByDatabaseAsync(
             _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
             cancellationToken).ConfigureAwait(false);
         var storedHistoryMap = storedHistories.ToDictionary(x => x.SeasonHash);
+
+        _logger.Information(
+            "Loaded {StoredSeasonCount} persisted Destiny 2 season histories for {MembershipType}:{MembershipId}",
+            storedHistoryMap.Count, _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId);
 
         var completedSeasons = seasons.Where(x => x.EndDate <= utcNow).ToList();
         var missingCompletedSeasons = completedSeasons
@@ -235,6 +267,11 @@ public partial class BungieService : IBungieService
         var seasonsToCalculate = missingCompletedSeasons.ToList();
         if (currentSeason != null)
             seasonsToCalculate.Add(currentSeason);
+
+        _logger.Information(
+            "Prepared Destiny 2 season aggregation. CompletedSeasonCount: {CompletedSeasonCount}, " +
+            "MissingCompletedSeasonCount: {MissingCompletedSeasonCount}, CurrentSeasonNumber: {CurrentSeasonNumber}",
+            completedSeasons.Count, missingCompletedSeasons.Count, currentSeason?.SeasonNumber);
 
         var calculatedSeconds = seasonsToCalculate.ToDictionary(
             x => x.Hash,
@@ -260,6 +297,9 @@ public partial class BungieService : IBungieService
 
                     if (activityResult is not { ErrorCode: 1 })
                     {
+                        _logger.Warning(
+                            "Failed to load Destiny 2 activity history for character {CharacterId}, page {Page}. Message: {Message}",
+                            character.Key, page, activityResult?.Message);
                         response.Code = HttpStatusCode.BadRequest;
                         response.Message = activityResult?.Message ?? "Failed to fetch activity history from Bungie API";
                         return response;
@@ -300,6 +340,11 @@ public partial class BungieService : IBungieService
             .ToList();
 
         await _dataProvider.SavePlayerSeasonHistoryToDatabaseAsync(newHistories, cancellationToken).ConfigureAwait(false);
+
+        _logger.Information(
+            "Prepared {PersistedSeasonCount} non-empty completed Destiny 2 season histories for persistence",
+            newHistories.Count);
+
         foreach (var history in newHistories)
             storedHistoryMap[history.SeasonHash] = history;
 
@@ -354,6 +399,12 @@ public partial class BungieService : IBungieService
         response.Message = "Success";
 
         await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
+
+        _logger.Information(
+            "Completed Destiny 2 season playtime query for {MembershipType}:{MembershipId}. " +
+            "ReturnedSeasonCount: {SeasonCount}, TotalPlaytimeSeconds: {TotalPlaytimeSeconds}",
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            response.Data.Seasons.Count, response.Data.TotalPlaytimeSeconds);
 
         return response;
     }
