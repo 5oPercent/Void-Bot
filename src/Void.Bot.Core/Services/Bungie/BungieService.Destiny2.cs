@@ -136,7 +136,8 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        var cacheKey = $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}:season";
+        var cacheKey = $"{Destiny2Constants.SeasonStatsCachePrefix}:" +
+                       $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}";
         var cached = await _cacheManager.Get<Destiny2SeasonStatsDto>(cacheKey, cancellationToken).ConfigureAwait(false);
         if (cached != null)
         {
