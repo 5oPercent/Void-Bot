@@ -134,6 +134,8 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default)
     {
         var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        var seasonTitleTemplate = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
+        var seasonTitle = string.Format(seasonTitleTemplate, "Destiny 2");
         
         if (!data.HasData)
         {
@@ -141,7 +143,7 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
             var noDataEmbed = new EmbedBuilder()
                 .WithColor(139, 139, 255)
-                .WithTitle(_languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum))
+                .WithTitle(seasonTitle)
                 .WithDescription(noDataText)
                 .BuildWithFooter();
             return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([noDataEmbed], new List<FileAttachment>()));
@@ -172,7 +174,6 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             ? FormatPlaytime(warlock.PlaytimeSeconds)
             : "N/A";
 
-        var seasonTitle = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
         var totalField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
         var hunterField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
         var titanField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
@@ -188,7 +189,36 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
         var embedSeason = embedBuilder.BuildWithFooter();
 
-        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([embedSeason], new List<FileAttachment>()));
+        const int seasonsPerEmbed = 20;
+        var playedSeasons = data.Seasons.Where(x => x.TotalPlaytimeSeconds > 0).ToList();
+        var historyEmbeds = playedSeasons
+            .Chunk(seasonsPerEmbed)
+            .Select((seasonChunk, index) =>
+            {
+                var historyBuilder = new EmbedBuilder()
+                    .WithColor(139, 139, 255)
+                    .WithTitle($"{seasonTitle} ({index + 1}/{(int)Math.Ceiling((double)playedSeasons.Count / seasonsPerEmbed)})");
+
+                foreach (var season in seasonChunk)
+                {
+                    var hunterSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter)?.PlaytimeSeconds ?? 0;
+                    var titanSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Titan)?.PlaytimeSeconds ?? 0;
+                    var warlockSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Warlock)?.PlaytimeSeconds ?? 0;
+                    var seasonName = string.IsNullOrWhiteSpace(season.Name) ? $"Season {season.SeasonNumber}" : season.Name;
+                    var seasonValue = $"{totalField}: `{FormatPlaytime(season.TotalPlaytimeSeconds)}`\n" +
+                                      $"{hunterField}: `{FormatPlaytime(hunterSeconds)}` · " +
+                                      $"{titanField}: `{FormatPlaytime(titanSeconds)}` · " +
+                                      $"{warlockField}: `{FormatPlaytime(warlockSeconds)}`";
+
+                    historyBuilder.AddField($"S{season.SeasonNumber} · {seasonName}", seasonValue);
+                }
+
+                return historyBuilder.BuildWithFooter();
+            })
+            .ToList();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(
+            ([embedSeason, .. historyEmbeds], new List<FileAttachment>()));
     }
 
 }

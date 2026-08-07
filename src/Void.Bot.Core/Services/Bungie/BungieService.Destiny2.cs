@@ -1,5 +1,10 @@
 using System.Net;
+using Void.Bot.Core.Domain.Destiny2;
+using Void.Bot.Core.Extension;
+using Void.Bot.Message.Commands.Bungie.Destiny2;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
+using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -20,7 +25,7 @@ public partial interface IBungieService : IScope
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
     
     Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
-        GetDestiny2SeasonRequest request, CancellationToken cancellationToken);
+        GetDestiny2SeasonCommand command, CancellationToken cancellationToken);
 }
 
 public partial class BungieService : IBungieService
@@ -112,8 +117,9 @@ public partial class BungieService : IBungieService
     }
 
     public async Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
-        GetDestiny2SeasonRequest request, CancellationToken cancellationToken)
+        GetDestiny2SeasonCommand command, CancellationToken cancellationToken)
     {
+        const int activityPageSize = 250;
         var response = new GetDestiny2SeasonResponse();
 
         if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
@@ -123,10 +129,10 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        if (command.MembershipType != _playerData.PrimaryMembershipType)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform. Player's primary platform is {_playerData.PrimaryMembershipType}.";
+            response.Message = $"Not found Destiny 2 profile by {command.MembershipType} platform. Player's primary platform is {_playerData.PrimaryMembershipType}.";
             return response;
         }
 
@@ -164,16 +170,6 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        // 10. Handle no data case (D-03: hasData: false case)
-        if (accountStatsResult.Response.Characters == null)
-        {
-            response.Data = new Destiny2SeasonStatsDto();
-            response.Code = HttpStatusCode.OK;
-            response.Message = "No playtime data available";
-            return response;
-        }
-
-        // 11. Build per-character breakdown (SEAS-03 requirement)
         var characterStats = new List<CharacterPlaytimeDto>();
         var characters = accountStatsResult.Response.Characters ?? [];
 
@@ -184,10 +180,7 @@ public partial class BungieService : IBungieService
 
             var characterId = charData.CharacterId;
 
-            // Get classType from the profile mapping
             var classType = characterClassMap.TryGetValue(characterId, out var ct) ? ct : Destiny2ClassEnum.Unknown;
-
-            // Get playtime from merged stats
             var playtimeSeconds = (long)(charData.Merged?.AllTime?.SecondsPlayed?.Basic?.Value ?? 0);
 
             characterStats.Add(new CharacterPlaytimeDto
@@ -198,18 +191,153 @@ public partial class BungieService : IBungieService
             });
         }
 
-        // 12. Calculate total playtime
         var totalPlaytimeSeconds = characterStats.Sum(c => c.PlaytimeSeconds);
+
+        var manifestLanguageCode = LanguageExtension.MapI18nCodeToEnum(_playerData.Language).ToI18nCode();
+        var seasonJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.SeasonCacheKey}:{manifestLanguageCode}", cancellationToken).ConfigureAwait(false);
+        var seasonManifest = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
+
+        if (seasonManifest == null)
+        {
+            response.Code = HttpStatusCode.ServiceUnavailable;
+            response.Message = "Destiny 2 season manifest is unavailable";
+            return response;
+        }
+
+        var utcNow = DateTime.UtcNow;
+        var seasons = seasonManifest.Values
+            .Where(x => x.StartDate < x.EndDate && x.StartDate <= utcNow)
+            .OrderBy(x => x.StartDate)
+            .ToList();
+
+        var storedHistories = await _dataProvider.GetPlayerSeasonHistoryByDatabaseAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            cancellationToken).ConfigureAwait(false);
+        var storedHistoryMap = storedHistories.ToDictionary(x => x.SeasonHash);
+
+        var completedSeasons = seasons.Where(x => x.EndDate <= utcNow).ToList();
+        var missingCompletedSeasons = completedSeasons
+            .Where(x => !storedHistoryMap.ContainsKey(x.Hash))
+            .ToList();
+        var currentSeason = seasons.LastOrDefault(x => x.StartDate <= utcNow && utcNow < x.EndDate);
+
+        var seasonsToCalculate = missingCompletedSeasons.ToList();
+        if (currentSeason != null)
+            seasonsToCalculate.Add(currentSeason);
+
+        var calculatedSeconds = seasonsToCalculate.ToDictionary(
+            x => x.Hash,
+            _ => new Dictionary<Destiny2ClassEnum, long>
+            {
+                [Destiny2ClassEnum.Hunter] = 0,
+                [Destiny2ClassEnum.Titan] = 0,
+                [Destiny2ClassEnum.Warlock] = 0
+            });
+
+        if (seasonsToCalculate.Count > 0)
+        {
+            var earliestRequiredDate = seasonsToCalculate.Min(x => x.StartDate);
+
+            foreach (var character in characterClassMap.Where(x => x.Value != Destiny2ClassEnum.Unknown))
+            {
+                for (var page = 0; ; page++)
+                {
+                    var activityResult = await _dataProvider.GetCharacterActivityHistoryAsync(
+                        _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+                        character.Key, 0, activityPageSize, page,
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (activityResult is not { ErrorCode: 1 })
+                    {
+                        response.Code = HttpStatusCode.BadRequest;
+                        response.Message = activityResult?.Message ?? "Failed to fetch activity history from Bungie API";
+                        return response;
+                    }
+
+                    var activities = activityResult.Response?.Activities ?? [];
+                    foreach (var activity in activities)
+                    {
+                        var season = seasonsToCalculate.FirstOrDefault(x =>
+                            x.StartDate <= activity.Period.UtcDateTime && activity.Period.UtcDateTime < x.EndDate);
+                        if (season == null ||
+                            !activity.Values.TryGetValue("activityDurationSeconds", out var durationStat))
+                            continue;
+
+                        var durationSeconds = Math.Max(0, (long)(durationStat.Basic?.Value ?? 0));
+                        calculatedSeconds[season.Hash][character.Value] += durationSeconds;
+                    }
+
+                    if (activities.Count < activityPageSize ||
+                        activities.Min(x => x.Period.UtcDateTime) < earliestRequiredDate)
+                        break;
+                }
+            }
+        }
+
+        var newHistories = missingCompletedSeasons.Select(season => new Destiny2SeasonHistory
+        {
+            Id = Guid.NewGuid(),
+            MembershipType = _playerData.PrimaryMembershipType,
+            MembershipId = _playerData.PrimaryMembershipId,
+            SeasonHash = season.Hash,
+            HunterSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Hunter],
+            TitanSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Titan],
+            WarlockSeconds = calculatedSeconds[season.Hash][Destiny2ClassEnum.Warlock]
+        }).ToList();
+
+        await _dataProvider.SavePlayerSeasonHistoryToDatabaseAsync(newHistories, cancellationToken).ConfigureAwait(false);
+        foreach (var history in newHistories)
+            storedHistoryMap[history.SeasonHash] = history;
+
+        var seasonStats = seasons
+            .OrderByDescending(x => x.StartDate)
+            .Select(season =>
+            {
+                var classSeconds = calculatedSeconds.GetValueOrDefault(season.Hash);
+                storedHistoryMap.TryGetValue(season.Hash, out var storedHistory);
+
+                return new Destiny2SeasonPlaytimeDto
+                {
+                    SeasonHash = season.Hash,
+                    SeasonNumber = season.SeasonNumber,
+                    Name = season.DisplayProperties.Name,
+                    StartDate = season.StartDate,
+                    EndDate = season.EndDate,
+                    Classes =
+                    [
+                        new ClassPlaytimeDto
+                        {
+                            Class = Destiny2ClassEnum.Hunter,
+                            PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Hunter)
+                                ?? storedHistory?.HunterSeconds ?? 0
+                        },
+                        new ClassPlaytimeDto
+                        {
+                            Class = Destiny2ClassEnum.Titan,
+                            PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Titan)
+                                ?? storedHistory?.TitanSeconds ?? 0
+                        },
+                        new ClassPlaytimeDto
+                        {
+                            Class = Destiny2ClassEnum.Warlock,
+                            PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Warlock)
+                                ?? storedHistory?.WarlockSeconds ?? 0
+                        }
+                    ]
+                };
+            })
+            .ToList();
 
         response.Data = new Destiny2SeasonStatsDto
         {
             TotalPlaytimeSeconds = totalPlaytimeSeconds,
-            Characters = characterStats
+            Characters = characterStats,
+            Seasons = seasonStats
         };
         response.Code = HttpStatusCode.OK;
         response.Message = "Success";
 
-        // 14. Cache result with 5-minute TTL (D-04)
         await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken).ConfigureAwait(false);
 
         return response;

@@ -37,9 +37,11 @@ public partial interface IBungieDataProvider : IScope
         CancellationToken cancellationToken, string accessToken = "");
 
     Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(
-        string bungieMembershipId,
         BungieMembershipTypeEnum primaryMembershipType, string primaryMembershipId,
         CancellationToken cancellationToken);
+
+    Task SavePlayerSeasonHistoryToDatabaseAsync(
+        List<Destiny2SeasonHistory> seasonHistories, CancellationToken cancellationToken);
 }
 
 public partial class BungieDataProvider : IBungieDataProvider
@@ -149,13 +151,20 @@ public partial class BungieDataProvider : IBungieDataProvider
     }
 
     public async Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(
-        string bungieMembershipId,
         BungieMembershipTypeEnum primaryMembershipType, string primaryMembershipId,
         CancellationToken cancellationToken)
     {
         return await _seasonHistoryRepository.QueryNoTracking()
-            .Where(x => x.BungieId == bungieMembershipId)
             .Where(x => x.MembershipType == primaryMembershipType && x.MembershipId == primaryMembershipId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SavePlayerSeasonHistoryToDatabaseAsync(
+        List<Destiny2SeasonHistory> seasonHistories, CancellationToken cancellationToken)
+    {
+        if (seasonHistories.Count == 0)
+            return;
+
+        await _seasonHistoryRepository.InsertManyAsync(seasonHistories, cancellationToken).ConfigureAwait(false);
     }
 }
