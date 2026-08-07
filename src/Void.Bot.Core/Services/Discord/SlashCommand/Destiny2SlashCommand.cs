@@ -5,6 +5,7 @@ using Mediator.Net;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -116,8 +117,8 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             }
             case "赛季":
             {
-                var response = await mediator.RequestAsync<GetDestiny2SeasonRequest, GetDestiny2SeasonResponse>(
-                    new GetDestiny2SeasonRequest
+                var response = await mediator.SendAsync<GetDestiny2SeasonCommand, GetDestiny2SeasonResponse>(
+                    new GetDestiny2SeasonCommand
                     {
                         DisplayName = parts?[0] ?? string.Empty,
                         DisplayNameCode = parts?[1] ?? string.Empty,
@@ -138,7 +139,7 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
 
                 await commandCallback.ModifyOriginalResponseAsync(builder =>
                 {
-                    builder.Content = $"查询到 `{displayName}` 的本赛季游玩数据.";
+                    builder.Content = $"查询到 `{displayName}` 的赛季游玩数据.";
                     builder.Embeds = result.Embeds.ToArray();
                 }).ConfigureAwait(false);
                 break;

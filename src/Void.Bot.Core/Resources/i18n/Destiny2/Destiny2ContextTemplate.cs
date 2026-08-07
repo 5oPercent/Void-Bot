@@ -37,4 +37,12 @@ public class Destiny2ContextTemplate : IContextTemplate
     public string SeasonLatestTotalField { get; set; } = "总时长";
 
     public string SeasonNoData { get; set; } = "未查询到本赛季游玩数据";
+
+    public string PlaytimeDayUnit { get; set; } = "天";
+
+    public string PlaytimeHourUnit { get; set; } = "小时";
+
+    public string PlaytimeMinuteUnit { get; set; } = "分";
+
+    public string PlaytimeSecondUnit { get; set; } = "秒";
 }

@@ -6,18 +6,12 @@ using Void.Bot.Message.Enum.Bungie;
 namespace Void.Bot.Core.Domain.Destiny2;
 
 [Table("destiny2_season_history")]
-public class Destiny2SeasonHistory : IEntity<Guid>, IEntityCreated, IEntityModified
+public class Destiny2SeasonHistory : IEntity<Guid>, IEntityCreated
 {
     [Column("id")]
     public Guid Id { get; set; }
 
-    [Column("bungie_id")]
-    [StringLength(64)]
-    [Required]
-    public string BungieId { get; set; } = string.Empty;
-    
     [Column("membership_type")]
-    [StringLength(64)]
     [Required]
     public BungieMembershipTypeEnum MembershipType { get; set; } = BungieMembershipTypeEnum.None;
     
@@ -40,7 +34,4 @@ public class Destiny2SeasonHistory : IEntity<Guid>, IEntityCreated, IEntityModif
 
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; }
-
-    [Column("updated_at")]
-    public DateTimeOffset? UpdatedAt { get; set; }
 }

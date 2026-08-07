@@ -1,4 +1,5 @@
 using System.Net;
+using Serilog;
 using Void.Bot.Core.Caching;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Dto.Authorization;
@@ -28,15 +29,18 @@ public partial class BungieService : IBungieService
     private readonly IBungieDataProvider _dataProvider;
     private readonly Destiny2PlayerData _playerData;
     private readonly ICacheManager _cacheManager;
+    private readonly ILogger _logger;
 
     public BungieService(
         IBungieDataProvider dataProvider,
         Destiny2PlayerData playerData,
-        ICacheManager cacheManager)
+        ICacheManager cacheManager,
+        ILogger logger)
     {
         _dataProvider = dataProvider;
         _playerData = playerData;
         _cacheManager = cacheManager;
+        _logger = logger;
     }
     
     public string GenerateAuthenticateUrl(AuthorizationDto dto)

@@ -5,7 +5,7 @@ using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Message.Request.Bungie.Destiny2;
 
-public class GetDestiny2ProfileListByBungieNameRequest : IRequest, IRequestDestiny2ByPlayerNameCode
+public class GetDestiny2ProfileListByBungieNameRequest : IRequest, IRequestDestiny2ByPlayerNameCode, ILoadDestiny2Player
 {
     public string DisplayName { get; set; } = string.Empty;
     
