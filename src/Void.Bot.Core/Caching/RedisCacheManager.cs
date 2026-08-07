@@ -25,7 +25,7 @@ namespace Void.Bot.Core.Caching
         public async Task<T?> Get<T>(string key, CancellationToken cancellationToken = default) where T : class
         {
             var redisValue = await _database.StringGetAsync(key);
-            return redisValue.HasValue ? redisValue.ToString().DeserializeJson<T>() : null;
+            return redisValue.HasValue ? DeserializeValue<T>(redisValue) : null;
         }
 
         public async Task<T?> Take<T>(string key, CancellationToken cancellationToken = default) where T : class
@@ -36,12 +36,44 @@ namespace Void.Bot.Core.Caching
                     Array.Empty<RedisValue>())
                 .WaitAsync(cancellationToken);
 
-            return result.IsNull ? null : result.ToString()!.DeserializeJson<T>();
+            return result.IsNull ? null : DeserializeValue<T>((RedisValue)result);
         }
 
         public async Task Set(string key, object data, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
         {
-            await _database.StringSetAsync(key, data.SerializeJson(), expiry);
+            // JSON manifest components are already serialized strings and can be hundreds of MB.
+            // Serializing them again creates one enormous JSON string token, which exceeds
+            // System.Text.Json's supported token length. Store strings directly instead.
+            var value = data is string stringValue
+                ? (RedisValue)stringValue
+                : (RedisValue)data.SerializeJson();
+
+            await _database.StringSetAsync(key, value, expiry);
+        }
+
+        private static T? DeserializeValue<T>(RedisValue value) where T : class
+        {
+            var stringValue = value.ToString();
+            if (typeof(T) != typeof(string))
+            {
+                return stringValue.DeserializeJson<T>();
+            }
+
+            // Keep string values written by older versions readable. Previously all strings
+            // were JSON serialized, so their Redis representation starts with a quote.
+            if (stringValue.Length >= 2 && stringValue[0] == '"' && stringValue[^1] == '"')
+            {
+                try
+                {
+                    return (T?)(object?)stringValue.DeserializeJson<string>();
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // A raw string may legitimately start and end with quotes.
+                }
+            }
+
+            return (T)(object)stringValue;
         }
 
         public async Task Remove(string key, CancellationToken cancellationToken = default)
