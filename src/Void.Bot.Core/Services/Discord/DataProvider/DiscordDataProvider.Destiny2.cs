@@ -1,11 +1,13 @@
 using Discord;
 using SkiaSharp;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Enum.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.DataProvider;
 
@@ -13,6 +15,9 @@ public partial interface IDiscordDataProvider : IScope
 {
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2CareerAsync(
         Destiny2ProfileResponse data, CancellationToken cancellationToken = default);
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
+        Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
@@ -26,44 +31,52 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var globalDisplayName = $"{profileInfo.UserInfo.BungieGlobalDisplayName}#{profileInfo.UserInfo.BungieGlobalDisplayNameCode}";
         var targetPlatform = profileInfo.UserInfo.ApplicableMembershipTypes.Select(x => x.ToEnum<BungieMembershipTypeEnum>().ToString()).ToList();
         
+        var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        var manifestLanguageCode = languageEnum.ToI18nCode();
+        
         #region Embed
         
-        var seasonJson = await _cacheManager.Get<string>(Destiny2ManifestConstants.SeasonCacheKey+":zhchs", cancellationToken);
+        var seasonJson = await _cacheManager.Get<string>($"{Destiny2ManifestConstants.SeasonCacheKey}:{manifestLanguageCode}", cancellationToken);
         var seasonDict = seasonJson?.DeserializeJson<Destiny2ManifestSeasonDto>();
         var currentSeason = seasonDict?[profileInfo.CurrentSeasonHash.ToString()];
         
-        var seasonTimeRange = $"`{currentSeason?.StartDate.ToLocalTime()}` - `{currentSeason?.EndDate.ToLocalTime()}`";
-        var seasonDays = $"`{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}`";
-        var seasonRemainingDays = $"`{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}`";
-        
-        var currentSeasonContext = $"""
-                                    > 名称: `{currentSeason?.DisplayProperties.Name ?? "未知"}`
-                                    > 时间: {(currentSeason != null ? seasonTimeRange : "未知")}
-                                    > 天数: 剩余 {seasonRemainingDays} 天 | 总 {seasonDays} 天
-                                    > 光等上限: `{profileInfo.CurrentSeasonRewardPowerCap}`
-                                    """;
-        
-        var historyCareerContext = $"""
-                                    > 嘉奖得分: `{commendationInfo.TotalScore}`
-                                    > 生涯守护者等级: `{profileInfo.LifetimeHighestGuardianRank}`
-                                    > 赛季守护者等级: `{profileInfo.RenewedGuardianRank}`
-                                    > 最后上线: `{profileInfo.DateLastPlayed.ToLocalTime()}`
-                                    """;
+        var seasonTimeRange = $"{currentSeason?.StartDate.ToLocalTime()} - {currentSeason?.EndDate.ToLocalTime()}";
+        var seasonDays = $"{(int)(currentSeason?.EndDate.Subtract(currentSeason.StartDate).TotalDays ?? 0)}";
+        var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
 
+        var seasonContext = string.Format(
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonBody, languageEnum),
+            currentSeason?.DisplayProperties.Name ?? "???",
+            currentSeason != null ? seasonTimeRange : "???",
+            seasonRemainingDays, seasonDays,
+            profileInfo.CurrentSeasonRewardPowerCap);
+        
+        var careerContext = string.Format(
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerBody, languageEnum),
+            commendationInfo.TotalScore,
+            profileInfo.LifetimeHighestGuardianRank,
+            profileInfo.RenewedGuardianRank,
+            profileInfo.DateLastPlayed.ToLocalTime());
+
+        var careerTitle = string.Format(
+            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerTitle, languageEnum),
+            globalDisplayName);
+        
+        var careerField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerField, languageEnum);
+        var seasonField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonField, languageEnum);
+        
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)
-            .WithTitle($"{globalDisplayName} 的生涯信息")
-            .AddField("当前赛季", currentSeasonContext)
-            .AddField("历史生涯", historyCareerContext);
+            .WithTitle(careerTitle)
+            .AddField(careerField, seasonContext)
+            .AddField(seasonField, careerContext);
 
         if (currentSeason != null)
         {
             embedBuilder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{currentSeason.DisplayProperties.Icon}");
         }
-            
-        var embedCareer = embedBuilder
-                .WithFooter("By Void Bot")
-                .Build();
+        
+        var embedCareer = embedBuilder.BuildWithFooter();
         
         #endregion
         
@@ -116,4 +129,122 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         
         return ([embedCareer], [new FileAttachment(surface.ToStream(), "destiny2_career.png")]);
     }
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
+        Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default)
+    {
+        var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
+        var seasonTitleTemplate = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
+        var seasonTitle = string.Format(seasonTitleTemplate, "Destiny 2");
+        var dayUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeDayUnit, languageEnum);
+        var hourUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeHourUnit, languageEnum);
+        var minuteUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeMinuteUnit, languageEnum);
+        var secondUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeSecondUnit, languageEnum);
+        
+        if (!data.HasData)
+        {
+            var noDataText = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonNoData, languageEnum);
+
+            var noDataEmbed = new EmbedBuilder()
+                .WithColor(139, 139, 255)
+                .WithTitle(seasonTitle)
+                .WithDescription(noDataText)
+                .BuildWithFooter();
+            return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(([noDataEmbed], new List<FileAttachment>()));
+        }
+
+        string FormatPlaytime(long seconds)
+        {
+            var playtime = TimeSpan.FromSeconds(Math.Max(0, seconds));
+            var days = (long)playtime.TotalDays;
+
+            if (days > 0)
+            {
+                var parts = new List<string> { $"{days}{dayUnit}" };
+                if (playtime.Hours > 0)
+                    parts.Add($"{playtime.Hours}{hourUnit}");
+                if (playtime.Minutes > 0)
+                    parts.Add($"{playtime.Minutes}{minuteUnit}");
+                return string.Join(' ', parts);
+            }
+
+            if (playtime.Hours > 0)
+            {
+                var parts = new List<string> { $"{playtime.Hours}{hourUnit}" };
+                if (playtime.Minutes > 0)
+                    parts.Add($"{playtime.Minutes}{minuteUnit}");
+                return string.Join(' ', parts);
+            }
+
+            if (playtime.Minutes > 0)
+            {
+                var parts = new List<string> { $"{playtime.Minutes}{minuteUnit}" };
+                if (playtime.Seconds > 0)
+                    parts.Add($"{playtime.Seconds}{secondUnit}");
+                return string.Join(' ', parts);
+            }
+
+            return $"{playtime.Seconds}{secondUnit}";
+        }
+
+        var totalValue = FormatPlaytime(data.TotalPlaytimeSeconds);
+
+        var hunterValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter) is { } hunter
+            ? FormatPlaytime(hunter.PlaytimeSeconds)
+            : "N/A";
+
+        var titanValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Titan) is { } titan
+            ? FormatPlaytime(titan.PlaytimeSeconds)
+            : "N/A";
+
+        var warlockValue = data.Characters.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Warlock) is { } warlock
+            ? FormatPlaytime(warlock.PlaytimeSeconds)
+            : "N/A";
+
+        var totalField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
+        var hunterField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
+        var titanField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
+        var warlockField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.WarlockField, languageEnum);
+
+        var embedBuilder = new EmbedBuilder()
+            .WithColor(139, 139, 255)
+            .WithTitle(seasonTitle)
+            .AddField(totalField, totalValue)
+            .AddField(hunterField, hunterValue)
+            .AddField(titanField, titanValue)
+            .AddField(warlockField, warlockValue);
+
+        var embedSeason = embedBuilder.BuildWithFooter();
+
+        const int seasonsPerEmbed = 20;
+        var historyEmbeds = data.Seasons
+            .Chunk(seasonsPerEmbed)
+            .Select((seasonChunk, index) =>
+            {
+                var historyBuilder = new EmbedBuilder()
+                    .WithColor(139, 139, 255)
+                    .WithTitle($"{seasonTitle} ({index + 1}/{(int)Math.Ceiling((double)data.Seasons.Count / seasonsPerEmbed)})");
+
+                foreach (var season in seasonChunk)
+                {
+                    var hunterSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Hunter)?.PlaytimeSeconds ?? 0;
+                    var titanSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Titan)?.PlaytimeSeconds ?? 0;
+                    var warlockSeconds = season.Classes.FirstOrDefault(x => x.Class == Destiny2ClassEnum.Warlock)?.PlaytimeSeconds ?? 0;
+                    var seasonName = string.IsNullOrWhiteSpace(season.Name) ? $"Season {season.SeasonNumber}" : season.Name;
+                    var seasonValue = $"{totalField}: `{FormatPlaytime(season.TotalPlaytimeSeconds)}`\n" +
+                                      $"{hunterField}: `{FormatPlaytime(hunterSeconds)}` · " +
+                                      $"{titanField}: `{FormatPlaytime(titanSeconds)}` · " +
+                                      $"{warlockField}: `{FormatPlaytime(warlockSeconds)}`";
+
+                    historyBuilder.AddField($"S{season.SeasonNumber} · {seasonName}", seasonValue);
+                }
+
+                return historyBuilder.BuildWithFooter();
+            })
+            .ToList();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(
+            ([embedSeason, .. historyEmbeds], new List<FileAttachment>()));
+    }
+
 }

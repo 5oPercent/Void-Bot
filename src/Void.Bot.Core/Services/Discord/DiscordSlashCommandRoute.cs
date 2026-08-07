@@ -86,6 +86,8 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
             return;
         }
 
+        await callback.DeferAsync(slashCommand.Ephemeral).ConfigureAwait(false);
+
         var accountService = scope.ServiceProvider.GetRequiredService<IAccountService>();
         var userResponse = await accountService.GetUserAccountByThirdPartyAsync(
             new GetUserAccountByThirdPartyRequest

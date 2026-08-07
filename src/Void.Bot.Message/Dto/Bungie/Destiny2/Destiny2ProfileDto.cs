@@ -21,4 +21,9 @@ public class Destiny2ProfileDataDto
     /// 社交表扬
     /// </summary>
     public Destiny2ComponentSocialCommendationsDto ProfileCommendations { get; set; } = new();
+
+    /// <summary>
+    /// 角色
+    /// </summary>
+    public Destiny2ComponentCharactersDto Characters { get; set; } = new();
 }

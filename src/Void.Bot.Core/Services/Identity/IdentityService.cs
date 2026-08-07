@@ -185,11 +185,6 @@ public class IdentityService : IIdentityService
         {
             throw new Exception($"绑定{AppPlatformEnum.Bungie}失败, 未找到游戏平台信息.");
         }
-        
-        ThirdPartyBungieExtraDataDto extraData = new()
-        {
-            Profiles = profileResponse.Data.Response.Profiles
-        };
 
         await _accountService.LinkAccountFromThirdPartyAsync(
             new LinkUserAccountFromThirdPartyCommand
@@ -208,7 +203,7 @@ public class IdentityService : IIdentityService
                 RefreshTokenExpiresAt = string.IsNullOrEmpty(tokenResponse.Data.RefreshToken)
                     ? null
                     : DateTimeOffset.Now.AddSeconds(tokenResponse.Data.RefreshExpiresIn),
-                ExtraData = extraData.SerializeJson()
+                ExtraData = string.Empty
             }, cancellationToken).ConfigureAwait(false);
 
         _logger.Debug($"Void: {findVoidAccountResponse.Data.DisplayName}\n" +

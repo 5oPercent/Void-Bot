@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Api.Controllers;
@@ -43,6 +44,15 @@ public class Destiny2Controller : ControllerBase
     {
         var response = await _mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(request).ConfigureAwait(false);
         
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("player/season")]
+    public async Task<IActionResult> GetPlayerSeason([FromBody] GetDestiny2SeasonCommand command)
+    {
+        var response = await _mediator.SendAsync<GetDestiny2SeasonCommand, GetDestiny2SeasonResponse>(command).ConfigureAwait(false);
+
         return Ok(response);
     }
 }

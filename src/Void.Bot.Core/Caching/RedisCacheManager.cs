@@ -49,6 +49,11 @@ namespace Void.Bot.Core.Caching
             await _database.KeyDeleteAsync(key);
         }
 
+        public async Task<bool> TryLockAsync(string key, TimeSpan expiry, CancellationToken cancellationToken = default)
+        {
+            return await _database.StringSetAsync(key, "locked", expiry, When.NotExists);
+        }
+
         public async Task RemoveByPrefix(string pattern, CancellationToken cancellationToken = default)
         {
             var endpoints = _redisConnection.GetEndPoints();

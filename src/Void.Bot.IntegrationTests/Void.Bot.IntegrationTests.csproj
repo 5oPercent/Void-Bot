@@ -36,10 +36,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Middlewares\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Remove="appsettings.json" />
       <Content Include="appsettings.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -61,6 +61,17 @@ public class MemoryCacheManager(IMemoryCache memoryCache) : ICacheManager
         return Task.CompletedTask;
     }
 
+    public Task<bool> TryLockAsync(string key, TimeSpan expiry, CancellationToken cancellationToken = default)
+    {
+        if (memoryCache.TryGetValue<string>(key, out _))
+        {
+            return Task.FromResult(false);
+        }
+        
+        memoryCache.Set(key, "locked", expiry);
+        return Task.FromResult(true);
+    }
+
     public Task Clear(CancellationToken cancellationToken = default)
     {
         foreach (var key in GetKeys(memoryCache))

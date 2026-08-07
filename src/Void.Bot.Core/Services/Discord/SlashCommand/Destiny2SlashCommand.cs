@@ -1,19 +1,22 @@
 using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
+using Mediator.Net;
 using Void.Bot.Core.Extension;
-using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Constants.Bungie;
+using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscordDataProvider dataProvider) : IGuildSlashCommand
+public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvider dataProvider) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
-    
+
+    public bool Ephemeral => false;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("d2")
         .WithDescription("提供一系列 Destiny2 相关指令.")
@@ -22,12 +25,15 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
             .WithDescription("查询玩家生涯信息.")
             .WithType(ApplicationCommandOptionType.SubCommand)
             .AddDestinyPlayerOptions())
+        .AddOption(new SlashCommandOptionBuilder()
+            .WithName("赛季")
+            .WithDescription("查询赛季游玩时长.")
+            .WithType(ApplicationCommandOptionType.SubCommand)
+            .AddDestinyPlayerOptions())
         .Build();
     
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        await commandCallback.DeferAsync().ConfigureAwait(false);
-        
         var commandName = commandCallback.Data.Options.First().Name;
         var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
         var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
@@ -42,11 +48,14 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
             return;
         }
         
-        var profileResponse = await bungieService.GetDestiny2BaseProfileAsync(
+        var parts = findBungieName?.Split('#', StringSplitOptions.RemoveEmptyEntries);
+        
+        var profileResponse = await mediator.RequestAsync<GetDestiny2BaseProfileRequest, GetDestiny2BaseProfileResponse>(
             new GetDestiny2BaseProfileRequest
             {
-                FindBungieName = findBungieName ?? string.Empty,
-                MembershipType = findMembership ?? BungieMembershipTypeEnum.All
+                DisplayName = parts?[0] ?? string.Empty,
+                DisplayNameCode = parts?[1] ?? string.Empty,
+                MembershipType = findMembership ?? BungieMembershipTypeEnum.None
             }, cancellationToken).ConfigureAwait(false);
 
         if (profileResponse.Data == null)
@@ -78,11 +87,12 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
         {
             case "生涯":
             {
-                var response = await bungieService.GetDestiny2CareerAsync(
+                var response = await mediator.RequestAsync<GetDestiny2CareerRequest, GetDestiny2CareerResponse>(
                     new GetDestiny2CareerRequest
                     {
-                        MembershipType = membershipType,
-                        MembershipId = membershipId
+                        DisplayName = parts?[0] ?? string.Empty,
+                        DisplayNameCode = parts?[1] ?? string.Empty,
+                        MembershipType = membershipType
                     }, cancellationToken).ConfigureAwait(false);
                 
                 if (response.Data == null)
@@ -102,6 +112,35 @@ public partial class Destiny2SlashCommand(IBungieService bungieService, IDiscord
                     builder.Content = $"查询到 `{displayName}` 的生涯信息.";
                     builder.Embeds = result.Embeds.ToArray();
                     //builder.Attachments = result.Attachments;
+                }).ConfigureAwait(false);
+                break;
+            }
+            case "赛季":
+            {
+                var response = await mediator.SendAsync<GetDestiny2SeasonCommand, GetDestiny2SeasonResponse>(
+                    new GetDestiny2SeasonCommand
+                    {
+                        DisplayName = parts?[0] ?? string.Empty,
+                        DisplayNameCode = parts?[1] ?? string.Empty,
+                        MembershipType = membershipType
+                    }, cancellationToken).ConfigureAwait(false);
+
+                if (response.Data == null)
+                {
+                    await commandCallback.ModifyOriginalResponseAsync(builder =>
+                    {
+                        builder.Content = $"{response.Message}";
+                    }).ConfigureAwait(false);
+                    
+                    return;
+                }
+
+                var result = await dataProvider.GenerateDestiny2SeasonAsync(response.Data, cancellationToken).ConfigureAwait(false);
+
+                await commandCallback.ModifyOriginalResponseAsync(builder =>
+                {
+                    builder.Content = $"查询到 `{displayName}` 的赛季游玩数据.";
+                    builder.Embeds = result.Embeds.ToArray();
                 }).ConfigureAwait(false);
                 break;
             }

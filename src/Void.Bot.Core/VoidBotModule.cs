@@ -20,14 +20,18 @@ using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.MessageLogger;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
+using Void.Bot.Core.Middlewares.Preload;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
+using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services;
+using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Enum;
 
 using Module = Autofac.Module;
@@ -52,6 +56,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterAutoMapper(builder);
 
         RegisterDependency(builder);
+
+        RegisterContextTemplate(builder);
         
         RegisterCaching(builder);
 
@@ -61,6 +67,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         
         RegisterValidator(builder);
 
+        RegisterBungieData(builder);
+        
         RegisterDiscordBotClient(builder);
 
         RegisterJobs(builder);
@@ -109,11 +117,12 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         mediatorBuilder.RegisterHandlers(_assemblies);
         mediatorBuilder.ConfigureGlobalReceivePipe(p =>
         {
-            p.UseLogger();          // 统一日志记录
-            p.UseUnifyResponse();   // 统一响应
-            p.UseMessageValidator();// 消息验证
-            p.UseUnitOfWork();      // 事务处理
-            p.UseMessageLogging();  // 特殊标记日志记录
+            p.UseLogger();              // 统一日志记录
+            p.UseUnifyResponse();       // 统一响应
+            p.UseMessageValidator();    // 消息验证
+            p.UseLoadDestiny2Player();  // 预加载Bungie Player Data
+            p.UseUnitOfWork();          // 事务处理
+            p.UseMessageLogging();      // 特殊标记日志记录
         });
 
         builder.RegisterMediator(mediatorBuilder);
@@ -129,7 +138,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     private void RegisterDependency(ContainerBuilder builder)
     {
         var allServiceTypes = _assemblies.SelectMany(a => a.GetTypes())
-            .Where(t => t.IsClass && t.GetInterfaces().Any(i => i == typeof(IService)))
+            .Where(t => t.IsClass && !t.IsAbstract && t.GetInterfaces().Any(i => i == typeof(IService)))
             .ToList();
 
         foreach (var type in allServiceTypes)
@@ -145,6 +154,17 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
                 registration.InstancePerLifetimeScope();
             }
         }
+    }
+    
+    // 注册内容模板
+    private void RegisterContextTemplate(ContainerBuilder builder)
+    {
+        var contextTemplateTypes = _assemblies.SelectMany(a => a.GetTypes())
+            .Where(t => t.IsClass && t.GetInterfaces().Any(i => i == typeof(IContextTemplate)))
+            .Where(t => t.GetCustomAttribute<LanguageAttribute>() != null)
+            .ToArray();
+
+        builder.RegisterTypes(contextTemplateTypes).AsSelf().AsImplementedInterfaces().SingleInstance();
     }
     
     // 注册缓存
@@ -196,6 +216,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         builder.RegisterAssemblyTypes(_assemblies)
             .Where(t => t.IsClass && typeof(IFluentMessageValidator).IsAssignableFrom(t))
             .AsSelf().AsImplementedInterfaces();
+    }
+    
+    private void RegisterBungieData(ContainerBuilder builder)
+    {
+        builder.RegisterType<Destiny2PlayerData>().AsSelf().InstancePerLifetimeScope();
     }
     
     // 注册 Discord Bot 客户端

@@ -150,3 +150,5 @@ _NCrunch*
 **/.aider/
 
 appsettings.*.json
+
+.planning

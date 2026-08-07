@@ -1,4 +1,6 @@
 using System.Web;
+using Void.Bot.Core.Data;
+using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Bungie;
@@ -6,6 +8,7 @@ using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Dto.Bungie;
 using Void.Bot.Message.Dto.HttpClient;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Core.Services.Bungie;
 
@@ -18,6 +21,11 @@ public partial interface IBungieDataProvider : IScope
     Task<BungieApiGenerateTokenResponse?> GenerateTokenAsync(string oAuthCode, CancellationToken cancellationToken);
     
     Task<BungieApiGenerateTokenResponse?> RefreshTokenAsync(string token, CancellationToken cancellationToken);
+    
+    Task<BungieApiNetUserResponse?> GetNetUserAsync(string id, CancellationToken cancellationToken);
+    
+    Task<BungieApiMembershipsByIdResponse?> GetMembershipsByIdAsync(
+        BungieMembershipTypeEnum membershipType, string membershipId, CancellationToken cancellationToken);
 }
 
 public partial class BungieDataProvider : IBungieDataProvider
@@ -25,8 +33,12 @@ public partial class BungieDataProvider : IBungieDataProvider
     private readonly BungieSetting _setting;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
     private readonly Dictionary<string, string> _headers;
+    private readonly IRepository<Destiny2SeasonHistory> _seasonHistoryRepository;
     
-    public BungieDataProvider(BungieSetting setting, IVoidBotHttpClientFactory httpClientFactory)
+    public BungieDataProvider(
+        BungieSetting setting,
+        IVoidBotHttpClientFactory httpClientFactory,
+        IRepository<Destiny2SeasonHistory> seasonHistoryRepository)
     {
         _setting = setting;
         _httpClientFactory = httpClientFactory;
@@ -35,6 +47,8 @@ public partial class BungieDataProvider : IBungieDataProvider
         {
             ["X-API-Key"] = $"{_setting.ApiKey}"
         };
+        
+        _seasonHistoryRepository = seasonHistoryRepository;
     }
 
     public HttpClient GetBungieHttpClient(string token = "", TimeSpan? timeout = null, bool beginScope = false)
@@ -94,6 +108,34 @@ public partial class BungieDataProvider : IBungieDataProvider
         var response = await GetBungieHttpClient().PostAsync<BungieApiGenerateTokenResponse>(
             BungieConstants.RefreshTokenUrl, content, cancellationToken);
 
+        return response.Data;
+    }
+
+    public async Task<BungieApiNetUserResponse?> GetNetUserAsync(string id, CancellationToken cancellationToken)
+    {
+        var url = BungieConstants.NetUserUrl
+            .Replace("{id}", id, StringComparison.OrdinalIgnoreCase);
+        
+        var response = await GetBungieHttpClient().GetAsync<BungieApiNetUserResponse>(url, cancellationToken);
+        
+        return response.Data;
+    }
+
+    public async Task<BungieApiMembershipsByIdResponse?> GetMembershipsByIdAsync(
+        BungieMembershipTypeEnum membershipType, string membershipId, CancellationToken cancellationToken)
+    {
+        var dto = new BungieApiMembershipsByIdRequest
+        {
+            MembershipId = membershipId,
+            MembershipType = membershipType
+        };
+        
+        var url = BungieConstants.MembershipsUrl
+            .Replace("{membershipId}", membershipId, StringComparison.OrdinalIgnoreCase)
+            .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase);
+        
+        var response = await GetBungieHttpClient().GetAsync<BungieApiMembershipsByIdResponse>(url, cancellationToken);
+        
         return response.Data;
     }
 }

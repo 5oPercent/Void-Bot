@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
 public class StatusSlashCommand(DiscordSocketClient client) : IGlobalSlashCommand
 {
+    public bool Ephemeral => true;
+
     public SlashCommandProperties Command => new SlashCommandBuilder()
         .WithName("状态")
         .WithDescription("更改机器人线上状态.")
@@ -40,7 +42,7 @@ public class StatusSlashCommand(DiscordSocketClient client) : IGlobalSlashComman
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
         var content = commandCallback.Data.Options.FirstOrDefault(o => o.Name == "内容")?.Value.ToString();
-                
+        
         var action = commandCallback.Data.Options.FirstOrDefault(o => o.Name == "动作")!.Value;
         var activity = (long)action switch
         {
@@ -50,7 +52,7 @@ public class StatusSlashCommand(DiscordSocketClient client) : IGlobalSlashComman
             _ => new Game(content)
         };
         await client.SetActivityAsync(activity).ConfigureAwait(false);
-                
+        
         var status = commandCallback.Data.Options.FirstOrDefault(o => o.Name == "状态")!.Value;
         var userStatus = (long)status switch
         {
@@ -60,7 +62,10 @@ public class StatusSlashCommand(DiscordSocketClient client) : IGlobalSlashComman
             _ => UserStatus.Idle
         };
         await client.SetStatusAsync(userStatus).ConfigureAwait(false);
-                
-        await commandCallback.RespondAsync("更改状态完成!", ephemeral: true).ConfigureAwait(false);
+        
+        await commandCallback.ModifyOriginalResponseAsync(builder =>
+        {
+            builder.Content = "更改状态完成!";
+        }).ConfigureAwait(false);
     }
 }

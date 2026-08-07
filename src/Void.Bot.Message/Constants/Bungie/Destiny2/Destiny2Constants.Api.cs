@@ -11,4 +11,10 @@ public partial class Destiny2Constants
     public const string LinkedProfilesUrl = ProfileUrl + "/LinkedProfiles";
     
     public const string SearchPlayerProfileUrl = BaseUrl + "/SearchDestinyPlayerByBungieName/{membershipType}/";
+    
+    public const string AccountStatsUrl = BaseUrl + "/{membershipType}/Account/{membershipId}/Stats/";
+    
+    public const string CharacterStatsUrl = BaseUrl + "/{membershipType}/Account/{membershipId}/Character/{characterId}/Stats/";
+    
+    public const string CharacterActivityHistoryUrl = BaseUrl + "/{membershipType}/Account/{membershipId}/Character/{characterId}/Stats/Activities/";
 }

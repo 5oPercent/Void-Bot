@@ -14,5 +14,7 @@ public interface ICacheManager : IScope, IDisposable
     
     Task RemoveByPrefix(string pattern, CancellationToken cancellationToken = default);
     
+    Task<bool> TryLockAsync(string key, TimeSpan expiry, CancellationToken cancellationToken = default);
+    
     Task Clear(CancellationToken cancellationToken = default);
 }
