@@ -6,6 +6,7 @@ using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
+using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 
@@ -18,6 +19,9 @@ public partial interface IDiscordDataProvider : IScope
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
+        Destiny2WeaponGodRollListDto data, CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
@@ -247,4 +251,26 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             ([embedSeason, .. historyEmbeds], new List<FileAttachment>()));
     }
 
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
+        Destiny2WeaponGodRollListDto data, CancellationToken cancellationToken = default)
+    {
+        var embeds = data.Weapons.Take(10).Select(weapon =>
+        {
+            var matchedPerks = weapon.MatchedPerkSockets
+                .OrderBy(socket => socket.SocketIndex)
+                .Select(socket =>
+                    $"**插槽 {socket.SocketIndex}**：{string.Join(" / ", socket.Perks.Select(perk => perk.Name))}");
+            var builder = new EmbedBuilder()
+                .WithColor(139, 139, 255)
+                .WithTitle(weapon.Name)
+                .WithDescription($"{weapon.WeaponType.Name}\n{string.Join('\n', matchedPerks)}");
+            if (!string.IsNullOrWhiteSpace(weapon.Icon))
+                builder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{weapon.Icon}");
+
+            return builder.BuildWithFooter();
+        }).ToList();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(
+            (embeds, []));
+    }
 }
