@@ -342,7 +342,11 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             PerkHash = item.Hash,
             Name = item.Name,
             Description = item.Description,
-            Icon = item.Icon
+            Icon = item.Icon,
+            IsEnhanced = string.Equals(
+                item.PlugCategoryIdentifier,
+                "enhanced_traits",
+                StringComparison.OrdinalIgnoreCase)
         };
     }
 
