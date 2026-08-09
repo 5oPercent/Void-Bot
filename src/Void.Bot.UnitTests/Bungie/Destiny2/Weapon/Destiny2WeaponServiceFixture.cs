@@ -279,7 +279,7 @@ public class Destiny2WeaponServiceFixture
         response.Data.Weapons.Count.ShouldBe(1);
         var weapon = response.Data.Weapons.Single();
         weapon.WeaponHash.ShouldBe(100u);
-        weapon.MatchedPerkSockets.Select(socket => socket.SocketIndex).ShouldBe([0, 1]);
+        weapon.MatchedPerkSockets.Select(socket => socket.SocketIndex).ShouldBe([1, 2]);
         weapon.MatchedPerkSockets.SelectMany(socket => socket.Perks).Select(perk => perk.PerkHash)
             .ShouldBe([20u, 22u]);
         var responseJson = JsonSerializer.Serialize(response).ToLowerInvariant();
