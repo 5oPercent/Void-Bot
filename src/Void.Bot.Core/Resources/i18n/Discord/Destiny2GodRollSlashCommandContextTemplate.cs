@@ -7,7 +7,7 @@ public class Destiny2GodRollSlashCommandContextTemplate : IContextTemplate
 {
     public string CommandDescription { get; set; } = "按照 Perk 条件筛选 God Roll 武器.";
 
-    public string WeaponTypeOptionDescription { get; set; } = "可选；不提供则筛选全部武器类型.";
+    public string WeaponTypeOptionDescription { get; set; } = "选择要筛选的武器类型.";
 
     public string PerkOptionDescription { get; set; } = "第 {0} 组 Perk 名称或 Hash，多个值用逗号分隔.";
 

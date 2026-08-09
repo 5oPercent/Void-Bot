@@ -350,7 +350,7 @@ public partial class Destiny2SlashCommand(
             .WithDescription(weaponTypeDescriptions["zh-CN"])
             .WithDescriptionLocalizations(weaponTypeDescriptions)
             .WithType(ApplicationCommandOptionType.Integer)
-            .WithRequired(false);
+            .WithRequired(true);
         var weaponTypeNames = new Dictionary<Destiny2ItemSubTypeEnum, Expression<Func<Destiny2WeaponContextTemplate, object>>>
         {
             [Destiny2ItemSubTypeEnum.AutoRifle] = context => context.AutoRifle,
@@ -382,13 +382,13 @@ public partial class Destiny2SlashCommand(
             .WithDescription(commandDescriptions["zh-CN"])
             .WithDescriptionLocalizations(commandDescriptions)
             .WithType(ApplicationCommandOptionType.SubCommand)
+            .AddOption(weaponType)
             .AddOption(new SlashCommandOptionBuilder()
-                .WithName("perks")
+                .WithName("perks1")
                 .WithDescription(firstPerkDescriptions["zh-CN"])
                 .WithDescriptionLocalizations(firstPerkDescriptions)
                 .WithType(ApplicationCommandOptionType.String)
-                .WithRequired(true))
-            .AddOption(weaponType);
+                .WithRequired(true));
         for (var index = 2; index <= 3; index++)
         {
             var descriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, index);
