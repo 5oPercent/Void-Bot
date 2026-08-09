@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using Discord;
 using Discord.WebSocket;
 using Mediator.Net;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Resources.i18n.Destiny2;
@@ -22,7 +23,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 public partial class Destiny2SlashCommand(
     IMediator mediator,
     IDiscordDataProvider dataProvider,
-    ILanguageService languageService) : IGlobalSlashCommand
+    ILanguageService languageService,
+    ICacheManager cacheManager) : IGlobalSlashCommand
 {
     public bool Ephemeral => false;
 
@@ -279,13 +281,35 @@ public partial class Destiny2SlashCommand(
             return;
         }
 
-        var result = await dataProvider.GenerateDestiny2GodRollAsync(response.Data, cancellationToken).ConfigureAwait(false);
+        var result = await dataProvider.GenerateDestiny2GodRollAsync(
+            response.Data,
+            pageSize: DiscordGodRollPaginationRoute.PageSize,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        var pageCount = DiscordGodRollPaginationRoute.GetPageCount(response.Data.Weapons.Count);
+        var content = Localize(context => context.MatchingWeaponsResponse, response.Data.Weapons.Count);
+        string? paginationId = null;
+        if (pageCount > 1)
+        {
+            paginationId = Guid.NewGuid().ToString("N");
+            await cacheManager.Set(
+                DiscordGodRollPaginationRoute.GetCacheKey(paginationId),
+                new DiscordGodRollPaginationState
+                {
+                    Data = response.Data,
+                    Content = content
+                },
+                TimeSpan.FromMinutes(15),
+                cancellationToken).ConfigureAwait(false);
+        }
+
         await commandCallback.ModifyOriginalResponseAsync(builder =>
         {
-            builder.Content = response.Data.Weapons.Count > result.Embeds.Count
-                ? Localize(context => context.MatchingWeaponsTruncatedResponse, response.Data.Weapons.Count, result.Embeds.Count)
-                : Localize(context => context.MatchingWeaponsResponse, response.Data.Weapons.Count);
+            builder.Content = DiscordGodRollPaginationRoute.FormatContent(content, 0, pageCount);
             builder.Embeds = result.Embeds.ToArray();
+            if (paginationId != null)
+            {
+                builder.Components = DiscordGodRollPaginationRoute.BuildComponents(paginationId, 0, pageCount);
+            }
         }).ConfigureAwait(false);
     }
 

@@ -21,7 +21,10 @@ public partial interface IDiscordDataProvider : IScope
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
-        Destiny2WeaponGodRollListDto data, CancellationToken cancellationToken = default);
+        Destiny2WeaponGodRollListDto data,
+        int pageIndex = 0,
+        int pageSize = 5,
+        CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
@@ -252,14 +255,24 @@ public partial class DiscordDataProvider : IDiscordDataProvider
     }
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
-        Destiny2WeaponGodRollListDto data, CancellationToken cancellationToken = default)
+        Destiny2WeaponGodRollListDto data,
+        int pageIndex = 0,
+        int pageSize = 5,
+        CancellationToken cancellationToken = default)
     {
-        var embeds = data.Weapons.Take(10).Select(weapon =>
+        var embeds = data.Weapons.Skip(pageIndex * pageSize).Take(pageSize).Select(weapon =>
         {
             var matchedPerks = weapon.MatchedPerkSockets
                 .OrderBy(socket => socket.SocketIndex)
                 .Select(socket =>
-                    $"**插槽 {socket.SocketIndex}**：{string.Join(" / ", socket.Perks.Select(perk => perk.Name))}");
+                {
+                    var perkNames = socket.Perks
+                        .GroupBy(perk => perk.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => group.Any(perk => perk.IsEnhanced)
+                            ? $"{group.First().Name} & 强化"
+                            : group.First().Name);
+                    return $"**插槽 {socket.SocketIndex}**：{string.Join(" / ", perkNames)}";
+                });
             var builder = new EmbedBuilder()
                 .WithColor(139, 139, 255)
                 .WithTitle(weapon.Name)
