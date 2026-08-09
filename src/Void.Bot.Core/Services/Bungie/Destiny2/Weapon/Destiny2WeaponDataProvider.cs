@@ -305,23 +305,29 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var plugSetTask = _cacheManager.Get<string>(
                 $"{Destiny2ManifestConstants.PlugSetCacheKey}:{language}",
                 cancellationToken);
-            await Task.WhenAll(inventoryTask, plugSetTask).ConfigureAwait(false);
+            var seasonTask = _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.SeasonCacheKey}:{language}",
+                cancellationToken);
+            await Task.WhenAll(inventoryTask, plugSetTask, seasonTask).ConfigureAwait(false);
 
             var inventoryJson = await inventoryTask.ConfigureAwait(false);
             var plugSetJson = await plugSetTask.ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(inventoryJson) || string.IsNullOrWhiteSpace(plugSetJson))
+            var seasonJson = await seasonTask.ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(inventoryJson) || string.IsNullOrWhiteSpace(plugSetJson) ||
+                string.IsNullOrWhiteSpace(seasonJson))
             {
                 _logger.Warning(
-                    "Destiny 2 weapon manifest cache is unavailable. Language: {Language}, InventoryItemAvailable: {InventoryItemAvailable}, PlugSetAvailable: {PlugSetAvailable}",
+                    "Destiny 2 weapon manifest cache is unavailable. Language: {Language}, InventoryItemAvailable: {InventoryItemAvailable}, PlugSetAvailable: {PlugSetAvailable}, SeasonAvailable: {SeasonAvailable}",
                     language,
                     !string.IsNullOrWhiteSpace(inventoryJson),
-                    !string.IsNullOrWhiteSpace(plugSetJson));
+                    !string.IsNullOrWhiteSpace(plugSetJson),
+                    !string.IsNullOrWhiteSpace(seasonJson));
                 return false;
             }
 
             var weaponTypes = BuildWeaponTypeData(inventoryJson)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
-            var rollData = BuildRollData(inventoryJson, plugSetJson);
+            var rollData = BuildRollData(inventoryJson, plugSetJson, seasonJson);
             var typeData = new Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeRollDataDto>();
             foreach (var weaponType in weaponTypes)
             {
@@ -453,9 +459,11 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     internal static Destiny2WeaponRollDataDto BuildRollData(
         string inventoryItemJson,
-        string plugSetJson)
+        string plugSetJson,
+        string seasonJson)
     {
         var plugSets = ParsePlugSets(plugSetJson);
+        var seasons = ParseSeasons(seasonJson);
         using var inventoryDocument = JsonDocument.Parse(inventoryItemJson);
         if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
@@ -471,7 +479,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 referencedItemHashes.UnionWith(perkSocket.PerkHashes);
         }
 
-        var items = BuildItems(inventoryDocument.RootElement, referencedItemHashes);
+        var items = BuildItems(inventoryDocument.RootElement, referencedItemHashes, seasons);
         var weapons = BuildWeapons(weaponCandidates, items);
         var weaponTypes = BuildWeaponTypes(weapons);
         var perkVariantGroups = new Dictionary<uint, HashSet<uint>>();
@@ -639,6 +647,29 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         return result;
     }
 
+    private static Dictionary<uint, (int Number, string Name)> ParseSeasons(string seasonJson)
+    {
+        using var document = JsonDocument.Parse(seasonJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException("DestinySeasonDefinition must be a JSON object");
+
+        var result = new Dictionary<uint, (int Number, string Name)>();
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var definition = property.Value;
+            var hash = definition.ReadHash(property.Name);
+            if (hash == 0)
+                continue;
+
+            var displayProperties = definition.TryGetProperty("displayProperties", out var display)
+                ? display
+                : default;
+            result[hash] = (definition.ReadInt32("seasonNumber"), displayProperties.ReadString("name"));
+        }
+
+        return result;
+    }
+
     private static List<PerkSocketCandidate> ParsePerkSockets(
         JsonElement sockets,
         IReadOnlyDictionary<uint, HashSet<uint>> plugSets)
@@ -706,7 +737,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Dictionary<uint, Destiny2WeaponItemDataDto> BuildItems(
         JsonElement inventoryRoot,
-        IReadOnlySet<uint> referencedItemHashes)
+        IReadOnlySet<uint> referencedItemHashes,
+        IReadOnlyDictionary<uint, (int Number, string Name)> seasons)
     {
         var result = new Dictionary<uint, Destiny2WeaponItemDataDto>();
 
@@ -726,6 +758,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var plugCategoryIdentifier = definition.TryGetProperty("plug", out var plug)
                 ? plug.ReadString("plugCategoryIdentifier")
                 : string.Empty;
+            var seasonHash = definition.ReadUInt32("seasonHash");
+            seasons.TryGetValue(seasonHash, out var season);
 
             result[hash] = new Destiny2WeaponItemDataDto
             {
@@ -733,7 +767,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 Name = displayProperties.ReadString("name"),
                 Description = displayProperties.ReadString("description"),
                 Icon = displayProperties.ReadString("icon"),
-                AcquisitionSource = definition.ReadString("displaySource").Trim(),
+                SeasonHash = seasonHash,
+                SeasonNumber = season.Number,
+                SeasonName = season.Name ?? string.Empty,
                 PlugCategoryIdentifier = plugCategoryIdentifier
             };
         }
