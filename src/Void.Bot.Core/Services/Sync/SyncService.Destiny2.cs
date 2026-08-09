@@ -146,7 +146,8 @@ public partial class SyncService : ISyncService
         }
 
         if (successfulComponents.Contains(Destiny2ManifestConstants.InventoryItem) ||
-            successfulComponents.Contains(Destiny2ManifestConstants.PlugSet))
+            successfulComponents.Contains(Destiny2ManifestConstants.PlugSet) ||
+            successfulComponents.Contains(Destiny2ManifestConstants.Season))
         {
             await _weaponDataProvider.RefreshAsync(language, cancellationToken).ConfigureAwait(false);
         }

@@ -51,6 +51,8 @@ public class Destiny2WeaponDataProviderCacheFixture
             CancellationToken.None);
 
         rollData.ShouldNotBeNull();
+        rollData.Items[100].SeasonHash.ShouldBe(900u);
+        rollData.Items[100].SeasonNumber.ShouldBe(23);
         rollData.WeaponTypes.Keys.ShouldBe([Destiny2ItemSubTypeEnum.AutoRifle]);
         rollData.Weapons.Keys.ShouldBe([100u]);
         rollData.PerkVariantGroups[20].Order().ShouldBe([20u, 24u]);
