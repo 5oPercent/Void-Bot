@@ -18,7 +18,7 @@ public class SynchronizeDestiny2ManifestJob(IMediator mediator, Destiny2Setting 
             {
                 Languages = destiny2Setting.SyncLanguages,
                 Components = destiny2Setting.SyncManifests,
-                ForceSync = true
+                ForceSync = false
             }).ConfigureAwait(false);
     }
 }
