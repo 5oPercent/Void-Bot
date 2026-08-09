@@ -65,7 +65,15 @@ public class Destiny2WeaponDataProviderCacheFixture
             "en",
             [Destiny2ItemSubTypeEnum.AutoRifle],
             CancellationToken.None);
-        cache.ReadKeys.ShouldBe([Destiny2ManifestConstants.VersionCacheKey]);
+        cache.ReadKeys.ShouldBe([
+            Destiny2ManifestConstants.VersionCacheKey,
+            Destiny2WeaponCacheConstants.GetTypesKey(Version, "en"),
+            Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(Version, "en"),
+            Destiny2WeaponCacheConstants.GetWeaponTypeKey(
+                Version,
+                "en",
+                (int)Destiny2ItemSubTypeEnum.AutoRifle)
+        ]);
     }
 
     private static Destiny2WeaponDataProvider CreateProvider(ICacheManager cacheManager)
