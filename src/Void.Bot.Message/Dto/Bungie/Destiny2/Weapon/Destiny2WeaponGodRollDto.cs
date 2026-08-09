@@ -15,5 +15,9 @@ public class Destiny2WeaponGodRollDto
 
     public Destiny2WeaponTypeReferenceDto WeaponType { get; set; } = new();
 
+    public Destiny2WeaponFrameReferenceDto Frame { get; set; } = new();
+
+    public int RoundsPerMinute { get; set; }
+
     public List<Destiny2WeaponMatchedPerkSocketDto> MatchedPerkSockets { get; set; } = [];
 }

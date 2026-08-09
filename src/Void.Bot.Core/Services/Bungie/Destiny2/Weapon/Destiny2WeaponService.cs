@@ -214,6 +214,8 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 Description = weaponItem.Description,
                 Icon = weaponItem.Icon,
                 WeaponType = MapWeaponTypeReference(weaponType),
+                Frame = MapWeaponFrameReference(rollData.Items, weapon.FrameHash),
+                RoundsPerMinute = weapon.RoundsPerMinute,
                 MatchedPerkSockets = matchedPerkSockets
             });
         }
@@ -332,6 +334,21 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         {
             WeaponType = weaponType.WeaponType,
             Name = weaponType.Name
+        };
+    }
+
+    private static Destiny2WeaponFrameReferenceDto MapWeaponFrameReference(
+        IReadOnlyDictionary<uint, Destiny2WeaponItemDataDto> items,
+        uint frameHash)
+    {
+        if (frameHash == 0 || !items.TryGetValue(frameHash, out var frame))
+            return new Destiny2WeaponFrameReferenceDto();
+
+        return new Destiny2WeaponFrameReferenceDto
+        {
+            FrameHash = frameHash,
+            Name = frame.Name,
+            Description = frame.Description
         };
     }
 
