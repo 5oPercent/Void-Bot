@@ -69,9 +69,10 @@ public partial class DiscordService : IDiscordService
 
     public async Task ApplyGlobalSlashCommandAsync(DiscordApplyGlobalSlashCommandRequest request ,CancellationToken cancellationToken)
     {
-        var properties = new List<ApplicationCommandProperties>(_slashCommandRoute.GetGlobalCommands());
-        
-        await _client.BulkOverwriteGlobalApplicationCommandsAsync(properties.ToArray()).ConfigureAwait(false);
+        var commands = _slashCommandRoute.GetGlobalCommands().Cast<ApplicationCommandProperties>().ToArray();
+        var requestOptions = new RequestOptions { CancelToken = cancellationToken };
+
+        await _client.BulkOverwriteGlobalApplicationCommandsAsync(commands, requestOptions).ConfigureAwait(false);
     }
     
     public async Task ApplyGuildSlashCommandAsync(DiscordApplyGuildSlashCommandRequest request, CancellationToken cancellationToken)
@@ -79,11 +80,9 @@ public partial class DiscordService : IDiscordService
         var guild = _client.GetGuild(request.GuildId);
         if (guild == null) return;
 
-        var guildCommands = _slashCommandRoute.GetGuildCommands([request.GuildId]);
+        var commands = _slashCommandRoute.GetGuildCommands([request.GuildId]).Cast<ApplicationCommandProperties>().ToArray();
+        var requestOptions = new RequestOptions { CancelToken = cancellationToken };
 
-        foreach (var command in guildCommands)
-        {
-            await guild.CreateApplicationCommandAsync(command).ConfigureAwait(false);
-        }
+        await guild.BulkOverwriteApplicationCommandAsync(commands, requestOptions).ConfigureAwait(false);
     }
 }
