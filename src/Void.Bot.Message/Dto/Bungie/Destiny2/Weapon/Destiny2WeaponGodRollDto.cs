@@ -19,5 +19,7 @@ public class Destiny2WeaponGodRollDto
 
     public int RoundsPerMinute { get; set; }
 
+    public string AcquisitionSource { get; set; } = string.Empty;
+
     public List<Destiny2WeaponMatchedPerkSocketDto> MatchedPerkSockets { get; set; } = [];
 }
