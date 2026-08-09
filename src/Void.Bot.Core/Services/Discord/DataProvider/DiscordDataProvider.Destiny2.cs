@@ -279,8 +279,6 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             if (weapon.RoundsPerMinute > 0)
                 weaponDetails.Add($"{weapon.RoundsPerMinute} RPM");
             var descriptionLines = new List<string> { string.Join(" · ", weaponDetails) };
-            if (!string.IsNullOrWhiteSpace(weapon.AcquisitionSource))
-                descriptionLines.Add(weapon.AcquisitionSource);
             descriptionLines.AddRange(matchedPerks);
             var builder = new EmbedBuilder()
                 .WithColor(139, 139, 255)

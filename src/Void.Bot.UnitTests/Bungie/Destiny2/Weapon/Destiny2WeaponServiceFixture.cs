@@ -65,7 +65,6 @@ public class Destiny2WeaponServiceFixture
             "itemSubType": 6,
             "itemTypeDisplayName": "Auto Rifle",
             "displayProperties": { "name": "Test Rifle", "description": "A test weapon", "icon": "/weapon-100.png" },
-            "displaySource": "Source: Complete test activities.",
             "stats": {
               "stats": { "4284893193": { "statHash": 4284893193, "value": 600 } }
             },
@@ -261,7 +260,6 @@ public class Destiny2WeaponServiceFixture
         response.Data.Weapons[0].Frame.FrameHash.ShouldBe(10u);
         response.Data.Weapons[0].Frame.Name.ShouldBe("Adaptive Frame");
         response.Data.Weapons[0].RoundsPerMinute.ShouldBe(600);
-        response.Data.Weapons[0].AcquisitionSource.ShouldBe("Source: Complete test activities.");
         response.Data.Weapons[0].MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
         response.Data.Weapons[0].MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(20u);
         response.Data.Weapons[1].WeaponHash.ShouldBe(101u);

@@ -733,7 +733,6 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 Name = displayProperties.ReadString("name"),
                 Description = displayProperties.ReadString("description"),
                 Icon = displayProperties.ReadString("icon"),
-                AcquisitionSource = definition.ReadString("displaySource").Trim(),
                 PlugCategoryIdentifier = plugCategoryIdentifier
             };
         }

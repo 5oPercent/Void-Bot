@@ -10,7 +10,5 @@ public class Destiny2WeaponItemDataDto
 
     public string Icon { get; set; } = string.Empty;
 
-    public string AcquisitionSource { get; set; } = string.Empty;
-
     public string PlugCategoryIdentifier { get; set; } = string.Empty;
 }

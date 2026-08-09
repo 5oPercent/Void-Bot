@@ -216,7 +216,6 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 WeaponType = MapWeaponTypeReference(weaponType),
                 Frame = MapWeaponFrameReference(rollData.Items, weapon.FrameHash),
                 RoundsPerMinute = weapon.RoundsPerMinute,
-                AcquisitionSource = weaponItem.AcquisitionSource,
                 MatchedPerkSockets = matchedPerkSockets
             });
         }
