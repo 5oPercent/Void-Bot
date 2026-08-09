@@ -196,22 +196,28 @@ public partial class Destiny2SlashCommand(
             return string.Format(languageService.GetContext(expression, languageEnum), args);
         }
 
-        var perkInputs = subCommand.Options
+        var perkInputGroups = subCommand.Options
             .Where(option => option.Name.StartsWith("perks", StringComparison.OrdinalIgnoreCase))
             .OrderBy(option => option.Name.Length)
             .ThenBy(option => option.Name)
-            .Select(option => option.Value?.ToString()?.Trim())
+            .Select(option => option.Value?.ToString())
             .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value!)
+            .Select(value => value!
+                .Split([',', '，'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList())
+            .Where(group => group.Count > 0)
             .ToList();
-        if (perkInputs.Count == 0)
+        if (perkInputGroups.Count == 0)
         {
             await ModifyResponseAsync(commandCallback, Localize(context => context.PerkInputRequiredResponse)).ConfigureAwait(false);
             return;
         }
 
         var perkGroups = new List<Destiny2WeaponPerkGroupDto>();
-        var nameInputs = perkInputs.Where(input => !uint.TryParse(input, out _)).ToList();
+        var nameInputs = perkInputGroups
+            .SelectMany(group => group)
+            .Where(input => !uint.TryParse(input, out _))
+            .ToList();
         List<Destiny2WeaponPerkDto> availablePerks = [];
         if (nameInputs.Count > 0)
         {
@@ -235,31 +241,42 @@ public partial class Destiny2SlashCommand(
                 .ToList();
         }
 
-        foreach (var input in perkInputs)
+        foreach (var inputGroup in perkInputGroups)
         {
-            if (uint.TryParse(input, out var perkHash))
+            var perkHashes = new HashSet<uint>();
+            foreach (var input in inputGroup)
             {
-                perkGroups.Add(new Destiny2WeaponPerkGroupDto { PerkHashes = [perkHash] });
-                continue;
+                if (uint.TryParse(input, out var perkHash))
+                {
+                    perkHashes.Add(perkHash);
+                    continue;
+                }
+
+                var exactMatches = availablePerks
+                    .Where(perk => string.Equals(perk.Name, input, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                var matches = exactMatches.Count > 0
+                    ? exactMatches
+                    : availablePerks
+                        .Where(perk => perk.Name.Contains(input, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                if (matches.Count == 0)
+                {
+                    await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNotFoundResponse, input)).ConfigureAwait(false);
+                    return;
+                }
+
+                if (matches.Count > 1)
+                {
+                    var candidates = string.Join(", ", matches.Select(perk => $"{perk.Name} ({perk.PerkHash})"));
+                    await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNameAmbiguousResponse, input, candidates)).ConfigureAwait(false);
+                    return;
+                }
+
+                perkHashes.Add(matches[0].PerkHash);
             }
 
-            var matches = availablePerks
-                .Where(perk => string.Equals(perk.Name, input, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (matches.Count == 0)
-            {
-                await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNotFoundResponse, input)).ConfigureAwait(false);
-                return;
-            }
-
-            if (matches.Count > 1)
-            {
-                var candidates = string.Join(", ", matches.Select(perk => $"{perk.Name} ({perk.PerkHash})"));
-                await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNameAmbiguousResponse, input, candidates)).ConfigureAwait(false);
-                return;
-            }
-
-            perkGroups.Add(new Destiny2WeaponPerkGroupDto { PerkHashes = [matches[0].PerkHash] });
+            perkGroups.Add(new Destiny2WeaponPerkGroupDto { PerkHashes = perkHashes.ToList() });
         }
 
         var response = await mediator.RequestAsync<FilterDestiny2WeaponGodRollRequest, FilterDestiny2WeaponGodRollResponse>(

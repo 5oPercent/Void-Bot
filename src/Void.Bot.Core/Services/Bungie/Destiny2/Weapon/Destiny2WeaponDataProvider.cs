@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json;
 using Serilog;
 using Void.Bot.Core.Caching;
@@ -27,6 +28,8 @@ public interface IDestiny2WeaponDataProvider : ISingleton
 
 internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, IDisposable
 {
+    private const uint RoundsPerMinuteStatHash = 4284893193;
+
     private readonly ICacheManager _cacheManager;
     private readonly Destiny2Setting _setting;
     private readonly ILogger _logger;
@@ -331,6 +334,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                     .ToHashSet();
                 var itemHashes = weapons.Values
                     .Select(weapon => weapon.Hash)
+                    .Concat(weapons.Values.Select(weapon => weapon.FrameHash).Where(hash => hash != 0))
                     .Concat(perkHashes)
                     .Concat(perkHashes.SelectMany(hash => rollData.PerkVariantGroups[hash]))
                     .ToHashSet();
@@ -461,6 +465,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         foreach (var candidate in weaponCandidates)
         {
             referencedItemHashes.Add(candidate.Hash);
+            if (candidate.FrameHash != 0)
+                referencedItemHashes.Add(candidate.FrameHash);
             foreach (var perkSocket in candidate.PerkSockets)
                 referencedItemHashes.UnionWith(perkSocket.PerkHashes);
         }
@@ -519,7 +525,13 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             if (perkSockets.Count == 0)
                 continue;
 
-            candidates.Add(new WeaponCandidate(weaponHash, weaponType, weaponTypeName, perkSockets));
+            candidates.Add(new WeaponCandidate(
+                weaponHash,
+                weaponType,
+                weaponTypeName,
+                ParseFrameHash(sockets),
+                ReadStatValue(definition, RoundsPerMinuteStatHash),
+                perkSockets));
         }
 
         return candidates;
@@ -556,6 +568,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 Hash = candidate.Hash,
                 WeaponType = candidate.WeaponType,
                 WeaponTypeName = candidate.WeaponTypeName,
+                FrameHash = candidate.FrameHash,
+                RoundsPerMinute = candidate.RoundsPerMinute,
                 PerkSockets = perkSockets
             };
         }
@@ -653,6 +667,43 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         return result;
     }
 
+    private static uint ParseFrameHash(JsonElement sockets)
+    {
+        if (sockets.TryGetProperty("socketEntries", out var socketEntries) &&
+            socketEntries.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var socketEntry in socketEntries.EnumerateArray())
+            {
+                var frameHash = socketEntry.ReadUInt32("singleInitialItemHash");
+                if (frameHash != 0)
+                    return frameHash;
+                break;
+            }
+        }
+
+        if (sockets.TryGetProperty("intrinsicSockets", out var intrinsicSockets) &&
+            intrinsicSockets.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var intrinsicSocket in intrinsicSockets.EnumerateArray())
+                return intrinsicSocket.ReadUInt32("plugItemHash");
+        }
+
+        return 0;
+    }
+
+    private static int ReadStatValue(JsonElement definition, uint statHash)
+    {
+        if (!definition.TryGetProperty("stats", out var statBlock) ||
+            !statBlock.TryGetProperty("stats", out var stats) ||
+            stats.ValueKind != JsonValueKind.Object ||
+            !stats.TryGetProperty(statHash.ToString(CultureInfo.InvariantCulture), out var stat))
+        {
+            return 0;
+        }
+
+        return stat.ReadInt32("value");
+    }
+
     private static Dictionary<uint, Destiny2WeaponItemDataDto> BuildItems(
         JsonElement inventoryRoot,
         IReadOnlySet<uint> referencedItemHashes)
@@ -693,6 +744,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         uint Hash,
         Destiny2ItemSubTypeEnum WeaponType,
         string WeaponTypeName,
+        uint FrameHash,
+        int RoundsPerMinute,
         List<PerkSocketCandidate> PerkSockets);
 
     private sealed record PerkSocketCandidate(int SocketIndex, IReadOnlySet<uint> PerkHashes);

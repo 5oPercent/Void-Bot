@@ -65,6 +65,9 @@ public class Destiny2WeaponServiceFixture
             "itemSubType": 6,
             "itemTypeDisplayName": "Auto Rifle",
             "displayProperties": { "name": "Test Rifle", "description": "A test weapon", "icon": "/weapon-100.png" },
+            "stats": {
+              "stats": { "4284893193": { "statHash": 4284893193, "value": 600 } }
+            },
             "sockets": {
               "intrinsicSockets": [ { "plugItemHash": 30 } ],
               "socketEntries": [
@@ -154,6 +157,8 @@ public class Destiny2WeaponServiceFixture
             Destiny2ItemSubTypeEnum.SubmachineGun
         ]);
         _rollData.Weapons.Keys.Order().ShouldBe([100u, 101u]);
+        _rollData.Weapons[100].FrameHash.ShouldBe(10u);
+        _rollData.Weapons[100].RoundsPerMinute.ShouldBe(600);
         _rollData.Weapons[100].PerkSockets[0].PerkHashes.ShouldContain(20u);
         _rollData.Weapons[100].PerkSockets[0].PerkHashes.ShouldNotContain(21u);
         _rollData.PerkVariantGroups[20].Order().ShouldBe([20u, 24u]);
@@ -252,6 +257,9 @@ public class Destiny2WeaponServiceFixture
             Destiny2ItemSubTypeEnum.SubmachineGun
         ]);
         response.Data.Weapons[0].WeaponHash.ShouldBe(100u);
+        response.Data.Weapons[0].Frame.FrameHash.ShouldBe(10u);
+        response.Data.Weapons[0].Frame.Name.ShouldBe("Adaptive Frame");
+        response.Data.Weapons[0].RoundsPerMinute.ShouldBe(600);
         response.Data.Weapons[0].MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
         response.Data.Weapons[0].MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(20u);
         response.Data.Weapons[1].WeaponHash.ShouldBe(101u);

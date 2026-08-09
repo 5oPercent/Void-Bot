@@ -10,5 +10,9 @@ public class Destiny2WeaponDataDto
 
     public string WeaponTypeName { get; set; } = string.Empty;
 
+    public uint FrameHash { get; set; }
+
+    public int RoundsPerMinute { get; set; }
+
     public List<Destiny2WeaponPerkSocketDataDto> PerkSockets { get; set; } = [];
 }

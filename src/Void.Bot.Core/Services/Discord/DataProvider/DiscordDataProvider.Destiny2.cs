@@ -273,10 +273,15 @@ public partial class DiscordDataProvider : IDiscordDataProvider
                             : group.First().Name);
                     return $"**插槽 {socket.SocketIndex}**：{string.Join(" / ", perkNames)}";
                 });
+            var weaponDetails = new List<string> { weapon.WeaponType.Name };
+            if (!string.IsNullOrWhiteSpace(weapon.Frame.Name))
+                weaponDetails.Add(weapon.Frame.Name);
+            if (weapon.RoundsPerMinute > 0)
+                weaponDetails.Add($"{weapon.RoundsPerMinute} RPM");
             var builder = new EmbedBuilder()
                 .WithColor(139, 139, 255)
                 .WithTitle(weapon.Name)
-                .WithDescription($"{weapon.WeaponType.Name}\n{string.Join('\n', matchedPerks)}");
+                .WithDescription($"{string.Join(" · ", weaponDetails)}\n{string.Join('\n', matchedPerks)}");
             if (!string.IsNullOrWhiteSpace(weapon.Icon))
                 builder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{weapon.Icon}");
 
