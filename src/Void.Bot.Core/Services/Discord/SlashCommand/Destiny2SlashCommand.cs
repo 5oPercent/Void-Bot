@@ -22,10 +22,8 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 public partial class Destiny2SlashCommand(
     IMediator mediator,
     IDiscordDataProvider dataProvider,
-    ILanguageService languageService) : IGuildSlashCommand
+    ILanguageService languageService) : IGlobalSlashCommand
 {
-    public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
-
     public bool Ephemeral => false;
 
     public SlashCommandProperties Command => new SlashCommandBuilder()
