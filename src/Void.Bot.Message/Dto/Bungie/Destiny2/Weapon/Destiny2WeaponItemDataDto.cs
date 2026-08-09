@@ -10,5 +10,11 @@ public class Destiny2WeaponItemDataDto
 
     public string Icon { get; set; } = string.Empty;
 
+    public uint SeasonHash { get; set; }
+
+    public int SeasonNumber { get; set; }
+
+    public string SeasonName { get; set; } = string.Empty;
+
     public string PlugCategoryIdentifier { get; set; } = string.Empty;
 }

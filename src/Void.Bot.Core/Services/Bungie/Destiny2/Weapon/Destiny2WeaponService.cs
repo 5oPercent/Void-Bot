@@ -216,12 +216,19 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 WeaponType = MapWeaponTypeReference(weaponType),
                 Frame = MapWeaponFrameReference(rollData.Items, weapon.FrameHash),
                 RoundsPerMinute = weapon.RoundsPerMinute,
+                Season = new Destiny2WeaponSeasonReferenceDto
+                {
+                    SeasonHash = weaponItem.SeasonHash,
+                    SeasonNumber = weaponItem.SeasonNumber,
+                    Name = weaponItem.SeasonName
+                },
                 MatchedPerkSockets = matchedPerkSockets
             });
         }
 
         matchedWeapons = matchedWeapons
-            .OrderBy(weapon => weapon.Name, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(weapon => weapon.Season.SeasonNumber)
+            .ThenBy(weapon => weapon.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(weapon => weapon.WeaponHash)
             .ToList();
 

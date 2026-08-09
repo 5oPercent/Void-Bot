@@ -25,6 +25,9 @@ public class Destiny2WeaponDataProviderCacheFixture
         await cache.Set(
             $"{Destiny2ManifestConstants.PlugSetCacheKey}:en",
             Destiny2WeaponServiceFixture.PlugSetJson);
+        await cache.Set(
+            $"{Destiny2ManifestConstants.SeasonCacheKey}:en",
+            Destiny2WeaponServiceFixture.SeasonJson);
 
         using (var provider = CreateProvider(cache))
             await provider.RefreshAsync("en", CancellationToken.None);
@@ -38,6 +41,7 @@ public class Destiny2WeaponDataProviderCacheFixture
 
         await cache.Remove($"{Destiny2ManifestConstants.InventoryItemCacheKey}:en");
         await cache.Remove($"{Destiny2ManifestConstants.PlugSetCacheKey}:en");
+        await cache.Remove($"{Destiny2ManifestConstants.SeasonCacheKey}:en");
         cache.ReadKeys.Clear();
 
         using var restartedProvider = CreateProvider(cache);
@@ -52,6 +56,7 @@ public class Destiny2WeaponDataProviderCacheFixture
         rollData.PerkVariantGroups[20].Order().ShouldBe([20u, 24u]);
         cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.InventoryItemCacheKey}:en");
         cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.PlugSetCacheKey}:en");
+        cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.SeasonCacheKey}:en");
 
         cache.ReadKeys.Clear();
         await restartedProvider.GetRollDataAsync(

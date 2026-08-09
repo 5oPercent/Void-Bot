@@ -61,6 +61,7 @@ public class Destiny2WeaponServiceFixture
           },
           "100": {
             "hash": 100,
+            "seasonHash": 900,
             "itemType": 3,
             "itemSubType": 6,
             "itemTypeDisplayName": "Auto Rifle",
@@ -79,6 +80,7 @@ public class Destiny2WeaponServiceFixture
           },
           "101": {
             "hash": 101,
+            "seasonHash": 901,
             "itemType": 3,
             "itemSubType": 24,
             "itemTypeDisplayName": "Submachine Gun",
@@ -105,6 +107,21 @@ public class Destiny2WeaponServiceFixture
                 { "randomizedPlugSetHash": 500 }
               ]
             }
+          }
+        }
+        """;
+
+    internal const string SeasonJson = """
+        {
+          "900": {
+            "hash": 900,
+            "seasonNumber": 23,
+            "displayProperties": { "name": "Season of the Wish" }
+          },
+          "901": {
+            "hash": 901,
+            "seasonNumber": 24,
+            "displayProperties": { "name": "Episode: Echoes" }
           }
         }
         """;
@@ -139,7 +156,7 @@ public class Destiny2WeaponServiceFixture
 
     public Destiny2WeaponServiceFixture()
     {
-        _rollData = Destiny2WeaponDataProvider.BuildRollData(InventoryItemJson, PlugSetJson);
+        _rollData = Destiny2WeaponDataProvider.BuildRollData(InventoryItemJson, PlugSetJson, SeasonJson);
         _weaponTypeData = Destiny2WeaponDataProvider.BuildWeaponTypeData(InventoryItemJson);
         _dataProvider = new FakeWeaponDataProvider(_weaponTypeData, _rollData);
         _service = new Destiny2WeaponService(_dataProvider);
@@ -252,19 +269,25 @@ public class Destiny2WeaponServiceFixture
 
         response.Data.ShouldNotBeNull();
         response.Data.Weapons.Count.ShouldBe(2);
+        response.Data.Weapons.Select(weapon => weapon.Season.SeasonNumber).ShouldBe([24, 23]);
         response.Data.Weapons.Select(weapon => weapon.WeaponType.WeaponType).ShouldBe([
-            Destiny2ItemSubTypeEnum.AutoRifle,
-            Destiny2ItemSubTypeEnum.SubmachineGun
+            Destiny2ItemSubTypeEnum.SubmachineGun,
+            Destiny2ItemSubTypeEnum.AutoRifle
         ]);
-        response.Data.Weapons[0].WeaponHash.ShouldBe(100u);
-        response.Data.Weapons[0].Frame.FrameHash.ShouldBe(10u);
-        response.Data.Weapons[0].Frame.Name.ShouldBe("Adaptive Frame");
-        response.Data.Weapons[0].RoundsPerMinute.ShouldBe(600);
-        response.Data.Weapons[0].MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
-        response.Data.Weapons[0].MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(20u);
-        response.Data.Weapons[1].WeaponHash.ShouldBe(101u);
-        response.Data.Weapons[1].MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
-        response.Data.Weapons[1].MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(24u);
+        var autoRifle = response.Data.Weapons[1];
+        autoRifle.WeaponHash.ShouldBe(100u);
+        autoRifle.Frame.FrameHash.ShouldBe(10u);
+        autoRifle.Frame.Name.ShouldBe("Adaptive Frame");
+        autoRifle.RoundsPerMinute.ShouldBe(600);
+        autoRifle.Season.SeasonHash.ShouldBe(900u);
+        autoRifle.Season.SeasonNumber.ShouldBe(23);
+        autoRifle.Season.Name.ShouldBe("Season of the Wish");
+        autoRifle.MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
+        autoRifle.MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(20u);
+        var submachineGun = response.Data.Weapons[0];
+        submachineGun.WeaponHash.ShouldBe(101u);
+        submachineGun.MatchedPerkSockets.Single().SocketIndex.ShouldBe(1);
+        submachineGun.MatchedPerkSockets.Single().Perks.Single().PerkHash.ShouldBe(24u);
     }
 
     [Fact]

@@ -19,5 +19,7 @@ public class Destiny2WeaponGodRollDto
 
     public int RoundsPerMinute { get; set; }
 
+    public Destiny2WeaponSeasonReferenceDto Season { get; set; } = new();
+
     public List<Destiny2WeaponMatchedPerkSocketDto> MatchedPerkSockets { get; set; } = [];
 }

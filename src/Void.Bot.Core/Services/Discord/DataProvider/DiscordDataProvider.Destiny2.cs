@@ -279,6 +279,13 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             if (weapon.RoundsPerMinute > 0)
                 weaponDetails.Add($"{weapon.RoundsPerMinute} RPM");
             var descriptionLines = new List<string> { string.Join(" · ", weaponDetails) };
+            if (weapon.Season.SeasonNumber > 0 || !string.IsNullOrWhiteSpace(weapon.Season.Name))
+            {
+                var season = weapon.Season.SeasonNumber > 0 ? $"S{weapon.Season.SeasonNumber}" : string.Empty;
+                if (!string.IsNullOrWhiteSpace(weapon.Season.Name))
+                    season = string.IsNullOrWhiteSpace(season) ? weapon.Season.Name : $"{season} · {weapon.Season.Name}";
+                descriptionLines.Add($"赛季：{season}");
+            }
             descriptionLines.AddRange(matchedPerks);
             var builder = new EmbedBuilder()
                 .WithColor(139, 139, 255)
