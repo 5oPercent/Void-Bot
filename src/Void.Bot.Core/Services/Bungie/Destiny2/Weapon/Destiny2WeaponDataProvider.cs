@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
@@ -34,9 +33,6 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     private readonly Destiny2Setting _setting;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _buildLock = new(1, 1);
-    private readonly ConcurrentDictionary<string, Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>> _weaponTypeDataCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, Dictionary<uint, HashSet<uint>>> _perkVariantGroupCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, Destiny2WeaponTypeRollDataDto> _weaponTypeRollDataCache = new(StringComparer.OrdinalIgnoreCase);
 
     public Destiny2WeaponDataProvider(
         ICacheManager cacheManager,
@@ -59,18 +55,12 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         var version = await _cacheManager.Get<string>(
             Destiny2ManifestConstants.VersionCacheKey,
             cancellationToken).ConfigureAwait(false) ?? "unversioned";
-        var cacheKey = $"{version}:{normalizedLanguage}";
-
-        if (_weaponTypeDataCache.TryGetValue(cacheKey, out var cachedWeaponTypes))
-            return cachedWeaponTypes;
-
         var redisKey = Destiny2WeaponCacheConstants.GetTypesKey(version, normalizedLanguage);
-        cachedWeaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
+        var cachedWeaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
             redisKey,
             cancellationToken).ConfigureAwait(false);
         if (cachedWeaponTypes != null)
         {
-            _weaponTypeDataCache[cacheKey] = cachedWeaponTypes;
             _logger.Information(
                 "Loaded Destiny 2 weapon types from Redis. Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}",
                 version,
@@ -82,17 +72,11 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         await _buildLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_weaponTypeDataCache.TryGetValue(cacheKey, out cachedWeaponTypes))
-                return cachedWeaponTypes;
-
             cachedWeaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
                 redisKey,
                 cancellationToken).ConfigureAwait(false);
             if (cachedWeaponTypes != null)
-            {
-                _weaponTypeDataCache[cacheKey] = cachedWeaponTypes;
                 return cachedWeaponTypes;
-            }
 
             var inventoryJson = await _cacheManager.Get<string>(
                 $"{Destiny2ManifestConstants.InventoryItemCacheKey}:{normalizedLanguage}",
@@ -111,7 +95,6 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
                 await _cacheManager.Set(redisKey, cachedWeaponTypes, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-                _weaponTypeDataCache[cacheKey] = cachedWeaponTypes;
 
                 _logger.Information(
                     "Built Destiny 2 weapon type data. Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}",
@@ -149,15 +132,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         var version = await _cacheManager.Get<string>(
             Destiny2ManifestConstants.VersionCacheKey,
             cancellationToken).ConfigureAwait(false) ?? "unversioned";
-        var cacheKey = $"{version}:{normalizedLanguage}";
-        if (!_weaponTypeDataCache.TryGetValue(cacheKey, out var allWeaponTypes))
-        {
-            allWeaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
-                Destiny2WeaponCacheConstants.GetTypesKey(version, normalizedLanguage),
-                cancellationToken).ConfigureAwait(false);
-            if (allWeaponTypes != null)
-                _weaponTypeDataCache[cacheKey] = allWeaponTypes;
-        }
+        var allWeaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
+            Destiny2WeaponCacheConstants.GetTypesKey(version, normalizedLanguage),
+            cancellationToken).ConfigureAwait(false);
 
         if (allWeaponTypes == null &&
             !await BuildDerivedCacheAsync(
@@ -170,7 +147,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             return null;
         }
 
-        allWeaponTypes ??= _weaponTypeDataCache[cacheKey];
+        allWeaponTypes ??= await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
+            Destiny2WeaponCacheConstants.GetTypesKey(version, normalizedLanguage),
+            cancellationToken).ConfigureAwait(false);
         if (allWeaponTypes == null)
             return null;
 
@@ -182,34 +161,16 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             return new Destiny2WeaponRollDataDto();
         }
 
-        var redisLoaded = false;
-        if (!_perkVariantGroupCache.TryGetValue(cacheKey, out var perkVariantGroups))
-        {
-            perkVariantGroups = await _cacheManager.Get<Dictionary<uint, HashSet<uint>>>(
-                Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, normalizedLanguage),
-                cancellationToken).ConfigureAwait(false);
-            if (perkVariantGroups != null)
-            {
-                _perkVariantGroupCache[cacheKey] = perkVariantGroups;
-                redisLoaded = true;
-            }
-        }
+        var perkVariantGroups = await _cacheManager.Get<Dictionary<uint, HashSet<uint>>>(
+            Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, normalizedLanguage),
+            cancellationToken).ConfigureAwait(false);
 
         var typeData = new Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeRollDataDto>();
         foreach (var weaponType in requestedWeaponTypes)
         {
-            var typeCacheKey = $"{cacheKey}:{(int)weaponType}";
-            if (!_weaponTypeRollDataCache.TryGetValue(typeCacheKey, out var cachedTypeData))
-            {
-                cachedTypeData = await _cacheManager.Get<Destiny2WeaponTypeRollDataDto>(
-                    Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, normalizedLanguage, (int)weaponType),
-                    cancellationToken).ConfigureAwait(false);
-                if (cachedTypeData != null)
-                {
-                    _weaponTypeRollDataCache[typeCacheKey] = cachedTypeData;
-                    redisLoaded = true;
-                }
-            }
+            var cachedTypeData = await _cacheManager.Get<Destiny2WeaponTypeRollDataDto>(
+                Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, normalizedLanguage, (int)weaponType),
+                cancellationToken).ConfigureAwait(false);
 
             if (cachedTypeData != null)
                 typeData[weaponType] = cachedTypeData;
@@ -217,6 +178,17 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
         if (perkVariantGroups == null || typeData.Count != requestedWeaponTypes.Count)
         {
+            _logger.Information(
+                "Destiny 2 weapon roll cache is incomplete. Rebuilding from manifest. Version: {Version}, Language: {Language}, PerkVariantGroupsAvailable: {PerkVariantGroupsAvailable}, RequestedWeaponTypeCount: {RequestedWeaponTypeCount}, LoadedWeaponTypeCount: {LoadedWeaponTypeCount}",
+                version,
+                normalizedLanguage,
+                perkVariantGroups != null,
+                requestedWeaponTypes.Count,
+                typeData.Count);
+
+            perkVariantGroups = null;
+            typeData.Clear();
+
             if (!await BuildDerivedCacheAsync(
                     normalizedLanguage,
                     version,
@@ -225,32 +197,31 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                     cancellationToken).ConfigureAwait(false))
                 return null;
 
-            perkVariantGroups = _perkVariantGroupCache[cacheKey];
-            typeData = requestedWeaponTypes.ToDictionary(
-                weaponType => weaponType,
-                weaponType => _weaponTypeRollDataCache[$"{cacheKey}:{(int)weaponType}"]);
+            perkVariantGroups = await _cacheManager.Get<Dictionary<uint, HashSet<uint>>>(
+                Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, normalizedLanguage),
+                cancellationToken).ConfigureAwait(false);
+            if (perkVariantGroups == null)
+                return null;
+
+            foreach (var weaponType in requestedWeaponTypes)
+            {
+                var cachedTypeData = await _cacheManager.Get<Destiny2WeaponTypeRollDataDto>(
+                    Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, normalizedLanguage, (int)weaponType),
+                    cancellationToken).ConfigureAwait(false);
+                if (cachedTypeData == null)
+                    return null;
+
+                typeData[weaponType] = cachedTypeData;
+            }
         }
 
-        if (redisLoaded)
-        {
-            stopwatch.Stop();
-            _logger.Information(
-                "Loaded Destiny 2 weapon roll data. Source: Redis, Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}, ElapsedMilliseconds: {ElapsedMilliseconds}",
-                version,
-                normalizedLanguage,
-                typeData.Count,
-                stopwatch.ElapsedMilliseconds);
-        }
-        else
-        {
-            stopwatch.Stop();
-            _logger.Debug(
-                "Loaded Destiny 2 weapon roll data. Source: Memory, Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}, ElapsedMilliseconds: {ElapsedMilliseconds}",
-                version,
-                normalizedLanguage,
-                typeData.Count,
-                stopwatch.ElapsedMilliseconds);
-        }
+        stopwatch.Stop();
+        _logger.Information(
+            "Loaded Destiny 2 weapon roll data from Redis. Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}, ElapsedMilliseconds: {ElapsedMilliseconds}",
+            version,
+            normalizedLanguage,
+            typeData.Count,
+            stopwatch.ElapsedMilliseconds);
 
         return new Destiny2WeaponRollDataDto
         {
@@ -285,20 +256,26 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         bool force,
         CancellationToken cancellationToken)
     {
-        var cacheKey = $"{version}:{language}";
         await _buildLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (!force &&
-                _weaponTypeDataCache.TryGetValue(cacheKey, out var cachedWeaponTypes) &&
-                _perkVariantGroupCache.ContainsKey(cacheKey) &&
-                (requiredWeaponTypes ?? cachedWeaponTypes.Keys).All(type =>
-                    _weaponTypeRollDataCache.ContainsKey($"{cacheKey}:{(int)type}")))
+            if (!force && await HasDerivedCacheAsync(
+                    language,
+                    version,
+                    requiredWeaponTypes,
+                    cancellationToken).ConfigureAwait(false))
             {
                 return true;
             }
 
             var stopwatch = Stopwatch.StartNew();
+            _logger.Information(
+                "Building Destiny 2 weapon cache from manifest. Version: {Version}, Language: {Language}, Force: {Force}, RequiredWeaponTypeCount: {RequiredWeaponTypeCount}",
+                version,
+                language,
+                force,
+                requiredWeaponTypes?.Count ?? 0);
+
             var inventoryTask = _cacheManager.Get<string>(
                 $"{Destiny2ManifestConstants.InventoryItemCacheKey}:{language}",
                 cancellationToken);
@@ -328,7 +305,28 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var weaponTypes = BuildWeaponTypeData(inventoryJson)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
             var rollData = BuildRollData(inventoryJson, plugSetJson, seasonJson);
-            var typeData = new Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeRollDataDto>();
+
+            _logger.Information(
+                "Parsed Destiny 2 weapon manifest. Version: {Version}, Language: {Language}, InventoryCharacterCount: {InventoryCharacterCount}, PlugSetCharacterCount: {PlugSetCharacterCount}, SeasonCharacterCount: {SeasonCharacterCount}, WeaponTypeCount: {WeaponTypeCount}, WeaponCount: {WeaponCount}, ItemCount: {ItemCount}, PerkVariantGroupCount: {PerkVariantGroupCount}",
+                version,
+                language,
+                inventoryJson.Length,
+                plugSetJson.Length,
+                seasonJson.Length,
+                weaponTypes.Count,
+                rollData.Weapons.Count,
+                rollData.Items.Count,
+                rollData.PerkVariantGroups.Count);
+
+            await _cacheManager.Set(
+                Destiny2WeaponCacheConstants.GetTypesKey(version, language),
+                weaponTypes,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+            await _cacheManager.Set(
+                Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, language),
+                rollData.PerkVariantGroups,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
             foreach (var weaponType in weaponTypes)
             {
                 var weapons = rollData.Weapons.Values
@@ -344,7 +342,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                     .Concat(perkHashes)
                     .Concat(perkHashes.SelectMany(hash => rollData.PerkVariantGroups[hash]))
                     .ToHashSet();
-                typeData[weaponType.Key] = new Destiny2WeaponTypeRollDataDto
+                var typeData = new Destiny2WeaponTypeRollDataDto
                 {
                     WeaponType = weaponType.Value,
                     Weapons = weapons,
@@ -352,42 +350,18 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                         .Where(rollData.Items.ContainsKey)
                         .ToDictionary(hash => hash, hash => rollData.Items[hash])
                 };
+                await _cacheManager.Set(
+                    Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, language, (int)weaponType.Key),
+                    typeData,
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
             }
-
-            var writes = new List<Task>
-            {
-                _cacheManager.Set(
-                    Destiny2WeaponCacheConstants.GetTypesKey(version, language),
-                    weaponTypes,
-                    cancellationToken: cancellationToken),
-                _cacheManager.Set(
-                    Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, language),
-                    rollData.PerkVariantGroups,
-                    cancellationToken: cancellationToken)
-            };
-            writes.AddRange(typeData.Select(pair => _cacheManager.Set(
-                Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, language, (int)pair.Key),
-                pair.Value,
-                cancellationToken: cancellationToken)));
-            await Task.WhenAll(writes).ConfigureAwait(false);
-
-            foreach (var existingKey in _weaponTypeRollDataCache.Keys.Where(key =>
-                         key.StartsWith($"{cacheKey}:", StringComparison.OrdinalIgnoreCase)))
-            {
-                _weaponTypeRollDataCache.TryRemove(existingKey, out _);
-            }
-
-            _weaponTypeDataCache[cacheKey] = weaponTypes;
-            _perkVariantGroupCache[cacheKey] = rollData.PerkVariantGroups;
-            foreach (var pair in typeData)
-                _weaponTypeRollDataCache[$"{cacheKey}:{(int)pair.Key}"] = pair.Value;
 
             stopwatch.Stop();
             _logger.Information(
                 "Built and cached Destiny 2 weapon data. Source: Manifest, Version: {Version}, Language: {Language}, WeaponTypeCount: {WeaponTypeCount}, WeaponCount: {WeaponCount}, ElapsedMilliseconds: {ElapsedMilliseconds}",
                 version,
                 language,
-                typeData.Count,
+                weaponTypes.Count,
                 rollData.Weapons.Count,
                 stopwatch.ElapsedMilliseconds);
             return true;
@@ -405,6 +379,34 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         {
             _buildLock.Release();
         }
+    }
+
+    private async Task<bool> HasDerivedCacheAsync(
+        string language,
+        string version,
+        IReadOnlyCollection<Destiny2ItemSubTypeEnum>? requiredWeaponTypes,
+        CancellationToken cancellationToken)
+    {
+        var weaponTypes = await _cacheManager.Get<Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>>(
+            Destiny2WeaponCacheConstants.GetTypesKey(version, language),
+            cancellationToken).ConfigureAwait(false);
+        if (weaponTypes == null)
+            return false;
+
+        if (await _cacheManager.Get<Dictionary<uint, HashSet<uint>>>(
+                Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(version, language),
+                cancellationToken).ConfigureAwait(false) == null)
+            return false;
+
+        foreach (var weaponType in requiredWeaponTypes ?? weaponTypes.Keys)
+        {
+            if (await _cacheManager.Get<Destiny2WeaponTypeRollDataDto>(
+                    Destiny2WeaponCacheConstants.GetWeaponTypeKey(version, language, (int)weaponType),
+                    cancellationToken).ConfigureAwait(false) == null)
+                return false;
+        }
+
+        return true;
     }
 
     public void Dispose()
