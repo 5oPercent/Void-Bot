@@ -1,17 +1,28 @@
 using System.Text.RegularExpressions;
+using System.Linq.Expressions;
 using Discord;
 using Discord.WebSocket;
 using Mediator.Net;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n;
+using Void.Bot.Core.Resources.i18n.Destiny2;
+using Void.Bot.Core.Resources.i18n.Discord;
 using Void.Bot.Core.Services.Discord.DataProvider;
+using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
+using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
+using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvider dataProvider) : IGuildSlashCommand
+public partial class Destiny2SlashCommand(
+    IMediator mediator,
+    IDiscordDataProvider dataProvider,
+    ILanguageService languageService) : IGuildSlashCommand
 {
     public IEnumerable<ulong> GuildIds => [ 857616168549351474 ];
 
@@ -30,13 +41,27 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
             .WithDescription("查询赛季游玩时长.")
             .WithType(ApplicationCommandOptionType.SubCommand)
             .AddDestinyPlayerOptions())
+        .AddOption(CreateGodRollSubCommand())
         .Build();
     
     public async Task ExecuteAsync(SocketSlashCommand commandCallback, CancellationToken cancellationToken = default)
     {
-        var commandName = commandCallback.Data.Options.First().Name;
-        var findBungieName = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
-        var findMembership = commandCallback.Data.Options.First().Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
+        var subCommand = commandCallback.Data.Options.FirstOrDefault();
+        if (subCommand == null)
+        {
+            await ModifyResponseAsync(commandCallback, "未知命令.").ConfigureAwait(false);
+            return;
+        }
+
+        if (subCommand.Name == "gr")
+        {
+            await ExecuteGodRollAsync(commandCallback, subCommand, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var commandName = subCommand.Name;
+        var findBungieName = subCommand.Options.FirstOrDefault(x => x.Name.Equals("BungieName", StringComparison.OrdinalIgnoreCase))?.Value.ToString();
+        var findMembership = subCommand.Options.FirstOrDefault(x => x.Name.Equals("Platform", StringComparison.OrdinalIgnoreCase))?.Value.ToEnum<BungieMembershipTypeEnum>();
 
         if (!string.IsNullOrEmpty(findBungieName) && !BungieIdRegex().IsMatch(findBungieName))
         {
@@ -145,6 +170,202 @@ public partial class Destiny2SlashCommand(IMediator mediator, IDiscordDataProvid
                 break;
             }
         }
+    }
+
+    private async Task ExecuteGodRollAsync(
+        SocketSlashCommand commandCallback,
+        IApplicationCommandInteractionDataOption subCommand,
+        CancellationToken cancellationToken)
+    {
+        var weaponTypeValue = subCommand.Options.FirstOrDefault(option => option.Name == "weapon-type")?.Value;
+        var weaponTypes = weaponTypeValue == null
+            ? new List<Destiny2ItemSubTypeEnum>()
+            : [(Destiny2ItemSubTypeEnum)Convert.ToInt32(weaponTypeValue)];
+        var language = commandCallback.UserLocale.ToLowerInvariant() switch
+        {
+            "zh-cn" => "zh-chs",
+            "zh-tw" => "zh-cht",
+            "en" => "en",
+            var locale when locale.StartsWith("en-", StringComparison.Ordinal) => "en",
+            _ => "zh-chs"
+        };
+        var languageEnum = LanguageExtension.MapI18nCodeToEnum(language);
+
+        string Localize(Expression<Func<Destiny2GodRollSlashCommandContextTemplate, object>> expression, params object[] args)
+        {
+            return string.Format(languageService.GetContext(expression, languageEnum), args);
+        }
+
+        var perkInputs = subCommand.Options
+            .Where(option => option.Name.StartsWith("perks", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(option => option.Name.Length)
+            .ThenBy(option => option.Name)
+            .Select(option => option.Value?.ToString()?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .ToList();
+        if (perkInputs.Count == 0)
+        {
+            await ModifyResponseAsync(commandCallback, Localize(context => context.PerkInputRequiredResponse)).ConfigureAwait(false);
+            return;
+        }
+
+        var perkGroups = new List<Destiny2WeaponPerkGroupDto>();
+        var nameInputs = perkInputs.Where(input => !uint.TryParse(input, out _)).ToList();
+        List<Destiny2WeaponPerkDto> availablePerks = [];
+        if (nameInputs.Count > 0)
+        {
+            var perkResponse = await mediator.RequestAsync<GetDestiny2WeaponPerksRequest, GetDestiny2WeaponPerksResponse>(
+                new GetDestiny2WeaponPerksRequest
+                {
+                    WeaponTypes = weaponTypes,
+                    Language = language
+                }, cancellationToken).ConfigureAwait(false);
+            if (perkResponse.Data == null)
+            {
+                await ModifyResponseAsync(commandCallback, perkResponse.Message).ConfigureAwait(false);
+                return;
+            }
+
+            availablePerks = perkResponse.Data.WeaponTypes
+                .SelectMany(type => type.PerkSockets)
+                .SelectMany(socket => socket.Perks)
+                .GroupBy(perk => perk.PerkHash)
+                .Select(group => group.First())
+                .ToList();
+        }
+
+        foreach (var input in perkInputs)
+        {
+            if (uint.TryParse(input, out var perkHash))
+            {
+                perkGroups.Add(new Destiny2WeaponPerkGroupDto { PerkHashes = [perkHash] });
+                continue;
+            }
+
+            var matches = availablePerks
+                .Where(perk => string.Equals(perk.Name, input, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (matches.Count == 0)
+            {
+                await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNotFoundResponse, input)).ConfigureAwait(false);
+                return;
+            }
+
+            if (matches.Count > 1)
+            {
+                var candidates = string.Join(", ", matches.Select(perk => $"{perk.Name} ({perk.PerkHash})"));
+                await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNameAmbiguousResponse, input, candidates)).ConfigureAwait(false);
+                return;
+            }
+
+            perkGroups.Add(new Destiny2WeaponPerkGroupDto { PerkHashes = [matches[0].PerkHash] });
+        }
+
+        var response = await mediator.RequestAsync<FilterDestiny2WeaponGodRollRequest, FilterDestiny2WeaponGodRollResponse>(
+            new FilterDestiny2WeaponGodRollRequest
+            {
+                WeaponTypes = weaponTypes,
+                PerkGroups = perkGroups,
+                Language = language
+            }, cancellationToken).ConfigureAwait(false);
+        if (response.Data == null)
+        {
+            await ModifyResponseAsync(commandCallback, response.Message).ConfigureAwait(false);
+            return;
+        }
+
+        if (response.Data.Weapons.Count == 0)
+        {
+            await ModifyResponseAsync(commandCallback, Localize(context => context.NoMatchingWeaponsResponse)).ConfigureAwait(false);
+            return;
+        }
+
+        var result = await dataProvider.GenerateDestiny2GodRollAsync(response.Data, cancellationToken).ConfigureAwait(false);
+        await commandCallback.ModifyOriginalResponseAsync(builder =>
+        {
+            builder.Content = response.Data.Weapons.Count > result.Embeds.Count
+                ? Localize(context => context.MatchingWeaponsTruncatedResponse, response.Data.Weapons.Count, result.Embeds.Count)
+                : Localize(context => context.MatchingWeaponsResponse, response.Data.Weapons.Count);
+            builder.Embeds = result.Embeds.ToArray();
+        }).ConfigureAwait(false);
+    }
+
+    private SlashCommandOptionBuilder CreateGodRollSubCommand()
+    {
+        Dictionary<string, string> Localize<TContext>(Expression<Func<TContext, object>> expression, params object[] args)
+            where TContext : IContextTemplate
+        {
+            return new Dictionary<string, string>
+            {
+                ["zh-CN"] = string.Format(languageService.GetContext(expression, LanguageEnum.ZhChs), args),
+                ["zh-TW"] = string.Format(languageService.GetContext(expression, LanguageEnum.ZhCht), args),
+                ["en-US"] = string.Format(languageService.GetContext(expression, LanguageEnum.En), args)
+            };
+        }
+
+        var commandDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.CommandDescription);
+        var weaponTypeDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.WeaponTypeOptionDescription);
+        var weaponType = new SlashCommandOptionBuilder()
+            .WithName("weapon-type")
+            .WithDescription(weaponTypeDescriptions["zh-CN"])
+            .WithDescriptionLocalizations(weaponTypeDescriptions)
+            .WithType(ApplicationCommandOptionType.Integer)
+            .WithRequired(false);
+        var weaponTypeNames = new Dictionary<Destiny2ItemSubTypeEnum, Expression<Func<Destiny2WeaponContextTemplate, object>>>
+        {
+            [Destiny2ItemSubTypeEnum.AutoRifle] = context => context.AutoRifle,
+            [Destiny2ItemSubTypeEnum.Shotgun] = context => context.Shotgun,
+            [Destiny2ItemSubTypeEnum.Machinegun] = context => context.Machinegun,
+            [Destiny2ItemSubTypeEnum.HandCannon] = context => context.HandCannon,
+            [Destiny2ItemSubTypeEnum.RocketLauncher] = context => context.RocketLauncher,
+            [Destiny2ItemSubTypeEnum.FusionRifle] = context => context.FusionRifle,
+            [Destiny2ItemSubTypeEnum.SniperRifle] = context => context.SniperRifle,
+            [Destiny2ItemSubTypeEnum.PulseRifle] = context => context.PulseRifle,
+            [Destiny2ItemSubTypeEnum.ScoutRifle] = context => context.ScoutRifle,
+            [Destiny2ItemSubTypeEnum.Sidearm] = context => context.Sidearm,
+            [Destiny2ItemSubTypeEnum.Sword] = context => context.Sword,
+            [Destiny2ItemSubTypeEnum.FusionRifleLine] = context => context.FusionRifleLine,
+            [Destiny2ItemSubTypeEnum.GrenadeLauncher] = context => context.GrenadeLauncher,
+            [Destiny2ItemSubTypeEnum.SubmachineGun] = context => context.SubmachineGun,
+            [Destiny2ItemSubTypeEnum.TraceRifle] = context => context.TraceRifle,
+            [Destiny2ItemSubTypeEnum.Bow] = context => context.Bow,
+            [Destiny2ItemSubTypeEnum.Glaive] = context => context.Glaive
+        };
+        foreach (var choice in weaponTypeNames)
+        {
+            var localizations = Localize(choice.Value);
+            weaponType.AddChoice(localizations["zh-CN"], (int)choice.Key, localizations);
+        }
+        var firstPerkDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, 1);
+        var command = new SlashCommandOptionBuilder()
+            .WithName("gr")
+            .WithDescription(commandDescriptions["zh-CN"])
+            .WithDescriptionLocalizations(commandDescriptions)
+            .WithType(ApplicationCommandOptionType.SubCommand)
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("perks")
+                .WithDescription(firstPerkDescriptions["zh-CN"])
+                .WithDescriptionLocalizations(firstPerkDescriptions)
+                .WithType(ApplicationCommandOptionType.String)
+                .WithRequired(true))
+            .AddOption(weaponType);
+        for (var index = 2; index <= 3; index++)
+        {
+            var descriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, index);
+            command.AddOption(new SlashCommandOptionBuilder()
+                .WithName($"perks{index}")
+                .WithDescription(descriptions["zh-CN"])
+                .WithDescriptionLocalizations(descriptions)
+                .WithType(ApplicationCommandOptionType.String));
+        }
+
+        return command;
+    }
+
+    private static async Task ModifyResponseAsync(SocketSlashCommand commandCallback, string message)
+    {
+        await commandCallback.ModifyOriginalResponseAsync(builder => builder.Content = message).ConfigureAwait(false);
     }
 
     [GeneratedRegex(BungieConstants.IdPattern)]
