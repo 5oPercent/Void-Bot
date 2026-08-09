@@ -27,7 +27,9 @@ public class RedisCacheManagerFixture
             "manifest",
             json,
             null,
-            When.Always);
+            false,
+            When.Always,
+            CommandFlags.None);
     }
 
     [Theory]
