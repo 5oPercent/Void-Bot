@@ -166,7 +166,7 @@ public partial class SyncService : ISyncService
     
     private async Task<string> DownloadDestiny2ManifestComponentJsonDataAsync(string url, CancellationToken cancellationToken)
     {
-        var response = await _httpClientFactory.CreateClient().GetAsync(url, cancellationToken);
+        using var response = await _httpClientFactory.CreateClient().GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             Log.Warning("Download manifest file failed. Status code: {StatusCode}", response.StatusCode);
