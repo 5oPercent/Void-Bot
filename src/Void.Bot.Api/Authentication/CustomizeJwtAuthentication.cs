@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Core.Services.Identity;
 
 namespace Void.Bot.Api.Authentication;
 
@@ -64,6 +65,9 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
             };
             
             var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+
+            if (principal.FindFirst(TokenClaimService.TokenUseClaim)?.Value == TokenClaimService.RefreshTokenUse)
+                return Task.FromResult(AuthenticateResult.Fail("Invalid access token"));
             
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(ticket));
