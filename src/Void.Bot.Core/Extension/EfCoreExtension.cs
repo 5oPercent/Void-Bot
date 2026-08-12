@@ -12,6 +12,9 @@ public static class EfCorePagedExtension
     
     public static PagedList<TEntity> ToPaged<TEntity>(this IQueryable<TEntity> query, int pageIndex, int pageSize) where TEntity : new()
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageIndex, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+
         var total = query.Count();
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
 
@@ -34,6 +37,9 @@ public static class EfCorePagedExtension
     
     public static async Task<PagedList<TEntity>> ToPagedAsync<TEntity>(this IQueryable<TEntity> query, int pageIndex, int pageSize, CancellationToken cancellationToken) where TEntity : new()
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageIndex, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         

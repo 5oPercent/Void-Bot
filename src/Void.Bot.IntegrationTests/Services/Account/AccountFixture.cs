@@ -119,15 +119,13 @@ public class AccountFixture(IntegrationTestBase testBase) : IntegrationFixture(t
 
         await Run<IMediator>(async mediator =>
         {
-            var response = await mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(
-                new GetUserAccountPageRequest
-                {
-                    PageIndex = 0,
-                    PageSize = 0
-                }).ConfigureAwait(false);
-
-            response.ShouldNotBeNull();
-            response.Data.ShouldNotBeNull();
+            await Should.ThrowAsync<ArgumentOutOfRangeException>(() =>
+                mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(
+                    new GetUserAccountPageRequest
+                    {
+                        PageIndex = 0,
+                        PageSize = 50
+                    }));
         });
     }
 
