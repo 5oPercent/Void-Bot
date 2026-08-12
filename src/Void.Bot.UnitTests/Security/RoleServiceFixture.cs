@@ -457,6 +457,8 @@ public class RoleServiceFixture
         response.ShouldNotBeNull();
         response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
         mockMapper.Received().Map(command, existingRole);
+        await mockRoleDataProvider.Received(1)
+            .UpdateRoleAsync(existingRole, Arg.Any<CancellationToken>());
     }
 
     #endregion
