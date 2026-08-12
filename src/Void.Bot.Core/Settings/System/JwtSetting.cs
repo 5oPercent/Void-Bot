@@ -12,6 +12,8 @@ public class JwtSetting : IConfigurationSetting
 
     public int ExpireMinutes { get; }
 
+    public int RefreshExpireDays { get; }
+
     public JwtSetting(IConfiguration configuration)
     {
         Secret = configuration["Jwt:Secret"] ?? string.Empty;
@@ -21,5 +23,7 @@ public class JwtSetting : IConfigurationSetting
         Audience = configuration["Jwt:Audience"] ?? string.Empty;
         
         ExpireMinutes = configuration.GetValue<int>("Jwt:ExpireMinutes");
+
+        RefreshExpireDays = configuration.GetValue<int?>("Jwt:RefreshExpireDays") ?? 7;
     }
 }
