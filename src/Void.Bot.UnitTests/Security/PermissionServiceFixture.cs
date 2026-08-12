@@ -391,6 +391,8 @@ public class PermissionServiceFixture
         response.ShouldNotBeNull();
         response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
         mockMapper.Received().Map(command, existingPermission);
+        await mockPermissionDataProvider.Received(1)
+            .UpdatePermissionAsync(existingPermission, Arg.Any<CancellationToken>());
     }
 
     [Fact]

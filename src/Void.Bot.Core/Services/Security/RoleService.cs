@@ -139,6 +139,7 @@ public partial class RoleService : IRoleService
         }
         
         _mapper.Map(command, role);
+        await _roleDataProvider.UpdateRoleAsync(role, cancellationToken).ConfigureAwait(false);
 
         return response;
     }

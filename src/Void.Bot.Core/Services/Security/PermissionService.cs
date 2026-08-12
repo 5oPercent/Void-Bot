@@ -146,6 +146,7 @@ public partial class PermissionService : IPermissionService
         }
         
         _mapper.Map(command, permission);
+        await _permissionDataProvider.UpdatePermissionAsync(permission, cancellationToken).ConfigureAwait(false);
         
         return response;
     }
