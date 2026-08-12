@@ -1,3 +1,4 @@
+using System.Net;
 using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Domain.Security;
@@ -66,7 +67,9 @@ public class MenuServiceFixture
         var mockMenuDataProvider = Substitute.For<IMenuDataProvider>();
         mockMenuDataProvider.GetMenuAsync(menuId, Arg.Any<CancellationToken>())
             .Returns(existingMenu);
-        mockMenuDataProvider.GetAnyAsync([parentId], Arg.Any<CancellationToken>())
+        mockMenuDataProvider.GetAnyAsync(
+                Arg.Is<List<Guid>>(ids => ids.Count == 1 && ids[0] == parentId),
+                Arg.Any<CancellationToken>())
             .Returns(true);
 
         var mockMapper = Substitute.For<AutoMapper.IMapper>();
@@ -80,6 +83,7 @@ public class MenuServiceFixture
         var response = await service.UpdateMenuAsync(command, CancellationToken.None);
 
         response.ShouldNotBeNull();
+        response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
         mockMapper.Received().Map(command, existingMenu);
         await mockMenuDataProvider.Received(1)
             .UpdateMenuAsync(existingMenu, Arg.Any<CancellationToken>());
