@@ -122,6 +122,7 @@ public class MenuService : IMenuService
         }
         
         _mapper.Map(command, menu);
+        await _menuDataProvider.UpdateMenuAsync(menu, cancellationToken).ConfigureAwait(false);
 
         return response;
     }
