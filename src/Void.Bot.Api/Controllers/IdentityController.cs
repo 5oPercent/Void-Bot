@@ -44,6 +44,16 @@ public class IdentityController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpPost]
+    [Route("refresh-token")]
+    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
+    {
+        var response = await _mediator.RequestAsync<RefreshTokenRequest, RefreshTokenResponse>(request).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
     [HttpGet]
     [Route("oauth/{platform}/authorize")]
     public async Task<IActionResult> OAuthAuthorizeAsync(

@@ -389,7 +389,7 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
                 ProviderUserId = identity.UserId,
                 ProviderUserName = identity.DisplayName,
                 AccessToken = _tokenClaimService.GenerateAccessToken(claims),
-                RefreshToken = _tokenClaimService.GenerateRefreshToken()
+                RefreshToken = _tokenClaimService.GenerateRefreshToken(claims)
             }
         };
     }
