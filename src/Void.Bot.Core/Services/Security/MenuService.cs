@@ -32,12 +32,12 @@ public interface IMenuService : IScope
 public class MenuService : IMenuService
 {
     private readonly IMapper _mapper;
-    private readonly MenuDataProvider _menuDataProvider;
+    private readonly IMenuDataProvider _menuDataProvider;
     private readonly IPermissionMenuService _permissionMenuService;
 
     public MenuService(
         IMapper mapper,
-        MenuDataProvider menuDataProvider,
+        IMenuDataProvider menuDataProvider,
         IPermissionMenuService permissionMenuService)
     {
         _mapper = mapper;
