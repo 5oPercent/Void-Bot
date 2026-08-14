@@ -30,7 +30,8 @@ public static class ScannerExtensions
 
             foreach (var method in methods)
             {
-                if (method.GetCustomAttribute<SkipScanAttribute>() != null)
+                if (method.GetCustomAttribute<SkipScanAttribute>() != null ||
+                    method.GetCustomAttribute<SkipPermissionCheckAttribute>() != null)
                     continue;
                 
                 var httpAttrs = method.GetCustomAttributes()

@@ -32,6 +32,15 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
 
+    [SkipPermissionCheck]
+    [HttpGet("user/permissions")]
+    [ProducesResponseType(typeof(GetCurrentUserPermissionsResponse), 200)]
+    public async Task<IActionResult> GetCurrentUserPermissionsAsync([FromQuery] GetCurrentUserPermissionsRequest request)
+    {
+        var response = await _mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(request).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     #endregion
     
     #region Role

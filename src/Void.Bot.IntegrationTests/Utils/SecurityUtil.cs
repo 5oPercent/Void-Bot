@@ -107,6 +107,54 @@ public class SecurityUtil(IntegrationTestBase testBase) : IntegrationUtilBase(te
         return id;
     }
 
+    public async Task<Guid> AddMenuAsync(
+        string name = "", string path = "", StatusEnum status = StatusEnum.Enable)
+    {
+        if (name.IsNullOrEmpty())
+            name = "".GenerateRandomString();
+        if (path.IsNullOrEmpty())
+            path = "/" + "".GenerateRandomString();
+
+        var id = Guid.NewGuid();
+
+        await RunWithUnitOfWork<IRepository<Menu>>(async rep =>
+        {
+            await rep.InsertAsync(new Menu
+            {
+                Id = id,
+                Name = name,
+                Path = path,
+                Description = "Test menu",
+                Type = MenuTypeEnum.Menu,
+                Sequence = 1,
+                Status = status,
+                CreatedAt = DateTimeOffset.Now,
+                CreatedBy = TestUserId
+            });
+        });
+
+        return id;
+    }
+
+    public async Task<Guid> AddPermissionMenuAsync(Guid permissionId, Guid menuId)
+    {
+        var id = Guid.NewGuid();
+
+        await RunWithUnitOfWork<IRepository<PermissionMenu>>(async rep =>
+        {
+            await rep.InsertAsync(new PermissionMenu
+            {
+                Id = id,
+                PermissionId = permissionId,
+                MenuId = menuId,
+                CreatedAt = DateTimeOffset.Now,
+                CreatedBy = TestUserId
+            });
+        });
+
+        return id;
+    }
+
     public async Task<Guid> AddPermissionEndpointAsync(Guid permissionId, string endpoint)
     {
         var id = Guid.NewGuid();
