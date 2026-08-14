@@ -38,13 +38,13 @@ public class IdentityFixture(IntegrationTestBase testBase) : IntegrationFixture(
             var first = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
                 new RegisterUserAccountCommand
                 {
-                    Name = "first-user",
+                    Name = "firstuser",
                     Password = StringExtension.GenerateRandomPassword()
                 }).ConfigureAwait(false);
             var second = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
                 new RegisterUserAccountCommand
                 {
-                    Name = "second-user",
+                    Name = "seconduser",
                     Password = StringExtension.GenerateRandomPassword()
                 }).ConfigureAwait(false);
 
