@@ -228,8 +228,10 @@ public class UserRoleService : IUserRoleService
             return response;
         }
 
-        var existingRoles = await _roleDataProvider.GetRoleListAsync(
-            requestedRoleIds, [], cancellationToken).ConfigureAwait(false);
+        List<Role> existingRoles = requestedRoleIds.Count == 0
+            ? []
+            : await _roleDataProvider.GetRoleListAsync(
+                requestedRoleIds, [], cancellationToken).ConfigureAwait(false);
         var existingRoleIds = existingRoles.Select(x => x.Id).ToHashSet();
         var nonExistingRoleIds = requestedRoleIds.Where(x => !existingRoleIds.Contains(x)).ToList();
         if (nonExistingRoleIds.Count != 0)
