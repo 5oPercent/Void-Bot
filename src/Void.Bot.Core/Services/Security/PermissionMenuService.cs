@@ -11,6 +11,9 @@ namespace Void.Bot.Core.Services.Security;
 
 public interface IPermissionMenuService : IScope
 {
+    Task<List<PermissionMenuDto>> GetPermissionMenusAsync(
+        List<Guid> permissionIds, CancellationToken cancellationToken);
+
     Task<GetMenusByPermissionIdsResponse> GetMenusByPermissionIdsAsync(
         GetMenusByPermissionIdsRequest request, CancellationToken cancellationToken);
     
@@ -47,6 +50,17 @@ public class PermissionMenuService : IPermissionMenuService
         _permissionDataProvider = permissionDataProvider;
         _menuDataProvider = menuDataProvider;
         _permissionMenuRep = permissionMenuRep;
+    }
+
+    public async Task<List<PermissionMenuDto>> GetPermissionMenusAsync(
+        List<Guid> permissionIds, CancellationToken cancellationToken)
+    {
+        var permissionIdSet = permissionIds.ToHashSet();
+        var permissionMenus = await _permissionMenuRep.QueryNoTracking()
+            .Where(x => permissionIdSet.Contains(x.PermissionId))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return _mapper.Map<List<PermissionMenuDto>>(permissionMenus);
     }
 
     public async Task<GetMenusByPermissionIdsResponse> GetMenusByPermissionIdsAsync(

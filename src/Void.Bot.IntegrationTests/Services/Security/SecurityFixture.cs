@@ -283,6 +283,46 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
     #region SecurityService Tests
 
     [Fact]
+    public async Task GetCurrentUserPermissionsAsync_ReturnsSecurityContextFromActiveRoles()
+    {
+        var activeRoleId = await _util.AddRoleAsync();
+        var earlierRoleId = await _util.AddRoleAsync();
+        var expiredRoleId = await _util.AddRoleAsync();
+        var activePermissionId = await _util.AddPermissionAsync();
+        var expiredPermissionId = await _util.AddPermissionAsync();
+        var menuId = await _util.AddMenuAsync();
+        var disabledMenuId = await _util.AddMenuAsync(status: StatusEnum.Disable);
+        var activeDeadline = DateTimeOffset.Now.AddDays(30);
+        var earlierDeadline = DateTimeOffset.Now.AddDays(10);
+
+        await _util.AddUserRoleAsync(TestUserId, activeRoleId, activeDeadline);
+        await _util.AddUserRoleAsync(TestUserId, earlierRoleId, earlierDeadline);
+        await _util.AddUserRoleAsync(TestUserId, expiredRoleId, DateTimeOffset.Now.AddDays(-1));
+        await _util.AddRolePermissionAsync(activeRoleId, activePermissionId);
+        await _util.AddRolePermissionAsync(earlierRoleId, activePermissionId);
+        await _util.AddRolePermissionAsync(expiredRoleId, expiredPermissionId);
+        await _util.AddPermissionMenuAsync(activePermissionId, menuId);
+        await _util.AddPermissionMenuAsync(activePermissionId, disabledMenuId);
+
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(
+                new GetCurrentUserPermissionsRequest()).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+            response.Data.Roles.Count.ShouldBe(2);
+            response.Data.Roles.Single(x => x.Id == activeRoleId).Deadline.ShouldBe(activeDeadline);
+            response.Data.Roles.Single(x => x.Id == earlierRoleId).Deadline.ShouldBe(earlierDeadline);
+            response.Data.Permissions.Count.ShouldBe(1);
+            response.Data.Permissions[0].Id.ShouldBe(activePermissionId);
+            response.Data.Permissions[0].Deadline.ShouldBe(activeDeadline);
+            response.Data.Menus.Count.ShouldBe(1);
+            response.Data.Menus[0].Id.ShouldBe(menuId);
+            response.Data.Menus[0].Deadline.ShouldBe(activeDeadline);
+        });
+    }
+
+    [Fact]
     public async Task VerifyPermissionEndpointAsync_WithUnauthorizedEndpoint_ReturnsFalse()
     {
         var userId = TestUserId;

@@ -11,6 +11,9 @@ namespace Void.Bot.Core.Services.Security;
 
 public interface IRolePermissionService : IScope
 {
+    Task<List<RolePermissionDto>> GetRolePermissionsAsync(
+        List<Guid> roleIds, CancellationToken cancellationToken);
+
     Task<GetPermissionsByRoleIdsResponse> GetPermissionsByRoleIdsAsync(
         GetPermissionsByRoleIdsRequest request, CancellationToken cancellationToken);
     
@@ -50,6 +53,17 @@ public class RolePermissionService : IRolePermissionService
         _roleDataProvider = roleDataProvider;
         _permissionDataProvider = permissionDataProvider;
         _rolePermissionRep = rolePermissionRep;
+    }
+
+    public async Task<List<RolePermissionDto>> GetRolePermissionsAsync(
+        List<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        var roleIdSet = roleIds.ToHashSet();
+        var rolePermissions = await _rolePermissionRep.QueryNoTracking()
+            .Where(x => roleIdSet.Contains(x.RoleId))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return _mapper.Map<List<RolePermissionDto>>(rolePermissions);
     }
 
     public async Task<GetPermissionsByRoleIdsResponse> GetPermissionsByRoleIdsAsync(
