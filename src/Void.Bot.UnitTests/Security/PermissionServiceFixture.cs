@@ -454,8 +454,11 @@ public class PermissionServiceFixture
         };
 
         var mockPermissionDataProvider = Substitute.For<IPermissionDataProvider>();
-        mockPermissionDataProvider.GetChildAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        mockPermissionDataProvider.GetAllPermissionAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Permission { Id = permissionId },
+                new Permission { Id = Guid.NewGuid(), Pid = permissionId }
+            ]);
 
         var mockMapper = Substitute.For<AutoMapper.IMapper>();
         var mockRolePermissionService = Substitute.For<IRolePermissionService>();
@@ -486,8 +489,8 @@ public class PermissionServiceFixture
         };
 
         var mockPermissionDataProvider = Substitute.For<IPermissionDataProvider>();
-        mockPermissionDataProvider.GetChildAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(false);
+        mockPermissionDataProvider.GetAllPermissionAsync(Arg.Any<CancellationToken>())
+            .Returns([new Permission { Id = permissionId }]);
         mockPermissionDataProvider.DeletePermissionsAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
@@ -520,6 +523,50 @@ public class PermissionServiceFixture
         await mockPermissionMenuService.Received().RemovePermissionsCascadeMenuAsync(Arg.Any<RemovePermissionsCascadeMenuCommand>(), Arg.Any<CancellationToken>());
         await mockPermissionEndpointService.Received().RemovePermissionsCascadeEndpointAsync(Arg.Any<RemovePermissionsCascadeEndpointCommand>(), Arg.Any<CancellationToken>());
         await mockPermissionDataProvider.Received().DeletePermissionsAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeletePermissionCascadeAsync_WithCascade_DeletesDescendants()
+    {
+        var permissionId = Guid.NewGuid();
+        var childPermissionId = Guid.NewGuid();
+        var command = new DeletePermissionCascadeCommand
+        {
+            IdList = [permissionId],
+            Cascade = true
+        };
+
+        var mockPermissionDataProvider = Substitute.For<IPermissionDataProvider>();
+        mockPermissionDataProvider.GetAllPermissionAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Permission { Id = permissionId },
+                new Permission { Id = childPermissionId, Pid = permissionId }
+            ]);
+        var mockRolePermissionService = Substitute.For<IRolePermissionService>();
+        mockRolePermissionService.RemovePermissionCascadeRoleAsync(
+                Arg.Any<RemovePermissionCascadeRoleCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemovePermissionCascadeRoleResponse());
+        var mockPermissionMenuService = Substitute.For<IPermissionMenuService>();
+        mockPermissionMenuService.RemovePermissionsCascadeMenuAsync(
+                Arg.Any<RemovePermissionsCascadeMenuCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemovePermissionsCascadeMenuResponse());
+        var mockPermissionEndpointService = Substitute.For<IPermissionEndpointService>();
+        mockPermissionEndpointService.RemovePermissionsCascadeEndpointAsync(
+                Arg.Any<RemovePermissionsCascadeEndpointCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemovePermissionsCascadeEndpointResponse());
+        var service = new PermissionService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockPermissionDataProvider,
+            mockRolePermissionService,
+            mockPermissionMenuService,
+            mockPermissionEndpointService);
+
+        var response = await service.DeletePermissionCascadeAsync(command, CancellationToken.None);
+
+        response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
+        await mockPermissionDataProvider.Received(1).DeletePermissionsAsync(
+            Arg.Is<List<Guid>>(ids => ids.Count == 2 && ids.Contains(permissionId) && ids.Contains(childPermissionId)),
+            Arg.Any<CancellationToken>());
     }
 
     #endregion

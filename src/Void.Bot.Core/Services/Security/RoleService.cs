@@ -148,16 +148,22 @@ public partial class RoleService : IRoleService
         DeleteRoleCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteRoleCascadeResponse();
-        
-        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var roleList = await _roleDataProvider.GetAllRoleAsync(cancellationToken).ConfigureAwait(false);
+        var roleIds = command.Cascade
+            ? roleList.GetDescendantIds<Guid, Role>(command.IdList)
+            : command.IdList.Distinct().ToList();
+
+        var hasBuilt = await _roleDataProvider.GetBuiltAnyAsync(roleIds, cancellationToken).ConfigureAwait(false);
         if (hasBuilt)
         {
             response.Code = HttpStatusCode.BadRequest;
             response.Message = "System built-in roles cannot be deleted.";
             return response;
         }
-        
-        var hasChild = await _roleDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var roleIdSet = roleIds.ToHashSet();
+        var hasChild = roleList.Any(x => roleIdSet.Contains(x.Pid) && !roleIdSet.Contains(x.Id));
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -167,13 +173,13 @@ public partial class RoleService : IRoleService
 
         // Remove user-role data
         await _userRoleService.RemoveRolesCascadeUserAsync(
-            new RemoveRolesCascadeUserCommand { RoleIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemoveRolesCascadeUserCommand { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         
         // Remove role-permission data
         await _rolePermissionService.RemoveRoleCascadePermissionAsync(
-            new RemoveRoleCascadePermissionCommand { RoleIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemoveRoleCascadePermissionCommand { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         
-        await _roleDataProvider.DeleteRoleListAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        await _roleDataProvider.DeleteRoleListAsync(roleIds, cancellationToken).ConfigureAwait(false);
         
         return response;
     }
