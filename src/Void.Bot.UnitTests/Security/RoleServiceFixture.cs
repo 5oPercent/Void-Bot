@@ -206,6 +206,38 @@ public class RoleServiceFixture
         response.Data.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task GetRoleTreeAsync_OrdersEachLevelBySequenceAndCreatedAt()
+    {
+        var baseTime = new DateTimeOffset(2026, 8, 14, 0, 0, 0, TimeSpan.Zero);
+        var firstRoot = new Role { Id = Guid.NewGuid(), Sequence = 0, CreatedAt = baseTime.AddSeconds(1) };
+        var secondRoot = new Role { Id = Guid.NewGuid(), Sequence = 1, CreatedAt = baseTime };
+        var firstChild = new Role
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime
+        };
+        var secondChild = new Role
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime.AddSeconds(1)
+        };
+        var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([secondChild, secondRoot, firstChild, firstRoot]);
+        var mockMapper = Substitute.For<AutoMapper.IMapper>();
+        mockMapper.Map<List<RoleDto>>(Arg.Any<List<Role>>()).Returns([]);
+        var service = new RoleService(
+            mockMapper,
+            mockRoleDataProvider,
+            Substitute.For<IUserRoleService>(),
+            Substitute.For<IRolePermissionService>());
+
+        await service.GetRoleTreeAsync(new GetRoleTreeRequest(), CancellationToken.None);
+
+        mockMapper.Received(1).Map<List<RoleDto>>(Arg.Is<List<Role>>(tree =>
+            tree.Select(x => x.Id).SequenceEqual(new[] { firstRoot.Id, secondRoot.Id }) &&
+            tree[0].Children.Select(x => x.Id).SequenceEqual(new[] { firstChild.Id, secondChild.Id })));
+    }
+
     #endregion
 
     #region AddRoleAsync

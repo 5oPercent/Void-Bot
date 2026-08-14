@@ -79,7 +79,10 @@ public partial class PermissionService : IPermissionService
     {
         var list = await _permissionDataProvider.GetAllPermissionAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Permission>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Permission>();
 
         return new GetPermissionTreeResponse
         {

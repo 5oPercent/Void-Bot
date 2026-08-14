@@ -215,6 +215,39 @@ public class PermissionServiceFixture
         response.Data.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task GetPermissionTreeAsync_OrdersEachLevelBySequenceAndCreatedAt()
+    {
+        var baseTime = new DateTimeOffset(2026, 8, 14, 0, 0, 0, TimeSpan.Zero);
+        var firstRoot = new Permission { Id = Guid.NewGuid(), Sequence = 0, CreatedAt = baseTime.AddSeconds(1) };
+        var secondRoot = new Permission { Id = Guid.NewGuid(), Sequence = 1, CreatedAt = baseTime };
+        var firstChild = new Permission
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime
+        };
+        var secondChild = new Permission
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime.AddSeconds(1)
+        };
+        var mockPermissionDataProvider = Substitute.For<IPermissionDataProvider>();
+        mockPermissionDataProvider.GetAllPermissionAsync(Arg.Any<CancellationToken>())
+            .Returns([secondChild, secondRoot, firstChild, firstRoot]);
+        var mockMapper = Substitute.For<AutoMapper.IMapper>();
+        mockMapper.Map<List<Message.Dto.Security.PermissionDto>>(Arg.Any<List<Permission>>()).Returns([]);
+        var service = new PermissionService(
+            mockMapper,
+            mockPermissionDataProvider,
+            Substitute.For<IRolePermissionService>(),
+            Substitute.For<IPermissionMenuService>(),
+            Substitute.For<IPermissionEndpointService>());
+
+        await service.GetPermissionTreeAsync(new GetPermissionTreeRequest(), CancellationToken.None);
+
+        mockMapper.Received(1).Map<List<Message.Dto.Security.PermissionDto>>(Arg.Is<List<Permission>>(tree =>
+            tree.Select(x => x.Id).SequenceEqual(new[] { firstRoot.Id, secondRoot.Id }) &&
+            tree[0].Children.Select(x => x.Id).SequenceEqual(new[] { firstChild.Id, secondChild.Id })));
+    }
+
     #endregion
 
     #region AddPermissionAsync

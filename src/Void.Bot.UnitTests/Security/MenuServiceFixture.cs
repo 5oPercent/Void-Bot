@@ -4,12 +4,45 @@ using Shouldly;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Commands.Security;
+using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Enum.Security;
+using Void.Bot.Message.Request.Security;
 
 namespace Void.Bot.UnitTest.Security;
 
 public class MenuServiceFixture
 {
+    [Fact]
+    public async Task GetMenuTreeAsync_OrdersEachLevelBySequenceAndCreatedAt()
+    {
+        var baseTime = new DateTimeOffset(2026, 8, 14, 0, 0, 0, TimeSpan.Zero);
+        var firstRoot = new Menu { Id = Guid.NewGuid(), Sequence = 0, CreatedAt = baseTime.AddSeconds(1) };
+        var secondRoot = new Menu { Id = Guid.NewGuid(), Sequence = 1, CreatedAt = baseTime };
+        var firstChild = new Menu
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime
+        };
+        var secondChild = new Menu
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime.AddSeconds(1)
+        };
+        var mockMenuDataProvider = Substitute.For<IMenuDataProvider>();
+        mockMenuDataProvider.GetAllMenuAsync(Arg.Any<CancellationToken>())
+            .Returns([secondChild, secondRoot, firstChild, firstRoot]);
+        var mockMapper = Substitute.For<AutoMapper.IMapper>();
+        mockMapper.Map<List<MenuDto>>(Arg.Any<List<Menu>>()).Returns([]);
+        var service = new MenuService(
+            mockMapper,
+            mockMenuDataProvider,
+            Substitute.For<IPermissionMenuService>());
+
+        await service.GetMenuTreeAsync(new GetMenuTreeRequest(), CancellationToken.None);
+
+        mockMapper.Received(1).Map<List<MenuDto>>(Arg.Is<List<Menu>>(tree =>
+            tree.Select(x => x.Id).SequenceEqual(new[] { firstRoot.Id, secondRoot.Id }) &&
+            tree[0].Children.Select(x => x.Id).SequenceEqual(new[] { firstChild.Id, secondChild.Id })));
+    }
+
     [Fact]
     public async Task AddMenuAsync_WithRootMenu_CreatesMenu()
     {
