@@ -1,6 +1,7 @@
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Constants.Security;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Security;
 
@@ -10,17 +11,21 @@ public class SecurityUtil(IntegrationTestBase testBase) : IntegrationUtilBase(te
 {
     private static readonly Guid TestUserId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
-    public async Task<Guid> AddRoleAsync(string name = "", string code = "", Guid pid = default, bool built = false)
+    public async Task<Guid> AddRoleAsync(
+        string name = "", string code = "", Guid pid = default, bool built = false, Guid id = default)
     {
         if (name.IsNullOrEmpty())
             name = "".GenerateRandomString();
         if (code.IsNullOrEmpty())
             code = "".GenerateRandomString();
 
-        var id = Guid.NewGuid();
+        id = id == Guid.Empty ? Guid.NewGuid() : id;
 
         await RunWithUnitOfWork<IRepository<Role>>(async rep =>
         {
+            if (await rep.AnyAsync(x => x.Id == id))
+                return;
+
             await rep.InsertAsync(new Role
             {
                 Id = id,
@@ -88,6 +93,21 @@ public class SecurityUtil(IntegrationTestBase testBase) : IntegrationUtilBase(te
         return id;
     }
 
+    public async Task AddSuperAdminBootstrapClaimAsync(Guid userId)
+    {
+        await RunWithUnitOfWork<IRepository<SecurityBootstrapClaim>>(async rep =>
+        {
+            if (await rep.AnyAsync(x => x.Id == RoleConstants.SuperAdminBootstrapClaim))
+                return;
+
+            await rep.InsertAsync(new SecurityBootstrapClaim
+            {
+                Id = RoleConstants.SuperAdminBootstrapClaim,
+                UserId = userId
+            });
+        });
+    }
+
     public async Task<Guid> AddRolePermissionAsync(Guid roleId, Guid permissionId)
     {
         var id = Guid.NewGuid();
@@ -99,6 +119,54 @@ public class SecurityUtil(IntegrationTestBase testBase) : IntegrationUtilBase(te
                 Id = id,
                 RoleId = roleId,
                 PermissionId = permissionId,
+                CreatedAt = DateTimeOffset.Now,
+                CreatedBy = TestUserId
+            });
+        });
+
+        return id;
+    }
+
+    public async Task<Guid> AddMenuAsync(
+        string name = "", string path = "", StatusEnum status = StatusEnum.Enable)
+    {
+        if (name.IsNullOrEmpty())
+            name = "".GenerateRandomString();
+        if (path.IsNullOrEmpty())
+            path = "/" + "".GenerateRandomString();
+
+        var id = Guid.NewGuid();
+
+        await RunWithUnitOfWork<IRepository<Menu>>(async rep =>
+        {
+            await rep.InsertAsync(new Menu
+            {
+                Id = id,
+                Name = name,
+                Path = path,
+                Description = "Test menu",
+                Type = MenuTypeEnum.Page,
+                Sequence = 1,
+                Status = status,
+                CreatedAt = DateTimeOffset.Now,
+                CreatedBy = TestUserId
+            });
+        });
+
+        return id;
+    }
+
+    public async Task<Guid> AddPermissionMenuAsync(Guid permissionId, Guid menuId)
+    {
+        var id = Guid.NewGuid();
+
+        await RunWithUnitOfWork<IRepository<PermissionMenu>>(async rep =>
+        {
+            await rep.InsertAsync(new PermissionMenu
+            {
+                Id = id,
+                PermissionId = permissionId,
+                MenuId = menuId,
                 CreatedAt = DateTimeOffset.Now,
                 CreatedBy = TestUserId
             });

@@ -2,7 +2,9 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
+using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Extension;
+using Void.Bot.Message.Constants.Security;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Account;
 
@@ -44,14 +46,23 @@ public interface IAccountDataProvider : IScope
 public class AccountDataProvider : IAccountDataProvider
 {
     private readonly IMapper _mapper;
+    private readonly VoidBotDbContext _dbContext;
     private readonly IRepository<UserAccount> _userAccountRep;
     private readonly IRepository<UserThirdParty> _userThirdPartyRep;
+    private readonly IRepository<UserRole> _userRoleRep;
 
-    public AccountDataProvider(IMapper mapper, IRepository<UserAccount> userAccountRep, IRepository<UserThirdParty> userThirdPartyRep)
+    public AccountDataProvider(
+        IMapper mapper,
+        VoidBotDbContext dbContext,
+        IRepository<UserAccount> userAccountRep,
+        IRepository<UserThirdParty> userThirdPartyRep,
+        IRepository<UserRole> userRoleRep)
     {
         _mapper = mapper;
+        _dbContext = dbContext;
         _userAccountRep = userAccountRep;
         _userThirdPartyRep = userThirdPartyRep;
+        _userRoleRep = userRoleRep;
     }
     
     public async Task<UserAccountDto?> GetUserAccountAsync(
@@ -180,7 +191,23 @@ public class AccountDataProvider : IAccountDataProvider
             }
         }
         
+        var isFirstUser = await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+             INSERT IGNORE INTO `security_bootstrap_claim` (`claim_key`, `user_id`, `created_at`)
+             SELECT {RoleConstants.SuperAdminBootstrapClaim}, {user.Id}, CURRENT_TIMESTAMP
+             WHERE NOT EXISTS (SELECT 1 FROM `user_account` LIMIT 1);
+             """, cancellationToken).ConfigureAwait(false) == 1;
+
         await _userAccountRep.InsertAsync(user, cancellationToken).ConfigureAwait(false);
+
+        if (isFirstUser)
+        {
+            await _userRoleRep.InsertAsync(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = RoleConstants.SuperAdminId
+            }, cancellationToken).ConfigureAwait(false);
+        }
         
         return _mapper.Map<UserAccountDto>(user);
     }

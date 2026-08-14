@@ -72,7 +72,10 @@ public class MenuService : IMenuService
     {
         var list = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Menu>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Menu>();
 
         return new GetMenuTreeResponse
         {
@@ -137,20 +140,25 @@ public class MenuService : IMenuService
         DeleteMenuCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteMenuCascadeResponse();
-        
-        var hasChild = await _menuDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var menuList = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
+        var menuIds = command.Cascade
+            ? menuList.GetDescendantIds<Guid, Menu>(command.IdList)
+            : command.IdList.Distinct().ToList();
+        var menuIdSet = menuIds.ToHashSet();
+        var hasChild = menuList.Any(x => menuIdSet.Contains(x.Pid) && !menuIdSet.Contains(x.Id));
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Child role exists";
+            response.Message = "Child menu exists";
             return response;
         }
         
         // Remove menu-permission data
         await _permissionMenuService.RemoveMenusCascadePermissionAsync(
-            new RemoveMenusCascadePermissionCommand { MenuIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemoveMenusCascadePermissionCommand { MenuIds = menuIds }, cancellationToken).ConfigureAwait(false);
         
-        await _menuDataProvider.DeleteMenusAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        await _menuDataProvider.DeleteMenusAsync(menuIds, cancellationToken).ConfigureAwait(false);
 
         return response;
     }

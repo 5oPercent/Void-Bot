@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Security;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Api.Filters;
@@ -27,12 +28,17 @@ public class SecurityAuthorizationFilter : IAsyncAuthorizationFilter
     
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
+        if (context.ActionDescriptor.EndpointMetadata.OfType<SkipPermissionCheckAttribute>().Any())
+        {
+            return;
+        }
+
         if (_currentUser.Id == null || _currentUser.Id == Guid.Empty)
         {
             return;
         }
 
-        if (await _userRoleService.CheckUserIsAdminAsync(_currentUser.Id.GetValueOrDefault(), CancellationToken.None))
+        if (await _userRoleService.CheckUserIsSuperAdminAsync(_currentUser.Id.GetValueOrDefault(), CancellationToken.None))
         {
             return;
         }

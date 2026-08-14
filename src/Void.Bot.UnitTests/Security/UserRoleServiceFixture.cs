@@ -2,6 +2,7 @@ using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Services.Account;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Constants.Security;
@@ -175,6 +176,10 @@ internal class AsyncEnumeratorWrapper<T> : IAsyncEnumerator<T>
 
 public class UserRoleServiceFixture
 {
+    private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
+    private readonly IRepository<SecurityBootstrapClaim> _securityBootstrapClaimRep =
+        Substitute.For<IRepository<SecurityBootstrapClaim>>();
+
     #region GetRolesByUserIdAsync
 
     [Fact]
@@ -237,7 +242,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.GetRolesByUserIdAsync(new GetRolesByUserIdRequest { UserId = userId }, CancellationToken.None);
 
@@ -266,7 +273,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.GetRolesByUserIdAsync(new GetRolesByUserIdRequest { UserId = userId }, CancellationToken.None);
 
@@ -304,7 +313,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.AssignRolesToUserAsync(command, CancellationToken.None);
 
@@ -340,7 +351,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.AssignRolesToUserAsync(command, CancellationToken.None);
 
@@ -390,7 +403,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.AssignRolesToUserAsync(command, CancellationToken.None);
 
@@ -441,7 +456,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.AssignRolesToUserAsync(command, CancellationToken.None);
 
@@ -477,7 +494,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.UnassignRolesFromUserAsync(command, CancellationToken.None);
 
@@ -487,22 +506,21 @@ public class UserRoleServiceFixture
 
     #endregion
 
-    #region CheckUserIsAdminAsync
+    #region CheckUserIsSuperAdminAsync
 
     [Fact]
-    public async Task CheckUserIsAdminAsync_WithAdminRole_ReturnsTrue()
+    public async Task CheckUserIsSuperAdminAsync_WithSuperAdminRole_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
-        var adminRoleId = Guid.NewGuid();
 
         var roles = new List<Role>
         {
             new Role
             {
-                Id = adminRoleId,
+                Id = RoleConstants.SuperAdminId,
                 Pid = Guid.Empty,
-                Name = RoleConstants.Admin,
-                Code = RoleConstants.Admin,
+                Name = RoleConstants.SuperAdmin,
+                Code = RoleConstants.SuperAdmin,
                 Status = StatusEnum.Enable
             }
         };
@@ -522,15 +540,17 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
-        var result = await service.CheckUserIsAdminAsync(userId, CancellationToken.None);
+        var result = await service.CheckUserIsSuperAdminAsync(userId, CancellationToken.None);
 
         result.ShouldBeTrue();
     }
 
     [Fact]
-    public async Task CheckUserIsAdminAsync_WithNoAdminRole_ReturnsFalse()
+    public async Task CheckUserIsSuperAdminAsync_WithNoSuperAdminRole_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
 
@@ -549,26 +569,27 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
-        var result = await service.CheckUserIsAdminAsync(userId, CancellationToken.None);
+        var result = await service.CheckUserIsSuperAdminAsync(userId, CancellationToken.None);
 
         result.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task CheckUserIsAdminAsync_WithNoUserRole_ReturnsFalse()
+    public async Task CheckUserIsSuperAdminAsync_WithNoUserRole_ReturnsFalse()
     {
         var userId = Guid.NewGuid();
-        var adminRoleId = Guid.NewGuid();
-
         var roles = new List<Role>
         {
             new Role
             {
-                Id = adminRoleId,
-                Name = RoleConstants.Admin,
-                Code = RoleConstants.Admin
+                Id = RoleConstants.SuperAdminId,
+                Name = RoleConstants.SuperAdmin,
+                Code = RoleConstants.SuperAdmin,
+                Status = StatusEnum.Enable
             }
         };
 
@@ -587,9 +608,11 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
-        var result = await service.CheckUserIsAdminAsync(userId, CancellationToken.None);
+        var result = await service.CheckUserIsSuperAdminAsync(userId, CancellationToken.None);
 
         result.ShouldBeFalse();
     }
@@ -602,6 +625,7 @@ public class UserRoleServiceFixture
     public async Task ReplaceUserRolesAsync_WithValidData_ReplacesUserRoles()
     {
         var userId = Guid.NewGuid();
+        var oldRoleId = Guid.NewGuid();
         var newRoleId = Guid.NewGuid();
 
         var command = new ReplaceUserRolesCommand
@@ -625,6 +649,10 @@ public class UserRoleServiceFixture
 
         var mockMapper = Substitute.For<AutoMapper.IMapper>();
         var mockUserRoleRep = Substitute.For<IRepository<UserRole>>();
+        mockUserRoleRep.QueryNoTracking().Returns(new AsyncQueryableWrapper<UserRole>(
+        [
+            new UserRole { UserId = userId, RoleId = oldRoleId }
+        ]));
         mockUserRoleRep.DeleteAsync(Arg.Any<System.Linq.Expressions.Expression<Func<UserRole, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         mockUserRoleRep.InsertManyAsync(Arg.Any<List<UserRole>>(), Arg.Any<CancellationToken>())
@@ -634,7 +662,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.ReplaceUserRolesAsync(command, CancellationToken.None);
 
@@ -649,6 +679,7 @@ public class UserRoleServiceFixture
     public async Task ReplaceUserRolesAsync_WithEmptyRoles_DeletesAllUserRoles()
     {
         var userId = Guid.NewGuid();
+        var roleId = Guid.NewGuid();
 
         var command = new ReplaceUserRolesCommand
         {
@@ -663,6 +694,10 @@ public class UserRoleServiceFixture
 
         var mockMapper = Substitute.For<AutoMapper.IMapper>();
         var mockUserRoleRep = Substitute.For<IRepository<UserRole>>();
+        mockUserRoleRep.QueryNoTracking().Returns(new AsyncQueryableWrapper<UserRole>(
+        [
+            new UserRole { UserId = userId, RoleId = roleId }
+        ]));
         mockUserRoleRep.DeleteAsync(Arg.Any<System.Linq.Expressions.Expression<Func<UserRole, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
@@ -670,7 +705,9 @@ public class UserRoleServiceFixture
             mockMapper,
             mockRoleDataProvider,
             mockAccountDataProvider,
-            mockUserRoleRep);
+            mockUserRoleRep,
+            _securityBootstrapClaimRep,
+            _currentUser);
 
         var response = await service.ReplaceUserRolesAsync(command, CancellationToken.None);
 
