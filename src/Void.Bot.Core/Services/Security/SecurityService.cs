@@ -1,5 +1,6 @@
 using Serilog;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Security;
 
@@ -87,24 +88,34 @@ public class SecurityService : ISecurityService
 
         response.Data.Roles = userRoles.Data.Roles
             .Where(x => roleDeadlines.ContainsKey(x.Id))
-            .Select(x => ToAuthorizedRoleDto(x, roleDeadlines[x.Id]))
+            .Select(x => new AuthorizedRoleDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                Description = x.Description,
+                Code = x.Code,
+                Deadline = roleDeadlines[x.Id]
+            })
             .ToList();
 
         var roleIds = roleDeadlines.Keys.ToList();
+        var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
+            new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         if (!includeMenus)
         {
-            var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
-                new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
-
             response.Data.Permissions = rolePermissions.Data?
                 .Where(x => x.Status == StatusEnum.Enable)
-                .Select(x => ToAuthorizedPermissionDto(x, null))
+                .Select(x => new AuthorizedPermissionDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    Description = x.Description,
+                    Code = x.Code
+                })
                 .ToList() ?? [];
             return response;
         }
 
-        var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
-            new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         var rolePermissionLinks = await _rolePermissionService.GetRolePermissionsAsync(
             roleIds, cancellationToken).ConfigureAwait(false);
         var roleIdsByPermission = rolePermissionLinks
@@ -120,7 +131,14 @@ public class SecurityService : ISecurityService
             }
 
             var deadline = AggregateDeadline(permissionRoleIds.Select(x => roleDeadlines[x]));
-            permissionMap[permission.Id] = ToAuthorizedPermissionDto(permission, deadline);
+            permissionMap[permission.Id] = new AuthorizedPermissionDto
+            {
+                Id = permission.Id,
+                Name = permission.Name,
+                Description = permission.Description,
+                Code = permission.Code,
+                Deadline = deadline
+            };
         }
 
         response.Data.Permissions = permissionMap.Values.ToList();
@@ -146,7 +164,18 @@ public class SecurityService : ISecurityService
             }
 
             var deadline = AggregateDeadline(menuPermissionIds.Select(x => permissionMap[x].Deadline));
-            response.Data.Menus.Add(ToAuthorizedMenuDto(menu, deadline));
+            response.Data.Menus.Add(new AuthorizedMenuDto
+            {
+                Id = menu.Id,
+                Pid = menu.Pid,
+                Type = menu.Type,
+                Name = menu.Name,
+                Description = menu.Description,
+                Path = menu.Path,
+                Icon = menu.Icon,
+                Sequence = menu.Sequence,
+                Deadline = deadline
+            });
         }
         return response;
     }
@@ -176,47 +205,6 @@ public class SecurityService : ISecurityService
         }
 
         return current > candidate ? current : candidate;
-    }
-
-    private static AuthorizedRoleDto ToAuthorizedRoleDto(RoleDto role, DateTimeOffset? deadline)
-    {
-        return new AuthorizedRoleDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            Description = role.Description,
-            Code = role.Code,
-            Deadline = deadline
-        };
-    }
-
-    private static AuthorizedPermissionDto ToAuthorizedPermissionDto(
-        PermissionDto permission, DateTimeOffset? deadline)
-    {
-        return new AuthorizedPermissionDto
-        {
-            Id = permission.Id,
-            Name = permission.Name,
-            Description = permission.Description,
-            Code = permission.Code,
-            Deadline = deadline
-        };
-    }
-
-    private static AuthorizedMenuDto ToAuthorizedMenuDto(MenuDto menu, DateTimeOffset? deadline)
-    {
-        return new AuthorizedMenuDto
-        {
-            Id = menu.Id,
-            Pid = menu.Pid,
-            Type = menu.Type,
-            Name = menu.Name,
-            Description = menu.Description,
-            Path = menu.Path,
-            Icon = menu.Icon,
-            Sequence = menu.Sequence,
-            Deadline = deadline
-        };
     }
 
     public async Task<bool> VerifyPermissionEndpointAsync(
