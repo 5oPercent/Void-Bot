@@ -72,7 +72,10 @@ public class MenuService : IMenuService
     {
         var list = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Menu>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Menu>();
 
         return new GetMenuTreeResponse
         {

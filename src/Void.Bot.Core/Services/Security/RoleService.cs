@@ -75,7 +75,10 @@ public partial class RoleService : IRoleService
     {
         var list = await _roleDataProvider.GetAllRoleAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Role>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Role>();
 
         return new GetRoleTreeResponse
         {
