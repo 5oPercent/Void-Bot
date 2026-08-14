@@ -142,7 +142,7 @@ public class MenuService : IMenuService
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Child role exists";
+            response.Message = "Child menu exists";
             return response;
         }
         
