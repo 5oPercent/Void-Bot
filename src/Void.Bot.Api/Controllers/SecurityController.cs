@@ -201,7 +201,6 @@ public class SecurityController : ControllerBase
     
     #region Endpoint
     
-    [SkipScan]
     [HttpPost("endpoint/list")]
     [ProducesResponseType(typeof(GetEndpointListResponse), 200)]
     public async Task<IActionResult> GetEndpointListAsync([FromQuery] GetEndpointListRequest request)
