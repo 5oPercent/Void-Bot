@@ -292,8 +292,8 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
         var expiredPermissionId = await _util.AddPermissionAsync();
         var menuId = await _util.AddMenuAsync();
         var disabledMenuId = await _util.AddMenuAsync(status: StatusEnum.Disable);
-        var activeDeadline = DateTimeOffset.Now.AddDays(30);
-        var earlierDeadline = DateTimeOffset.Now.AddDays(10);
+        var activeDeadline = DateTimeOffset.UtcNow.AddDays(30);
+        var earlierDeadline = DateTimeOffset.UtcNow.AddDays(10);
 
         await _util.AddUserRoleAsync(TestUserId, activeRoleId, activeDeadline);
         await _util.AddUserRoleAsync(TestUserId, earlierRoleId, earlierDeadline);
@@ -311,14 +311,24 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
             response.Data.ShouldNotBeNull();
             response.Data.Roles.Count.ShouldBe(2);
-            response.Data.Roles.Single(x => x.Id == activeRoleId).Deadline.ShouldBe(activeDeadline);
-            response.Data.Roles.Single(x => x.Id == earlierRoleId).Deadline.ShouldBe(earlierDeadline);
+            var activeRole = response.Data.Roles.Single(x => x.Id == activeRoleId);
+            activeRole.Deadline.ShouldNotBeNull();
+            activeRole.Deadline.Value.ToUnixTimeSeconds()
+                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
+            var earlierRole = response.Data.Roles.Single(x => x.Id == earlierRoleId);
+            earlierRole.Deadline.ShouldNotBeNull();
+            earlierRole.Deadline.Value.ToUnixTimeSeconds()
+                .ShouldBe(earlierDeadline.ToUnixTimeSeconds());
             response.Data.Permissions.Count.ShouldBe(1);
             response.Data.Permissions[0].Id.ShouldBe(activePermissionId);
-            response.Data.Permissions[0].Deadline.ShouldBe(activeDeadline);
+            response.Data.Permissions[0].Deadline.ShouldNotBeNull();
+            response.Data.Permissions[0].Deadline.Value.ToUnixTimeSeconds()
+                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
             response.Data.Menus.Count.ShouldBe(1);
             response.Data.Menus[0].Id.ShouldBe(menuId);
-            response.Data.Menus[0].Deadline.ShouldBe(activeDeadline);
+            response.Data.Menus[0].Deadline.ShouldNotBeNull();
+            response.Data.Menus[0].Deadline.Value.ToUnixTimeSeconds()
+                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
         });
     }
 
