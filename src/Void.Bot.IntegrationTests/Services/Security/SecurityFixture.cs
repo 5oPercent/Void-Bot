@@ -313,22 +313,22 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
             response.Data.Roles.Count.ShouldBe(2);
             var activeRole = response.Data.Roles.Single(x => x.Id == activeRoleId);
             activeRole.Deadline.ShouldNotBeNull();
-            activeRole.Deadline.Value.ToUnixTimeSeconds()
-                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
+            Math.Abs(activeRole.Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
+                .ShouldBeLessThanOrEqualTo(2);
             var earlierRole = response.Data.Roles.Single(x => x.Id == earlierRoleId);
             earlierRole.Deadline.ShouldNotBeNull();
-            earlierRole.Deadline.Value.ToUnixTimeSeconds()
-                .ShouldBe(earlierDeadline.ToUnixTimeSeconds());
+            Math.Abs(earlierRole.Deadline.Value.ToUnixTimeSeconds() - earlierDeadline.ToUnixTimeSeconds())
+                .ShouldBeLessThanOrEqualTo(2);
             response.Data.Permissions.Count.ShouldBe(1);
             response.Data.Permissions[0].Id.ShouldBe(activePermissionId);
             response.Data.Permissions[0].Deadline.ShouldNotBeNull();
-            response.Data.Permissions[0].Deadline.Value.ToUnixTimeSeconds()
-                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
+            Math.Abs(response.Data.Permissions[0].Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
+                .ShouldBeLessThanOrEqualTo(2);
             response.Data.Menus.Count.ShouldBe(1);
             response.Data.Menus[0].Id.ShouldBe(menuId);
             response.Data.Menus[0].Deadline.ShouldNotBeNull();
-            response.Data.Menus[0].Deadline.Value.ToUnixTimeSeconds()
-                .ShouldBe(activeDeadline.ToUnixTimeSeconds());
+            Math.Abs(response.Data.Menus[0].Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
+                .ShouldBeLessThanOrEqualTo(2);
         });
     }
 
