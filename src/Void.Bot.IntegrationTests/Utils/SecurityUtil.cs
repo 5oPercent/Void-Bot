@@ -125,7 +125,7 @@ public class SecurityUtil(IntegrationTestBase testBase) : IntegrationUtilBase(te
                 Name = name,
                 Path = path,
                 Description = "Test menu",
-                Type = MenuTypeEnum.Menu,
+                Type = MenuTypeEnum.Page,
                 Sequence = 1,
                 Status = status,
                 CreatedAt = DateTimeOffset.Now,
