@@ -1,6 +1,8 @@
 using Shouldly;
+using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Security;
+using Void.Bot.Message.Constants.Security;
 using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Security;
@@ -12,6 +14,8 @@ public class SecurityServiceFixture
 {
     private readonly ICurrentUser _currentUser = Substitute.For<ICurrentUser>();
     private readonly IPermissionMenuService _permissionMenuService = Substitute.For<IPermissionMenuService>();
+    private readonly IPermissionDataProvider _permissionDataProvider = Substitute.For<IPermissionDataProvider>();
+    private readonly IMenuDataProvider _menuDataProvider = Substitute.For<IMenuDataProvider>();
 
     #region GetCurrentUserPermissionsAsync
 
@@ -27,6 +31,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var response = await service.GetCurrentUserPermissionsAsync(CancellationToken.None);
@@ -143,6 +149,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var response = await service.GetCurrentUserPermissionsAsync(CancellationToken.None);
@@ -160,6 +168,85 @@ public class SecurityServiceFixture
         response.Data.Menus[0].Id.ShouldBe(menu.Id);
         response.Data.Menus[0].Path.ShouldBe(menu.Path);
         response.Data.Menus[0].Deadline.ShouldBe(activeDeadline);
+    }
+
+    [Fact]
+    public async Task GetCurrentUserPermissionsAsync_WithSuperAdmin_ReturnsAllEnabledPermissionsAndMenus()
+    {
+        var userId = Guid.NewGuid();
+        var permissionId = Guid.NewGuid();
+        var menuId = Guid.NewGuid();
+        _currentUser.Id.Returns(userId);
+
+        var mockUserRoleService = Substitute.For<IUserRoleService>();
+        mockUserRoleService.GetRolesByUserIdAsync(
+                Arg.Any<GetRolesByUserIdRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetRolesByUserIdResponse
+            {
+                Data = new GetRolesByUserIdData
+                {
+                    UserRoles =
+                    [
+                        new UserRoleDto
+                        {
+                            UserId = userId,
+                            RoleId = RoleConstants.SuperAdminId
+                        }
+                    ],
+                    Roles =
+                    [
+                        new RoleDto
+                        {
+                            Id = RoleConstants.SuperAdminId,
+                            Name = RoleConstants.SuperAdmin,
+                            Code = RoleConstants.SuperAdmin,
+                            Status = StatusEnum.Enable
+                        }
+                    ]
+                }
+            });
+
+        var mockRolePermissionService = Substitute.For<IRolePermissionService>();
+        mockRolePermissionService.GetPermissionsByRoleIdsAsync(
+                Arg.Any<GetPermissionsByRoleIdsRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetPermissionsByRoleIdsResponse { Data = [] });
+        mockRolePermissionService.GetRolePermissionsAsync(
+                Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        _permissionDataProvider.GetAllPermissionAsync(Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new Permission { Id = permissionId, Name = "Permission", Status = StatusEnum.Enable },
+                new Permission { Id = Guid.NewGuid(), Name = "Disabled", Status = StatusEnum.Disable }
+            ]);
+        _permissionMenuService.GetMenusByPermissionIdsAsync(
+                Arg.Any<GetMenusByPermissionIdsRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new GetMenusByPermissionIdsResponse { Data = [] });
+        _permissionMenuService.GetPermissionMenusAsync(
+                Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        _menuDataProvider.GetAllMenuAsync(Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new Menu { Id = menuId, Name = "Menu", Status = StatusEnum.Enable },
+                new Menu { Id = Guid.NewGuid(), Name = "Disabled", Status = StatusEnum.Disable }
+            ]);
+
+        var service = new SecurityService(
+            mockUserRoleService,
+            mockRolePermissionService,
+            _permissionMenuService,
+            Substitute.For<IPermissionEndpointService>(),
+            _permissionDataProvider,
+            _menuDataProvider,
+            _currentUser);
+
+        var response = await service.GetCurrentUserPermissionsAsync(CancellationToken.None);
+
+        response.Data.Roles.Single().Id.ShouldBe(RoleConstants.SuperAdminId);
+        response.Data.Permissions.Single().Id.ShouldBe(permissionId);
+        response.Data.Menus.Single().Id.ShouldBe(menuId);
     }
 
     [Fact]
@@ -195,6 +282,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var response = await service.GetCurrentUserPermissionsAsync(CancellationToken.None);
@@ -221,6 +310,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(
@@ -243,6 +334,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(
@@ -274,6 +367,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(userId, endpoint, method, CancellationToken.None);
@@ -333,6 +428,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(userId, endpoint, method, CancellationToken.None);
@@ -406,6 +503,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(userId, endpoint, method, CancellationToken.None);
@@ -479,6 +578,8 @@ public class SecurityServiceFixture
             mockRolePermissionService,
             _permissionMenuService,
             mockPermissionEndpointService,
+            _permissionDataProvider,
+            _menuDataProvider,
             _currentUser);
 
         var result = await service.VerifyPermissionEndpointAsync(userId, endpoint, method, CancellationToken.None);

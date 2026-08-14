@@ -38,7 +38,7 @@ public class SecurityAuthorizationFilter : IAsyncAuthorizationFilter
             return;
         }
 
-        if (await _userRoleService.CheckUserIsAdminAsync(_currentUser.Id.GetValueOrDefault(), CancellationToken.None))
+        if (await _userRoleService.CheckUserIsSuperAdminAsync(_currentUser.Id.GetValueOrDefault(), CancellationToken.None))
         {
             return;
         }

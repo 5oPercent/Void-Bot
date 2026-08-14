@@ -1,5 +1,6 @@
 using Serilog;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Message.Constants.Security;
 using Void.Bot.Message.Dto.Security;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Security;
@@ -21,6 +22,8 @@ public class SecurityService : ISecurityService
     private readonly IRolePermissionService _rolePermissionService;
     private readonly IPermissionMenuService _permissionMenuService;
     private readonly IPermissionEndpointService _permissionEndpointService;
+    private readonly IPermissionDataProvider _permissionDataProvider;
+    private readonly IMenuDataProvider _menuDataProvider;
     private readonly ICurrentUser _currentUser;
     
     public SecurityService(
@@ -28,12 +31,16 @@ public class SecurityService : ISecurityService
         IRolePermissionService rolePermissionService,
         IPermissionMenuService permissionMenuService,
         IPermissionEndpointService permissionEndpointService,
+        IPermissionDataProvider permissionDataProvider,
+        IMenuDataProvider menuDataProvider,
         ICurrentUser currentUser)
     {
         _userRoleService = userRoleService;
         _rolePermissionService = rolePermissionService;
         _permissionMenuService = permissionMenuService;
         _permissionEndpointService = permissionEndpointService;
+        _permissionDataProvider = permissionDataProvider;
+        _menuDataProvider = menuDataProvider;
         _currentUser = currentUser;
     }
 
@@ -99,20 +106,39 @@ public class SecurityService : ISecurityService
             .ToList();
 
         var roleIds = roleDeadlines.Keys.ToList();
+        var isSuperAdmin = roleDeadlines.TryGetValue(RoleConstants.SuperAdminId, out var superAdminDeadline);
         var rolePermissions = await _rolePermissionService.GetPermissionsByRoleIdsAsync(
             new GetPermissionsByRoleIdsRequest { RoleIds = roleIds }, cancellationToken).ConfigureAwait(false);
         if (!includeMenus)
         {
-            response.Data.Permissions = rolePermissions.Data?
-                .Where(x => x.Status == StatusEnum.Enable)
-                .Select(x => new AuthorizedPermissionDto
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    Description = x.Description,
-                    Code = x.Code
-                })
-                .ToList() ?? [];
+            if (isSuperAdmin)
+            {
+                var permissions = await _permissionDataProvider.GetAllPermissionAsync(cancellationToken).ConfigureAwait(false);
+                response.Data.Permissions = permissions
+                    .Where(x => x.Status == StatusEnum.Enable)
+                    .Select(x => new AuthorizedPermissionDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        Description = x.Description,
+                        Code = x.Code,
+                        Deadline = superAdminDeadline
+                    })
+                    .ToList();
+            }
+            else
+            {
+                response.Data.Permissions = rolePermissions.Data?
+                    .Where(x => x.Status == StatusEnum.Enable)
+                    .Select(x => new AuthorizedPermissionDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        Description = x.Description,
+                        Code = x.Code
+                    })
+                    .ToList() ?? [];
+            }
             return response;
         }
 
@@ -141,6 +167,24 @@ public class SecurityService : ISecurityService
             };
         }
 
+        if (isSuperAdmin)
+        {
+            var permissions = await _permissionDataProvider.GetAllPermissionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var permission in permissions.Where(x => x.Status == StatusEnum.Enable))
+            {
+                permissionMap[permission.Id] = new AuthorizedPermissionDto
+                {
+                    Id = permission.Id,
+                    Name = permission.Name,
+                    Description = permission.Description,
+                    Code = permission.Code,
+                    Deadline = permissionMap.TryGetValue(permission.Id, out var existingPermission)
+                        ? MergeDeadline(existingPermission.Deadline, superAdminDeadline)
+                        : superAdminDeadline
+                };
+            }
+        }
+
         response.Data.Permissions = permissionMap.Values.ToList();
         if (response.Data.Permissions.Count == 0)
         {
@@ -156,6 +200,7 @@ public class SecurityService : ISecurityService
             .GroupBy(x => x.MenuId)
             .ToDictionary(x => x.Key, x => x.Select(y => y.PermissionId));
 
+        var menuMap = new Dictionary<Guid, AuthorizedMenuDto>();
         foreach (var menu in (permissionMenus.Data ?? []).Where(x => x.Status == StatusEnum.Enable))
         {
             if (!permissionIdsByMenu.TryGetValue(menu.Id, out var menuPermissionIds))
@@ -164,7 +209,7 @@ public class SecurityService : ISecurityService
             }
 
             var deadline = AggregateDeadline(menuPermissionIds.Select(x => permissionMap[x].Deadline));
-            response.Data.Menus.Add(new AuthorizedMenuDto
+            menuMap[menu.Id] = new AuthorizedMenuDto
             {
                 Id = menu.Id,
                 Pid = menu.Pid,
@@ -175,8 +220,32 @@ public class SecurityService : ISecurityService
                 Icon = menu.Icon,
                 Sequence = menu.Sequence,
                 Deadline = deadline
-            });
+            };
         }
+
+        if (isSuperAdmin)
+        {
+            var menus = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var menu in menus.Where(x => x.Status == StatusEnum.Enable))
+            {
+                menuMap[menu.Id] = new AuthorizedMenuDto
+                {
+                    Id = menu.Id,
+                    Pid = menu.Pid,
+                    Type = menu.Type,
+                    Name = menu.Name,
+                    Description = menu.Description,
+                    Path = menu.Path,
+                    Icon = menu.Icon,
+                    Sequence = menu.Sequence,
+                    Deadline = menuMap.TryGetValue(menu.Id, out var existingMenu)
+                        ? MergeDeadline(existingMenu.Deadline, superAdminDeadline)
+                        : superAdminDeadline
+                };
+            }
+        }
+
+        response.Data.Menus = menuMap.Values.ToList();
         return response;
     }
 
