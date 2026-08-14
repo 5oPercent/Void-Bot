@@ -137,8 +137,13 @@ public class MenuService : IMenuService
         DeleteMenuCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteMenuCascadeResponse();
-        
-        var hasChild = await _menuDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var menuList = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
+        var menuIds = command.Cascade
+            ? menuList.GetDescendantIds<Guid, Menu>(command.IdList)
+            : command.IdList.Distinct().ToList();
+        var menuIdSet = menuIds.ToHashSet();
+        var hasChild = menuList.Any(x => menuIdSet.Contains(x.Pid) && !menuIdSet.Contains(x.Id));
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -148,9 +153,9 @@ public class MenuService : IMenuService
         
         // Remove menu-permission data
         await _permissionMenuService.RemoveMenusCascadePermissionAsync(
-            new RemoveMenusCascadePermissionCommand { MenuIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemoveMenusCascadePermissionCommand { MenuIds = menuIds }, cancellationToken).ConfigureAwait(false);
         
-        await _menuDataProvider.DeleteMenusAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        await _menuDataProvider.DeleteMenusAsync(menuIds, cancellationToken).ConfigureAwait(false);
 
         return response;
     }

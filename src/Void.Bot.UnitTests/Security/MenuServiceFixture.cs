@@ -128,4 +128,89 @@ public class MenuServiceFixture
         await mockMenuDataProvider.Received(1)
             .UpdateMenuAsync(existingMenu, Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task DeleteMenuCascadeAsync_WithoutCascadeAndWithChild_ReturnsBadRequest()
+    {
+        var menuId = Guid.NewGuid();
+        var mockMenuDataProvider = Substitute.For<IMenuDataProvider>();
+        mockMenuDataProvider.GetAllMenuAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Menu { Id = menuId },
+                new Menu { Id = Guid.NewGuid(), Pid = menuId }
+            ]);
+        var service = new MenuService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockMenuDataProvider,
+            Substitute.For<IPermissionMenuService>());
+
+        var response = await service.DeleteMenuCascadeAsync(
+            new DeleteMenuCascadeCommand { IdList = [menuId] }, CancellationToken.None);
+
+        response.Code.ShouldBe(HttpStatusCode.BadRequest);
+        response.Message.ShouldBe("Child menu exists");
+        await mockMenuDataProvider.DidNotReceive()
+            .DeleteMenusAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteMenuCascadeAsync_WithoutCascadeAndWithExplicitChildren_DeletesSelectedMenus()
+    {
+        var menuId = Guid.NewGuid();
+        var childMenuId = Guid.NewGuid();
+        var mockMenuDataProvider = Substitute.For<IMenuDataProvider>();
+        mockMenuDataProvider.GetAllMenuAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Menu { Id = menuId },
+                new Menu { Id = childMenuId, Pid = menuId }
+            ]);
+        var mockPermissionMenuService = Substitute.For<IPermissionMenuService>();
+        mockPermissionMenuService.RemoveMenusCascadePermissionAsync(
+                Arg.Any<RemoveMenusCascadePermissionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemoveMenusCascadePermissionResponse());
+        var service = new MenuService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockMenuDataProvider,
+            mockPermissionMenuService);
+
+        var response = await service.DeleteMenuCascadeAsync(
+            new DeleteMenuCascadeCommand { IdList = [menuId, childMenuId] }, CancellationToken.None);
+
+        response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
+        await mockMenuDataProvider.Received(1).DeleteMenusAsync(
+            Arg.Is<List<Guid>>(ids => ids.Count == 2 && ids.Contains(menuId) && ids.Contains(childMenuId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteMenuCascadeAsync_WithCascade_DeletesDescendants()
+    {
+        var menuId = Guid.NewGuid();
+        var childMenuId = Guid.NewGuid();
+        var grandchildMenuId = Guid.NewGuid();
+        var mockMenuDataProvider = Substitute.For<IMenuDataProvider>();
+        mockMenuDataProvider.GetAllMenuAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Menu { Id = menuId },
+                new Menu { Id = childMenuId, Pid = menuId },
+                new Menu { Id = grandchildMenuId, Pid = childMenuId }
+            ]);
+        var mockPermissionMenuService = Substitute.For<IPermissionMenuService>();
+        mockPermissionMenuService.RemoveMenusCascadePermissionAsync(
+                Arg.Any<RemoveMenusCascadePermissionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemoveMenusCascadePermissionResponse());
+        var service = new MenuService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockMenuDataProvider,
+            mockPermissionMenuService);
+
+        var response = await service.DeleteMenuCascadeAsync(
+            new DeleteMenuCascadeCommand { IdList = [menuId], Cascade = true }, CancellationToken.None);
+
+        response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
+        await mockMenuDataProvider.Received(1).DeleteMenusAsync(
+            Arg.Is<List<Guid>>(ids => ids.Count == 3 && ids.Contains(menuId) &&
+                                      ids.Contains(childMenuId) && ids.Contains(grandchildMenuId)),
+            Arg.Any<CancellationToken>());
+    }
 }
