@@ -246,6 +246,14 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("user/role/deadline")]
+    [ProducesResponseType(typeof(UpdateUserRoleDeadlineResponse), 200)]
+    public async Task<IActionResult> UpdateUserRoleDeadlineAsync([FromBody] UpdateUserRoleDeadlineCommand command)
+    {
+        var response = await _mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(command).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     #endregion
     
     #region RolePermissions

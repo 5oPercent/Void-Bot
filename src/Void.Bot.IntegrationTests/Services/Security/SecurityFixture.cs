@@ -149,22 +149,26 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
     }
 
     [Fact]
-    public async Task CheckUserIsAdminAsync_WithAdminRole_ReturnsTrue()
+    public async Task CheckUserIsSuperAdminAsync_WithSuperAdminRole_ReturnsTrue()
     {
         var userId = TestUserId;
-        var adminRoleId = await _util.AddRoleAsync(name: RoleConstants.Admin, code: RoleConstants.Admin);
-        await _util.AddUserRoleAsync(userId, adminRoleId);
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        await _util.AddUserRoleAsync(userId, RoleConstants.SuperAdminId);
 
         await Run<IUserRoleService>(async service =>
         {
-            var result = await service.CheckUserIsAdminAsync(userId, CancellationToken.None);
+            var result = await service.CheckUserIsSuperAdminAsync(userId, CancellationToken.None);
 
             result.ShouldBeTrue();
         });
     }
 
     [Fact]
-    public async Task CheckUserIsAdminAsync_WithNonAdminRole_ReturnsFalse()
+    public async Task CheckUserIsSuperAdminAsync_WithNormalRole_ReturnsFalse()
     {
         var userId = await _accountUtil.AddUserAccountAsync();
         var roleId = await _util.AddRoleAsync();
@@ -181,9 +185,241 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
         await Run<IUserRoleService>(async service =>
         {
-            var result = await service.CheckUserIsAdminAsync(userId, CancellationToken.None);
+            var result = await service.CheckUserIsSuperAdminAsync(userId, CancellationToken.None);
 
             result.ShouldBeFalse();
+        });
+    }
+
+    [Fact]
+    public async Task AssignSuperAdminRoleAsync_RequiresActiveSuperAdmin()
+    {
+        var targetUserId = await _accountUtil.AddUserAccountAsync();
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+
+        await Run<IMediator>(async mediator =>
+        {
+            var forbiddenResponse = await mediator.SendAsync<AssignRolesToUserCommand, AssignRolesToUserResponse>(
+                new AssignRolesToUserCommand
+                {
+                    UserId = targetUserId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+
+            forbiddenResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+        });
+
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var response = await mediator.SendAsync<AssignRolesToUserCommand, AssignRolesToUserResponse>(
+                new AssignRolesToUserCommand
+                {
+                    UserId = targetUserId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+
+            response.Code.ShouldBe(System.Net.HttpStatusCode.OK);
+            var roles = await userRoleService.GetRolesByUserIdAsync(
+                new GetRolesByUserIdRequest { UserId = targetUserId }, CancellationToken.None);
+            roles.Data.UserRoles.ShouldContain(x => x.RoleId == RoleConstants.SuperAdminId);
+        });
+    }
+
+    [Fact]
+    public async Task UnassignSuperAdminRoleAsync_PreservesLastActiveSuperAdmin()
+    {
+        var otherSuperAdminId = await _accountUtil.AddUserAccountAsync();
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        await _util.AddUserRoleAsync(otherSuperAdminId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator>(async mediator =>
+        {
+            var forbiddenResponse = await mediator.SendAsync<UnassignRolesFromUserCommand, UnassignRolesFromUserResponse>(
+                new UnassignRolesFromUserCommand
+                {
+                    UserId = otherSuperAdminId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+            forbiddenResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+        });
+
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var removeOtherResponse = await mediator.SendAsync<UnassignRolesFromUserCommand, UnassignRolesFromUserResponse>(
+                new UnassignRolesFromUserCommand
+                {
+                    UserId = otherSuperAdminId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+            removeOtherResponse.Code.ShouldBe(System.Net.HttpStatusCode.OK);
+
+            var removeLastResponse = await mediator.SendAsync<UnassignRolesFromUserCommand, UnassignRolesFromUserResponse>(
+                new UnassignRolesFromUserCommand
+                {
+                    UserId = TestUserId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+            removeLastResponse.Code.ShouldBe(System.Net.HttpStatusCode.Conflict);
+            (await userRoleService.CheckUserIsSuperAdminAsync(
+                TestUserId, CancellationToken.None)).ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public async Task UpdateUserRoleDeadlineAsync_ProtectsSuperAdminAssignments()
+    {
+        var otherSuperAdminId = await _accountUtil.AddUserAccountAsync();
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        await _util.AddUserRoleAsync(otherSuperAdminId, RoleConstants.SuperAdminId);
+        var deadline = DateTimeOffset.Now.AddDays(30);
+
+        await Run<IMediator>(async mediator =>
+        {
+            var forbiddenResponse = await mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(
+                new UpdateUserRoleDeadlineCommand
+                {
+                    UserId = otherSuperAdminId,
+                    RoleId = RoleConstants.SuperAdminId,
+                    Deadline = deadline
+                }).ConfigureAwait(false);
+            forbiddenResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+        });
+
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var response = await mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(
+                new UpdateUserRoleDeadlineCommand
+                {
+                    UserId = otherSuperAdminId,
+                    RoleId = RoleConstants.SuperAdminId,
+                    Deadline = deadline
+                }).ConfigureAwait(false);
+            response.Code.ShouldBe(System.Net.HttpStatusCode.OK);
+
+            var roles = await userRoleService.GetRolesByUserIdAsync(
+                new GetRolesByUserIdRequest { UserId = otherSuperAdminId }, CancellationToken.None);
+            roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
+                .Deadline.ShouldNotBeNull();
+        });
+    }
+
+    [Fact]
+    public async Task UpdateUserRoleDeadlineAsync_RejectsExpirationForLastActiveSuperAdmin()
+    {
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var response = await mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(
+                new UpdateUserRoleDeadlineCommand
+                {
+                    UserId = TestUserId,
+                    RoleId = RoleConstants.SuperAdminId,
+                    Deadline = DateTimeOffset.Now.AddDays(30)
+                }).ConfigureAwait(false);
+            response.Code.ShouldBe(System.Net.HttpStatusCode.Conflict);
+
+            var roles = await userRoleService.GetRolesByUserIdAsync(
+                new GetRolesByUserIdRequest { UserId = TestUserId }, CancellationToken.None);
+            roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
+                .Deadline.ShouldBeNull();
+        });
+    }
+
+    [Fact]
+    public async Task LaterSuperAdminCannotModifyBootstrapSuperAdminAssignment()
+    {
+        var bootstrapSuperAdminId = await _accountUtil.AddUserAccountAsync();
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        await _util.AddSuperAdminBootstrapClaimAsync(bootstrapSuperAdminId);
+        await _util.AddUserRoleAsync(bootstrapSuperAdminId, RoleConstants.SuperAdminId);
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var unassignResponse = await mediator.SendAsync<UnassignRolesFromUserCommand, UnassignRolesFromUserResponse>(
+                new UnassignRolesFromUserCommand
+                {
+                    UserId = bootstrapSuperAdminId,
+                    RoleIds = [RoleConstants.SuperAdminId]
+                }).ConfigureAwait(false);
+            unassignResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+
+            var deadlineResponse = await mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(
+                new UpdateUserRoleDeadlineCommand
+                {
+                    UserId = bootstrapSuperAdminId,
+                    RoleId = RoleConstants.SuperAdminId,
+                    Deadline = DateTimeOffset.Now.AddDays(30)
+                }).ConfigureAwait(false);
+            deadlineResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+
+            var replaceResponse = await mediator.SendAsync<ReplaceUserRolesCommand, ReplaceUserRolesResponse>(
+                new ReplaceUserRolesCommand
+                {
+                    UserId = bootstrapSuperAdminId,
+                    RoleIds = []
+                }).ConfigureAwait(false);
+            replaceResponse.Code.ShouldBe(System.Net.HttpStatusCode.Forbidden);
+
+            var roles = await userRoleService.GetRolesByUserIdAsync(
+                new GetRolesByUserIdRequest { UserId = bootstrapSuperAdminId }, CancellationToken.None);
+            roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
+                .Deadline.ShouldBeNull();
+        });
+    }
+
+    [Fact]
+    public async Task ReplaceUserRolesAsync_PreservesDeadlineForUnchangedRole()
+    {
+        var userId = await _accountUtil.AddUserAccountAsync();
+        var existingRoleId = await _util.AddRoleAsync();
+        var addedRoleId = await _util.AddRoleAsync();
+        await _util.AddUserRoleAsync(userId, existingRoleId, DateTimeOffset.Now.AddDays(30));
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var response = await mediator.SendAsync<ReplaceUserRolesCommand, ReplaceUserRolesResponse>(
+                new ReplaceUserRolesCommand
+                {
+                    UserId = userId,
+                    RoleIds = [existingRoleId, addedRoleId]
+                }).ConfigureAwait(false);
+            response.Code.ShouldBe(System.Net.HttpStatusCode.OK);
+
+            var roles = await userRoleService.GetRolesByUserIdAsync(
+                new GetRolesByUserIdRequest { UserId = userId }, CancellationToken.None);
+            roles.Data.UserRoles.Single(x => x.RoleId == existingRoleId)
+                .Deadline.ShouldNotBeNull();
+            roles.Data.UserRoles.Single(x => x.RoleId == addedRoleId)
+                .Deadline.ShouldBeNull();
         });
     }
 
@@ -329,6 +565,32 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
             response.Data.Menus[0].Deadline.ShouldNotBeNull();
             Math.Abs(response.Data.Menus[0].Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
                 .ShouldBeLessThanOrEqualTo(2);
+        });
+    }
+
+    [Fact]
+    public async Task GetCurrentUserPermissionsAsync_WithSuperAdmin_ReturnsAllEnabledPermissionsAndMenus()
+    {
+        await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
+        var permissionId = await _util.AddPermissionAsync();
+        var menuId = await _util.AddMenuAsync();
+        var disabledMenuId = await _util.AddMenuAsync(status: StatusEnum.Disable);
+        await _util.AddUserRoleAsync(TestUserId, RoleConstants.SuperAdminId);
+
+        await Run<IMediator, IUserRoleService>(async (mediator, userRoleService) =>
+        {
+            var response = await mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(
+                new GetCurrentUserPermissionsRequest()).ConfigureAwait(false);
+
+            response.Data.Roles.Single().Id.ShouldBe(RoleConstants.SuperAdminId);
+            response.Data.Permissions.Single().Id.ShouldBe(permissionId);
+            response.Data.Menus.Single().Id.ShouldBe(menuId);
+            response.Data.Menus.ShouldNotContain(x => x.Id == disabledMenuId);
+            (await userRoleService.CheckUserIsSuperAdminAsync(TestUserId, CancellationToken.None)).ShouldBeTrue();
         });
     }
 
