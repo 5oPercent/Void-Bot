@@ -466,6 +466,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     {
         var plugSets = ParsePlugSets(plugSetJson);
         var seasons = ParseSeasons(seasonJson);
+        var seasonsByNumber = BuildSeasonsByNumber(seasons);
         using var inventoryDocument = JsonDocument.Parse(inventoryItemJson);
         if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
@@ -481,7 +482,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 referencedItemHashes.UnionWith(perkSocket.PerkHashes);
         }
 
-        var items = BuildItems(inventoryDocument.RootElement, referencedItemHashes, seasons);
+        var items = BuildItems(inventoryDocument.RootElement, referencedItemHashes, seasons, seasonsByNumber);
         var weapons = BuildWeapons(weaponCandidates, items);
         var weaponTypes = BuildWeaponTypes(weapons);
         var perkVariantGroups = new Dictionary<uint, HashSet<uint>>();
@@ -740,7 +741,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     private static Dictionary<uint, Destiny2WeaponItemDataDto> BuildItems(
         JsonElement inventoryRoot,
         IReadOnlySet<uint> referencedItemHashes,
-        IReadOnlyDictionary<uint, (int Number, string Name)> seasons)
+        IReadOnlyDictionary<uint, (int Number, string Name)> seasons,
+        IReadOnlyDictionary<int, (uint Hash, string Name)> seasonsByNumber)
     {
         var result = new Dictionary<uint, Destiny2WeaponItemDataDto>();
 
@@ -760,8 +762,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var plugCategoryIdentifier = definition.TryGetProperty("plug", out var plug)
                 ? plug.ReadString("plugCategoryIdentifier")
                 : string.Empty;
-            var seasonHash = definition.ReadUInt32("seasonHash");
-            seasons.TryGetValue(seasonHash, out var season);
+            var season = ResolveWeaponSeason(definition, seasons, seasonsByNumber);
 
             result[hash] = new Destiny2WeaponItemDataDto
             {
@@ -769,13 +770,84 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 Name = displayProperties.ReadString("name"),
                 Description = displayProperties.ReadString("description"),
                 Icon = displayProperties.ReadString("icon"),
-                SeasonHash = seasonHash,
+                SeasonHash = season.Hash,
                 SeasonNumber = season.Number,
-                SeasonName = season.Name ?? string.Empty,
+                SeasonName = season.Name,
                 PlugCategoryIdentifier = plugCategoryIdentifier
             };
         }
 
+        return result;
+    }
+
+    /// <summary>
+    /// 解析物品的赛季信息。
+    /// </summary>
+    /// <remarks>
+    /// 优先使用清单中的 seasonHash 字段 (仅赛季任务道具等物品会填充);
+    /// 武器因 Bungie 不填充 seasonHash, 回退到 traitIds 里的内容版本标记
+    /// (releases.vXXX.*) 按映射表推断赛季。
+    /// </remarks>
+    private static (uint Hash, int Number, string Name) ResolveWeaponSeason(
+        JsonElement definition,
+        IReadOnlyDictionary<uint, (int Number, string Name)> seasons,
+        IReadOnlyDictionary<int, (uint Hash, string Name)> seasonsByNumber)
+    {
+        var seasonHash = definition.ReadUInt32("seasonHash");
+        if (seasonHash != 0 && seasons.TryGetValue(seasonHash, out var season))
+            return (seasonHash, season.Number, season.Name ?? string.Empty);
+
+        if (TryResolveReleaseTraitSeason(definition, seasonsByNumber, out var releaseSeason))
+            return releaseSeason;
+
+        return (0, 0, string.Empty);
+    }
+
+    /// <summary>
+    /// 从物品 traitIds 中的 releases.vXXX.* 标记推断赛季 (武器专用回退路径)。
+    /// </summary>
+    private static bool TryResolveReleaseTraitSeason(
+        JsonElement definition,
+        IReadOnlyDictionary<int, (uint Hash, string Name)> seasonsByNumber,
+        out (uint Hash, int Number, string Name) season)
+    {
+        season = (0, 0, string.Empty);
+        if (!definition.TryGetProperty("traitIds", out var traitIds) ||
+            traitIds.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var trait in traitIds.EnumerateArray())
+        {
+            if (trait.ValueKind != JsonValueKind.String ||
+                !Destiny2WeaponReleaseSeasonMap.TryResolveSeason(trait.GetString(), out var seasonNumber))
+            {
+                continue;
+            }
+
+            if (seasonsByNumber.TryGetValue(seasonNumber, out var seasonByNumber))
+            {
+                season = (seasonByNumber.Hash, seasonNumber, seasonByNumber.Name);
+                return true;
+            }
+
+            season = (0u, seasonNumber, string.Empty);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 按赛季号索引赛季定义, 供内容版本标记回退路径反查赛季名称与哈希。
+    /// </summary>
+    private static Dictionary<int, (uint Hash, string Name)> BuildSeasonsByNumber(
+        IReadOnlyDictionary<uint, (int Number, string Name)> seasons)
+    {
+        var result = new Dictionary<int, (uint Hash, string Name)>();
+        foreach (var pair in seasons)
+            result[pair.Value.Number] = (pair.Key, pair.Value.Name ?? string.Empty);
         return result;
     }
 
