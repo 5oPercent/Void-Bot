@@ -88,4 +88,15 @@ public class Destiny2Controller : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpPost]
+    [Route("weapon/cache/rebuild")]
+    public async Task<IActionResult> RebuildWeaponCache([FromBody] RebuildDestiny2WeaponCacheCommand command)
+    {
+        var response = await _mediator
+            .SendAsync<RebuildDestiny2WeaponCacheCommand, RebuildDestiny2WeaponCacheResponse>(command)
+            .ConfigureAwait(false);
+
+        return StatusCode((int)response.Code, response);
+    }
 }

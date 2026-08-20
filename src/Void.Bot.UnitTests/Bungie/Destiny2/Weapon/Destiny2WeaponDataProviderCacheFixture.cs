@@ -28,9 +28,21 @@ public class Destiny2WeaponDataProviderCacheFixture
         await cache.Set(
             $"{Destiny2ManifestConstants.SeasonCacheKey}:en",
             Destiny2WeaponServiceFixture.SeasonJson);
+        await cache.Set(
+            $"{Destiny2ManifestConstants.StatCacheKey}:en",
+            Destiny2WeaponServiceFixture.StatJson);
+        await cache.Set(
+            $"{Destiny2ManifestConstants.TraitCacheKey}:en",
+            Destiny2WeaponServiceFixture.TraitJson);
+        await cache.Set(
+            $"{Destiny2ManifestConstants.BreakerTypeCacheKey}:en",
+            Destiny2WeaponServiceFixture.BreakerTypeJson);
+        await cache.Set(
+            $"{Destiny2ManifestConstants.SandboxPerkCacheKey}:en",
+            Destiny2WeaponServiceFixture.SandboxPerkJson);
 
         using (var provider = CreateProvider(cache))
-            await provider.RefreshAsync("en", CancellationToken.None);
+            (await provider.RefreshAsync("en", CancellationToken.None)).ShouldBeTrue();
 
         cache.Contains(Destiny2WeaponCacheConstants.GetTypesKey(Version, "en")).ShouldBeTrue();
         cache.Contains(Destiny2WeaponCacheConstants.GetPerkVariantGroupsKey(Version, "en")).ShouldBeTrue();
@@ -42,6 +54,10 @@ public class Destiny2WeaponDataProviderCacheFixture
         await cache.Remove($"{Destiny2ManifestConstants.InventoryItemCacheKey}:en");
         await cache.Remove($"{Destiny2ManifestConstants.PlugSetCacheKey}:en");
         await cache.Remove($"{Destiny2ManifestConstants.SeasonCacheKey}:en");
+        await cache.Remove($"{Destiny2ManifestConstants.StatCacheKey}:en");
+        await cache.Remove($"{Destiny2ManifestConstants.TraitCacheKey}:en");
+        await cache.Remove($"{Destiny2ManifestConstants.BreakerTypeCacheKey}:en");
+        await cache.Remove($"{Destiny2ManifestConstants.SandboxPerkCacheKey}:en");
         cache.ReadKeys.Clear();
 
         using var restartedProvider = CreateProvider(cache);
@@ -55,10 +71,19 @@ public class Destiny2WeaponDataProviderCacheFixture
         rollData.Items[100].SeasonNumber.ShouldBe(23);
         rollData.WeaponTypes.Keys.ShouldBe([Destiny2ItemSubTypeEnum.AutoRifle]);
         rollData.Weapons.Keys.ShouldBe([100u]);
+        rollData.Weapons[100].AmmoType.ShouldBe(Destiny2AmmunitionTypeEnum.Primary);
+        rollData.Weapons[100].DamageType.ShouldBe(Destiny2DamageTypeEnum.Kinetic);
+        rollData.Weapons[100].WeaponSlot.ShouldBe(Destiny2WeaponSlotEnum.Kinetic);
+        rollData.Weapons[100].Rarity.ShouldBe(Destiny2TierTypeEnum.Superior);
+        rollData.Weapons[100].Breaker.Icon.ShouldBe("/barrier.png");
+        rollData.Weapons[100].Stats.Single(stat => stat.StatHash == 12345).Name.ShouldBe("Range");
+        rollData.Weapons[100].Foundries.Single().Name.ShouldBe("SUROS");
+        rollData.Items[100].Appearance.Screenshot.ShouldBe("/screenshot-100.jpg");
         rollData.PerkVariantGroups[20].Order().ShouldBe([20u, 24u]);
         cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.InventoryItemCacheKey}:en");
         cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.PlugSetCacheKey}:en");
         cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.SeasonCacheKey}:en");
+        cache.ReadKeys.ShouldNotContain($"{Destiny2ManifestConstants.SandboxPerkCacheKey}:en");
 
         cache.ReadKeys.Clear();
         await restartedProvider.GetRollDataAsync(

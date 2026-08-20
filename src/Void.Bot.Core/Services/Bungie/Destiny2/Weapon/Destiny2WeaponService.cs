@@ -1,5 +1,11 @@
 using System.Net;
+using Serilog;
+using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services;
+using Void.Bot.Core.Services.Jobs;
+using Void.Bot.Core.Settings.Bungie;
+using Void.Bot.Message.Commands.Bungie.Destiny2;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
@@ -19,15 +25,99 @@ public interface IDestiny2WeaponService : IScope
     Task<FilterDestiny2WeaponGodRollResponse> FilterGodRollAsync(
         FilterDestiny2WeaponGodRollRequest request,
         CancellationToken cancellationToken);
+
+    Task<RebuildDestiny2WeaponCacheResponse> RebuildCacheAsync(
+        RebuildDestiny2WeaponCacheCommand command,
+        CancellationToken cancellationToken);
+
+    Task RebuildCacheInBackgroundAsync(
+        List<string> languages,
+        CancellationToken cancellationToken);
 }
 
 internal sealed class Destiny2WeaponService : IDestiny2WeaponService
 {
     private readonly IDestiny2WeaponDataProvider _dataProvider;
+    private readonly Destiny2Setting _setting;
+    private readonly IVoidBotBackgroundJobClient _backgroundJob;
 
-    public Destiny2WeaponService(IDestiny2WeaponDataProvider dataProvider)
+    public Destiny2WeaponService(
+        IDestiny2WeaponDataProvider dataProvider,
+        Destiny2Setting setting,
+        IVoidBotBackgroundJobClient backgroundJob)
     {
         _dataProvider = dataProvider;
+        _setting = setting;
+        _backgroundJob = backgroundJob;
+    }
+
+    public Task<RebuildDestiny2WeaponCacheResponse> RebuildCacheAsync(
+        RebuildDestiny2WeaponCacheCommand command,
+        CancellationToken cancellationToken)
+    {
+        var requestedLanguages = command.Languages is { Count: > 0 }
+            ? command.Languages
+            : _setting.SyncLanguages;
+        var languages = requestedLanguages
+            .Select(language => LanguageExtension.MapI18nCodeToEnum(language).ToI18nCode())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (languages.Count == 0)
+        {
+            return Task.FromResult(new RebuildDestiny2WeaponCacheResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "No weapon cache languages were requested or configured."
+            });
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var jobId = _backgroundJob.Enqueue<IDestiny2WeaponService>(service =>
+            service.RebuildCacheInBackgroundAsync(languages, CancellationToken.None));
+
+        return Task.FromResult(new RebuildDestiny2WeaponCacheResponse
+        {
+            Code = HttpStatusCode.Accepted,
+            Message = "Weapon cache rebuild job queued.",
+            Data = new Destiny2WeaponCacheRebuildJobDto
+            {
+                JobId = jobId,
+                Languages = languages
+            }
+        });
+    }
+
+    public async Task RebuildCacheInBackgroundAsync(
+        List<string> languages,
+        CancellationToken cancellationToken)
+    {
+        foreach (var language in languages)
+        {
+            try
+            {
+                var success = await _dataProvider.RefreshAsync(language, cancellationToken).ConfigureAwait(false);
+                if (success)
+                {
+                    Log.Information(
+                        "Destiny 2 weapon cache rebuild completed for language: {Language}",
+                        language);
+                }
+                else
+                {
+                    Log.Warning(
+                        "Destiny 2 weapon cache rebuild skipped because required manifest components are unavailable. Language: {Language}",
+                        language);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to rebuild Destiny 2 weapon cache for language: {Language}", language);
+            }
+        }
     }
 
     public async Task<GetDestiny2WeaponTypesResponse> GetWeaponTypesAsync(
@@ -174,11 +264,39 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             .Where(rollData.WeaponTypes.ContainsKey)
             .SelectMany(weaponType => rollData.WeaponTypes[weaponType].WeaponHashes)
             .Distinct();
+        var requestedAmmoTypes = request.AmmoTypes.Distinct().ToHashSet();
+        var requestedDamageTypes = request.DamageTypes.Distinct().ToHashSet();
+        var requestedWeaponSlots = request.WeaponSlots.Distinct().ToHashSet();
+        var requestedRarities = request.Rarities.Distinct().ToHashSet();
+        var requestedBreakerTypes = request.BreakerTypes.Distinct().ToHashSet();
+        var requestedFoundryTraitIds = request.FoundryTraitIds
+            .Select(traitId => traitId.Trim())
+            .Where(traitId => !string.IsNullOrWhiteSpace(traitId))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var requestedClassTypes = request.ClassTypes.Distinct().ToHashSet();
+        var requestedCurrentVersions = request.CurrentVersions.Distinct().ToHashSet();
+        var requestedPowerCapHashes = request.PowerCapHashes.Distinct().ToHashSet();
 
         var matchedWeapons = new List<Destiny2WeaponGodRollDto>();
         foreach (var weaponHash in candidateWeaponHashes)
         {
             if (!rollData.Weapons.TryGetValue(weaponHash, out var weapon) ||
+                requestedAmmoTypes.Count > 0 && !requestedAmmoTypes.Contains(weapon.AmmoType) ||
+                requestedDamageTypes.Count > 0 && !requestedDamageTypes.Contains(weapon.DamageType) ||
+                requestedWeaponSlots.Count > 0 && !requestedWeaponSlots.Contains(weapon.WeaponSlot) ||
+                requestedRarities.Count > 0 && !requestedRarities.Contains(weapon.Rarity) ||
+                requestedBreakerTypes.Count > 0 && !requestedBreakerTypes.Contains(weapon.BreakerType) ||
+                request.IsCraftable.HasValue && weapon.IsCraftable != request.IsCraftable.Value ||
+                !MatchesStatFilters(weapon, request.StatFilters) ||
+                requestedFoundryTraitIds.Count > 0 && !weapon.Foundries.Any(
+                    foundry => requestedFoundryTraitIds.Contains(foundry.TraitId)) ||
+                requestedCurrentVersions.Count > 0 &&
+                !requestedCurrentVersions.Contains(weapon.Version.CurrentVersion) ||
+                requestedPowerCapHashes.Count > 0 &&
+                !weapon.Version.PowerCapHashes.Any(requestedPowerCapHashes.Contains) ||
+                request.IsAdept.HasValue && weapon.IsAdept != request.IsAdept.Value ||
+                request.IsHolofoil.HasValue && weapon.IsHolofoil != request.IsHolofoil.Value ||
+                requestedClassTypes.Count > 0 && !requestedClassTypes.Contains(weapon.ClassType) ||
                 !CanAssignPerkGroups(weapon, perkGroups))
             {
                 continue;
@@ -213,7 +331,22 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 Name = weaponItem.Name,
                 Description = weaponItem.Description,
                 Icon = weaponItem.Icon,
+                Appearance = weaponItem.Appearance,
                 WeaponType = MapWeaponTypeReference(weaponType),
+                AmmoType = weapon.AmmoType,
+                DamageType = weapon.DamageType,
+                WeaponSlot = weapon.WeaponSlot,
+                Rarity = weapon.Rarity,
+                RarityName = weapon.RarityName,
+                Breaker = weapon.Breaker,
+                IsCraftable = weapon.IsCraftable,
+                RecipeItemHash = weapon.RecipeItemHash,
+                Stats = weapon.Stats,
+                Foundries = weapon.Foundries,
+                Version = weapon.Version,
+                IsAdept = weapon.IsAdept,
+                IsHolofoil = weapon.IsHolofoil,
+                ClassType = weapon.ClassType,
                 Frame = MapWeaponFrameReference(rollData.Items, weapon.FrameHash),
                 RoundsPerMinute = weapon.RoundsPerMinute,
                 Season = new Destiny2WeaponSeasonReferenceDto
@@ -231,12 +364,19 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             .ThenBy(weapon => weapon.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(weapon => weapon.WeaponHash)
             .ToList();
+        var pagedWeapons = matchedWeapons.ToPaged(request.PageIndex, request.PageSize);
 
         return new FilterDestiny2WeaponGodRollResponse
         {
-            Data = new Destiny2WeaponGodRollListDto
+            Data = new PagedListDto<Destiny2WeaponGodRollDto>
             {
-                Weapons = matchedWeapons
+                PageIndex = pagedWeapons.PageIndex,
+                PageSize = pagedWeapons.PageSize,
+                Total = pagedWeapons.Total,
+                TotalPages = pagedWeapons.TotalPages,
+                HasPrevPage = pagedWeapons.HasPrevPage,
+                HasNextPage = pagedWeapons.HasNextPage,
+                Items = pagedWeapons.Items
             }
         };
     }
@@ -263,6 +403,24 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             .ToList();
 
         return AssignSocket(orderedGroups, 0, []);
+    }
+
+    private static bool MatchesStatFilters(
+        Destiny2WeaponDataDto weapon,
+        IReadOnlyCollection<Destiny2WeaponStatFilterDto> statFilters)
+    {
+        foreach (var filter in statFilters)
+        {
+            var stat = weapon.Stats.FirstOrDefault(stat => stat.StatHash == filter.StatHash);
+            if (stat == null ||
+                filter.MinimumValue.HasValue && stat.Value < filter.MinimumValue.Value ||
+                filter.MaximumValue.HasValue && stat.Value > filter.MaximumValue.Value)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool AssignSocket(

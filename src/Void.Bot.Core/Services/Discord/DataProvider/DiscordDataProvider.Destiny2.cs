@@ -4,6 +4,7 @@ using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
@@ -21,7 +22,7 @@ public partial interface IDiscordDataProvider : IScope
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
-        Destiny2WeaponGodRollListDto data,
+        PagedListDto<Destiny2WeaponGodRollDto> data,
         int pageIndex = 0,
         int pageSize = 5,
         CancellationToken cancellationToken = default);
@@ -224,12 +225,12 @@ public partial class DiscordDataProvider : IDiscordDataProvider
     }
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
-        Destiny2WeaponGodRollListDto data,
+        PagedListDto<Destiny2WeaponGodRollDto> data,
         int pageIndex = 0,
         int pageSize = 5,
         CancellationToken cancellationToken = default)
     {
-        var embeds = data.Weapons.Skip(pageIndex * pageSize).Take(pageSize).Select(weapon =>
+        var embeds = data.Items.Skip(pageIndex * pageSize).Take(pageSize).Select(weapon =>
         {
             var matchedPerks = weapon.MatchedPerkSockets
                 .OrderBy(socket => socket.SocketIndex)
