@@ -67,4 +67,59 @@ public class Destiny2WeaponRequestValidatorFixture
             Language = "en"
         }).IsValid.ShouldBeTrue();
     }
+
+    [Fact]
+    public void GodRollQueryShouldRejectNoneAndUndefinedFilterValues()
+    {
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+
+        validator.Validate(new FilterDestiny2WeaponGodRollRequest
+        {
+            AmmoTypes = [Destiny2AmmunitionTypeEnum.None],
+            DamageTypes = [(Destiny2DamageTypeEnum)999],
+            WeaponSlots = [Destiny2WeaponSlotEnum.None],
+            PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
+            Language = "en"
+        }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GodRollQueryShouldRejectInvalidExtendedFilters()
+    {
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+
+        validator.Validate(new FilterDestiny2WeaponGodRollRequest
+        {
+            Rarities = [Destiny2TierTypeEnum.Unknown],
+            BreakerTypes = [Destiny2BreakerTypeEnum.None],
+            StatFilters =
+            [
+                new Destiny2WeaponStatFilterDto
+                {
+                    StatHash = 0,
+                    MinimumValue = 100,
+                    MaximumValue = 10
+                }
+            ],
+            FoundryTraitIds = [string.Empty],
+            PowerCapHashes = [0],
+            ClassTypes = [(Destiny2ClassEnum)999],
+            PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
+            Language = "en"
+        }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GodRollQueryShouldRejectInvalidPagination()
+    {
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+
+        validator.Validate(new FilterDestiny2WeaponGodRollRequest
+        {
+            PageIndex = 0,
+            PageSize = 101,
+            PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
+            Language = "en"
+        }).IsValid.ShouldBeFalse();
+    }
 }

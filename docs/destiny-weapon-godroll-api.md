@@ -36,11 +36,45 @@
 
 如果请求语言的 Manifest 组件尚未同步，接口返回统一的 Manifest 不可用错误，不混用其他语言内容；单条缺少名称的定义不会进入展示结果。
 
-### 2.3 Hash 类型
+### 2.3 从已缓存清单重建武器缓存
+
+当清单组件已经存在于 Redis，但某种语言的武器派生缓存缺失或数据结构升级后需要刷新时，可调用：
+
+```http
+POST /api/Destiny2/weapon/cache/rebuild
+Content-Type: application/json
+
+{
+  "languages": ["en", "zh-cht", "zh-chs"]
+}
+```
+
+该接口只提交后台任务，不在 HTTP 请求中执行重建。后台任务读取已缓存的 `InventoryItem`、`PlugSet`、`Season`、`Stat`、`Trait`、`BreakerType` 和 `SandboxPerk` 清单组件，不重新从 Bungie 下载清单。未传 `languages` 或传入空数组时，使用 `Destiny2:SyncLanguages` 配置中的语言：
+
+```json
+{}
+```
+
+```json
+{
+  "code": 202,
+  "message": "Weapon cache rebuild job queued.",
+  "data": {
+    "jobId": "12345",
+    "languages": ["en", "zh-cht", "zh-chs"]
+  }
+}
+```
+
+任务成功入队时 HTTP 状态和响应 `code` 均为 `202`。接口只表示任务已接受，不表示缓存已经重建完成；各语言的完成、清单缺失或失败信息记录在后台任务日志中。接口沿用 `Destiny2Controller` 的授权与安全校验。
+
+Manifest 同步接口只负责下载并缓存清单组件，不会自动创建或刷新武器派生缓存。清单同步完成后，需要显式调用本接口提交后台重建任务，并等待任务完成后再查询武器数据。
+
+### 2.4 Hash 类型
 
 Destiny Definition Hash 在服务端使用 `uint`。JSON 中以整数返回和接收。
 
-### 2.4 图标
+### 2.5 图标
 
 接口返回 Bungie Manifest 中的图标相对路径，不在本接口中拼接站点域名。
 
@@ -160,7 +194,7 @@ GET /api/destiny2/weapon/perks?frameHashes=123&frameHashes=456&language=en
 ### 5.1 接口
 
 ```http
-POST /api/destiny2/weapon/godroll-find
+POST /api/destiny2/weapon/godroll/filter
 Content-Type: application/json
 ```
 
@@ -168,10 +202,24 @@ Content-Type: application/json
 
 ```json
 {
-  "frameHashes": [
-    1234567890,
-    9876543210
+  "pageIndex": 1,
+  "pageSize": 20,
+  "weaponTypes": [6, 24],
+  "ammoTypes": [1, 2],
+  "damageTypes": [1, 2],
+  "weaponSlots": [1, 2],
+  "rarities": [5, 6],
+  "breakerTypes": [1],
+  "isCraftable": true,
+  "statFilters": [
+    { "statHash": 4284893193, "minimumValue": 600, "maximumValue": 900 }
   ],
+  "foundryTraitIds": ["item.weapon.foundry.suros"],
+  "currentVersions": [1],
+  "powerCapHashes": [1234567890],
+  "isAdept": true,
+  "isHolofoil": false,
+  "classTypes": [0],
   "perkGroups": [
     {
       "perkHashes": [
@@ -193,20 +241,64 @@ Content-Type: application/json
 请求模型概念：
 
 ```csharp
-public class FindDestiny2WeaponGodRollRequest
+public class FilterDestiny2WeaponGodRollRequest : PageInputDto
 {
-    public List<uint> FrameHashes { get; set; } = [];
+    public int PageIndex { get; set; } = 1;
 
-    public List<Destiny2WeaponPerkGroupRequest> PerkGroups { get; set; } = [];
+    public int PageSize { get; set; } = 20;
+
+    public List<Destiny2ItemSubTypeEnum> WeaponTypes { get; set; } = [];
+
+    public List<Destiny2AmmunitionTypeEnum> AmmoTypes { get; set; } = [];
+
+    public List<Destiny2DamageTypeEnum> DamageTypes { get; set; } = [];
+
+    public List<Destiny2WeaponSlotEnum> WeaponSlots { get; set; } = [];
+
+    public List<Destiny2TierTypeEnum> Rarities { get; set; } = [];
+
+    public List<Destiny2BreakerTypeEnum> BreakerTypes { get; set; } = [];
+
+    public bool? IsCraftable { get; set; }
+
+    public List<Destiny2WeaponStatFilterDto> StatFilters { get; set; } = [];
+
+    public List<string> FoundryTraitIds { get; set; } = [];
+
+    public List<uint> CurrentVersions { get; set; } = [];
+
+    public List<uint> PowerCapHashes { get; set; } = [];
+
+    public bool? IsAdept { get; set; }
+
+    public bool? IsHolofoil { get; set; }
+
+    public List<Destiny2ClassEnum> ClassTypes { get; set; } = [];
+
+    public List<Destiny2WeaponPerkGroupDto> PerkGroups { get; set; } = [];
 
     public string Language { get; set; } = string.Empty;
 }
 
-public class Destiny2WeaponPerkGroupRequest
+public class Destiny2WeaponPerkGroupDto
 {
     public List<uint> PerkHashes { get; set; } = [];
 }
 ```
+
+筛选值说明：
+
+- `ammoTypes`：`1` 主弹药、`2` 特殊弹药、`3` 重型弹药。
+- `damageTypes`：`1` 动能、`2` 电弧、`3` 烈焰、`4` 虚空、`5` 突袭、`6` 冰影、`7` 缚丝。
+- `weaponSlots`：`1` 一号位（动能槽）、`2` 二号位（能量槽）、`3` 三号位（威能槽）。
+- `rarities`：`3` 普通、`4` 稀有、`5` 传说、`6` 异域。
+- `breakerTypes`：`1` 屏障、`2` 过载、`3` 势不可挡。
+- `isCraftable`、`isAdept`、`isHolofoil`：不传为不限制，传布尔值时精确筛选。
+- `statFilters`：同一面板属性可分别限制最小值和最大值。
+- `foundryTraitIds`：按 Manifest Trait ID 筛选制造商/铸造厂。
+- `classTypes`：`0` 泰坦、`1` 猎人、`2` 术士、`3` 无职业限制。
+- 同一筛选数组内是 OR 关系，不同筛选条件之间是 AND 关系；数组为空时不限制该条件。
+- `pageIndex` 从 `1` 开始；`pageSize` 默认为 `20`，允许范围为 `1` 至 `100`。
 
 ### 5.3 Perk Group 语义
 
@@ -225,7 +317,7 @@ AND
 
 一把武器必须同时满足以下条件才会返回：
 
-1. 武器属于 `frameHashes` 指定的任意一个框架。
+1. 武器符合请求中所有非空武器属性筛选条件。
 2. 每个 Perk Group 至少有一个候选 Perk 存在于该武器的随机特性池中。
 3. 不同 Perk Group 最终命中的 Perk 可以分配到不同的特性插槽。
 4. 所有命中特性能够在同一把武器上同时出现。
@@ -239,6 +331,8 @@ AND
 响应只返回：
 
 - 匹配到的武器信息；
+- 武器外观、稀有度、反勇士属性、制作和版本信息；
+- 完整基础面板属性、制造商/铸造厂和职业限制；
 - 武器框架信息；
 - 命中的特性插槽；
 - 每个插槽中匹配到的特性。
@@ -251,12 +345,52 @@ AND
 {
   "code": 200,
   "data": {
-    "weapons": [
+    "pageIndex": 1,
+    "pageSize": 20,
+    "total": 1,
+    "totalPages": 1,
+    "hasPrevPage": false,
+    "hasNextPage": false,
+    "items": [
       {
         "weaponHash": 5555555555,
         "name": "武器名称",
         "description": "武器描述",
         "icon": "/common/destiny2_content/icons/weapon.png",
+        "appearance": {
+          "screenshot": "/common/destiny2_content/screenshots/weapon.jpg",
+          "iconWatermark": "/common/destiny2_content/icons/watermark.png",
+          "iconWatermarkShelved": "",
+          "secondaryIcon": "",
+          "secondaryOverlay": "",
+          "secondarySpecial": "",
+          "backgroundColor": { "red": 0, "green": 0, "blue": 0, "alpha": 0 }
+        },
+        "rarity": 5,
+        "rarityName": "传说",
+        "breaker": {
+          "type": 1,
+          "hash": 123456789,
+          "name": "屏障勇士",
+          "description": "可以穿透屏障勇士的护盾",
+          "icon": "/common/destiny2_content/icons/barrier.png"
+        },
+        "isCraftable": true,
+        "recipeItemHash": 987654321,
+        "stats": [
+          { "statHash": 4284893193, "name": "每分钟发射数", "value": 600 }
+        ],
+        "foundries": [
+          { "traitHash": 123456, "traitId": "item.weapon.foundry.suros", "name": "SUROS" }
+        ],
+        "version": {
+          "currentVersion": 1,
+          "powerCapHashes": [1234567890],
+          "displayWatermarkIcons": ["/common/destiny2_content/icons/version.png"]
+        },
+        "isAdept": true,
+        "isHolofoil": false,
+        "classType": 3,
         "frame": {
           "frameHash": 1234567890,
           "name": "适配框架"
@@ -297,7 +431,7 @@ AND
 {
   "code": 200,
   "data": {
-    "weapons": []
+    "items": []
   }
 }
 ```
@@ -313,12 +447,12 @@ AND
 
 ### 6.2 God Roll 查询
 
-- `frameHashes` 不能为空。
 - `perkGroups` 不能为空。
 - 每个 Perk Group 的 `perkHashes` 不能为空。
-- 框架 Hash、组内 Perk Hash 在匹配前去重。
+- 各多选过滤数组及组内 Perk Hash 在匹配前去重。
+- 面板属性过滤的 `minimumValue` 不能大于 `maximumValue`。
 - Perk Group 数量和每组 Perk 数量设置合理上限，防止组合查询失控。
-- 不存在或不属于所选框架的 Perk 不会产生错误匹配。
+- 不存在或不属于候选武器的 Perk 不会产生错误匹配。
 
 ## 7. 数据来源与缓存
 
@@ -326,6 +460,11 @@ AND
 
 - `InventoryItem`
 - `PlugSet`
+- `Season`
+- `Stat`
+- `Trait`
+- `BreakerType`
+- `SandboxPerk`
 
 同步任务需要为 `Destiny2:SyncLanguages` 中配置的语言缓存以上组件。
 
@@ -335,6 +474,7 @@ AND
 Frame -> Weapons
 Weapon -> Randomized Perk Sockets
 Perk -> Localized Inventory Item Definition
+Weapon Frame -> Sandbox Perk -> Breaker Type
 ```
 
 索引用于避免每次请求重复反序列化完整 Manifest。Manifest 版本更新后，应使用新版本数据重建或失效旧索引。
@@ -434,7 +574,7 @@ Controller
 ### Phase 4：武器查询索引
 
 - [x] 定义内部只读索引模型，区分公开 DTO 与匹配所需内部数据。
-- [x] 从 `InventoryItem` 中识别有效武器，排除隐藏、拉黑或无随机特性池的定义。
+- [x] 从 `InventoryItem` 中识别有效武器，排除隐藏或拉黑定义，并保留没有随机特性池的固定词条武器。
 - [x] 从武器固有插槽中解析框架 Hash。
 - [x] 从武器随机插槽和 `PlugSet` 中解析 Perk Hash、插槽索引及 `CurrentlyCanRoll`。
 - [x] 建立 `Frame -> Weapons` 索引。

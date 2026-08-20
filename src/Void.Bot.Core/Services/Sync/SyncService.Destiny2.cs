@@ -107,7 +107,6 @@ public partial class SyncService : ISyncService
                 .ToArray();
         }
         var successCount = 0;
-        var successfulComponents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var failedComponents = new List<string>();
         
         foreach (var property in properties)
@@ -134,7 +133,6 @@ public partial class SyncService : ISyncService
 
                 await _cacheManager.Set($"{Destiny2ManifestConstants.ComponentPrefixCacheKey}:{componentName}:{language}", componentData, cancellationToken: cancellationToken);
                 successCount++;
-                successfulComponents.Add(componentName);
 
                 Log.Information("Successfully cached component: {Component} for language: {Language}", componentName, language);
             }
@@ -143,13 +141,6 @@ public partial class SyncService : ISyncService
                 Log.Error(ex, "Error while cached component: {Component} for language: {Language}", componentName, language);
                 failedComponents.Add(componentName);
             }
-        }
-
-        if (successfulComponents.Contains(Destiny2ManifestConstants.InventoryItem) ||
-            successfulComponents.Contains(Destiny2ManifestConstants.PlugSet) ||
-            successfulComponents.Contains(Destiny2ManifestConstants.Season))
-        {
-            await _weaponDataProvider.RefreshAsync(language, cancellationToken).ConfigureAwait(false);
         }
 
         if (failedComponents.Count == 0)

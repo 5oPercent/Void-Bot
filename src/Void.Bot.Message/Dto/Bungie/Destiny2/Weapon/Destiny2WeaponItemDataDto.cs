@@ -10,6 +10,8 @@ public class Destiny2WeaponItemDataDto
 
     public string Icon { get; set; } = string.Empty;
 
+    public Destiny2WeaponAppearanceDto Appearance { get; set; } = new();
+
     public uint SeasonHash { get; set; }
 
     public int SeasonNumber { get; set; }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Discord.DataProvider;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
 
 namespace Void.Bot.Core.Services.Discord;
@@ -40,7 +41,7 @@ public class DiscordGodRollPaginationRoute(
                 return;
             }
 
-            var pageCount = GetPageCount(state.Data.Weapons.Count);
+            var pageCount = GetPageCount(state.Data.Items.Count());
             pageIndex = Math.Clamp(pageIndex, 0, pageCount - 1);
             var dataProvider = scope.ServiceProvider.GetRequiredService<IDiscordDataProvider>();
             var result = await dataProvider.GenerateDestiny2GodRollAsync(
@@ -117,7 +118,7 @@ public class DiscordGodRollPaginationRoute(
 
 public class DiscordGodRollPaginationState
 {
-    public Destiny2WeaponGodRollListDto Data { get; set; } = new();
+    public PagedListDto<Destiny2WeaponGodRollDto> Data { get; set; } = new();
 
     public string Content { get; set; } = string.Empty;
 }

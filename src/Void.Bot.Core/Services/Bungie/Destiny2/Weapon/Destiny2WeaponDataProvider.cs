@@ -22,13 +22,11 @@ public interface IDestiny2WeaponDataProvider : ISingleton
         IReadOnlyCollection<Destiny2ItemSubTypeEnum>? weaponTypes,
         CancellationToken cancellationToken);
 
-    Task RefreshAsync(string language, CancellationToken cancellationToken);
+    Task<bool> RefreshAsync(string language, CancellationToken cancellationToken);
 }
 
 internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, IDisposable
 {
-    private const uint RoundsPerMinuteStatHash = 4284893193;
-
     private readonly ICacheManager _cacheManager;
     private readonly Destiny2Setting _setting;
     private readonly ILogger _logger;
@@ -235,7 +233,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         };
     }
 
-    public async Task RefreshAsync(string language, CancellationToken cancellationToken)
+    public async Task<bool> RefreshAsync(string language, CancellationToken cancellationToken)
     {
         var requestedLanguage = language?.Trim() ?? string.Empty;
         var normalizedLanguage = string.IsNullOrWhiteSpace(requestedLanguage)
@@ -245,7 +243,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             Destiny2ManifestConstants.VersionCacheKey,
             cancellationToken).ConfigureAwait(false) ?? "unversioned";
 
-        await BuildDerivedCacheAsync(normalizedLanguage, version, null, true, cancellationToken)
+        return await BuildDerivedCacheAsync(normalizedLanguage, version, null, true, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -285,26 +283,63 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var seasonTask = _cacheManager.Get<string>(
                 $"{Destiny2ManifestConstants.SeasonCacheKey}:{language}",
                 cancellationToken);
-            await Task.WhenAll(inventoryTask, plugSetTask, seasonTask).ConfigureAwait(false);
+            var statTask = _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.StatCacheKey}:{language}",
+                cancellationToken);
+            var traitTask = _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.TraitCacheKey}:{language}",
+                cancellationToken);
+            var breakerTypeTask = _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.BreakerTypeCacheKey}:{language}",
+                cancellationToken);
+            var sandboxPerkTask = _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.SandboxPerkCacheKey}:{language}",
+                cancellationToken);
+            await Task.WhenAll(
+                    inventoryTask,
+                    plugSetTask,
+                    seasonTask,
+                    statTask,
+                    traitTask,
+                    breakerTypeTask,
+                    sandboxPerkTask)
+                .ConfigureAwait(false);
 
             var inventoryJson = await inventoryTask.ConfigureAwait(false);
             var plugSetJson = await plugSetTask.ConfigureAwait(false);
             var seasonJson = await seasonTask.ConfigureAwait(false);
+            var statJson = await statTask.ConfigureAwait(false);
+            var traitJson = await traitTask.ConfigureAwait(false);
+            var breakerTypeJson = await breakerTypeTask.ConfigureAwait(false);
+            var sandboxPerkJson = await sandboxPerkTask.ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(inventoryJson) || string.IsNullOrWhiteSpace(plugSetJson) ||
-                string.IsNullOrWhiteSpace(seasonJson))
+                string.IsNullOrWhiteSpace(seasonJson) || string.IsNullOrWhiteSpace(statJson) ||
+                string.IsNullOrWhiteSpace(traitJson) || string.IsNullOrWhiteSpace(breakerTypeJson) ||
+                string.IsNullOrWhiteSpace(sandboxPerkJson))
             {
                 _logger.Warning(
-                    "Destiny 2 weapon manifest cache is unavailable. Language: {Language}, InventoryItemAvailable: {InventoryItemAvailable}, PlugSetAvailable: {PlugSetAvailable}, SeasonAvailable: {SeasonAvailable}",
+                    "Destiny 2 weapon manifest cache is unavailable. Language: {Language}, InventoryItemAvailable: {InventoryItemAvailable}, PlugSetAvailable: {PlugSetAvailable}, SeasonAvailable: {SeasonAvailable}, StatAvailable: {StatAvailable}, TraitAvailable: {TraitAvailable}, BreakerTypeAvailable: {BreakerTypeAvailable}, SandboxPerkAvailable: {SandboxPerkAvailable}",
                     language,
                     !string.IsNullOrWhiteSpace(inventoryJson),
                     !string.IsNullOrWhiteSpace(plugSetJson),
-                    !string.IsNullOrWhiteSpace(seasonJson));
+                    !string.IsNullOrWhiteSpace(seasonJson),
+                    !string.IsNullOrWhiteSpace(statJson),
+                    !string.IsNullOrWhiteSpace(traitJson),
+                    !string.IsNullOrWhiteSpace(breakerTypeJson),
+                    !string.IsNullOrWhiteSpace(sandboxPerkJson));
                 return false;
             }
 
             var weaponTypes = BuildWeaponTypeData(inventoryJson)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
-            var rollData = BuildRollData(inventoryJson, plugSetJson, seasonJson);
+            var rollData = BuildRollData(
+                inventoryJson,
+                plugSetJson,
+                seasonJson,
+                statJson,
+                traitJson,
+                breakerTypeJson,
+                sandboxPerkJson);
 
             _logger.Information(
                 "Parsed Destiny 2 weapon manifest. Version: {Version}, Language: {Language}, InventoryCharacterCount: {InventoryCharacterCount}, PlugSetCharacterCount: {PlugSetCharacterCount}, SeasonCharacterCount: {SeasonCharacterCount}, WeaponTypeCount: {WeaponTypeCount}, WeaponCount: {WeaponCount}, ItemCount: {ItemCount}, PerkVariantGroupCount: {PerkVariantGroupCount}",
@@ -462,16 +497,30 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     internal static Destiny2WeaponRollDataDto BuildRollData(
         string inventoryItemJson,
         string plugSetJson,
-        string seasonJson)
+        string seasonJson,
+        string statJson = "{}",
+        string traitJson = "{}",
+        string breakerTypeJson = "{}",
+        string sandboxPerkJson = "{}")
     {
         var plugSets = ParsePlugSets(plugSetJson);
         var seasons = ParseSeasons(seasonJson);
         var seasonsByNumber = BuildSeasonsByNumber(seasons);
+        var statDefinitions = ParseDefinitionReferences(statJson);
+        var traitDefinitions = ParseDefinitionReferences(traitJson);
+        var breakerTypeDefinitions = ParseBreakerTypeReferences(breakerTypeJson);
+        var sandboxPerkBreakerTypes = ParseSandboxPerkBreakerTypes(sandboxPerkJson);
         using var inventoryDocument = JsonDocument.Parse(inventoryItemJson);
         if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
 
-        var weaponCandidates = ParseWeaponCandidates(inventoryDocument.RootElement, plugSets);
+        var weaponCandidates = ParseWeaponCandidates(
+            inventoryDocument.RootElement,
+            plugSets,
+            statDefinitions,
+            traitDefinitions,
+            breakerTypeDefinitions,
+            sandboxPerkBreakerTypes);
         var referencedItemHashes = new HashSet<uint>();
         foreach (var candidate in weaponCandidates)
         {
@@ -510,7 +559,11 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static List<WeaponCandidate> ParseWeaponCandidates(
         JsonElement inventoryRoot,
-        IReadOnlyDictionary<uint, HashSet<uint>> plugSets)
+        IReadOnlyDictionary<uint, HashSet<uint>> plugSets,
+        IReadOnlyDictionary<uint, DefinitionReference> statDefinitions,
+        IReadOnlyDictionary<uint, DefinitionReference> traitDefinitions,
+        IReadOnlyDictionary<uint, BreakerTypeReference> breakerTypeDefinitions,
+        IReadOnlyDictionary<uint, Destiny2BreakerTypeEnum> sandboxPerkBreakerTypes)
     {
         var candidates = new List<WeaponCandidate>();
 
@@ -528,20 +581,55 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
             var weaponType = (Destiny2ItemSubTypeEnum)definition.ReadInt32("itemSubType");
             var weaponTypeName = definition.ReadString("itemTypeDisplayName");
             if (weaponHash == 0 || weaponType == Destiny2ItemSubTypeEnum.None ||
-                string.IsNullOrWhiteSpace(weaponTypeName) ||
-                !definition.TryGetProperty("sockets", out var sockets))
+                string.IsNullOrWhiteSpace(weaponTypeName))
                 continue;
 
+            // 固定词条异域武器可能没有随机词条插槽，但仍需进入完整武器面板和属性筛选缓存。
+            var sockets = definition.TryGetProperty("sockets", out var socketBlock)
+                ? socketBlock
+                : default;
             var perkSockets = ParsePerkSockets(sockets, plugSets);
-            if (perkSockets.Count == 0)
-                continue;
+
+            var equippingBlock = definition.TryGetProperty("equippingBlock", out var block)
+                ? block
+                : default;
+            var inventory = definition.TryGetProperty("inventory", out var inventoryBlock)
+                ? inventoryBlock
+                : default;
+            var quality = definition.TryGetProperty("quality", out var qualityBlock)
+                ? qualityBlock
+                : default;
+            var recipeItemHash = inventory.ReadUInt32("recipeItemHash");
+            var frameHash = ParseFrameHash(sockets);
+            var breaker = ResolveBreakerType(
+                definition,
+                frameHash,
+                (Destiny2TierTypeEnum)inventory.ReadInt32("tierType"),
+                inventoryRoot,
+                breakerTypeDefinitions,
+                sandboxPerkBreakerTypes);
 
             candidates.Add(new WeaponCandidate(
                 weaponHash,
                 weaponType,
                 weaponTypeName,
-                ParseFrameHash(sockets),
-                ReadStatValue(definition, RoundsPerMinuteStatHash),
+                (Destiny2AmmunitionTypeEnum)equippingBlock.ReadInt32("ammoType"),
+                (Destiny2DamageTypeEnum)definition.ReadInt32("defaultDamageType"),
+                MapWeaponSlot(equippingBlock.ReadUInt32("equipmentSlotTypeHash")),
+                (Destiny2TierTypeEnum)inventory.ReadInt32("tierType"),
+                inventory.ReadString("tierTypeName"),
+                breaker.Type,
+                breaker,
+                recipeItemHash != 0,
+                recipeItemHash,
+                ParseWeaponStats(definition, statDefinitions),
+                ParseFoundries(definition, traitDefinitions),
+                ParseVersion(quality),
+                definition.ReadBoolean("isAdept"),
+                definition.ReadBoolean("isHolofoil"),
+                (Destiny2ClassEnum)definition.ReadInt32("classType"),
+                frameHash,
+                ReadStatValue(definition, Destiny2WeaponConstants.RoundsPerMinuteStatHash),
                 perkSockets));
         }
 
@@ -571,14 +659,26 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 .OrderBy(socket => socket.SocketIndex)
                 .ToList();
 
-            if (perkSockets.Count == 0)
-                continue;
-
             weapons[candidate.Hash] = new Destiny2WeaponDataDto
             {
                 Hash = candidate.Hash,
                 WeaponType = candidate.WeaponType,
                 WeaponTypeName = candidate.WeaponTypeName,
+                AmmoType = candidate.AmmoType,
+                DamageType = candidate.DamageType,
+                WeaponSlot = candidate.WeaponSlot,
+                Rarity = candidate.Rarity,
+                RarityName = candidate.RarityName,
+                BreakerType = candidate.BreakerType,
+                Breaker = candidate.Breaker,
+                IsCraftable = candidate.IsCraftable,
+                RecipeItemHash = candidate.RecipeItemHash,
+                Stats = candidate.Stats,
+                Foundries = candidate.Foundries,
+                Version = candidate.Version,
+                IsAdept = candidate.IsAdept,
+                IsHolofoil = candidate.IsHolofoil,
+                ClassType = candidate.ClassType,
                 FrameHash = candidate.FrameHash,
                 RoundsPerMinute = candidate.RoundsPerMinute,
                 PerkSockets = perkSockets
@@ -609,6 +709,297 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         }
 
         return weaponTypes;
+    }
+
+    private static Destiny2WeaponSlotEnum MapWeaponSlot(uint equipmentSlotTypeHash)
+    {
+        return equipmentSlotTypeHash switch
+        {
+            Destiny2WeaponConstants.KineticWeaponSlotHash => Destiny2WeaponSlotEnum.Kinetic,
+            Destiny2WeaponConstants.EnergyWeaponSlotHash => Destiny2WeaponSlotEnum.Energy,
+            Destiny2WeaponConstants.PowerWeaponSlotHash => Destiny2WeaponSlotEnum.Power,
+            _ => Destiny2WeaponSlotEnum.None
+        };
+    }
+
+    /// <summary>
+    /// 异域武器使用自身的反勇士标识；非异域武器未声明时，读取武器框架引用的沙盒特性。
+    /// </summary>
+    private static Destiny2WeaponBreakerTypeDto ResolveBreakerType(
+        JsonElement definition,
+        uint frameHash,
+        Destiny2TierTypeEnum rarity,
+        JsonElement inventoryRoot,
+        IReadOnlyDictionary<uint, BreakerTypeReference> breakerTypeDefinitions,
+        IReadOnlyDictionary<uint, Destiny2BreakerTypeEnum> sandboxPerkBreakerTypes)
+    {
+        var declaredBreaker = MapDeclaredBreakerType(definition, breakerTypeDefinitions);
+        if (declaredBreaker.Type != Destiny2BreakerTypeEnum.None ||
+            rarity == Destiny2TierTypeEnum.Exotic ||
+            frameHash == 0 ||
+            !inventoryRoot.TryGetProperty(frameHash.ToString(CultureInfo.InvariantCulture), out var frameDefinition) ||
+            !frameDefinition.TryGetProperty("perks", out var framePerks) ||
+            framePerks.ValueKind != JsonValueKind.Array)
+        {
+            return declaredBreaker;
+        }
+
+        foreach (var framePerk in framePerks.EnumerateArray())
+        {
+            var perkHash = framePerk.ReadUInt32("perkHash");
+            if (!sandboxPerkBreakerTypes.TryGetValue(perkHash, out var type))
+                continue;
+
+            var reference = breakerTypeDefinitions.Values.FirstOrDefault(item => item.Type == type);
+            return new Destiny2WeaponBreakerTypeDto
+            {
+                Type = type,
+                Hash = reference?.Hash ?? 0,
+                Name = reference?.Name ?? string.Empty,
+                Description = reference?.Description ?? string.Empty,
+                Icon = reference?.Icon ?? string.Empty
+            };
+        }
+
+        return declaredBreaker;
+    }
+
+    private static Destiny2WeaponBreakerTypeDto MapDeclaredBreakerType(
+        JsonElement definition,
+        IReadOnlyDictionary<uint, BreakerTypeReference> breakerTypeDefinitions)
+    {
+        var type = (Destiny2BreakerTypeEnum)definition.ReadInt32("breakerType");
+        var hash = definition.ReadUInt32("breakerTypeHash");
+        BreakerTypeReference? reference = null;
+        if (hash != 0)
+            breakerTypeDefinitions.TryGetValue(hash, out reference);
+        if (reference == null && type != Destiny2BreakerTypeEnum.None)
+            reference = breakerTypeDefinitions.Values.FirstOrDefault(item => item.Type == type);
+
+        return new Destiny2WeaponBreakerTypeDto
+        {
+            Type = type,
+            Hash = reference?.Hash ?? hash,
+            Name = reference?.Name ?? string.Empty,
+            Description = reference?.Description ?? string.Empty,
+            Icon = reference?.Icon ?? string.Empty
+        };
+    }
+
+    /// <summary>
+    /// 从沙盒特性名称中的 Bungie 图标字形识别反勇士类型。
+    /// </summary>
+    private static Dictionary<uint, Destiny2BreakerTypeEnum> ParseSandboxPerkBreakerTypes(
+        string sandboxPerkJson)
+    {
+        using var document = JsonDocument.Parse(sandboxPerkJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException("Destiny sandbox perk manifest must be a JSON object");
+
+        var result = new Dictionary<uint, Destiny2BreakerTypeEnum>();
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var definition = property.Value;
+            var hash = definition.ReadHash(property.Name);
+            if (hash == 0 || definition.ReadBoolean("redacted") || definition.ReadBoolean("blacklisted"))
+                continue;
+
+            var displayProperties = definition.TryGetProperty("displayProperties", out var display)
+                ? display
+                : default;
+            var name = displayProperties.ReadString("name");
+            var type = name switch
+            {
+                var value when value.Contains(Destiny2WeaponConstants.ShieldPiercingBreakerGlyph) =>
+                    Destiny2BreakerTypeEnum.ShieldPiercing,
+                var value when value.Contains(Destiny2WeaponConstants.DisruptionBreakerGlyph) =>
+                    Destiny2BreakerTypeEnum.Disruption,
+                var value when value.Contains(Destiny2WeaponConstants.StaggerBreakerGlyph) =>
+                    Destiny2BreakerTypeEnum.Stagger,
+                _ => Destiny2BreakerTypeEnum.None
+            };
+            if (type != Destiny2BreakerTypeEnum.None)
+                result[hash] = type;
+        }
+
+        return result;
+    }
+
+    private static Dictionary<uint, BreakerTypeReference> ParseBreakerTypeReferences(string definitionJson)
+    {
+        using var document = JsonDocument.Parse(definitionJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException("Destiny breaker type manifest must be a JSON object");
+
+        var result = new Dictionary<uint, BreakerTypeReference>();
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var definition = property.Value;
+            var hash = definition.ReadHash(property.Name);
+            var type = (Destiny2BreakerTypeEnum)definition.ReadInt32("enumValue");
+            if (hash == 0 || type == Destiny2BreakerTypeEnum.None)
+                continue;
+
+            var displayProperties = definition.TryGetProperty("displayProperties", out var display)
+                ? display
+                : default;
+            result[hash] = new BreakerTypeReference(
+                hash,
+                type,
+                displayProperties.ReadString("name"),
+                displayProperties.ReadString("description"),
+                displayProperties.ReadString("icon"));
+        }
+
+        return result;
+    }
+
+    private static Dictionary<uint, DefinitionReference> ParseDefinitionReferences(string definitionJson)
+    {
+        using var document = JsonDocument.Parse(definitionJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+            throw new JsonException("Destiny definition manifest must be a JSON object");
+
+        var result = new Dictionary<uint, DefinitionReference>();
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var hash = property.Value.ReadHash(property.Name);
+            if (hash == 0)
+                continue;
+
+            var displayProperties = property.Value.TryGetProperty("displayProperties", out var display)
+                ? display
+                : default;
+            result[hash] = new DefinitionReference(
+                displayProperties.ReadString("name"),
+                displayProperties.ReadString("description"),
+                displayProperties.ReadString("icon"));
+        }
+
+        return result;
+    }
+
+    private static List<Destiny2WeaponStatDto> ParseWeaponStats(
+        JsonElement definition,
+        IReadOnlyDictionary<uint, DefinitionReference> statDefinitions)
+    {
+        if (!definition.TryGetProperty("stats", out var statBlock) ||
+            !statBlock.TryGetProperty("stats", out var stats) ||
+            stats.ValueKind != JsonValueKind.Object)
+        {
+            return [];
+        }
+
+        var result = new List<Destiny2WeaponStatDto>();
+        foreach (var property in stats.EnumerateObject())
+        {
+            var statHash = property.Value.ReadUInt32("statHash");
+            if (statHash == 0 && !uint.TryParse(property.Name, out statHash))
+                continue;
+
+            statDefinitions.TryGetValue(statHash, out var statDefinition);
+            result.Add(new Destiny2WeaponStatDto
+            {
+                StatHash = statHash,
+                Name = statDefinition?.Name ?? string.Empty,
+                Description = statDefinition?.Description ?? string.Empty,
+                Icon = statDefinition?.Icon ?? string.Empty,
+                Value = property.Value.ReadInt32("value"),
+                Minimum = property.Value.ReadInt32("minimum"),
+                Maximum = property.Value.ReadInt32("maximum"),
+                DisplayMaximum = property.Value.ReadInt32("displayMaximum")
+            });
+        }
+
+        return result
+            .OrderBy(stat => stat.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(stat => stat.StatHash)
+            .ToList();
+    }
+
+    private static List<Destiny2WeaponFoundryDto> ParseFoundries(
+        JsonElement definition,
+        IReadOnlyDictionary<uint, DefinitionReference> traitDefinitions)
+    {
+        if (!definition.TryGetProperty("traitIds", out var traitIds) ||
+            traitIds.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var traitHashes = definition.TryGetProperty("traitHashes", out var hashes) &&
+                          hashes.ValueKind == JsonValueKind.Array
+            ? hashes
+            : default;
+        var result = new List<Destiny2WeaponFoundryDto>();
+        for (var index = 0; index < traitIds.GetArrayLength(); index++)
+        {
+            var traitIdElement = traitIds[index];
+            if (traitIdElement.ValueKind != JsonValueKind.String)
+                continue;
+
+            var traitId = traitIdElement.GetString() ?? string.Empty;
+            if (!traitId.Contains("foundry", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var traitHash = traitHashes.ValueKind == JsonValueKind.Array && index < traitHashes.GetArrayLength()
+                ? ReadUInt32Value(traitHashes[index])
+                : 0;
+            traitDefinitions.TryGetValue(traitHash, out var traitDefinition);
+            result.Add(new Destiny2WeaponFoundryDto
+            {
+                TraitHash = traitHash,
+                TraitId = traitId,
+                Name = traitDefinition?.Name ?? string.Empty,
+                Description = traitDefinition?.Description ?? string.Empty,
+                Icon = traitDefinition?.Icon ?? string.Empty
+            });
+        }
+
+        return result
+            .OrderBy(foundry => foundry.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(foundry => foundry.TraitId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static Destiny2WeaponVersionDto ParseVersion(JsonElement quality)
+    {
+        var version = new Destiny2WeaponVersionDto
+        {
+            CurrentVersion = quality.ReadUInt32("currentVersion"),
+            InfusionCategoryHash = quality.ReadUInt32("infusionCategoryHash"),
+            InfusionCategoryName = quality.ReadString("infusionCategoryName")
+        };
+
+        if (quality.TryGetProperty("versions", out var versions) && versions.ValueKind == JsonValueKind.Array)
+        {
+            version.PowerCapHashes = versions.EnumerateArray()
+                .Select(itemVersion => itemVersion.ReadUInt32("powerCapHash"))
+                .Where(hash => hash != 0)
+                .ToList();
+        }
+
+        if (quality.TryGetProperty("displayVersionWatermarkIcons", out var watermarkIcons) &&
+            watermarkIcons.ValueKind == JsonValueKind.Array)
+        {
+            version.DisplayWatermarkIcons = watermarkIcons.EnumerateArray()
+                .Where(icon => icon.ValueKind == JsonValueKind.String)
+                .Select(icon => icon.GetString() ?? string.Empty)
+                .Where(icon => !string.IsNullOrWhiteSpace(icon))
+                .ToList();
+        }
+
+        return version;
+    }
+
+    private static uint ReadUInt32Value(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetUInt32(out var value))
+            return value;
+
+        return element.ValueKind == JsonValueKind.String && uint.TryParse(element.GetString(), out value)
+            ? value
+            : 0;
     }
 
     private static Dictionary<uint, HashSet<uint>> ParsePlugSets(string plugSetJson)
@@ -677,7 +1068,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         JsonElement sockets,
         IReadOnlyDictionary<uint, HashSet<uint>> plugSets)
     {
-        if (!sockets.TryGetProperty("socketEntries", out var socketEntries) ||
+        if (sockets.ValueKind != JsonValueKind.Object ||
+            !sockets.TryGetProperty("socketEntries", out var socketEntries) ||
             socketEntries.ValueKind != JsonValueKind.Array)
         {
             return [];
@@ -703,6 +1095,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static uint ParseFrameHash(JsonElement sockets)
     {
+        if (sockets.ValueKind != JsonValueKind.Object)
+            return 0;
+
         if (sockets.TryGetProperty("socketEntries", out var socketEntries) &&
             socketEntries.ValueKind == JsonValueKind.Array)
         {
@@ -763,6 +1158,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 ? plug.ReadString("plugCategoryIdentifier")
                 : string.Empty;
             var season = ResolveWeaponSeason(definition, seasons, seasonsByNumber);
+            var backgroundColor = definition.TryGetProperty("backgroundColor", out var color)
+                ? color
+                : default;
 
             result[hash] = new Destiny2WeaponItemDataDto
             {
@@ -770,6 +1168,22 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 Name = displayProperties.ReadString("name"),
                 Description = displayProperties.ReadString("description"),
                 Icon = displayProperties.ReadString("icon"),
+                Appearance = new Destiny2WeaponAppearanceDto
+                {
+                    Screenshot = definition.ReadString("screenshot"),
+                    IconWatermark = definition.ReadString("iconWatermark"),
+                    IconWatermarkShelved = definition.ReadString("iconWatermarkShelved"),
+                    SecondaryIcon = definition.ReadString("secondaryIcon"),
+                    SecondaryOverlay = definition.ReadString("secondaryOverlay"),
+                    SecondarySpecial = definition.ReadString("secondarySpecial"),
+                    BackgroundColor = new Destiny2WeaponColorDto
+                    {
+                        Red = backgroundColor.ReadInt32("red"),
+                        Green = backgroundColor.ReadInt32("green"),
+                        Blue = backgroundColor.ReadInt32("blue"),
+                        Alpha = backgroundColor.ReadInt32("alpha")
+                    }
+                },
                 SeasonHash = season.Hash,
                 SeasonNumber = season.Number,
                 SeasonName = season.Name,
@@ -855,9 +1269,33 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         uint Hash,
         Destiny2ItemSubTypeEnum WeaponType,
         string WeaponTypeName,
+        Destiny2AmmunitionTypeEnum AmmoType,
+        Destiny2DamageTypeEnum DamageType,
+        Destiny2WeaponSlotEnum WeaponSlot,
+        Destiny2TierTypeEnum Rarity,
+        string RarityName,
+        Destiny2BreakerTypeEnum BreakerType,
+        Destiny2WeaponBreakerTypeDto Breaker,
+        bool IsCraftable,
+        uint RecipeItemHash,
+        List<Destiny2WeaponStatDto> Stats,
+        List<Destiny2WeaponFoundryDto> Foundries,
+        Destiny2WeaponVersionDto Version,
+        bool IsAdept,
+        bool IsHolofoil,
+        Destiny2ClassEnum ClassType,
         uint FrameHash,
         int RoundsPerMinute,
         List<PerkSocketCandidate> PerkSockets);
 
     private sealed record PerkSocketCandidate(int SocketIndex, IReadOnlySet<uint> PerkHashes);
+
+    private sealed record DefinitionReference(string Name, string Description, string Icon);
+
+    private sealed record BreakerTypeReference(
+        uint Hash,
+        Destiny2BreakerTypeEnum Type,
+        string Name,
+        string Description,
+        string Icon);
 }

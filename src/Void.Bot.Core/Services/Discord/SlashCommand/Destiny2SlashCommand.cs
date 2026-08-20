@@ -284,7 +284,8 @@ public partial class Destiny2SlashCommand(
             {
                 WeaponTypes = weaponTypes,
                 PerkGroups = perkGroups,
-                Language = language
+                Language = language,
+                PageSize = 100
             }, cancellationToken).ConfigureAwait(false);
         if (response.Data == null)
         {
@@ -292,7 +293,7 @@ public partial class Destiny2SlashCommand(
             return;
         }
 
-        if (response.Data.Weapons.Count == 0)
+        if (!response.Data.Items.Any())
         {
             await ModifyResponseAsync(commandCallback, Localize(context => context.NoMatchingWeaponsResponse)).ConfigureAwait(false);
             return;
@@ -302,8 +303,8 @@ public partial class Destiny2SlashCommand(
             response.Data,
             pageSize: DiscordGodRollPaginationRoute.PageSize,
             cancellationToken: cancellationToken).ConfigureAwait(false);
-        var pageCount = DiscordGodRollPaginationRoute.GetPageCount(response.Data.Weapons.Count);
-        var content = Localize(context => context.MatchingWeaponsResponse, response.Data.Weapons.Count);
+        var pageCount = DiscordGodRollPaginationRoute.GetPageCount(response.Data.Items.Count());
+        var content = Localize(context => context.MatchingWeaponsResponse, response.Data.Items.Count());
         string? paginationId = null;
         if (pageCount > 1)
         {
