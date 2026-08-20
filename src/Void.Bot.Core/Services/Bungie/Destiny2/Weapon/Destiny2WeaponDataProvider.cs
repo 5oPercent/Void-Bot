@@ -964,6 +964,9 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Destiny2WeaponVersionDto ParseVersion(JsonElement quality)
     {
+        if (quality.ValueKind != JsonValueKind.Object)
+            return new Destiny2WeaponVersionDto();
+
         var version = new Destiny2WeaponVersionDto
         {
             CurrentVersion = quality.ReadUInt32("currentVersion"),
