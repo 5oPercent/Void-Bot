@@ -206,6 +206,38 @@ public class RoleServiceFixture
         response.Data.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task GetRoleTreeAsync_OrdersEachLevelBySequenceAndCreatedAt()
+    {
+        var baseTime = new DateTimeOffset(2026, 8, 14, 0, 0, 0, TimeSpan.Zero);
+        var firstRoot = new Role { Id = Guid.NewGuid(), Sequence = 0, CreatedAt = baseTime.AddSeconds(1) };
+        var secondRoot = new Role { Id = Guid.NewGuid(), Sequence = 1, CreatedAt = baseTime };
+        var firstChild = new Role
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime
+        };
+        var secondChild = new Role
+        {
+            Id = Guid.NewGuid(), Pid = firstRoot.Id, Sequence = 1, CreatedAt = baseTime.AddSeconds(1)
+        };
+        var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([secondChild, secondRoot, firstChild, firstRoot]);
+        var mockMapper = Substitute.For<AutoMapper.IMapper>();
+        mockMapper.Map<List<RoleDto>>(Arg.Any<List<Role>>()).Returns([]);
+        var service = new RoleService(
+            mockMapper,
+            mockRoleDataProvider,
+            Substitute.For<IUserRoleService>(),
+            Substitute.For<IRolePermissionService>());
+
+        await service.GetRoleTreeAsync(new GetRoleTreeRequest(), CancellationToken.None);
+
+        mockMapper.Received(1).Map<List<RoleDto>>(Arg.Is<List<Role>>(tree =>
+            tree.Select(x => x.Id).SequenceEqual(new[] { firstRoot.Id, secondRoot.Id }) &&
+            tree[0].Children.Select(x => x.Id).SequenceEqual(new[] { firstChild.Id, secondChild.Id })));
+    }
+
     #endregion
 
     #region AddRoleAsync
@@ -457,6 +489,8 @@ public class RoleServiceFixture
         response.ShouldNotBeNull();
         response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
         mockMapper.Received().Map(command, existingRole);
+        await mockRoleDataProvider.Received(1)
+            .UpdateRoleAsync(existingRole, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -473,6 +507,8 @@ public class RoleServiceFixture
         };
 
         var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([new Role { Id = roleId }]);
         mockRoleDataProvider.GetBuiltAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(true);
 
@@ -503,10 +539,13 @@ public class RoleServiceFixture
         };
 
         var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Role { Id = roleId },
+                new Role { Id = Guid.NewGuid(), Pid = roleId }
+            ]);
         mockRoleDataProvider.GetBuiltAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(false);
-        mockRoleDataProvider.GetChildAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var mockMapper = Substitute.For<AutoMapper.IMapper>();
         var mockUserRoleService = Substitute.For<IUserRoleService>();
@@ -535,9 +574,9 @@ public class RoleServiceFixture
         };
 
         var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([new Role { Id = roleId }]);
         mockRoleDataProvider.GetBuiltAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-        mockRoleDataProvider.GetChildAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(false);
         mockRoleDataProvider.DeleteRoleListAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
@@ -565,6 +604,80 @@ public class RoleServiceFixture
         await mockUserRoleService.Received().RemoveRolesCascadeUserAsync(Arg.Any<RemoveRolesCascadeUserCommand>(), Arg.Any<CancellationToken>());
         await mockRolePermissionService.Received().RemoveRoleCascadePermissionAsync(Arg.Any<RemoveRoleCascadePermissionCommand>(), Arg.Any<CancellationToken>());
         await mockRoleDataProvider.Received().DeleteRoleListAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteRoleCascadeAsync_WithCascade_DeletesDescendants()
+    {
+        var roleId = Guid.NewGuid();
+        var childRoleId = Guid.NewGuid();
+        var grandchildRoleId = Guid.NewGuid();
+        var command = new DeleteRoleCascadeCommand
+        {
+            IdList = [roleId],
+            Cascade = true
+        };
+
+        var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Role { Id = roleId },
+                new Role { Id = childRoleId, Pid = roleId },
+                new Role { Id = grandchildRoleId, Pid = childRoleId }
+            ]);
+        mockRoleDataProvider.GetBuiltAnyAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var mockUserRoleService = Substitute.For<IUserRoleService>();
+        mockUserRoleService.RemoveRolesCascadeUserAsync(
+                Arg.Any<RemoveRolesCascadeUserCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemoveRolesCascadeUserResponse());
+        var mockRolePermissionService = Substitute.For<IRolePermissionService>();
+        mockRolePermissionService.RemoveRoleCascadePermissionAsync(
+                Arg.Any<RemoveRoleCascadePermissionCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new RemoveRoleCascadePermissionResponse());
+        var service = new RoleService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockRoleDataProvider,
+            mockUserRoleService,
+            mockRolePermissionService);
+
+        var response = await service.DeleteRoleCascadeAsync(command, CancellationToken.None);
+
+        response.Code.ShouldNotBe(HttpStatusCode.BadRequest);
+        await mockRoleDataProvider.Received(1).DeleteRoleListAsync(
+            Arg.Is<List<Guid>>(ids => ids.Count == 3 && ids.Contains(roleId) &&
+                                      ids.Contains(childRoleId) && ids.Contains(grandchildRoleId)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteRoleCascadeAsync_WithBuiltDescendant_ReturnsBadRequest()
+    {
+        var roleId = Guid.NewGuid();
+        var builtRoleId = Guid.NewGuid();
+        var mockRoleDataProvider = Substitute.For<IRoleDataProvider>();
+        mockRoleDataProvider.GetAllRoleAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new Role { Id = roleId },
+                new Role { Id = builtRoleId, Pid = roleId, Built = true }
+            ]);
+        mockRoleDataProvider.GetBuiltAnyAsync(
+                Arg.Is<List<Guid>>(ids => ids.Contains(builtRoleId)), Arg.Any<CancellationToken>())
+            .Returns(true);
+        var service = new RoleService(
+            Substitute.For<AutoMapper.IMapper>(),
+            mockRoleDataProvider,
+            Substitute.For<IUserRoleService>(),
+            Substitute.For<IRolePermissionService>());
+
+        var response = await service.DeleteRoleCascadeAsync(
+            new DeleteRoleCascadeCommand { IdList = [roleId], Cascade = true }, CancellationToken.None);
+
+        response.Code.ShouldBe(HttpStatusCode.BadRequest);
+        response.Message.ShouldBe("System built-in roles cannot be deleted.");
+        await mockRoleDataProvider.DidNotReceive()
+            .DeleteRoleListAsync(Arg.Any<List<Guid>>(), Arg.Any<CancellationToken>());
     }
 
     #endregion

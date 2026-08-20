@@ -79,7 +79,10 @@ public partial class PermissionService : IPermissionService
     {
         var list = await _permissionDataProvider.GetAllPermissionAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Permission>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Permission>();
 
         return new GetPermissionTreeResponse
         {
@@ -146,6 +149,7 @@ public partial class PermissionService : IPermissionService
         }
         
         _mapper.Map(command, permission);
+        await _permissionDataProvider.UpdatePermissionAsync(permission, cancellationToken).ConfigureAwait(false);
         
         return response;
     }
@@ -154,8 +158,13 @@ public partial class PermissionService : IPermissionService
         DeletePermissionCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeletePermissionCascadeResponse();
-        
-        var hasChild = await _permissionDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var permissionList = await _permissionDataProvider.GetAllPermissionAsync(cancellationToken).ConfigureAwait(false);
+        var permissionIds = command.Cascade
+            ? permissionList.GetDescendantIds<Guid, Permission>(command.IdList)
+            : command.IdList.Distinct().ToList();
+        var permissionIdSet = permissionIds.ToHashSet();
+        var hasChild = permissionList.Any(x => permissionIdSet.Contains(x.Pid) && !permissionIdSet.Contains(x.Id));
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -165,17 +174,17 @@ public partial class PermissionService : IPermissionService
         
         // Remove permission-role data
         await _rolePermissionService.RemovePermissionCascadeRoleAsync(
-            new RemovePermissionCascadeRoleCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemovePermissionCascadeRoleCommand { PermissionIds = permissionIds }, cancellationToken).ConfigureAwait(false);
         
         // Remove permission-menu data
         await _permissionMenuService.RemovePermissionsCascadeMenuAsync(
-            new RemovePermissionsCascadeMenuCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemovePermissionsCascadeMenuCommand { PermissionIds = permissionIds }, cancellationToken).ConfigureAwait(false);
         
         // Remove permission-endpoint data
         await _permissionEndpointService.RemovePermissionsCascadeEndpointAsync(
-            new RemovePermissionsCascadeEndpointCommand { PermissionIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemovePermissionsCascadeEndpointCommand { PermissionIds = permissionIds }, cancellationToken).ConfigureAwait(false);
         
-        await _permissionDataProvider.DeletePermissionsAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        await _permissionDataProvider.DeletePermissionsAsync(permissionIds, cancellationToken).ConfigureAwait(false);
         
         return response;
     }

@@ -143,10 +143,7 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
         var seasonTitleTemplate = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
         var seasonTitle = string.Format(seasonTitleTemplate, "Destiny 2");
-        var dayUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeDayUnit, languageEnum);
         var hourUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeHourUnit, languageEnum);
-        var minuteUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeMinuteUnit, languageEnum);
-        var secondUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeSecondUnit, languageEnum);
         
         if (!data.HasData)
         {
@@ -162,36 +159,8 @@ public partial class DiscordDataProvider : IDiscordDataProvider
 
         string FormatPlaytime(long seconds)
         {
-            var playtime = TimeSpan.FromSeconds(Math.Max(0, seconds));
-            var days = (long)playtime.TotalDays;
-
-            if (days > 0)
-            {
-                var parts = new List<string> { $"{days}{dayUnit}" };
-                if (playtime.Hours > 0)
-                    parts.Add($"{playtime.Hours}{hourUnit}");
-                if (playtime.Minutes > 0)
-                    parts.Add($"{playtime.Minutes}{minuteUnit}");
-                return string.Join(' ', parts);
-            }
-
-            if (playtime.Hours > 0)
-            {
-                var parts = new List<string> { $"{playtime.Hours}{hourUnit}" };
-                if (playtime.Minutes > 0)
-                    parts.Add($"{playtime.Minutes}{minuteUnit}");
-                return string.Join(' ', parts);
-            }
-
-            if (playtime.Minutes > 0)
-            {
-                var parts = new List<string> { $"{playtime.Minutes}{minuteUnit}" };
-                if (playtime.Seconds > 0)
-                    parts.Add($"{playtime.Seconds}{secondUnit}");
-                return string.Join(' ', parts);
-            }
-
-            return $"{playtime.Seconds}{secondUnit}";
+            var hours = Math.Max(0, seconds) / 3600d;
+            return $"{hours:0.##}{hourUnit}";
         }
 
         var totalValue = FormatPlaytime(data.TotalPlaytimeSeconds);

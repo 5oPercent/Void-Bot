@@ -9,6 +9,8 @@ public class DeletePermissionCascadeCommand : ICommand
     [Required]
     [MinLength(1)]
     public List<Guid> IdList { get; set; } = [];
+
+    public bool Cascade { get; set; }
 }
 
 public class DeletePermissionCascadeResponse : VoidBotResponse

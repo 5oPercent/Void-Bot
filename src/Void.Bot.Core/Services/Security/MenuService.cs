@@ -32,12 +32,12 @@ public interface IMenuService : IScope
 public class MenuService : IMenuService
 {
     private readonly IMapper _mapper;
-    private readonly MenuDataProvider _menuDataProvider;
+    private readonly IMenuDataProvider _menuDataProvider;
     private readonly IPermissionMenuService _permissionMenuService;
 
     public MenuService(
         IMapper mapper,
-        MenuDataProvider menuDataProvider,
+        IMenuDataProvider menuDataProvider,
         IPermissionMenuService permissionMenuService)
     {
         _mapper = mapper;
@@ -72,7 +72,10 @@ public class MenuService : IMenuService
     {
         var list = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
 
-        var tree = list.ConvertTree<Guid, Menu>();
+        var tree = list
+            .OrderBy(x => x.Sequence)
+            .ThenBy(x => x.CreatedAt)
+            .ConvertTree<Guid, Menu>();
 
         return new GetMenuTreeResponse
         {
@@ -85,12 +88,15 @@ public class MenuService : IMenuService
     {
         var response = new AddMenuResponse();
         
-        var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
-        if (!hasParent)
+        if (command.Pid != Guid.Empty)
         {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Parent menu not found";
-            return response;
+            var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
+            if (!hasParent)
+            {
+                response.Code = HttpStatusCode.BadRequest;
+                response.Message = "Parent menu not found";
+                return response;
+            }
         }
         
         var menu = _mapper.Map<Menu>(command);
@@ -113,15 +119,19 @@ public class MenuService : IMenuService
             return response;
         }
         
-        var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
-        if (!hasParent)
+        if (command.Pid != Guid.Empty)
         {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Parent menu not found";
-            return response;
+            var hasParent = await _menuDataProvider.GetAnyAsync([command.Pid], cancellationToken).ConfigureAwait(false);
+            if (!hasParent)
+            {
+                response.Code = HttpStatusCode.BadRequest;
+                response.Message = "Parent menu not found";
+                return response;
+            }
         }
         
         _mapper.Map(command, menu);
+        await _menuDataProvider.UpdateMenuAsync(menu, cancellationToken).ConfigureAwait(false);
 
         return response;
     }
@@ -130,20 +140,25 @@ public class MenuService : IMenuService
         DeleteMenuCascadeCommand command, CancellationToken cancellationToken)
     {
         var response = new DeleteMenuCascadeResponse();
-        
-        var hasChild = await _menuDataProvider.GetChildAnyAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+
+        var menuList = await _menuDataProvider.GetAllMenuAsync(cancellationToken).ConfigureAwait(false);
+        var menuIds = command.Cascade
+            ? menuList.GetDescendantIds<Guid, Menu>(command.IdList)
+            : command.IdList.Distinct().ToList();
+        var menuIdSet = menuIds.ToHashSet();
+        var hasChild = menuList.Any(x => menuIdSet.Contains(x.Pid) && !menuIdSet.Contains(x.Id));
         if (hasChild)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Child role exists";
+            response.Message = "Child menu exists";
             return response;
         }
         
         // Remove menu-permission data
         await _permissionMenuService.RemoveMenusCascadePermissionAsync(
-            new RemoveMenusCascadePermissionCommand { MenuIds = command.IdList }, cancellationToken).ConfigureAwait(false);
+            new RemoveMenusCascadePermissionCommand { MenuIds = menuIds }, cancellationToken).ConfigureAwait(false);
         
-        await _menuDataProvider.DeleteMenusAsync(command.IdList, cancellationToken).ConfigureAwait(false);
+        await _menuDataProvider.DeleteMenusAsync(menuIds, cancellationToken).ConfigureAwait(false);
 
         return response;
     }

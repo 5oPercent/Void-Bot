@@ -6,6 +6,9 @@ public static class PageExtension
 {
     public static PagedList<TEntity> ToPaged<TEntity>(this IEnumerable<TEntity> source, int pageIndex, int pageSize) where TEntity : new()
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageIndex, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+
         var list = source.ToList();
         
         var total = list.Count;
@@ -31,6 +34,7 @@ public static class PageExtension
 
 public class PageInput
 {
+    [Range(1, int.MaxValue, ErrorMessage = "PageIndex must be greater than or equal to 1")]
     public int PageIndex { get; set; } = 1;
     
     [Range(1, 100, ErrorMessage = "PageSize must be between 1 and 100")]

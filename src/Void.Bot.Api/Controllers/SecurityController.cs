@@ -32,6 +32,15 @@ public class SecurityController : ControllerBase
         return Ok(response);
     }
 
+    [SkipPermissionCheck]
+    [HttpGet("user/permissions")]
+    [ProducesResponseType(typeof(GetCurrentUserPermissionsResponse), 200)]
+    public async Task<IActionResult> GetCurrentUserPermissionsAsync([FromQuery] GetCurrentUserPermissionsRequest request)
+    {
+        var response = await _mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(request).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     #endregion
     
     #region Role
@@ -192,7 +201,6 @@ public class SecurityController : ControllerBase
     
     #region Endpoint
     
-    [SkipScan]
     [HttpPost("endpoint/list")]
     [ProducesResponseType(typeof(GetEndpointListResponse), 200)]
     public async Task<IActionResult> GetEndpointListAsync([FromQuery] GetEndpointListRequest request)
@@ -234,6 +242,14 @@ public class SecurityController : ControllerBase
     public async Task<IActionResult> ReplaceUserRolesAsync([FromBody] ReplaceUserRolesCommand command)
     {
         var response = await _mediator.SendAsync<ReplaceUserRolesCommand, ReplaceUserRolesResponse>(command).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("user/role/deadline")]
+    [ProducesResponseType(typeof(UpdateUserRoleDeadlineResponse), 200)]
+    public async Task<IActionResult> UpdateUserRoleDeadlineAsync([FromBody] UpdateUserRoleDeadlineCommand command)
+    {
+        var response = await _mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(command).ConfigureAwait(false);
         return Ok(response);
     }
 

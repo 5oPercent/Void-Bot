@@ -16,16 +16,20 @@ public class PermissionAuthorizationScenario(IntegrationTestBase testBase) : Int
     private readonly SecurityUtil _util = new(testBase);
 
     private Guid _userId;
-    private Guid _adminRoleId;
+    private Guid _superAdminRoleId;
     private Guid _normalRoleId;
     private Guid _permissionId;
     private string _endpoint = "/api/protected";
     private bool _authorizationResult;
 
-    private async Task GivenAdminUser()
+    private async Task GivenSuperAdminUser()
     {
         _userId = TestUserId;
-        _adminRoleId = await _util.AddRoleAsync(name: RoleConstants.Admin, code: RoleConstants.Admin);
+        _superAdminRoleId = await _util.AddRoleAsync(
+            RoleConstants.SuperAdmin,
+            RoleConstants.SuperAdmin,
+            built: true,
+            id: RoleConstants.SuperAdminId);
     }
 
     private async Task GivenNormalUser()
@@ -34,9 +38,9 @@ public class PermissionAuthorizationScenario(IntegrationTestBase testBase) : Int
         _normalRoleId = await _util.AddRoleAsync(name: "NormalRole", code: "NORMAL");
     }
 
-    private async Task GivenAdminRoleAssigned()
+    private async Task GivenSuperAdminRoleAssigned()
     {
-        await _util.AddUserRoleAsync(_userId, _adminRoleId);
+        await _util.AddUserRoleAsync(_userId, _superAdminRoleId);
     }
 
     private async Task GivenNormalRoleAssigned()
@@ -59,11 +63,11 @@ public class PermissionAuthorizationScenario(IntegrationTestBase testBase) : Int
         await _util.AddPermissionEndpointAsync(_permissionId, _endpoint);
     }
 
-    private async Task WhenCheckAdminStatus()
+    private async Task WhenCheckSuperAdminStatus()
     {
         await Run<IUserRoleService>(async service =>
         {
-            _authorizationResult = await service.CheckUserIsAdminAsync(_userId, CancellationToken.None);
+            _authorizationResult = await service.CheckUserIsSuperAdminAsync(_userId, CancellationToken.None);
         });
     }
 
@@ -83,12 +87,12 @@ public class PermissionAuthorizationScenario(IntegrationTestBase testBase) : Int
         }, cb => cb.RegisterInstance(mockEndpointService).As<IEndpointService>());
     }
 
-    private void ThenUserShouldBeAdmin()
+    private void ThenUserShouldBeSuperAdmin()
     {
         _authorizationResult.ShouldBeTrue();
     }
 
-    private void ThenUserShouldNotBeAdmin()
+    private void ThenUserShouldNotBeSuperAdmin()
     {
         _authorizationResult.ShouldBeFalse();
     }
@@ -104,22 +108,22 @@ public class PermissionAuthorizationScenario(IntegrationTestBase testBase) : Int
     }
 
     [Fact]
-    public void AdminUserCanBeIdentified()
+    public void SuperAdminUserCanBeIdentified()
     {
-        this.Given(x => x.GivenAdminUser())
-            .And(x => x.GivenAdminRoleAssigned())
-            .When(x => x.WhenCheckAdminStatus())
-            .Then(x => x.ThenUserShouldBeAdmin())
+        this.Given(x => x.GivenSuperAdminUser())
+            .And(x => x.GivenSuperAdminRoleAssigned())
+            .When(x => x.WhenCheckSuperAdminStatus())
+            .Then(x => x.ThenUserShouldBeSuperAdmin())
             .BDDfy();
     }
 
     [Fact]
-    public void NonAdminUserIsNotIdentifiedAsAdmin()
+    public void NormalUserIsNotIdentifiedAsSuperAdmin()
     {
         this.Given(x => x.GivenNormalUser())
             .And(x => x.GivenNormalRoleAssigned())
-            .When(x => x.WhenCheckAdminStatus())
-            .Then(x => x.ThenUserShouldNotBeAdmin())
+            .When(x => x.WhenCheckSuperAdminStatus())
+            .Then(x => x.ThenUserShouldNotBeSuperAdmin())
             .BDDfy();
     }
 
