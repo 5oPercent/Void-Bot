@@ -5,6 +5,7 @@ using Void.Bot.Core.Caching;
 using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
+using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
@@ -288,6 +289,28 @@ public partial class BungieService : IBungieService
             return response;
         }
 
+        var classJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.ClassCacheKey}:{manifestLanguageCode}", cancellationToken).ConfigureAwait(false);
+        var classManifest = classJson?.DeserializeJson<Destiny2ManifestClassDto>();
+        var classIconUrls = classManifest?.Values
+            .Where(x => !string.IsNullOrEmpty(x.DisplayProperties.HighResIcon) ||
+                        !string.IsNullOrEmpty(x.DisplayProperties.Icon))
+            .GroupBy(x => x.ClassType)
+            .ToDictionary(
+                x => x.Key,
+                x =>
+                {
+                    var displayProperties = x.First().DisplayProperties;
+                    var iconPath = string.IsNullOrEmpty(displayProperties.HighResIcon)
+                        ? displayProperties.Icon
+                        : displayProperties.HighResIcon;
+                    return $"{BungieConstants.BungieUrl}{iconPath}";
+                })
+            ?? [];
+
+        foreach (var character in characterStats)
+            character.ClassIconUrl = classIconUrls.GetValueOrDefault(character.Class, string.Empty);
+
         var utcNow = DateTime.UtcNow;
         foreach (var season in seasonManifest.Values)
         {
@@ -454,12 +477,18 @@ public partial class BungieService : IBungieService
             {
                 var classSeconds = calculatedSeconds.GetValueOrDefault(season.Hash);
                 storedHistoryMap.TryGetValue(season.Hash, out var storedHistory);
+                var seasonIconPath = string.IsNullOrEmpty(season.DisplayProperties.HighResIcon)
+                    ? season.DisplayProperties.Icon
+                    : season.DisplayProperties.HighResIcon;
 
                 return new Destiny2SeasonPlaytimeDto
                 {
                     SeasonHash = season.Hash,
                     SeasonNumber = season.SeasonNumber,
                     Name = season.DisplayProperties.Name,
+                    IconUrl = string.IsNullOrEmpty(seasonIconPath)
+                        ? string.Empty
+                        : $"{BungieConstants.BungieUrl}{seasonIconPath}",
                     StartDate = season.StartDate,
                     EndDate = season.EndDate,
                     Classes =
@@ -467,18 +496,21 @@ public partial class BungieService : IBungieService
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Hunter,
+                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Hunter, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Hunter)
                                 ?? storedHistory?.HunterSeconds ?? 0
                         },
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Titan,
+                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Titan, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Titan)
                                 ?? storedHistory?.TitanSeconds ?? 0
                         },
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Warlock,
+                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Warlock, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Warlock)
                                 ?? storedHistory?.WarlockSeconds ?? 0
                         }
