@@ -8,6 +8,11 @@ namespace Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
 public class Destiny2ManifestClassDefinitionDto : Destiny2ManifestDefinitionDto
 {
     /// <summary>
+    /// 显示属性，包含职业名称、描述和图标
+    /// </summary>
+    public Destiny2ManifestDisplayPropertiesDefinitionDto DisplayProperties { get; set; } = new();
+
+    /// <summary>
     /// 职业类型
     /// </summary>
     public Destiny2ClassEnum ClassType { get; set; }
