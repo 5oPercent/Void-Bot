@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime;
 using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services;
@@ -91,6 +92,7 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         List<string> languages,
         CancellationToken cancellationToken)
     {
+        var rebuildSucceeded = false;
         foreach (var language in languages)
         {
             try
@@ -98,6 +100,7 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 var success = await _dataProvider.RefreshAsync(language, cancellationToken).ConfigureAwait(false);
                 if (success)
                 {
+                    rebuildSucceeded = true;
                     Log.Information(
                         "Destiny 2 weapon cache rebuild completed for language: {Language}",
                         language);
@@ -117,6 +120,24 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             {
                 Log.Error(ex, "Failed to rebuild Destiny 2 weapon cache for language: {Language}", language);
             }
+        }
+
+        if (rebuildSucceeded)
+        {
+            var managedMemoryBefore = GC.GetTotalMemory(false);
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(
+                GC.MaxGeneration,
+                GCCollectionMode.Forced,
+                blocking: true,
+                compacting: true);
+            var managedMemoryAfter = GC.GetTotalMemory(false);
+
+            Log.Information(
+                "Completed garbage collection after Destiny 2 weapon cache rebuild. ManagedMemoryBeforeBytes: {ManagedMemoryBeforeBytes}, ManagedMemoryAfterBytes: {ManagedMemoryAfterBytes}, ReclaimedBytes: {ReclaimedBytes}",
+                managedMemoryBefore,
+                managedMemoryAfter,
+                Math.Max(0, managedMemoryBefore - managedMemoryAfter));
         }
     }
 
