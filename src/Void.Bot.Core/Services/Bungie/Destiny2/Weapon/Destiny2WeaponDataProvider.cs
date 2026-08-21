@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Serilog;
 using Void.Bot.Core.Caching;
@@ -330,16 +331,26 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 return false;
             }
 
-            var weaponTypes = BuildWeaponTypeData(inventoryJson)
+            var plugSets = ParsePlugSets(plugSetJson);
+            var seasons = ParseSeasons(seasonJson);
+            var statDefinitions = ParseDefinitionReferences(statJson);
+            var traitDefinitions = ParseDefinitionReferences(traitJson);
+            var breakerTypeDefinitions = ParseBreakerTypeReferences(breakerTypeJson);
+            var sandboxPerkBreakerTypes = ParseSandboxPerkBreakerTypes(sandboxPerkJson);
+            using var inventoryDocument = ParseManifestDocument(inventoryJson);
+            if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
+                throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
+
+            var weaponTypes = BuildWeaponTypeData(inventoryDocument.RootElement)
                 .ToDictionary(pair => pair.Key, pair => pair.Value);
             var rollData = BuildRollData(
-                inventoryJson,
-                plugSetJson,
-                seasonJson,
-                statJson,
-                traitJson,
-                breakerTypeJson,
-                sandboxPerkJson);
+                inventoryDocument.RootElement,
+                plugSets,
+                seasons,
+                statDefinitions,
+                traitDefinitions,
+                breakerTypeDefinitions,
+                sandboxPerkBreakerTypes);
 
             _logger.Information(
                 "Parsed Destiny 2 weapon manifest. Version: {Version}, Language: {Language}, InventoryCharacterCount: {InventoryCharacterCount}, PlugSetCharacterCount: {PlugSetCharacterCount}, SeasonCharacterCount: {SeasonCharacterCount}, WeaponTypeCount: {WeaponTypeCount}, WeaponCount: {WeaponCount}, ItemCount: {ItemCount}, PerkVariantGroupCount: {PerkVariantGroupCount}",
@@ -452,13 +463,19 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     internal static IReadOnlyDictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto> BuildWeaponTypeData(
         string inventoryItemJson)
     {
-        using var inventoryDocument = JsonDocument.Parse(inventoryItemJson);
+        using var inventoryDocument = ParseManifestDocument(inventoryItemJson);
         if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
 
+        return BuildWeaponTypeData(inventoryDocument.RootElement);
+    }
+
+    private static IReadOnlyDictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto> BuildWeaponTypeData(
+        JsonElement inventoryRoot)
+    {
         var weaponTypes = new Dictionary<Destiny2ItemSubTypeEnum, Destiny2WeaponTypeDataDto>();
 
-        foreach (var property in inventoryDocument.RootElement.EnumerateObject())
+        foreach (var property in inventoryRoot.EnumerateObject())
         {
             var weaponDefinition = property.Value;
             if (weaponDefinition.ReadInt32("itemType") != (int)Destiny2ItemTypeEnum.Weapon ||
@@ -505,17 +522,36 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     {
         var plugSets = ParsePlugSets(plugSetJson);
         var seasons = ParseSeasons(seasonJson);
-        var seasonsByNumber = BuildSeasonsByNumber(seasons);
         var statDefinitions = ParseDefinitionReferences(statJson);
         var traitDefinitions = ParseDefinitionReferences(traitJson);
         var breakerTypeDefinitions = ParseBreakerTypeReferences(breakerTypeJson);
         var sandboxPerkBreakerTypes = ParseSandboxPerkBreakerTypes(sandboxPerkJson);
-        using var inventoryDocument = JsonDocument.Parse(inventoryItemJson);
+        using var inventoryDocument = ParseManifestDocument(inventoryItemJson);
         if (inventoryDocument.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyInventoryItemDefinition must be a JSON object");
 
-        var weaponCandidates = ParseWeaponCandidates(
+        return BuildRollData(
             inventoryDocument.RootElement,
+            plugSets,
+            seasons,
+            statDefinitions,
+            traitDefinitions,
+            breakerTypeDefinitions,
+            sandboxPerkBreakerTypes);
+    }
+
+    private static Destiny2WeaponRollDataDto BuildRollData(
+        JsonElement inventoryRoot,
+        IReadOnlyDictionary<uint, HashSet<uint>> plugSets,
+        IReadOnlyDictionary<uint, (int Number, string Name)> seasons,
+        IReadOnlyDictionary<uint, DefinitionReference> statDefinitions,
+        IReadOnlyDictionary<uint, DefinitionReference> traitDefinitions,
+        IReadOnlyDictionary<uint, BreakerTypeReference> breakerTypeDefinitions,
+        IReadOnlyDictionary<uint, Destiny2BreakerTypeEnum> sandboxPerkBreakerTypes)
+    {
+        var seasonsByNumber = BuildSeasonsByNumber(seasons);
+        var weaponCandidates = ParseWeaponCandidates(
+            inventoryRoot,
             plugSets,
             statDefinitions,
             traitDefinitions,
@@ -531,7 +567,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
                 referencedItemHashes.UnionWith(perkSocket.PerkHashes);
         }
 
-        var items = BuildItems(inventoryDocument.RootElement, referencedItemHashes, seasons, seasonsByNumber);
+        var items = BuildItems(inventoryRoot, referencedItemHashes, seasons, seasonsByNumber);
         var weapons = BuildWeapons(weaponCandidates, items);
         var weaponTypes = BuildWeaponTypes(weapons);
         var perkVariantGroups = new Dictionary<uint, HashSet<uint>>();
@@ -792,7 +828,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
     private static Dictionary<uint, Destiny2BreakerTypeEnum> ParseSandboxPerkBreakerTypes(
         string sandboxPerkJson)
     {
-        using var document = JsonDocument.Parse(sandboxPerkJson);
+        using var document = ParseManifestDocument(sandboxPerkJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("Destiny sandbox perk manifest must be a JSON object");
 
@@ -827,7 +863,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Dictionary<uint, BreakerTypeReference> ParseBreakerTypeReferences(string definitionJson)
     {
-        using var document = JsonDocument.Parse(definitionJson);
+        using var document = ParseManifestDocument(definitionJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("Destiny breaker type manifest must be a JSON object");
 
@@ -856,7 +892,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Dictionary<uint, DefinitionReference> ParseDefinitionReferences(string definitionJson)
     {
-        using var document = JsonDocument.Parse(definitionJson);
+        using var document = ParseManifestDocument(definitionJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("Destiny definition manifest must be a JSON object");
 
@@ -1007,7 +1043,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Dictionary<uint, HashSet<uint>> ParsePlugSets(string plugSetJson)
     {
-        using var document = JsonDocument.Parse(plugSetJson);
+        using var document = ParseManifestDocument(plugSetJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinyPlugSetDefinition must be a JSON object");
 
@@ -1046,7 +1082,7 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
 
     private static Dictionary<uint, (int Number, string Name)> ParseSeasons(string seasonJson)
     {
-        using var document = JsonDocument.Parse(seasonJson);
+        using var document = ParseManifestDocument(seasonJson);
         if (document.RootElement.ValueKind != JsonValueKind.Object)
             throw new JsonException("DestinySeasonDefinition must be a JSON object");
 
@@ -1266,6 +1302,14 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         foreach (var pair in seasons)
             result[pair.Value.Number] = (pair.Key, pair.Value.Name ?? string.Empty);
         return result;
+    }
+
+    private static JsonDocument ParseManifestDocument(string json)
+    {
+        // JsonDocument.Parse(string) rents up to 1 GB buffers from ArrayPool<byte>.Shared.
+        // Keep large manifest buffers privately owned so they become collectible when the document is disposed.
+        var utf8Json = Encoding.UTF8.GetBytes(json);
+        return JsonDocument.Parse(utf8Json.AsMemory());
     }
 
     private sealed record WeaponCandidate(
