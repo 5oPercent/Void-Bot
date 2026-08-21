@@ -19,7 +19,9 @@ public class CharacterPlaytimeDto
 
     public Destiny2ClassEnum Class { get; set; } = Destiny2ClassEnum.Unknown;
 
-    public string ClassIconUrl { get; set; } = string.Empty;
+    public string EmblemUrl { get; set; } = string.Empty;
+
+    public string EmblemBackgroundUrl { get; set; } = string.Empty;
 
     public long PlaytimeSeconds { get; set; }
 }
@@ -46,8 +48,6 @@ public class Destiny2SeasonPlaytimeDto
 public class ClassPlaytimeDto
 {
     public Destiny2ClassEnum Class { get; set; } = Destiny2ClassEnum.Unknown;
-
-    public string IconUrl { get; set; } = string.Empty;
 
     public long PlaytimeSeconds { get; set; }
 }

@@ -227,7 +227,8 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        var characterClassMap = charactersResult.Response.Characters.Data
+        var characterMap = charactersResult.Response.Characters.Data;
+        var characterClassMap = characterMap
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ClassType);
 
         _logger.Information(
@@ -257,13 +258,20 @@ public partial class BungieService : IBungieService
 
             var characterId = charData.CharacterId;
 
-            var classType = characterClassMap.TryGetValue(characterId, out var ct) ? ct : Destiny2ClassEnum.Unknown;
+            characterMap.TryGetValue(characterId, out var character);
+            var classType = character?.ClassType ?? Destiny2ClassEnum.Unknown;
             var playtimeSeconds = (long)(charData.Merged?.AllTime?.SecondsPlayed?.Basic?.Value ?? 0);
 
             characterStats.Add(new CharacterPlaytimeDto
             {
                 CharacterId = characterId,
                 Class = classType,
+                EmblemUrl = string.IsNullOrEmpty(character?.EmblemPath)
+                    ? string.Empty
+                    : $"{BungieConstants.BungieUrl}{character.EmblemPath}",
+                EmblemBackgroundUrl = string.IsNullOrEmpty(character?.EmblemBackgroundPath)
+                    ? string.Empty
+                    : $"{BungieConstants.BungieUrl}{character.EmblemBackgroundPath}",
                 PlaytimeSeconds = playtimeSeconds
             });
         }
@@ -288,28 +296,6 @@ public partial class BungieService : IBungieService
             response.Message = "Destiny 2 season manifest is unavailable";
             return response;
         }
-
-        var classJson = await _cacheManager.Get<string>(
-            $"{Destiny2ManifestConstants.ClassCacheKey}:{manifestLanguageCode}", cancellationToken).ConfigureAwait(false);
-        var classManifest = classJson?.DeserializeJson<Destiny2ManifestClassDto>();
-        var classIconUrls = classManifest?.Values
-            .Where(x => !string.IsNullOrEmpty(x.DisplayProperties.HighResIcon) ||
-                        !string.IsNullOrEmpty(x.DisplayProperties.Icon))
-            .GroupBy(x => x.ClassType)
-            .ToDictionary(
-                x => x.Key,
-                x =>
-                {
-                    var displayProperties = x.First().DisplayProperties;
-                    var iconPath = string.IsNullOrEmpty(displayProperties.HighResIcon)
-                        ? displayProperties.Icon
-                        : displayProperties.HighResIcon;
-                    return $"{BungieConstants.BungieUrl}{iconPath}";
-                })
-            ?? [];
-
-        foreach (var character in characterStats)
-            character.ClassIconUrl = classIconUrls.GetValueOrDefault(character.Class, string.Empty);
 
         var utcNow = DateTime.UtcNow;
         foreach (var season in seasonManifest.Values)
@@ -496,21 +482,18 @@ public partial class BungieService : IBungieService
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Hunter,
-                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Hunter, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Hunter)
                                 ?? storedHistory?.HunterSeconds ?? 0
                         },
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Titan,
-                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Titan, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Titan)
                                 ?? storedHistory?.TitanSeconds ?? 0
                         },
                         new ClassPlaytimeDto
                         {
                             Class = Destiny2ClassEnum.Warlock,
-                            IconUrl = classIconUrls.GetValueOrDefault(Destiny2ClassEnum.Warlock, string.Empty),
                             PlaytimeSeconds = classSeconds?.GetValueOrDefault(Destiny2ClassEnum.Warlock)
                                 ?? storedHistory?.WarlockSeconds ?? 0
                         }
