@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Net;
-using System.Runtime;
 using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services;
@@ -93,23 +91,6 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         List<string> languages,
         CancellationToken cancellationToken)
     {
-        using var process = Process.GetCurrentProcess();
-        process.Refresh();
-        var managedMemoryAtStart = GC.GetTotalMemory(false);
-        var workingSetAtStart = process.WorkingSet64;
-        var privateMemoryAtStart = process.PrivateMemorySize64;
-        var gcInfoAtStart = GC.GetGCMemoryInfo();
-
-        Log.Information(
-            "Starting Destiny 2 weapon cache rebuild. LanguageCount: {LanguageCount}, ManagedMemoryBytes: {ManagedMemoryBytes}, HeapSizeBytes: {HeapSizeBytes}, FragmentedBytes: {FragmentedBytes}, WorkingSetBytes: {WorkingSetBytes}, PrivateMemoryBytes: {PrivateMemoryBytes}",
-            languages.Count,
-            managedMemoryAtStart,
-            gcInfoAtStart.HeapSizeBytes,
-            gcInfoAtStart.FragmentedBytes,
-            workingSetAtStart,
-            privateMemoryAtStart);
-
-        var rebuildSucceeded = false;
         foreach (var language in languages)
         {
             try
@@ -117,7 +98,6 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
                 var success = await _dataProvider.RefreshAsync(language, cancellationToken).ConfigureAwait(false);
                 if (success)
                 {
-                    rebuildSucceeded = true;
                     Log.Information(
                         "Destiny 2 weapon cache rebuild completed for language: {Language}",
                         language);
@@ -137,47 +117,6 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
             {
                 Log.Error(ex, "Failed to rebuild Destiny 2 weapon cache for language: {Language}", language);
             }
-
-            process.Refresh();
-            Log.Information(
-                "Destiny 2 weapon cache rebuild memory snapshot. Language: {Language}, ManagedMemoryBytes: {ManagedMemoryBytes}, WorkingSetBytes: {WorkingSetBytes}, PrivateMemoryBytes: {PrivateMemoryBytes}",
-                language,
-                GC.GetTotalMemory(false),
-                process.WorkingSet64,
-                process.PrivateMemorySize64);
-        }
-
-        if (rebuildSucceeded)
-        {
-            var managedMemoryBefore = GC.GetTotalMemory(false);
-            process.Refresh();
-            var workingSetBefore = process.WorkingSet64;
-            var privateMemoryBefore = process.PrivateMemorySize64;
-            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-            GC.Collect(
-                GC.MaxGeneration,
-                GCCollectionMode.Forced,
-                blocking: true,
-                compacting: true);
-            var managedMemoryAfter = GC.GetTotalMemory(false);
-            var gcInfoAfter = GC.GetGCMemoryInfo();
-            process.Refresh();
-
-            Log.Information(
-                "Completed garbage collection after Destiny 2 weapon cache rebuild. ManagedMemoryAtStartBytes: {ManagedMemoryAtStartBytes}, ManagedMemoryBeforeBytes: {ManagedMemoryBeforeBytes}, ManagedMemoryAfterBytes: {ManagedMemoryAfterBytes}, ReclaimedBytes: {ReclaimedBytes}, ManagedMemoryGrowthBytes: {ManagedMemoryGrowthBytes}, HeapSizeAfterBytes: {HeapSizeAfterBytes}, FragmentedAfterBytes: {FragmentedAfterBytes}, WorkingSetAtStartBytes: {WorkingSetAtStartBytes}, WorkingSetBeforeBytes: {WorkingSetBeforeBytes}, WorkingSetAfterBytes: {WorkingSetAfterBytes}, PrivateMemoryAtStartBytes: {PrivateMemoryAtStartBytes}, PrivateMemoryBeforeBytes: {PrivateMemoryBeforeBytes}, PrivateMemoryAfterBytes: {PrivateMemoryAfterBytes}",
-                managedMemoryAtStart,
-                managedMemoryBefore,
-                managedMemoryAfter,
-                Math.Max(0, managedMemoryBefore - managedMemoryAfter),
-                managedMemoryAfter - managedMemoryAtStart,
-                gcInfoAfter.HeapSizeBytes,
-                gcInfoAfter.FragmentedBytes,
-                workingSetAtStart,
-                workingSetBefore,
-                process.WorkingSet64,
-                privateMemoryAtStart,
-                privateMemoryBefore,
-                process.PrivateMemorySize64);
         }
     }
 
