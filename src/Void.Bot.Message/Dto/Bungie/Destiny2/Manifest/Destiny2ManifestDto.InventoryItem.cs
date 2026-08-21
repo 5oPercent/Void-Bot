@@ -51,6 +51,16 @@ public class Destiny2ManifestInventoryItemDefinitionDto : Destiny2ManifestDefini
     /// 物品背景颜色定义
     /// </summary>
     public Destiny2ManifestColorDefinitionDto BackgroundColor { get; set; } = new();
+
+    /// <summary>
+    /// 是否为全息版本。
+    /// </summary>
+    public bool IsHolofoil { get; set; }
+
+    /// <summary>
+    /// 是否为专家版本。
+    /// </summary>
+    public bool IsAdept { get; set; }
     
     /// <summary>
     /// 截图路径

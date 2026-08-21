@@ -4,8 +4,10 @@ using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
+using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
+using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 
@@ -18,6 +20,12 @@ public partial interface IDiscordDataProvider : IScope
 
     public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2SeasonAsync(
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default);
+
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
+        PagedListDto<Destiny2WeaponGodRollDto> data,
+        int pageIndex = 0,
+        int pageSize = 5,
+        CancellationToken cancellationToken = default);
 }
 
 public partial class DiscordDataProvider : IDiscordDataProvider
@@ -216,4 +224,50 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             ([embedSeason, .. historyEmbeds], new List<FileAttachment>()));
     }
 
+    public Task<(List<Embed> Embeds, List<FileAttachment> Attachments)> GenerateDestiny2GodRollAsync(
+        PagedListDto<Destiny2WeaponGodRollDto> data,
+        int pageIndex = 0,
+        int pageSize = 5,
+        CancellationToken cancellationToken = default)
+    {
+        var embeds = data.Items.Skip(pageIndex * pageSize).Take(pageSize).Select(weapon =>
+        {
+            var matchedPerks = weapon.MatchedPerkSockets
+                .OrderBy(socket => socket.SocketIndex)
+                .Select(socket =>
+                {
+                    var perkNames = socket.Perks
+                        .GroupBy(perk => perk.Name, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => group.Any(perk => perk.IsEnhanced)
+                            ? $"{group.First().Name} & 强化"
+                            : group.First().Name);
+                    return $"**插槽 {socket.SocketIndex}**：{string.Join(" / ", perkNames)}";
+                });
+            var weaponDetails = new List<string> { weapon.WeaponType.Name };
+            if (!string.IsNullOrWhiteSpace(weapon.Frame.Name))
+                weaponDetails.Add(weapon.Frame.Name);
+            if (weapon.RoundsPerMinute > 0)
+                weaponDetails.Add($"{weapon.RoundsPerMinute} RPM");
+            var descriptionLines = new List<string> { string.Join(" · ", weaponDetails) };
+            if (weapon.Season.SeasonNumber > 0 || !string.IsNullOrWhiteSpace(weapon.Season.Name))
+            {
+                var season = weapon.Season.SeasonNumber > 0 ? $"S{weapon.Season.SeasonNumber}" : string.Empty;
+                if (!string.IsNullOrWhiteSpace(weapon.Season.Name))
+                    season = string.IsNullOrWhiteSpace(season) ? weapon.Season.Name : $"{season} · {weapon.Season.Name}";
+                descriptionLines.Add($"赛季：{season}");
+            }
+            descriptionLines.AddRange(matchedPerks);
+            var builder = new EmbedBuilder()
+                .WithColor(139, 139, 255)
+                .WithTitle(weapon.Name)
+                .WithDescription(string.Join('\n', descriptionLines));
+            if (!string.IsNullOrWhiteSpace(weapon.Icon))
+                builder.WithThumbnailUrl($"{BungieConstants.BungieUrl}{weapon.Icon}");
+
+            return builder.BuildWithFooter();
+        }).ToList();
+
+        return Task.FromResult<(List<Embed> Embeds, List<FileAttachment> Attachments)>(
+            (embeds, []));
+    }
 }

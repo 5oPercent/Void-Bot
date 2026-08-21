@@ -273,10 +273,16 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         builder.RegisterInstance(client).AsSelf().SingleInstance().OnActivated(e =>
         {
             var slashCommandRoute = e.Context.Resolve<IDiscordSlashCommandRoute>();
+            var godRollPaginationRoute = e.Context.Resolve<IDiscordGodRollPaginationRoute>();
             var voiceStateRoute = e.Context.Resolve<IDiscordVoiceStateRoute>();
             client.SlashCommandExecuted += callback =>
             {
                 _ = Task.Run(() => slashCommandRoute.RouteAsync(callback));
+                return Task.CompletedTask;
+            };
+            client.ButtonExecuted += callback =>
+            {
+                _ = Task.Run(() => godRollPaginationRoute.RouteAsync(callback));
                 return Task.CompletedTask;
             };
             client.UserVoiceStateUpdated += voiceStateRoute.RouteAsync;

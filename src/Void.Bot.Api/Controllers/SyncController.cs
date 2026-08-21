@@ -19,6 +19,9 @@ public class SyncController : ControllerBase
         _mediator = mediator;
     }
     
+    /// <summary>
+    /// 同步 Destiny 2 Manifest 原始清单，不创建武器派生缓存。
+    /// </summary>
     [HttpPost]
     [Route("destiny2/manifest")]
     public async Task<IActionResult> SynchronizeDestiny2ManifestAsync([FromBody]SynchronizeDestiny2ManifestCommand command)
