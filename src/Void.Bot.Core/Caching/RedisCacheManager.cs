@@ -1,10 +1,17 @@
-﻿using StackExchange.Redis;
+﻿using System.Buffers;
+using System.Text.Json;
+using StackExchange.Redis;
 using Void.Bot.Core.Extension;
 
 namespace Void.Bot.Core.Caching
 {
     public class RedisCacheManager : ICacheManager
     {
+        private static readonly JsonSerializerOptions SerializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         private const string TakeScript = """
             local value = redis.call('GET', KEYS[1])
             if value then
@@ -44,20 +51,32 @@ namespace Void.Bot.Core.Caching
             // JSON manifest components are already serialized strings and can be hundreds of MB.
             // Serializing them again creates one enormous JSON string token, which exceeds
             // System.Text.Json's supported token length. Store strings directly instead.
-            var value = data is string stringValue
-                ? (RedisValue)stringValue
-                : (RedisValue)data.SerializeJson();
+            if (data is string stringValue)
+            {
+                await _database.StringSetAsync(key, stringValue, expiry);
+                return;
+            }
 
-            await _database.StringSetAsync(key, value, expiry);
+            // Serialize into an unpooled buffer so large derived cache payloads do not remain
+            // rooted by ArrayPool<byte>.Shared after the Redis write has completed.
+            var buffer = new ArrayBufferWriter<byte>();
+            using (var writer = new Utf8JsonWriter(buffer))
+            {
+                JsonSerializer.Serialize(writer, data, data.GetType());
+            }
+
+            await _database.StringSetAsync(key, (RedisValue)buffer.WrittenMemory, expiry);
         }
 
         private static T? DeserializeValue<T>(RedisValue value) where T : class
         {
-            var stringValue = value.ToString();
             if (typeof(T) != typeof(string))
             {
-                return stringValue.DeserializeJson<T>();
+                ReadOnlyMemory<byte> utf8Json = value;
+                return JsonSerializer.Deserialize<T>(utf8Json.Span, SerializerOptions);
             }
+
+            var stringValue = value.ToString();
 
             // Keep string values written by older versions readable. Previously all strings
             // were JSON serialized, so their Redis representation starts with a quote.
