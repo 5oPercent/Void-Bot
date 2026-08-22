@@ -148,6 +148,8 @@ export async function getCurrentAccount(
 
 ### 第三方 OAuth 登录成功
 
+第三方身份已经绑定 Void 主账号时：
+
 ```text
 前端 OAuth 结果页取得一次性 code
   → POST /api/Identity/oauth/exchange
@@ -156,6 +158,19 @@ export async function getCurrentAccount(
   → 保存并展示 Void 主账号和第三方绑定状态
   → 进入已登录页面
 ```
+
+第三方身份尚未绑定 Void 主账号时：
+
+```text
+前端取得 registrationCode
+  → 创建新账号调用 /api/Identity/oauth/register
+    或登录已有账号调用 /api/Identity/oauth/bind
+  → 保存接口返回的 Void accessToken 和 refreshToken
+  → GET /api/Identity/me
+  → 保存并展示 Void 主账号和第三方绑定状态
+```
+
+详细流程见 [OAuth 未绑定身份注册与登录绑定对接说明](oauth-registration-frontend-integration.md)。
 
 第三方登录页面不要直接使用 OAuth 平台用户名作为 Void 主账号名称，应以 `me.data.displayName` 为准。
 
@@ -237,6 +252,7 @@ interface AuthState {
 - [ ] API Base URL 按测试和生产环境分别配置。
 - [ ] 所有 `me` 请求携带 `Authorization: Bearer {accessToken}`。
 - [ ] OAuth exchange 完成并保存 Token 后调用 `me`。
+- [ ] OAuth register 或 bind 完成并保存 Token 后调用 `me`。
 - [ ] 密码登录完成并保存 Token 后调用 `me`。
 - [ ] 应用启动或页面刷新时使用 `me` 恢复账号状态。
 - [ ] 绑定和解绑成功后重新调用 `me`。

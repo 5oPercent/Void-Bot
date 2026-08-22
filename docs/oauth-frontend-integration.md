@@ -26,6 +26,8 @@ discord
 - 后端处理 callback 后返回 HTTP 302，跳转到固定的前端 OAuth 结果页。
 - 登录成功时，跳转 URL 只包含一个短时、单次使用的 `exchangeCode`。
 - 前端通过 exchange 接口使用 `exchangeCode` 换取 Void JWT。
+- 第三方身份未绑定 Void 账号时，不再使用随机密码自动注册；后端返回短时 `registrationCode`。
+- 前端使用 `registrationCode` 创建新 Void 账号，或登录已有 Void 账号完成绑定。
 - 账号绑定成功时不生成 Void JWT，也不生成 `exchangeCode`。
 - callback 失败时同样跳转前端，并携带稳定的错误码。
 
@@ -74,6 +76,8 @@ OAuth__FrontendCallbackUrl=https://test.voidbot.cyooops.icu/oauth/callback
 | 开始登录或绑定 | GET | `/api/Identity/oauth/{platform}/authorize` | 登录不需要；绑定需要 |
 | 第三方回调 | GET | `/api/Identity/oauth/{platform}/callback` | 否，由第三方平台访问 |
 | 使用一次性 code 换取 JWT | POST | `/api/Identity/oauth/exchange` | 否 |
+| 创建 Void 账号并绑定待注册身份 | POST | `/api/Identity/oauth/register` | 否，使用 registrationCode |
+| 登录已有 Void 账号并绑定 | POST | `/api/Identity/oauth/bind` | 否，使用 registrationCode 和账号密码 |
 | 查询当前 Void 账号及绑定 | GET | `/api/Identity/me` | 是 |
 | 解除第三方绑定 | POST | `/api/Identity/oauth/{platform}/unlink` | 是 |
 
@@ -126,9 +130,9 @@ window.location.assign(response.data.redirectUrl);
 
 不要使用 AJAX 请求第三方授权页面，也不要在 iframe 中打开授权页面。
 
-## 5. 登录成功流程
+## 5. 第三方登录流程
 
-完整时序：
+第三方身份已经绑定 Void 主账号时：
 
 ```text
 前端请求 authorize（不携带 Void JWT）
@@ -137,7 +141,7 @@ window.location.assign(response.data.redirectUrl);
   → 第三方平台回调后端 callback
   → 后端校验并单次消费 state
   → 后端交换第三方 Token
-  → 后端创建或更新 Void 账号绑定
+  → 后端找到现有 Void 账号绑定并更新第三方 Token
   → 后端生成 Void JWT
   → 后端暂存 JWT 并生成一次性 exchangeCode
   → 后端 302 跳转前端 OAuth 结果页
@@ -159,6 +163,14 @@ https://test.voidbot.cyooops.icu/oauth/callback?platform=bungie&flow=login&resul
 | `flow` | `login` | 当前为登录流程 |
 | `result` | `success` | OAuth 处理成功 |
 | `code` | 随机字符串 | 短时、单次使用的 exchange code |
+
+第三方身份尚未绑定 Void 主账号时，callback 返回：
+
+```text
+https://test.voidbot.cyooops.icu/oauth/callback?platform=bungie&flow=register&result=registration_required&code={registrationCode}
+```
+
+前端让用户选择创建新 Void 账号或登录已有账号完成绑定，不调用 exchange。完整对接方式见 [OAuth 未绑定身份注册与登录绑定对接说明](oauth-registration-frontend-integration.md)。
 
 ### 使用 code 换取 JWT
 
@@ -291,6 +303,10 @@ https://test.voidbot.cyooops.icu/oauth/callback?platform=bungie&result=failed&er
 | `oauth_state_store_unavailable` | 授权状态服务暂时不可用，请稍后重试 |
 | `oauth_exchange_store_unavailable` | 登录交换服务暂时不可用，请重新登录 |
 | `invalid_exchange_code` | 登录凭证已失效，请重新登录 |
+| `oauth_registration_store_unavailable` | 待绑定身份服务暂时不可用，请重新登录 |
+| `invalid_registration_code` | 本次授权信息已失效，请重新使用第三方登录 |
+| `invalid_credentials` | Void 账号或密码错误 |
+| `registration_failed` | Void 账号创建失败，请检查填写内容 |
 
 前端只展示本地维护的错误文案，不要直接展示服务端异常内容。
 
@@ -365,9 +381,12 @@ GET /api/Identity/link/bungie
 - [ ] 绑定入口调用通用 authorize，并携带 Void JWT。
 - [ ] 收到 authorize 响应后使用 `window.location.assign` 跳转 `redirectUrl`。
 - [ ] 新增 `/oauth/callback` 页面。
-- [ ] 处理 `result=success/failed`。
-- [ ] 处理 `flow=login/link`。
+- [ ] 处理 `result=success/failed/registration_required`。
+- [ ] 处理 `flow=login/link/register`。
 - [ ] Login 成功时使用 code 调用 exchange。
+- [ ] Register flow 展示创建新账号、登录已有账号和取消三个选择。
+- [ ] 创建新账号调用 `/api/Identity/oauth/register`。
+- [ ] 登录已有账号调用 `/api/Identity/oauth/bind`。
 - [ ] exchange 成功后保存 Void access token 和 refresh token。
 - [ ] 保存 Token 后调用 `/api/Identity/me` 显示 Void 主账号及绑定状态。
 - [ ] exchange 完成后从地址栏移除 code。
