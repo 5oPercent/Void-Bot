@@ -203,7 +203,12 @@ public sealed class BungieOAuthProvider : IOAuthProvider
             var account = await GetAccountAsync(binding.UserId, cancellationToken).ConfigureAwait(false);
             UpdateBindingTokens(binding, token);
             await _accountDataProvider.UpdateThirdPartyAsync(binding, cancellationToken).ConfigureAwait(false);
-            return GenerateJwt(account.Id, account.DisplayName, token.MembershipId, providerUserName);
+            return GenerateJwt(
+                account.Id,
+                account.DisplayName,
+                token.MembershipId,
+                providerUserName,
+                OAuthStateFlow.Login);
         }
 
         var displayName = string.IsNullOrWhiteSpace(providerUserName)
@@ -223,7 +228,12 @@ public sealed class BungieOAuthProvider : IOAuthProvider
             CreateBinding(createdAccount.Id, token),
             cancellationToken).ConfigureAwait(false);
 
-        return GenerateJwt(createdAccount.Id, createdAccount.DisplayName, token.MembershipId, providerUserName);
+        return GenerateJwt(
+            createdAccount.Id,
+            createdAccount.DisplayName,
+            token.MembershipId,
+            providerUserName,
+            OAuthStateFlow.Login);
     }
 
     private async Task<OAuthCallbackResponse> LinkAsync(
@@ -277,7 +287,12 @@ public sealed class BungieOAuthProvider : IOAuthProvider
             await _accountDataProvider.UpdateThirdPartyAsync(binding, cancellationToken).ConfigureAwait(false);
         }
 
-        return GenerateJwt(account.Id, account.DisplayName, token.MembershipId, providerUserName);
+        return GenerateJwt(
+            account.Id,
+            account.DisplayName,
+            token.MembershipId,
+            providerUserName,
+            OAuthStateFlow.Link);
     }
 
     private async Task<UserAccountDto> GetAccountAsync(Guid accountId, CancellationToken cancellationToken)
@@ -293,7 +308,8 @@ public sealed class BungieOAuthProvider : IOAuthProvider
         Guid accountId,
         string displayName,
         string providerUserId,
-        string providerUserName)
+        string providerUserName,
+        OAuthStateFlow flow)
     {
         var claims = new List<Claim>
         {
@@ -306,10 +322,15 @@ public sealed class BungieOAuthProvider : IOAuthProvider
             Data = new OAuthCallbackData
             {
                 Platform = BungieProvider,
+                Flow = flow,
                 ProviderUserId = providerUserId,
                 ProviderUserName = providerUserName,
-                AccessToken = _tokenClaimService.GenerateAccessToken(claims),
-                RefreshToken = _tokenClaimService.GenerateRefreshToken(claims)
+                AccessToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateAccessToken(claims)
+                    : string.Empty,
+                RefreshToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateRefreshToken(claims)
+                    : string.Empty
             }
         };
     }

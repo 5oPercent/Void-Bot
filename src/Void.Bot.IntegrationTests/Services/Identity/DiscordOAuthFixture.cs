@@ -34,8 +34,9 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
         response.Data.Platform.ShouldBe(Provider);
         response.Data.ProviderUserId.ShouldBe(identity.UserId);
         response.Data.ProviderUserName.ShouldBe(identity.DisplayName);
-        response.Data.AccessToken.ShouldNotBeNullOrWhiteSpace();
-        response.Data.RefreshToken.ShouldNotBeNullOrWhiteSpace();
+        response.Data.ExchangeCode.ShouldBe("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        response.Data.AccessToken.ShouldBeEmpty();
+        response.Data.RefreshToken.ShouldBeEmpty();
 
         await Run<IAccountDataProvider>(async provider =>
         {
@@ -341,6 +342,7 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
         {
             builder.RegisterInstance(stateStore).As<IOAuthStateStore>();
             builder.RegisterInstance(discordService).As<IDiscordService>();
+            builder.RegisterInstance(CreateExchangeStore()).As<IOAuthExchangeStore>();
         };
     }
 
@@ -352,7 +354,20 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
         {
             builder.RegisterInstance(discordService).As<IDiscordService>();
             builder.RegisterInstance(timeProvider).As<TimeProvider>();
+            builder.RegisterInstance(CreateExchangeStore()).As<IOAuthExchangeStore>();
         };
+    }
+
+    private static IOAuthExchangeStore CreateExchangeStore()
+    {
+        var exchangeStore = Substitute.For<IOAuthExchangeStore>();
+        exchangeStore.CreateAsync(
+                Arg.Any<JwtToken>(),
+                Arg.Any<TimeSpan>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new CreateOAuthExchangeResult.Created(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+        return exchangeStore;
     }
 
     private async Task AddAccountAsync(Guid id, string name)
