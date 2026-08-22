@@ -6,6 +6,8 @@ public class EventActionRuleDto
 {
     public Guid Id { get; set; }
 
+    public string Name { get; set; } = string.Empty;
+
     public string Event { get; set; } = string.Empty;
 
     public bool Enabled { get; set; } = true;
@@ -64,6 +66,8 @@ public class EventActionArgumentDefinitionDto
     public string Name { get; set; } = string.Empty;
 
     public string DisplayName { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
 
     public bool Required { get; set; }
 
