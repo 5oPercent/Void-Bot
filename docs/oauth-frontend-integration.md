@@ -74,6 +74,7 @@ OAuth__FrontendCallbackUrl=https://test.voidbot.cyooops.icu/oauth/callback
 | 开始登录或绑定 | GET | `/api/Identity/oauth/{platform}/authorize` | 登录不需要；绑定需要 |
 | 第三方回调 | GET | `/api/Identity/oauth/{platform}/callback` | 否，由第三方平台访问 |
 | 使用一次性 code 换取 JWT | POST | `/api/Identity/oauth/exchange` | 否 |
+| 查询当前 Void 账号及绑定 | GET | `/api/Identity/me` | 是 |
 | 解除第三方绑定 | POST | `/api/Identity/oauth/{platform}/unlink` | 是 |
 
 前端不应主动调用 callback 接口。该地址只提供给 Bungie、Discord 等第三方 OAuth 平台。
@@ -200,6 +201,42 @@ window.history.replaceState({}, "", "/oauth/callback");
 ```
 
 不要对 exchange 请求自动重试。网络状态不明确时，重复消费可能返回 `invalid_exchange_code`，此时应提示用户重新发起登录。
+
+### 查询当前 Void 账号
+
+前端取得 Void access token 后，使用该 token 查询当前主账号及第三方绑定：
+
+完整字段、TypeScript 类型、调用时机及异常处理见 [Identity Me 前端对接说明](identity-me-frontend-integration.md)。
+
+```http
+GET /api/Identity/me
+Authorization: Bearer {accessToken}
+```
+
+响应示例：
+
+```json
+{
+  "data": {
+    "id": "00000000-0000-0000-0000-000000000000",
+    "name": "VoidName",
+    "suffix": "0001",
+    "displayName": "VoidName#0001",
+    "createdAt": "2026-08-22T10:00:00+08:00",
+    "updatedAt": "2026-08-22T10:00:00+08:00",
+    "thirdParties": [
+      {
+        "provider": "Bungie",
+        "thirdPartyUserId": "4611686010000000000",
+        "createdAt": "2026-08-22T10:05:00+08:00",
+        "updatedAt": "2026-08-22T10:05:00+08:00"
+      }
+    ]
+  }
+}
+```
+
+账号 ID 由后端从 JWT 获取，前端不需要也不能指定其他用户 ID。响应不会包含第三方平台的 access token 或 refresh token。
 
 ## 6. 账号绑定成功流程
 
@@ -332,8 +369,9 @@ GET /api/Identity/link/bungie
 - [ ] 处理 `flow=login/link`。
 - [ ] Login 成功时使用 code 调用 exchange。
 - [ ] exchange 成功后保存 Void access token 和 refresh token。
+- [ ] 保存 Token 后调用 `/api/Identity/me` 显示 Void 主账号及绑定状态。
 - [ ] exchange 完成后从地址栏移除 code。
-- [ ] Link 成功时刷新第三方绑定列表，不调用 exchange。
+- [ ] Link 成功时重新调用 `/api/Identity/me`，不调用 exchange。
 - [ ] 根据 error code 显示本地化错误提示。
 - [ ] OAuth 结果页禁用 Referrer，并避免第三方埋点采集完整 URL。
 - [ ] 移除所有旧 Bungie OAuth 接口调用。

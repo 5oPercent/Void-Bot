@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.OAuth;
+using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Request.Account;
 using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Api.Controllers;
@@ -19,11 +22,13 @@ namespace Void.Bot.Api.Controllers;
 public class IdentityController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ICurrentUser _currentUser;
     private readonly OAuthSetting _oauthSetting;
 
-    public IdentityController(IMediator mediator, OAuthSetting oauthSetting)
+    public IdentityController(IMediator mediator, ICurrentUser currentUser, OAuthSetting oauthSetting)
     {
         _mediator = mediator;
+        _currentUser = currentUser;
         _oauthSetting = oauthSetting;
     }
 
@@ -53,6 +58,18 @@ public class IdentityController : ControllerBase
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
     {
         var response = await _mediator.RequestAsync<RefreshTokenRequest, RefreshTokenResponse>(request).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("me")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(GetUserAccountResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCurrentUserAccountAsync()
+    {
+        var response = await _mediator.RequestAsync<GetUserAccountRequest, GetUserAccountResponse>(
+            new GetUserAccountRequest { UserId = _currentUser.Id }).ConfigureAwait(false);
 
         return Ok(response);
     }
