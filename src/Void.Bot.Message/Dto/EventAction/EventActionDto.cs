@@ -80,4 +80,13 @@ public class EventActionArgumentDefinitionDto
     public string DataSourceValueField { get; set; } = string.Empty;
 
     public string DataSourceLabelField { get; set; } = string.Empty;
+
+    public List<EventActionArgumentOptionDto> Options { get; set; } = [];
+}
+
+public class EventActionArgumentOptionDto
+{
+    public string Value { get; set; } = string.Empty;
+
+    public string Label { get; set; } = string.Empty;
 }
