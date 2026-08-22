@@ -4,7 +4,6 @@ using Serilog;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Discord;
-using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Request.Discord;
 
 namespace Void.Bot.Core.Services.Discord;
@@ -23,7 +22,6 @@ public partial interface IDiscordService : IScope
 public partial class DiscordService : IDiscordService
 {
     private readonly DiscordSetting _setting;
-    private readonly OAuthPlatformSetting _oauthSetting;
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
@@ -33,7 +31,6 @@ public partial class DiscordService : IDiscordService
 
     public DiscordService(
         DiscordSetting setting,
-        OAuthSetting oauthSetting,
         IDiscordDataProvider dataProvider,
         IDiscordSlashCommandRoute slashCommandRoute,
         IVoidBotHttpClientFactory httpClientFactory,
@@ -41,7 +38,6 @@ public partial class DiscordService : IDiscordService
         DiscordSocketClient client)
     {
         _setting = setting;
-        _oauthSetting = oauthSetting.Discord;
         _dataProvider = dataProvider;
         _slashCommandRoute = slashCommandRoute; 
         _httpClientFactory = httpClientFactory;

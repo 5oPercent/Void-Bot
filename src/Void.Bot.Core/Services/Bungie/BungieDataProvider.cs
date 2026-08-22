@@ -7,7 +7,6 @@ using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Dto.Bungie;
 using Void.Bot.Message.Dto.HttpClient;
-using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 
 namespace Void.Bot.Core.Services.Bungie;
@@ -16,7 +15,7 @@ public partial interface IBungieDataProvider : IScope
 {
     HttpClient GetBungieHttpClient(string token = "", TimeSpan? timeout = null, bool beginScope = false);
     
-    string GenerateAuthenticateUrl(AppPlatformEnum platform, string accountId);
+    string GenerateOAuthAuthorizationUrl(string state);
     
     Task<BungieApiGenerateTokenResponse?> GenerateTokenAsync(string oAuthCode, CancellationToken cancellationToken);
     
@@ -65,13 +64,13 @@ public partial class BungieDataProvider : IBungieDataProvider
         return client;
     }
 
-    public string GenerateAuthenticateUrl(AppPlatformEnum platform, string accountId)
+    public string GenerateOAuthAuthorizationUrl(string state)
     {
         var parameters = HttpUtility.ParseQueryString(string.Empty);
         parameters["client_id"] = _setting.ClientId;
         parameters["response_type"] = "code";
-        parameters["state"] = $"{nameof(platform)}:{platform}|{nameof(accountId)}:{accountId}";
-        
+        parameters["state"] = state;
+
         return $"{BungieConstants.AuthorizeUrl}?{parameters}";
     }
 

@@ -36,7 +36,7 @@ public partial class DiscordService
     public string GenerateOAuthAuthorizationUrl(string state)
     {
         var redirectUri = AppSetting.DomainUrl + CallbackPath;
-        return $"{DiscordConstants.AuthorizeUrl}?response_type=code&client_id={Uri.EscapeDataString(_oauthSetting.ClientId)}" +
+        return $"{DiscordConstants.AuthorizeUrl}?response_type=code&client_id={Uri.EscapeDataString(_setting.ClientId)}" +
                $"&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope={Scope}" +
                $"&state={Uri.EscapeDataString(state)}&prompt=consent";
     }
@@ -51,8 +51,8 @@ public partial class DiscordService
             DiscordConstants.GenerateTokenUrl,
             new Dictionary<string, string>
             {
-                ["client_id"] = _oauthSetting.ClientId,
-                ["client_secret"] = _oauthSetting.ClientSecret,
+                ["client_id"] = _setting.ClientId,
+                ["client_secret"] = _setting.ClientSecret,
                 ["grant_type"] = "authorization_code",
                 ["code"] = request.Code,
                 ["redirect_uri"] = redirectUri
@@ -87,8 +87,8 @@ public partial class DiscordService
             DiscordConstants.RefreshTokenUrl,
             new Dictionary<string, string>
             {
-                ["client_id"] = _oauthSetting.ClientId,
-                ["client_secret"] = _oauthSetting.ClientSecret,
+                ["client_id"] = _setting.ClientId,
+                ["client_secret"] = _setting.ClientSecret,
                 ["grant_type"] = "refresh_token",
                 ["refresh_token"] = request.RefreshToken
             },

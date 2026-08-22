@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Net;
 using Serilog;
 using Void.Bot.Core.Caching;
@@ -23,7 +22,6 @@ namespace Void.Bot.Core.Services.Discord.OAuth;
 public sealed class DiscordOAuthProvider : IOAuthProvider
 {
     private const string DiscordProvider = nameof(AppPlatformEnum.Discord);
-    private const int AccountSecretByteLength = 32;
 
     private readonly IOAuthStateStore _stateStore;
     private readonly IDiscordService _discordService;
@@ -254,29 +252,14 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
                 Platform,
                 account.Id,
                 identity.UserId);
-            return GenerateJwt(account.Id, account.DisplayName, identity);
+            return GenerateJwt(account.Id, account.DisplayName, identity, OAuthStateFlow.Login);
         }
 
-        var registration = await _accountService.RegisterUserAccountAsync(
-            new RegisterUserAccountCommand
-            {
-                Name = identity.DisplayName,
-                Password = GenerateAccountSecret()
-            },
-            cancellationToken).ConfigureAwait(false);
-        var createdAccount = registration.Data ??
-            throw new InvalidOperationException("Unable to create the account for the Discord identity.");
-
-        await _accountDataProvider.LinkThirdPartyAsync(
-            CreateBinding(createdAccount.Id, identity),
-            cancellationToken).ConfigureAwait(false);
-
         _logger.Information(
-            "OAuth login created a new account binding: {Platform}, account {AccountId}, provider user {ProviderUserId}",
+            "OAuth login requires Void account registration or binding: {Platform}, provider user {ProviderUserId}",
             Platform,
-            createdAccount.Id,
             identity.UserId);
-        return GenerateJwt(createdAccount.Id, createdAccount.DisplayName, identity);
+        return RegistrationRequired(identity);
     }
 
     private async Task<OAuthCallbackResponse> LinkAsync(
@@ -358,7 +341,7 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
                 identity.UserId);
         }
 
-        return GenerateJwt(account.Id, account.DisplayName, identity);
+        return GenerateJwt(account.Id, account.DisplayName, identity, OAuthStateFlow.Link);
     }
 
     private async Task<UserAccountDto> GetAccountAsync(Guid accountId, CancellationToken cancellationToken)
@@ -373,7 +356,8 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
     private OAuthCallbackResponse GenerateJwt(
         Guid accountId,
         string displayName,
-        DiscordOAuthIdentity identity)
+        DiscordOAuthIdentity identity,
+        OAuthStateFlow flow)
     {
         var claims = new List<Claim>
         {
@@ -386,10 +370,15 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
             Data = new OAuthCallbackData
             {
                 Platform = DiscordProvider,
+                Flow = flow,
                 ProviderUserId = identity.UserId,
                 ProviderUserName = identity.DisplayName,
-                AccessToken = _tokenClaimService.GenerateAccessToken(claims),
-                RefreshToken = _tokenClaimService.GenerateRefreshToken(claims)
+                AccessToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateAccessToken(claims)
+                    : string.Empty,
+                RefreshToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateRefreshToken(claims)
+                    : string.Empty
             }
         };
     }
@@ -418,12 +407,21 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
         binding.RefreshTokenExpiresAt = null;
     }
 
-    private static string GenerateAccountSecret()
+    private static OAuthCallbackResponse RegistrationRequired(DiscordOAuthIdentity identity)
     {
-        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(AccountSecretByteLength))
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
+        return new OAuthCallbackResponse
+        {
+            Data = new OAuthCallbackData
+            {
+                Platform = DiscordProvider,
+                Flow = OAuthStateFlow.Register,
+                ProviderUserId = identity.UserId,
+                ProviderUserName = identity.DisplayName,
+                AccessToken = identity.AccessToken,
+                AccessTokenExpiresAt = identity.ExpiresAt,
+                RefreshToken = identity.RefreshToken ?? string.Empty
+            }
+        };
     }
 
     private static TResponse Error<TResponse>(OAuthError error)
