@@ -5,7 +5,6 @@ using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.EventAction;
 using Void.Bot.Message.Commands.EventAction;
 using Void.Bot.Message.Dto.EventAction;
-using Void.Bot.Message.Events.EventAction;
 using Void.Bot.Message.Request.EventAction;
 
 namespace Void.Bot.Core.Services.EventAction;
@@ -32,17 +31,13 @@ public interface IEventActionRuleService : IScope
 
 public class EventActionRuleService(
     IRepository<EventActionRule> ruleRepository,
+    IEnumerable<IBuiltInEventDefinitionProvider> eventDefinitionProviders,
     IEnumerable<IConfiguredEventActionExecutor> executors) : IEventActionRuleService
 {
-    private static readonly List<BuiltInEventDefinitionDto> EventDefinitions =
-    [
-        new BuiltInEventDefinitionDto
-        {
-            Name = BuiltInEventNames.AccountRegistered,
-            DisplayName = "账号注册成功",
-            Description = "Void 账号事务提交成功后执行配置动作。"
-        }
-    ];
+    private readonly List<BuiltInEventDefinitionDto> _eventDefinitions = eventDefinitionProviders
+        .Select(x => x.Definition)
+        .OrderBy(x => x.Name)
+        .ToList();
 
     public Task<GetEventActionDefinitionResponse> GetDefinitionsAsync(CancellationToken cancellationToken)
     {
@@ -50,7 +45,7 @@ public class EventActionRuleService(
         {
             Data = new EventActionDefinitionData
             {
-                Events = EventDefinitions,
+                Events = _eventDefinitions,
                 Actions = executors.Select(x => x.Definition).OrderBy(x => x.Type).ToList()
             }
         });
@@ -62,7 +57,7 @@ public class EventActionRuleService(
         var query = ruleRepository.QueryNoTracking();
         if (!string.IsNullOrWhiteSpace(request.Event))
         {
-            var eventName = EventDefinitions
+            var eventName = _eventDefinitions
                 .FirstOrDefault(x => string.Equals(x.Name, request.Event, StringComparison.OrdinalIgnoreCase))?.Name
                 ?? request.Event;
             query = query.Where(x => x.Event == eventName);
@@ -106,7 +101,7 @@ public class EventActionRuleService(
         var rule = new EventActionRule
         {
             Name = command.Name.Trim(),
-            Event = EventDefinitions.First(x =>
+            Event = _eventDefinitions.First(x =>
                 string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name,
             Enabled = command.Enabled,
             Sequence = command.Sequence,
@@ -142,7 +137,7 @@ public class EventActionRuleService(
         }
 
         rule.Name = command.Name.Trim();
-        rule.Event = EventDefinitions.First(x =>
+        rule.Event = _eventDefinitions.First(x =>
             string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name;
         rule.Enabled = command.Enabled;
         rule.Sequence = command.Sequence;
@@ -167,9 +162,17 @@ public class EventActionRuleService(
         List<ConfiguredEventActionDto> actions,
         CancellationToken cancellationToken)
     {
-        if (!EventDefinitions.Any(x => string.Equals(x.Name, eventName, StringComparison.OrdinalIgnoreCase)))
+        var matchingEventDefinitions = _eventDefinitions
+            .Where(x => string.Equals(x.Name, eventName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matchingEventDefinitions.Count == 0)
         {
             return $"Built-in event '{eventName}' is not supported.";
+        }
+
+        if (matchingEventDefinitions.Count != 1)
+        {
+            return $"Built-in event '{eventName}' must have exactly one definition provider, but found {matchingEventDefinitions.Count}.";
         }
 
         if (actions.Count == 0)
