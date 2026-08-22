@@ -8,6 +8,10 @@ namespace Void.Bot.Message.Commands.EventAction;
 public class AddEventActionRuleCommand : ICommand
 {
     [Required]
+    [StringLength(128)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
     public string Event { get; set; } = string.Empty;
 
     public bool Enabled { get; set; } = true;

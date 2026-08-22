@@ -32,12 +32,22 @@ public class GrantRolesEventActionExecutor(
             {
                 Name = "RoleIds",
                 DisplayName = "角色",
+                Description = "选择需要自动授予的角色。",
                 Required = true,
                 Multiple = true,
                 ValueSource = "Role",
                 DataSourceEndpoint = "/api/security/role/tree",
                 DataSourceValueField = "id",
                 DataSourceLabelField = "name"
+            },
+            new EventActionArgumentDefinitionDto
+            {
+                Name = "DurationDays",
+                DisplayName = "授权天数",
+                Description = "留空表示永久有效；填写 1 至 36500 的整数表示授权有效天数。",
+                Required = false,
+                Multiple = false,
+                ValueSource = "Number"
             }
         ]
     };
@@ -52,7 +62,8 @@ public class GrantRolesEventActionExecutor(
             return $"Event action '{ActionType}' does not support event '{eventName}'.";
         }
 
-        var (roles, error) = await ResolveRolesAsync(arguments, cancellationToken).ConfigureAwait(false);
+        var (roles, _, error) = await ResolveArgumentsAsync(
+            arguments, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(error))
         {
             return error;
@@ -80,7 +91,8 @@ public class GrantRolesEventActionExecutor(
                 $"Event action '{ActionType}' does not support event '{builtInEvent.Name}'.");
         }
 
-        var (roles, error) = await ResolveRolesAsync(arguments, cancellationToken).ConfigureAwait(false);
+        var (roles, durationDays, error) = await ResolveArgumentsAsync(
+            arguments, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(error))
         {
             throw new InvalidOperationException(error);
@@ -96,11 +108,15 @@ public class GrantRolesEventActionExecutor(
             .Where(x => x.State != EntityState.Deleted && x.Entity.UserId == accountRegistered.UserId)
             .Select(x => x.Entity.RoleId));
 
+        var deadline = durationDays.HasValue
+            ? DateTimeOffset.UtcNow.AddDays(durationDays.Value)
+            : (DateTimeOffset?)null;
         var newUserRoles = resolvedRoleIds.Except(existingRoleIds)
             .Select(roleId => new UserRole
             {
                 UserId = accountRegistered.UserId,
-                RoleId = roleId
+                RoleId = roleId,
+                Deadline = deadline
             })
             .ToList();
 
@@ -110,17 +126,18 @@ public class GrantRolesEventActionExecutor(
         }
     }
 
-    private async Task<(List<Role> Roles, string? Error)> ResolveRolesAsync(
+    private async Task<(List<Role> Roles, int? DurationDays, string? Error)> ResolveArgumentsAsync(
         IReadOnlyDictionary<string, string[]> arguments,
         CancellationToken cancellationToken)
     {
         arguments.TryGetValue("RoleIds", out var configuredRoleIds);
         var unsupportedArguments = arguments.Keys
-            .Where(x => !string.Equals(x, "RoleIds", StringComparison.Ordinal))
+            .Where(x => !string.Equals(x, "RoleIds", StringComparison.Ordinal) &&
+                        !string.Equals(x, "DurationDays", StringComparison.Ordinal))
             .ToList();
         if (unsupportedArguments.Count != 0)
         {
-            return ([],
+            return ([], null,
                 $"Event action '{ActionType}' contains unsupported arguments: {string.Join(", ", unsupportedArguments)}.");
         }
 
@@ -145,14 +162,31 @@ public class GrantRolesEventActionExecutor(
 
         if (invalidRoleIds.Count != 0)
         {
-            return ([],
+            return ([], null,
                 $"Event action '{ActionType}' contains invalid role IDs: {string.Join(", ", invalidRoleIds)}.");
         }
 
         if (roleIds.Count == 0)
         {
-            return ([], $"Event action '{ActionType}' requires at least one RoleId.");
+            return ([], null, $"Event action '{ActionType}' requires at least one RoleId.");
         }
+
+        arguments.TryGetValue("DurationDays", out var configuredDurationDays);
+        var durationValues = (configuredDurationDays ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+        if (durationValues.Count > 1 ||
+            durationValues.Count == 1 &&
+            (!int.TryParse(durationValues[0], out var parsedDurationDays) ||
+             parsedDurationDays is < 1 or > 36500))
+        {
+            return ([], null,
+                $"Event action '{ActionType}' DurationDays must be one integer between 1 and 36500.");
+        }
+
+        var durationDays = durationValues.Count == 0
+            ? (int?)null
+            : int.Parse(durationValues[0]);
 
         var roles = await roleRepository.QueryNoTracking()
             .Where(x => roleIds.Contains(x.Id))
@@ -161,10 +195,10 @@ public class GrantRolesEventActionExecutor(
         var missingRoleIds = roleIds.Except(roles.Select(x => x.Id)).ToList();
         if (missingRoleIds.Count != 0)
         {
-            return ([],
+            return ([], null,
                 $"Event action '{ActionType}' references roles that do not exist: {string.Join(", ", missingRoleIds)}.");
         }
 
-        return (roles, null);
+        return (roles, durationDays, null);
     }
 }

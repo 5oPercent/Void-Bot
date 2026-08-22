@@ -105,6 +105,7 @@ public class EventActionRuleService(
 
         var rule = new EventActionRule
         {
+            Name = command.Name.Trim(),
             Event = EventDefinitions.First(x =>
                 string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name,
             Enabled = command.Enabled,
@@ -140,6 +141,7 @@ public class EventActionRuleService(
             return response;
         }
 
+        rule.Name = command.Name.Trim();
         rule.Event = EventDefinitions.First(x =>
             string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name;
         rule.Enabled = command.Enabled;
@@ -207,6 +209,7 @@ public class EventActionRuleService(
         return new EventActionRuleDto
         {
             Id = rule.Id,
+            Name = rule.Name,
             Event = rule.Event,
             Enabled = rule.Enabled,
             Sequence = rule.Sequence,

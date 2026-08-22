@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Net;
 using Mediator.Net;
 using Shouldly;
 using TestStack.BDDfy;
@@ -11,15 +13,23 @@ using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.EventAction;
 using Void.Bot.Message.Dto.EventAction;
 using Void.Bot.Message.Events.EventAction;
+using Void.Bot.Message.Request.EventAction;
 
 namespace Void.Bot.IntegrationTest.BDD.EventAction;
 
 public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) : IntegrationFixture(testBase)
 {
+    private const string RuleName = "Grant registered user role";
+    private const int DurationDays = 30;
+
     private readonly SecurityUtil _securityUtil = new(testBase);
 
     private Guid _roleId;
     private Guid _userId;
+    private string _listedRuleName = string.Empty;
+    private HttpStatusCode _ruleResponseCode;
+    private DateTimeOffset _registrationStartedAt;
+    private DateTimeOffset _registrationCompletedAt;
 
     private async Task GivenRoleExists()
     {
@@ -30,21 +40,37 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private Task GivenEnabledGrantRoleRuleExists()
     {
-        return GivenGrantRoleRuleExists(true);
+        return GivenGrantRoleRuleExists(true, null);
+    }
+
+    private Task GivenEnabledGrantRoleRuleWithDurationExists()
+    {
+        return GivenGrantRoleRuleExists(true, DurationDays);
     }
 
     private Task GivenDisabledGrantRoleRuleExists()
     {
-        return GivenGrantRoleRuleExists(false);
+        return GivenGrantRoleRuleExists(false, null);
     }
 
-    private async Task GivenGrantRoleRuleExists(bool enabled)
+    private async Task GivenGrantRoleRuleExists(bool enabled, int? durationDays)
     {
+        var arguments = new Dictionary<string, string[]>
+        {
+            ["RoleIds"] = [_roleId.ToString()]
+        };
+        if (durationDays.HasValue)
+        {
+            arguments["DurationDays"] =
+                [durationDays.Value.ToString(CultureInfo.InvariantCulture)];
+        }
+
         await Run<IMediator>(async mediator =>
         {
             var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
                 new AddEventActionRuleCommand
                 {
+                    Name = RuleName,
                     Event = BuiltInEventNames.AccountRegistered,
                     Enabled = enabled,
                     Actions =
@@ -52,10 +78,7 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                         new ConfiguredEventActionDto
                         {
                             Type = GrantRolesEventActionExecutor.ActionType,
-                            Arguments = new Dictionary<string, string[]>
-                            {
-                                ["RoleIds"] = [_roleId.ToString()]
-                            }
+                            Arguments = arguments
                         }
                     ]
                 }).ConfigureAwait(false);
@@ -76,6 +99,7 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private async Task WhenUserRegisters()
     {
+        _registrationStartedAt = DateTimeOffset.UtcNow;
         await Run<IMediator>(async mediator =>
         {
             var response = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
@@ -87,6 +111,50 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
             response.Data.ShouldNotBeNull();
             _userId = response.Data.Id;
+        });
+        _registrationCompletedAt = DateTimeOffset.UtcNow;
+    }
+
+    private async Task WhenRulesAreQueried()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<
+                GetEventActionRuleListRequest,
+                GetEventActionRuleListResponse>(new GetEventActionRuleListRequest
+            {
+                Event = BuiltInEventNames.AccountRegistered
+            }).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+            _listedRuleName = response.Data.Single().Name;
+        });
+    }
+
+    private async Task WhenGrantRoleRuleWithInvalidDurationIsAdded()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
+                new AddEventActionRuleCommand
+                {
+                    Name = RuleName,
+                    Event = BuiltInEventNames.AccountRegistered,
+                    Actions =
+                    [
+                        new ConfiguredEventActionDto
+                        {
+                            Type = GrantRolesEventActionExecutor.ActionType,
+                            Arguments = new Dictionary<string, string[]>
+                            {
+                                ["RoleIds"] = [_roleId.ToString()],
+                                ["DurationDays"] = ["0"]
+                            }
+                        }
+                    ]
+                }).ConfigureAwait(false);
+
+            _ruleResponseCode = response.Code;
         });
     }
 
@@ -120,6 +188,43 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         });
     }
 
+    private Task ThenRuleShouldHaveCustomName()
+    {
+        _listedRuleName.ShouldBe(RuleName);
+        return Task.CompletedTask;
+    }
+
+    private Task ThenRuleShouldBeRejected()
+    {
+        _ruleResponseCode.ShouldBe(HttpStatusCode.BadRequest);
+        return Task.CompletedTask;
+    }
+
+    private async Task ThenRoleShouldExpireAfterConfiguredDuration()
+    {
+        await Run<IRepository<UserRole>>(async repository =>
+        {
+            var userRole = await repository.SingleOrDefaultAsync(
+                item => item.UserId == _userId && item.RoleId == _roleId,
+                CancellationToken.None).ConfigureAwait(false);
+
+            userRole.ShouldNotBeNull();
+            userRole.Deadline.HasValue.ShouldBeTrue();
+            (userRole.Deadline.Value >= _registrationStartedAt.AddDays(DurationDays)).ShouldBeTrue();
+            (userRole.Deadline.Value <= _registrationCompletedAt.AddDays(DurationDays)).ShouldBeTrue();
+        });
+    }
+
+    [Fact]
+    public void RuleCanHaveCustomName()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenEnabledGrantRoleRuleExists())
+            .When(x => x.WhenRulesAreQueried())
+            .Then(x => x.ThenRuleShouldHaveCustomName())
+            .BDDfy();
+    }
+
     [Fact]
     public void EnabledRuleGrantsRoleAfterAccountRegistration()
     {
@@ -137,6 +242,25 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
             .And(x => x.GivenDisabledGrantRoleRuleExists())
             .When(x => x.WhenUserRegisters())
             .Then(x => x.ThenUserShouldNotHaveConfiguredRole())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void ConfiguredDurationSetsRoleDeadline()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenEnabledGrantRoleRuleWithDurationExists())
+            .When(x => x.WhenUserRegisters())
+            .Then(x => x.ThenRoleShouldExpireAfterConfiguredDuration())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void InvalidDurationIsRejected()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .When(x => x.WhenGrantRoleRuleWithInvalidDurationIsAdded())
+            .Then(x => x.ThenRuleShouldBeRejected())
             .BDDfy();
     }
 

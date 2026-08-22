@@ -15,7 +15,7 @@
 
 | 事件 | 触发时机 | 动作 | 参数 |
 | --- | --- | --- | --- |
-| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles` | `RoleIds`，至少选择一个角色 |
+| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles` | `RoleIds`；可选 `DurationDays` |
 
 规则中的动作按数组顺序执行；多条规则按 `Sequence`、`CreatedAt` 排序执行。禁用的规则或动作不会执行。
 
@@ -73,12 +73,24 @@
           {
             "name": "RoleIds",
             "displayName": "角色",
+            "description": "选择需要自动授予的角色。",
             "required": true,
             "multiple": true,
             "valueSource": "Role",
             "dataSourceEndpoint": "/api/security/role/tree",
             "dataSourceValueField": "id",
             "dataSourceLabelField": "name"
+          },
+          {
+            "name": "DurationDays",
+            "displayName": "授权天数",
+            "description": "留空表示永久有效；填写 1 至 36500 的整数表示授权有效天数。",
+            "required": false,
+            "multiple": false,
+            "valueSource": "Number",
+            "dataSourceEndpoint": "",
+            "dataSourceValueField": "",
+            "dataSourceLabelField": ""
           }
         ]
       }
@@ -93,6 +105,7 @@
 
 ```json
 {
+  "name": "新用户默认角色",
   "event": "Account.Registered",
   "enabled": true,
   "sequence": 0,
@@ -101,12 +114,15 @@
       "type": "GrantRoles",
       "enabled": true,
       "arguments": {
-        "RoleIds": [ "角色 ID" ]
+        "RoleIds": [ "角色 ID" ],
+        "DurationDays": [ "30" ]
       }
     }
   ]
 }
 ```
+
+`name` 是必填的自定义规则名称，最长 128 个字符。`DurationDays` 可省略；省略或提交空数组表示永久授权，否则必须传递仅包含一个 `1–36500` 整数字符串的数组。同一 `GrantRoles` 动作中的角色共享授权天数；如需不同天数，添加多个动作。如果用户已经拥有某角色，该动作会跳过该角色，不覆盖原有到期时间。
 
 更新规则使用相同结构，并增加规则 `id`。删除规则的请求结构为：
 
@@ -124,6 +140,7 @@
   "message": "ok",
   "data": {
     "id": "规则 ID",
+    "name": "新用户默认角色",
     "event": "Account.Registered",
     "enabled": true,
     "sequence": 0,
@@ -132,7 +149,8 @@
         "type": "GrantRoles",
         "enabled": true,
         "arguments": {
-          "RoleIds": ["角色 ID"]
+          "RoleIds": ["角色 ID"],
+          "DurationDays": ["30"]
         }
       }
     ],
@@ -149,7 +167,7 @@
 1. 进入配置页时请求 `GET /api/event-action/definitions`，缓存本次页面所需的事件和动作定义。
 2. 请求 `GET /api/event-action/rules`；如只编辑某个事件，传递 `?event=Account.Registered`。
 3. 用户选择事件后，根据 `supportedEvents` 过滤可用动作。
-4. 用户添加动作后，根据 `arguments` 渲染参数控件，并将选中值统一提交为 `Dictionary<string, string[]>` 结构。
+4. 要求用户填写规则名称；添加动作后，根据 `arguments` 渲染参数控件，并将选中值统一提交为 JSON 对象，每个参数值都是字符串数组。
 5. 新增调用 `/rules/add`，编辑调用 `/rules/update`，删除调用 `/rules/delete`。
 6. 每次根据响应体 `code` 判断结果；不是 `200` 时展示 `message`，不要仅根据 HTTP 状态判断。
 
