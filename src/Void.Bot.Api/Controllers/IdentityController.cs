@@ -77,6 +77,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpGet]
     [Route("oauth/{platform}/authorize")]
+    [SkipPermissionCheck]
     public async Task<IActionResult> OAuthAuthorizeAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthAuthorizeCommand command)
     {
@@ -112,6 +113,7 @@ public class IdentityController : ControllerBase
 
     [HttpPost]
     [Route("oauth/{platform}/unlink")]
+    [SkipPermissionCheck]
     public async Task<IActionResult> OAuthUnlinkAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthUnlinkCommand command)
     {
