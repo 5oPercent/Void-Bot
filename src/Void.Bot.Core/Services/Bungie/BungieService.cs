@@ -2,14 +2,13 @@ using System.Net;
 using Serilog;
 using Void.Bot.Core.Caching;
 using Void.Bot.Message.Commands.Bungie;
-using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Request.Bungie;
 
 namespace Void.Bot.Core.Services.Bungie;
 
 public partial interface IBungieService : IScope
 {
-    string GenerateAuthenticateUrl(AuthorizationDto dto);
+    string GenerateOAuthAuthorizationUrl(string state);
 
     Task<GenerateBungieTokenResponse> GenerateTokenAsync(
         GenerateBungieTokenCommand command, CancellationToken cancellationToken);
@@ -43,11 +42,9 @@ public partial class BungieService : IBungieService
         _logger = logger;
     }
     
-    public string GenerateAuthenticateUrl(AuthorizationDto dto)
+    public string GenerateOAuthAuthorizationUrl(string state)
     {
-        var authUrl = _dataProvider.GenerateAuthenticateUrl(dto.Platform, dto.AccountId);
-
-        return authUrl;
+        return _dataProvider.GenerateOAuthAuthorizationUrl(state);
     }
 
     public async Task<GenerateBungieTokenResponse> GenerateTokenAsync(
