@@ -100,15 +100,6 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
     
-    [HttpGet]
-    [Route("generate/url/bungie")]
-    public async Task<IActionResult> GenerateAuthenticateUrlFromBungie([FromQuery]GenerateAuthenticateUrlFromBungieRequest request)
-    {
-        var response = await _mediator.RequestAsync<GenerateAuthenticateUrlFromBungieRequest, GenerateAuthenticateUrlFromBungieResponse>(request).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-    
     [AllowAnonymous]
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
@@ -122,16 +113,6 @@ public class IdentityController : ControllerBase
         
         var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
             
-        return Ok(response);
-    }
-    
-    [AllowAnonymous]
-    [HttpGet]
-    [Route("link/bungie")]
-    public async Task<IActionResult> LoginBungieAsync([FromQuery]LoginBungieCommand command)
-    {
-        var response = await _mediator.SendAsync<LoginBungieCommand, LoginBungieResponse>(command).ConfigureAwait(false);
-
         return Ok(response);
     }
     

@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Mediator.Net;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Account;
+using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
@@ -131,13 +132,11 @@ public class LinkSlashCommand(IMediator mediator, IAccountService accountService
         {
             case "bungie":
             {
-                var response = await mediator.RequestAsync<GenerateAuthenticateUrlFromBungieRequest, GenerateAuthenticateUrlFromBungieResponse>(
-                    new GenerateAuthenticateUrlFromBungieRequest
-                    {
-                        Authorization = authorization
-                    }, cancellationToken).ConfigureAwait(false);
+                var response = await mediator.SendAsync<OAuthAuthorizeCommand, OAuthAuthorizeResponse>(
+                    new OAuthAuthorizeCommand { Platform = AppPlatformEnum.Bungie },
+                    cancellationToken).ConfigureAwait(false);
                 
-                url = response.Data ?? "error";
+                url = response.Data?.RedirectUrl ?? "error";
                 
                 break;
             }
