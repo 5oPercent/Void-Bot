@@ -5,6 +5,7 @@ using Void.Bot.Core.Caching;
 using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
+using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Manifest;
@@ -226,7 +227,8 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        var characterClassMap = charactersResult.Response.Characters.Data
+        var characterMap = charactersResult.Response.Characters.Data;
+        var characterClassMap = characterMap
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.ClassType);
 
         _logger.Information(
@@ -256,13 +258,20 @@ public partial class BungieService : IBungieService
 
             var characterId = charData.CharacterId;
 
-            var classType = characterClassMap.TryGetValue(characterId, out var ct) ? ct : Destiny2ClassEnum.Unknown;
+            characterMap.TryGetValue(characterId, out var character);
+            var classType = character?.ClassType ?? Destiny2ClassEnum.Unknown;
             var playtimeSeconds = (long)(charData.Merged?.AllTime?.SecondsPlayed?.Basic?.Value ?? 0);
 
             characterStats.Add(new CharacterPlaytimeDto
             {
                 CharacterId = characterId,
                 Class = classType,
+                EmblemUrl = string.IsNullOrEmpty(character?.EmblemPath)
+                    ? string.Empty
+                    : $"{BungieConstants.BungieUrl}{character.EmblemPath}",
+                EmblemBackgroundUrl = string.IsNullOrEmpty(character?.EmblemBackgroundPath)
+                    ? string.Empty
+                    : $"{BungieConstants.BungieUrl}{character.EmblemBackgroundPath}",
                 PlaytimeSeconds = playtimeSeconds
             });
         }
@@ -454,12 +463,18 @@ public partial class BungieService : IBungieService
             {
                 var classSeconds = calculatedSeconds.GetValueOrDefault(season.Hash);
                 storedHistoryMap.TryGetValue(season.Hash, out var storedHistory);
+                var seasonIconPath = string.IsNullOrEmpty(season.DisplayProperties.HighResIcon)
+                    ? season.DisplayProperties.Icon
+                    : season.DisplayProperties.HighResIcon;
 
                 return new Destiny2SeasonPlaytimeDto
                 {
                     SeasonHash = season.Hash,
                     SeasonNumber = season.SeasonNumber,
                     Name = season.DisplayProperties.Name,
+                    IconUrl = string.IsNullOrEmpty(seasonIconPath)
+                        ? string.Empty
+                        : $"{BungieConstants.BungieUrl}{seasonIconPath}",
                     StartDate = season.StartDate,
                     EndDate = season.EndDate,
                     Classes =
