@@ -5,12 +5,14 @@ using Shouldly;
 using TestStack.BDDfy;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
+using Void.Bot.Core.Domain.EventAction;
 using Void.Bot.Core.Domain.Security;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.EventAction;
 using Void.Bot.IntegrationTest.Utils;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.EventAction;
+using Void.Bot.Message.Constants.EventAction;
 using Void.Bot.Message.Dto.EventAction;
 using Void.Bot.Message.Events.EventAction;
 using Void.Bot.Message.Request.EventAction;
@@ -25,8 +27,9 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
     private readonly SecurityUtil _securityUtil = new(testBase);
 
     private Guid _roleId;
+    private Guid _secondRoleId;
     private Guid _userId;
-    private List<string> _eventDefinitionNames = [];
+    private EventActionDefinitionData _definitions = new();
     private string _listedRuleName = string.Empty;
     private HttpStatusCode _ruleResponseCode;
 
@@ -35,6 +38,14 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         _roleId = await _securityUtil.AddRoleAsync(
             name: "RegisteredUser",
             code: "REGISTERED_USER");
+    }
+
+    private async Task GivenTwoRolesExist()
+    {
+        await GivenRoleExists();
+        _secondRoleId = await _securityUtil.AddRoleAsync(
+            name: "SecondRegisteredUser",
+            code: "SECOND_REGISTERED_USER");
     }
 
     private Task GivenEnabledGrantRoleRuleExists()
@@ -79,6 +90,76 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                         {
                             Type = GrantRolesEventActionExecutor.ActionType,
                             Arguments = arguments
+                        }
+                    ]
+                }).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+        });
+    }
+
+    private async Task GivenUnmatchedConditionRuleExists()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
+                new AddEventActionRuleCommand
+                {
+                    Name = RuleName,
+                    Event = BuiltInEventNames.AccountRegistered,
+                    Conditions =
+                    [
+                        new EventActionConditionDto
+                        {
+                            Field = "UserId",
+                            Operator = EventActionConditionOperators.Equal,
+                            Values = [Guid.NewGuid().ToString()]
+                        }
+                    ],
+                    Actions =
+                    [
+                        new ConfiguredEventActionDto
+                        {
+                            Type = GrantRolesEventActionExecutor.ActionType,
+                            Arguments = new Dictionary<string, string[]>
+                            {
+                                ["RoleIds"] = [_roleId.ToString()]
+                            }
+                        }
+                    ]
+                }).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+        });
+    }
+
+    private async Task GivenContinueAfterFailureRuleExists()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
+                new AddEventActionRuleCommand
+                {
+                    Name = RuleName,
+                    Event = BuiltInEventNames.AccountRegistered,
+                    Actions =
+                    [
+                        new ConfiguredEventActionDto
+                        {
+                            Type = GrantRolesEventActionExecutor.ActionType,
+                            FailurePolicy = EventActionFailurePolicies.Continue,
+                            Arguments = new Dictionary<string, string[]>
+                            {
+                                ["RoleIds"] = [_roleId.ToString()]
+                            }
+                        },
+                        new ConfiguredEventActionDto
+                        {
+                            Type = GrantRolesEventActionExecutor.ActionType,
+                            Arguments = new Dictionary<string, string[]>
+                            {
+                                ["RoleIds"] = [_secondRoleId.ToString()]
+                            }
                         }
                     ]
                 }).ConfigureAwait(false);
@@ -138,7 +219,34 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                 GetEventActionDefinitionResponse>(new GetEventActionDefinitionRequest()).ConfigureAwait(false);
 
             response.Data.ShouldNotBeNull();
-            _eventDefinitionNames = response.Data.Events.Select(x => x.Name).ToList();
+            _definitions = response.Data;
+        });
+    }
+
+    private async Task WhenGrantRoleRuleWithUnsupportedVersionIsAdded()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
+                new AddEventActionRuleCommand
+                {
+                    Name = RuleName,
+                    Event = BuiltInEventNames.AccountRegistered,
+                    Actions =
+                    [
+                        new ConfiguredEventActionDto
+                        {
+                            Type = GrantRolesEventActionExecutor.ActionType,
+                            Version = 2,
+                            Arguments = new Dictionary<string, string[]>
+                            {
+                                ["RoleIds"] = [_roleId.ToString()]
+                            }
+                        }
+                    ]
+                }).ConfigureAwait(false);
+
+            _ruleResponseCode = response.Code;
         });
     }
 
@@ -190,6 +298,16 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         });
     }
 
+    private async Task ThenUserShouldHaveSecondConfiguredRole()
+    {
+        await Run<IRepository<UserRole>>(async repository =>
+        {
+            (await repository.AnyAsync(
+                userRole => userRole.UserId == _userId && userRole.RoleId == _secondRoleId,
+                CancellationToken.None).ConfigureAwait(false)).ShouldBeTrue();
+        });
+    }
+
     private async Task ThenUserAccountShouldRemainRegistered()
     {
         await Run<IRepository<UserAccount>>(async repository =>
@@ -208,8 +326,53 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private Task ThenAccountRegisteredEventShouldBeDefined()
     {
-        _eventDefinitionNames.ShouldContain(BuiltInEventNames.AccountRegistered);
+        var eventDefinition = _definitions.Events.Single(x =>
+            x.Name == BuiltInEventNames.AccountRegistered);
+        eventDefinition.Fields.ShouldContain(x =>
+            x.Name == "UserId" && x.ValueType == "Guid");
+
+        var actionDefinition = _definitions.Actions.Single(x =>
+            x.Type == GrantRolesEventActionExecutor.ActionType);
+        actionDefinition.Version.ShouldBe(1);
+        var durationDefinition = actionDefinition.Arguments.Single(x => x.Name == "Duration");
+        durationDefinition.ValueType.ShouldBe("Integer");
+        durationDefinition.Minimum.ShouldBe(1);
+        durationDefinition.RequiredWith.ShouldContain("DurationUnit");
+        durationDefinition.MaximumByOption["Hour"].ShouldBe(876000L);
+
+        _definitions.FailurePolicies.Select(x => x.Value)
+            .ShouldContain(EventActionFailurePolicies.Continue);
         return Task.CompletedTask;
+    }
+
+    private async Task ThenSuccessfulExecutionShouldBeRecorded()
+    {
+        await Run<IRepository<EventActionExecution>>(async repository =>
+        {
+            (await repository.AnyAsync(
+                execution => execution.RuleName == RuleName &&
+                             execution.ActionType == GrantRolesEventActionExecutor.ActionType &&
+                             execution.ActionVersion == 1 &&
+                             execution.Status == EventActionExecutionStatuses.Succeeded,
+                CancellationToken.None).ConfigureAwait(false)).ShouldBeTrue();
+        });
+    }
+
+    private async Task ThenFailedAndSuccessfulExecutionsShouldBeRecorded()
+    {
+        await Run<IRepository<EventActionExecution>>(async repository =>
+        {
+            (await repository.AnyAsync(
+                execution => execution.RuleName == RuleName &&
+                             execution.ActionIndex == 0 &&
+                             execution.Status == EventActionExecutionStatuses.Failed,
+                CancellationToken.None).ConfigureAwait(false)).ShouldBeTrue();
+            (await repository.AnyAsync(
+                execution => execution.RuleName == RuleName &&
+                             execution.ActionIndex == 1 &&
+                             execution.Status == EventActionExecutionStatuses.Succeeded,
+                CancellationToken.None).ConfigureAwait(false)).ShouldBeTrue();
+        });
     }
 
     private Task ThenRuleShouldBeRejected()
@@ -260,6 +423,7 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
             .And(x => x.GivenEnabledGrantRoleRuleExists())
             .When(x => x.WhenUserRegisters())
             .Then(x => x.ThenUserShouldHaveConfiguredRole())
+            .And(x => x.ThenSuccessfulExecutionShouldBeRecorded())
             .BDDfy();
     }
 
@@ -289,6 +453,37 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         this.Given(x => x.GivenRoleExists())
             .When(x => x.WhenGrantRoleRuleWithInvalidDurationIsAdded())
             .Then(x => x.ThenRuleShouldBeRejected())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void UnsupportedActionVersionIsRejected()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .When(x => x.WhenGrantRoleRuleWithUnsupportedVersionIsAdded())
+            .Then(x => x.ThenRuleShouldBeRejected())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void UnmatchedConditionSkipsConfiguredAction()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenUnmatchedConditionRuleExists())
+            .When(x => x.WhenUserRegisters())
+            .Then(x => x.ThenUserShouldNotHaveConfiguredRole())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void ContinuePolicyExecutesNextActionAfterFailure()
+    {
+        this.Given(x => x.GivenTwoRolesExist())
+            .And(x => x.GivenContinueAfterFailureRuleExists())
+            .And(x => x.GivenConfiguredRoleNoLongerExists())
+            .When(x => x.WhenUserRegisters())
+            .Then(x => x.ThenUserShouldHaveSecondConfiguredRole())
+            .And(x => x.ThenFailedAndSuccessfulExecutionsShouldBeRecorded())
             .BDDfy();
     }
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.EventAction;
 using Void.Bot.Message.Commands.EventAction;
+using Void.Bot.Message.Constants.EventAction;
 using Void.Bot.Message.Dto.EventAction;
 using Void.Bot.Message.Request.EventAction;
 
@@ -34,6 +35,9 @@ public class EventActionRuleService(
     IEnumerable<IBuiltInEventDefinitionProvider> eventDefinitionProviders,
     IEnumerable<IConfiguredEventActionExecutor> executors) : IEventActionRuleService
 {
+    private readonly List<IBuiltInEventDefinitionProvider> _eventDefinitionProviders =
+        eventDefinitionProviders.ToList();
+
     private readonly List<BuiltInEventDefinitionDto> _eventDefinitions = eventDefinitionProviders
         .Select(x => x.Definition)
         .OrderBy(x => x.Name)
@@ -46,7 +50,41 @@ public class EventActionRuleService(
             Data = new EventActionDefinitionData
             {
                 Events = _eventDefinitions,
-                Actions = executors.Select(x => x.Definition).OrderBy(x => x.Type).ToList()
+                Actions = executors.Select(x => x.Definition)
+                    .OrderBy(x => x.Type)
+                    .ThenBy(x => x.Version)
+                    .ToList(),
+                FailurePolicies =
+                [
+                    new EventActionArgumentOptionDto
+                    {
+                        Value = EventActionFailurePolicies.StopAll,
+                        Label = "停止全部"
+                    },
+                    new EventActionArgumentOptionDto
+                    {
+                        Value = EventActionFailurePolicies.StopRule,
+                        Label = "停止当前规则"
+                    },
+                    new EventActionArgumentOptionDto
+                    {
+                        Value = EventActionFailurePolicies.Continue,
+                        Label = "继续执行"
+                    }
+                ],
+                ExecutionStatuses =
+                [
+                    new EventActionArgumentOptionDto
+                    {
+                        Value = EventActionExecutionStatuses.Succeeded,
+                        Label = "成功"
+                    },
+                    new EventActionArgumentOptionDto
+                    {
+                        Value = EventActionExecutionStatuses.Failed,
+                        Label = "失败"
+                    }
+                ]
             }
         });
     }
@@ -90,7 +128,7 @@ public class EventActionRuleService(
     {
         var response = new AddEventActionRuleResponse();
         var validationMessage = await ValidateRuleAsync(
-            command.Event, command.Actions, cancellationToken).ConfigureAwait(false);
+            command.Event, command.Conditions, command.Actions, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(validationMessage))
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -105,6 +143,7 @@ public class EventActionRuleService(
                 string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name,
             Enabled = command.Enabled,
             Sequence = command.Sequence,
+            ConditionsJson = JsonSerializer.Serialize(command.Conditions),
             ActionsJson = JsonSerializer.Serialize(command.Actions),
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -128,7 +167,7 @@ public class EventActionRuleService(
         }
 
         var validationMessage = await ValidateRuleAsync(
-            command.Event, command.Actions, cancellationToken).ConfigureAwait(false);
+            command.Event, command.Conditions, command.Actions, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(validationMessage))
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -141,6 +180,7 @@ public class EventActionRuleService(
             string.Equals(x.Name, command.Event, StringComparison.OrdinalIgnoreCase)).Name;
         rule.Enabled = command.Enabled;
         rule.Sequence = command.Sequence;
+        rule.ConditionsJson = JsonSerializer.Serialize(command.Conditions);
         rule.ActionsJson = JsonSerializer.Serialize(command.Actions);
         rule.UpdatedAt = DateTimeOffset.UtcNow;
         await ruleRepository.UpdateAsync(rule, cancellationToken).ConfigureAwait(false);
@@ -159,6 +199,7 @@ public class EventActionRuleService(
 
     private async Task<string?> ValidateRuleAsync(
         string eventName,
+        List<EventActionConditionDto> conditions,
         List<ConfiguredEventActionDto> actions,
         CancellationToken cancellationToken)
     {
@@ -175,6 +216,22 @@ public class EventActionRuleService(
             return $"Built-in event '{eventName}' must have exactly one definition provider, but found {matchingEventDefinitions.Count}.";
         }
 
+        var matchingEventDefinitionProviders = _eventDefinitionProviders
+            .Where(x => string.Equals(
+                x.Definition.Name, matchingEventDefinitions[0].Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (matchingEventDefinitionProviders.Count != 1)
+        {
+            return $"Built-in event '{eventName}' must have exactly one definition provider, but found {matchingEventDefinitionProviders.Count}.";
+        }
+
+        var conditionValidationMessage = EventActionConditionEvaluator.Validate(
+            matchingEventDefinitions[0], conditions);
+        if (!string.IsNullOrEmpty(conditionValidationMessage))
+        {
+            return conditionValidationMessage;
+        }
+
         if (actions.Count == 0)
         {
             return "At least one event action is required.";
@@ -188,12 +245,19 @@ public class EventActionRuleService(
                 return "Event action cannot be null.";
             }
 
+            if (!EventActionFailurePolicies.All.Contains(
+                    action.FailurePolicy, StringComparer.OrdinalIgnoreCase))
+            {
+                return $"Event action '{action.Type}' failure policy must be StopAll, StopRule, or Continue.";
+            }
+
             var matches = executorList
-                .Where(x => string.Equals(x.Type, action.Type, StringComparison.OrdinalIgnoreCase))
+                .Where(x => string.Equals(x.Type, action.Type, StringComparison.OrdinalIgnoreCase) &&
+                            x.Version == action.Version)
                 .ToList();
             if (matches.Count != 1)
             {
-                return $"Event action '{action.Type}' must have exactly one executor, but found {matches.Count}.";
+                return $"Event action '{action.Type}' version {action.Version} must have exactly one executor, but found {matches.Count}.";
             }
 
             var validationMessage = await matches[0].ValidateAsync(
@@ -216,6 +280,7 @@ public class EventActionRuleService(
             Event = rule.Event,
             Enabled = rule.Enabled,
             Sequence = rule.Sequence,
+            Conditions = JsonSerializer.Deserialize<List<EventActionConditionDto>>(rule.ConditionsJson) ?? [],
             Actions = JsonSerializer.Deserialize<List<ConfiguredEventActionDto>>(rule.ActionsJson) ?? [],
             CreatedAt = rule.CreatedAt,
             UpdatedAt = rule.UpdatedAt

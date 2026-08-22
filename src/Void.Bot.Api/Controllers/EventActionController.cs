@@ -31,6 +31,16 @@ public class EventActionController(IMediator mediator) : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("executions")]
+    [ProducesResponseType(typeof(GetEventActionExecutionPageResponse), 200)]
+    public async Task<IActionResult> GetExecutionsAsync([FromQuery] GetEventActionExecutionPageRequest request)
+    {
+        var response = await mediator.RequestAsync<
+            GetEventActionExecutionPageRequest,
+            GetEventActionExecutionPageResponse>(request).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("rules/add")]
     [ProducesResponseType(typeof(AddEventActionRuleResponse), 200)]
     public async Task<IActionResult> AddRuleAsync([FromBody] AddEventActionRuleCommand command)
