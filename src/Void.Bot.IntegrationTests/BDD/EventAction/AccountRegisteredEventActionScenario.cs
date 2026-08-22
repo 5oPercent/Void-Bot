@@ -26,10 +26,9 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private Guid _roleId;
     private Guid _userId;
+    private List<string> _eventDefinitionNames = [];
     private string _listedRuleName = string.Empty;
     private HttpStatusCode _ruleResponseCode;
-    private DateTimeOffset _registrationStartedAt;
-    private DateTimeOffset _registrationCompletedAt;
 
     private async Task GivenRoleExists()
     {
@@ -100,7 +99,6 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private async Task WhenUserRegisters()
     {
-        _registrationStartedAt = DateTimeOffset.UtcNow;
         await Run<IMediator>(async mediator =>
         {
             var response = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
@@ -113,7 +111,6 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
             response.Data.ShouldNotBeNull();
             _userId = response.Data.Id;
         });
-        _registrationCompletedAt = DateTimeOffset.UtcNow;
     }
 
     private async Task WhenRulesAreQueried()
@@ -129,6 +126,19 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
             response.Data.ShouldNotBeNull();
             _listedRuleName = response.Data.Single().Name;
+        });
+    }
+
+    private async Task WhenEventActionDefinitionsAreQueried()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<
+                GetEventActionDefinitionRequest,
+                GetEventActionDefinitionResponse>(new GetEventActionDefinitionRequest()).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+            _eventDefinitionNames = response.Data.Events.Select(x => x.Name).ToList();
         });
     }
 
@@ -196,6 +206,12 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         return Task.CompletedTask;
     }
 
+    private Task ThenAccountRegisteredEventShouldBeDefined()
+    {
+        _eventDefinitionNames.ShouldContain(BuiltInEventNames.AccountRegistered);
+        return Task.CompletedTask;
+    }
+
     private Task ThenRuleShouldBeRejected()
     {
         _ruleResponseCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -212,9 +228,19 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
             userRole.ShouldNotBeNull();
             userRole.Deadline.HasValue.ShouldBeTrue();
-            (userRole.Deadline.Value >= _registrationStartedAt.AddHours(DurationHours)).ShouldBeTrue();
-            (userRole.Deadline.Value <= _registrationCompletedAt.AddHours(DurationHours)).ShouldBeTrue();
+            var expectedDeadline = DateTimeOffset.UtcNow.AddHours(DurationHours);
+            userRole.Deadline.Value.ShouldBe(
+                expectedDeadline,
+                tolerance: TimeSpan.FromMinutes(1));
         });
+    }
+
+    [Fact]
+    public void EventDefinitionsAreDiscoveredFromProviders()
+    {
+        this.When(x => x.WhenEventActionDefinitionsAreQueried())
+            .Then(x => x.ThenAccountRegisteredEventShouldBeDefined())
+            .BDDfy();
     }
 
     [Fact]

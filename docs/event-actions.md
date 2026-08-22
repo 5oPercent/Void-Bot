@@ -6,6 +6,7 @@
 
 - `EventAction` 是整个可配置事件动作模块的统一名称，用于目录、命名空间、Controller、Rule 和 Service。
 - `IBuiltInEvent` 是主业务发布的内置事件，例如 `AccountRegisteredEvent`。
+- `IBuiltInEventDefinitionProvider` 提供内置事件的前端展示定义，例如 `AccountRegisteredEventDefinitionProvider`。
 - `IConfiguredEventActionExecutor` 是配置动作执行器，例如 `GrantRolesEventActionExecutor`。
 - `EventActionRule` 将一个内置事件与一组有序动作关联起来。
 
@@ -212,12 +213,12 @@
 
 1. 在 Message 项目的 `Events/EventAction` 中新增事件类型，实现 `IBuiltInEvent`。事件只携带动作执行所需的最小业务数据，不携带 Service、DbContext 或回调。
 2. 在 `BuiltInEventNames` 中增加稳定且唯一的事件名，命名使用 `<Domain>.<PastTenseAction>`；事件名会持久化到规则表，不可随意改名。
-3. 在 `EventActionRuleService.EventDefinitions` 增加前端展示定义，准确说明事件的业务成功条件和触发时机。
+3. 在 Core 的 `Services/EventAction` 中实现 `IBuiltInEventDefinitionProvider`，通过 `Definition` 提供前端展示定义，准确说明事件的业务成功条件和触发时机。Provider 由依赖注入自动发现，不需要修改 `EventActionRuleService`。
 4. 只在对应 Command Handler 中发布事件：先调用 Service，再根据响应结果调用 `context.PublishAsync`。不得在 Service 中注入 `IMediator` 或调用 `SendAsync`/`PublishAsync`。
 5. 同一业务如果有多个入口，每个会产生该事件的 Handler 都必须发布，并确保只在真正新建业务对象时发布一次。
 6. Service 如果需要向 Handler 传递触发条件，优先在原有 Message Response 上增加带用途注释的 `[JsonIgnore]` 字段；新增 DTO 必须放在 Message 项目。
 7. 在 Core 的 `Handler/EventHandler/EventAction` 中增加对应 `IEventHandler<TEvent>`，参照 `AccountRegisteredEventHandler` 将动作分发登记为提交后回调，不得让配置动作的失败回滚主业务。
-8. 补充触发条件、不触发条件、多入口去重、主业务回滚时不执行、提交后动作失败不影响主业务等测试。
+8. 补充定义自动发现、触发条件、不触发条件、多入口去重、主业务回滚时不执行、提交后动作失败不影响主业务等测试。
 
 Handler 发布模板：
 
