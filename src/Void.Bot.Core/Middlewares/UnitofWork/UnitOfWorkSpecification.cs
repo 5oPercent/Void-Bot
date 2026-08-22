@@ -7,7 +7,10 @@ using Void.Bot.Core.Data;
 
 namespace Void.Bot.Core.Middlewares.UnitofWork;
 
-public class UnitOfWorkSpecification<TContext>(IUnitOfWork unitOfWork, DbContext dbContext) : IPipeSpecification<TContext>
+public class UnitOfWorkSpecification<TContext>(
+    IUnitOfWork unitOfWork,
+    DbContext dbContext,
+    IUnitOfWorkExecutionContext executionContext) : IPipeSpecification<TContext>
     where TContext : IContext<IMessage>
 {
     public bool ShouldExecute(TContext context, CancellationToken cancellationToken)
@@ -24,9 +27,19 @@ public class UnitOfWorkSpecification<TContext>(IUnitOfWork unitOfWork, DbContext
     {
         if (ShouldExecute(context, cancellationToken))
         {
-            if (dbContext.Database.CurrentTransaction == null)
+            var frame = executionContext.Enter(
+                context, dbContext.Database.CurrentTransaction != null);
+            if (frame.OwnsTransaction)
             {
-                await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                try
+                {
+                    await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                }
+                catch
+                {
+                    executionContext.TryExit(context, out _);
+                    throw;
+                }
             }
         }
     }
@@ -35,18 +48,29 @@ public class UnitOfWorkSpecification<TContext>(IUnitOfWork unitOfWork, DbContext
     {
         if (ShouldExecute(context, cancellationToken))
         {
+            if (!executionContext.TryExit(context, out var frame) || !frame.IsOutermost)
+            {
+                return;
+            }
+
             try
             {
                 await unitOfWork.SaveChangesAsync(cancellationToken);
 
-                if (dbContext.Database.CurrentTransaction != null)
+                if (frame.OwnsTransaction && dbContext.Database.CurrentTransaction != null)
                 {
                     await dbContext.Database.CommitTransactionAsync(cancellationToken);
+                }
+
+                foreach (var callback in executionContext.TakeAfterCommitCallbacks())
+                {
+                    await callback(cancellationToken);
                 }
             }
             catch
             {
-                if (dbContext.Database.CurrentTransaction != null)
+                executionContext.ClearAfterCommitCallbacks();
+                if (frame.OwnsTransaction && dbContext.Database.CurrentTransaction != null)
                 {
                     await dbContext.Database.RollbackTransactionAsync(cancellationToken);
                 }
@@ -58,11 +82,16 @@ public class UnitOfWorkSpecification<TContext>(IUnitOfWork unitOfWork, DbContext
 
     public async Task OnException(Exception ex, TContext context)
     {
-        if (dbContext.Database.CurrentTransaction != null)
+        var isOutermost = executionContext.TryExit(context, out var frame) && frame.IsOutermost;
+        if (isOutermost)
         {
-            await dbContext.Database.RollbackTransactionAsync();
+            executionContext.ClearAfterCommitCallbacks();
+            if (frame.OwnsTransaction && dbContext.Database.CurrentTransaction != null)
+            {
+                await dbContext.Database.RollbackTransactionAsync();
+            }
         }
-        
+
         ExceptionDispatchInfo.Capture(ex).Throw();
     }
 }

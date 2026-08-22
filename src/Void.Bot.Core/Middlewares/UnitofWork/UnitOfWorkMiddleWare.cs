@@ -9,10 +9,14 @@ namespace Void.Bot.Core.Middlewares.UnitofWork;
 
 public static class UnitOfWorkMiddleWare
 {
-    public static void UseUnitOfWork<TContext>(this IPipeConfigurator<TContext> configurator, IUnitOfWork? unitOfWork = null, DbContext? dbContext = null)
+    public static void UseUnitOfWork<TContext>(
+        this IPipeConfigurator<TContext> configurator,
+        IUnitOfWork? unitOfWork = null,
+        DbContext? dbContext = null,
+        IUnitOfWorkExecutionContext? executionContext = null)
         where TContext : IContext<IMessage>
     {
-        if (unitOfWork == null && configurator.DependencyScope == null)
+        if (configurator.DependencyScope == null && (unitOfWork == null || dbContext == null))
         {
             throw new DependencyScopeNotConfiguredException(
                 $"{nameof(unitOfWork)} is not provided and IDependencyScope is not configured, Please ensure {nameof(unitOfWork)} is registered properly if you are using IoC container, otherwise please pass {nameof(unitOfWork)} as parameter");
@@ -20,7 +24,10 @@ public static class UnitOfWorkMiddleWare
 
         unitOfWork ??= configurator.DependencyScope.Resolve<IUnitOfWork>();
         dbContext ??= configurator.DependencyScope.Resolve<DbContext>();
+        executionContext ??= configurator.DependencyScope?.Resolve<IUnitOfWorkExecutionContext>()
+                             ?? new UnitOfWorkExecutionContext();
 
-        configurator.AddPipeSpecification(new UnitOfWorkSpecification<TContext>(unitOfWork,  dbContext));
+        configurator.AddPipeSpecification(new UnitOfWorkSpecification<TContext>(
+            unitOfWork, dbContext, executionContext));
     }
 }
