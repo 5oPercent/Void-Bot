@@ -4,7 +4,11 @@ namespace Void.Bot.Message.Events.EventAction;
 
 public interface IBuiltInEvent : IEvent
 {
+    Guid EventId { get; }
+
     string Name { get; }
+
+    DateTimeOffset OccurredAt { get; }
 }
 
 public static class BuiltInEventNames
@@ -14,5 +18,9 @@ public static class BuiltInEventNames
 
 public sealed record AccountRegisteredEvent(Guid UserId) : IBuiltInEvent
 {
+    public Guid EventId { get; } = Guid.NewGuid();
+
     public string Name => BuiltInEventNames.AccountRegistered;
+
+    public DateTimeOffset OccurredAt { get; } = DateTimeOffset.UtcNow;
 }

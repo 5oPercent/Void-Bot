@@ -20,9 +20,12 @@ public class GrantRolesEventActionExecutor(
 
     public string Type => ActionType;
 
+    public int Version => 1;
+
     public EventActionDefinitionDto Definition => new()
     {
         Type = ActionType,
+        Version = Version,
         DisplayName = "授权角色",
         Description = "为事件关联的用户授予一个或多个角色。",
         SupportedEvents = [BuiltInEventNames.AccountRegistered],
@@ -33,8 +36,10 @@ public class GrantRolesEventActionExecutor(
                 Name = "RoleIds",
                 DisplayName = "角色",
                 Description = "选择需要自动授予的角色。",
+                ValueType = "Guid",
                 Required = true,
                 Multiple = true,
+                MinLength = 1,
                 ValueSource = "Role",
                 DataSourceEndpoint = "/api/security/role/tree",
                 DataSourceValueField = "id",
@@ -45,8 +50,19 @@ public class GrantRolesEventActionExecutor(
                 Name = "Duration",
                 DisplayName = "授权时长",
                 Description = "留空表示永久有效；填写时必须同时选择时间单位。",
+                ValueType = "Integer",
                 Required = false,
                 Multiple = false,
+                Minimum = 1,
+                MaximumDependsOn = "DurationUnit",
+                MaximumByOption = new Dictionary<string, long>
+                {
+                    ["Second"] = 3153600000L,
+                    ["Minute"] = 52560000L,
+                    ["Hour"] = 876000L,
+                    ["Day"] = 36500L
+                },
+                RequiredWith = ["DurationUnit"],
                 ValueSource = "Number"
             },
             new EventActionArgumentDefinitionDto
@@ -54,8 +70,10 @@ public class GrantRolesEventActionExecutor(
                 Name = "DurationUnit",
                 DisplayName = "时间单位",
                 Description = "支持秒、分钟、小时和天。",
+                ValueType = "String",
                 Required = false,
                 Multiple = false,
+                RequiredWith = ["Duration"],
                 ValueSource = "Options",
                 Options =
                 [

@@ -11,7 +11,6 @@ namespace Void.Bot.Core.Handler.EventHandler.EventAction;
 public class AccountRegisteredEventHandler(
     IBuiltInEventDispatcher dispatcher,
     IUnitOfWorkExecutionContext executionContext,
-    IUnitOfWork unitOfWork,
     VoidBotDbContext dbContext,
     ILogger logger)
     : IEventHandler<AccountRegisteredEvent>
@@ -27,7 +26,6 @@ public class AccountRegisteredEventHandler(
             {
                 await dispatcher.DispatchAsync(
                     builtInEvent, afterCommitCancellationToken).ConfigureAwait(false);
-                await unitOfWork.SaveChangesAsync(afterCommitCancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {

@@ -22,6 +22,9 @@ public class UpdateEventActionRuleCommand : ICommand
     public int Sequence { get; set; }
 
     [Required]
+    public List<EventActionConditionDto> Conditions { get; set; } = [];
+
+    [Required]
     [MinLength(1)]
     public List<ConfiguredEventActionDto> Actions { get; set; } = [];
 }

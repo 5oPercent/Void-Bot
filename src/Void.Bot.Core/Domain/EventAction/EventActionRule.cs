@@ -16,6 +16,8 @@ public class EventActionRule : IEntityAudit<Guid>
 
     public int Sequence { get; set; }
 
+    public string ConditionsJson { get; set; } = string.Empty;
+
     public string ActionsJson { get; set; } = string.Empty;
 
     public DateTimeOffset CreatedAt { get; set; }
