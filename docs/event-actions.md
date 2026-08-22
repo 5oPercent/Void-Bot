@@ -15,7 +15,7 @@
 
 | 事件 | 触发时机 | 动作 | 参数 |
 | --- | --- | --- | --- |
-| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles` | `RoleIds`；可选 `DurationDays` |
+| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles` | `RoleIds`；可选 `Duration` + `DurationUnit` |
 
 规则中的动作按数组顺序执行；多条规则按 `Sequence`、`CreatedAt` 排序执行。禁用的规则或动作不会执行。
 
@@ -79,18 +79,37 @@
             "valueSource": "Role",
             "dataSourceEndpoint": "/api/security/role/tree",
             "dataSourceValueField": "id",
-            "dataSourceLabelField": "name"
+            "dataSourceLabelField": "name",
+            "options": []
           },
           {
-            "name": "DurationDays",
-            "displayName": "授权天数",
-            "description": "留空表示永久有效；填写 1 至 36500 的整数表示授权有效天数。",
+            "name": "Duration",
+            "displayName": "授权时长",
+            "description": "留空表示永久有效；填写时必须同时选择时间单位。",
             "required": false,
             "multiple": false,
             "valueSource": "Number",
             "dataSourceEndpoint": "",
             "dataSourceValueField": "",
-            "dataSourceLabelField": ""
+            "dataSourceLabelField": "",
+            "options": []
+          },
+          {
+            "name": "DurationUnit",
+            "displayName": "时间单位",
+            "description": "支持秒、分钟、小时和天。",
+            "required": false,
+            "multiple": false,
+            "valueSource": "Options",
+            "dataSourceEndpoint": "",
+            "dataSourceValueField": "",
+            "dataSourceLabelField": "",
+            "options": [
+              { "value": "Second", "label": "秒" },
+              { "value": "Minute", "label": "分钟" },
+              { "value": "Hour", "label": "小时" },
+              { "value": "Day", "label": "天" }
+            ]
           }
         ]
       }
@@ -115,14 +134,15 @@
       "enabled": true,
       "arguments": {
         "RoleIds": [ "角色 ID" ],
-        "DurationDays": [ "30" ]
+        "Duration": [ "2" ],
+        "DurationUnit": [ "Hour" ]
       }
     }
   ]
 }
 ```
 
-`name` 是必填的自定义规则名称，最长 128 个字符。`DurationDays` 可省略；省略或提交空数组表示永久授权，否则必须传递仅包含一个 `1–36500` 整数字符串的数组。同一 `GrantRoles` 动作中的角色共享授权天数；如需不同天数，添加多个动作。如果用户已经拥有某角色，该动作会跳过该角色，不覆盖原有到期时间。
+`name` 是必填的自定义规则名称，最长 128 个字符。`Duration` 和 `DurationUnit` 都可省略，表示永久授权；配置时必须同时传递，`Duration` 是仅包含一个正整数字符串的数组，`DurationUnit` 是仅包含 `Second`、`Minute`、`Hour` 或 `Day` 之一的数组。最长授权时长为 36500 天。同一 `GrantRoles` 动作中的角色共享授权时长；如需不同时长，添加多个动作。如果用户已经拥有某角色，该动作会跳过该角色，不覆盖原有到期时间。
 
 更新规则使用相同结构，并增加规则 `id`。删除规则的请求结构为：
 
@@ -150,7 +170,8 @@
         "enabled": true,
         "arguments": {
           "RoleIds": ["角色 ID"],
-          "DurationDays": ["30"]
+          "Duration": ["2"],
+          "DurationUnit": ["Hour"]
         }
       }
     ],

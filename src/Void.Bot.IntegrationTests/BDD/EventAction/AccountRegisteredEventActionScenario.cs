@@ -20,7 +20,7 @@ namespace Void.Bot.IntegrationTest.BDD.EventAction;
 public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) : IntegrationFixture(testBase)
 {
     private const string RuleName = "Grant registered user role";
-    private const int DurationDays = 30;
+    private const int DurationHours = 2;
 
     private readonly SecurityUtil _securityUtil = new(testBase);
 
@@ -40,29 +40,30 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
     private Task GivenEnabledGrantRoleRuleExists()
     {
-        return GivenGrantRoleRuleExists(true, null);
+        return GivenGrantRoleRuleExists(true, null, null);
     }
 
     private Task GivenEnabledGrantRoleRuleWithDurationExists()
     {
-        return GivenGrantRoleRuleExists(true, DurationDays);
+        return GivenGrantRoleRuleExists(true, DurationHours, "Hour");
     }
 
     private Task GivenDisabledGrantRoleRuleExists()
     {
-        return GivenGrantRoleRuleExists(false, null);
+        return GivenGrantRoleRuleExists(false, null, null);
     }
 
-    private async Task GivenGrantRoleRuleExists(bool enabled, int? durationDays)
+    private async Task GivenGrantRoleRuleExists(bool enabled, int? duration, string? durationUnit)
     {
         var arguments = new Dictionary<string, string[]>
         {
             ["RoleIds"] = [_roleId.ToString()]
         };
-        if (durationDays.HasValue)
+        if (duration.HasValue)
         {
-            arguments["DurationDays"] =
-                [durationDays.Value.ToString(CultureInfo.InvariantCulture)];
+            arguments["Duration"] =
+                [duration.Value.ToString(CultureInfo.InvariantCulture)];
+            arguments["DurationUnit"] = [durationUnit!];
         }
 
         await Run<IMediator>(async mediator =>
@@ -148,7 +149,8 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                             Arguments = new Dictionary<string, string[]>
                             {
                                 ["RoleIds"] = [_roleId.ToString()],
-                                ["DurationDays"] = ["0"]
+                                ["Duration"] = ["0"],
+                                ["DurationUnit"] = ["Second"]
                             }
                         }
                     ]
@@ -210,8 +212,8 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
             userRole.ShouldNotBeNull();
             userRole.Deadline.HasValue.ShouldBeTrue();
-            (userRole.Deadline.Value >= _registrationStartedAt.AddDays(DurationDays)).ShouldBeTrue();
-            (userRole.Deadline.Value <= _registrationCompletedAt.AddDays(DurationDays)).ShouldBeTrue();
+            (userRole.Deadline.Value >= _registrationStartedAt.AddHours(DurationHours)).ShouldBeTrue();
+            (userRole.Deadline.Value <= _registrationCompletedAt.AddHours(DurationHours)).ShouldBeTrue();
         });
     }
 
