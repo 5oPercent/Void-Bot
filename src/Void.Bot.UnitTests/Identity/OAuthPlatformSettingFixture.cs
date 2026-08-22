@@ -15,6 +15,7 @@ public class OAuthPlatformSettingFixture
             {
                 ["OAuth:StateTtlSeconds"] = "600",
                 ["OAuth:ExchangeTtlSeconds"] = "120",
+                ["OAuth:RegistrationTtlSeconds"] = "600",
                 ["OAuth:FrontendCallbackUrl"] = "https://voidbot.example/oauth/callback",
                 ["Discord:ClientId"] = "discord-client-id",
                 ["Discord:ClientSecret"] = "discord-client-secret"
@@ -26,6 +27,7 @@ public class OAuthPlatformSettingFixture
 
         oauthSetting.StateTtlSeconds.ShouldBe(600);
         oauthSetting.ExchangeTtlSeconds.ShouldBe(120);
+        oauthSetting.RegistrationTtlSeconds.ShouldBe(600);
         oauthSetting.FrontendCallbackUrl.ShouldBe("https://voidbot.example/oauth/callback");
         discordSetting.ClientId.ShouldBe("discord-client-id");
         discordSetting.ClientSecret.ShouldBe("discord-client-secret");

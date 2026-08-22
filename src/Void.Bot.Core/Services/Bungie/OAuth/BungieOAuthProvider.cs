@@ -1,6 +1,5 @@
 using System.Net;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using Serilog;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Account;
@@ -25,7 +24,6 @@ namespace Void.Bot.Core.Services.Bungie.OAuth;
 public sealed class BungieOAuthProvider : IOAuthProvider
 {
     private const string BungieProvider = nameof(AppPlatformEnum.Bungie);
-    private const int AccountSecretByteLength = 32;
 
     private readonly IOAuthStateStore _stateStore;
     private readonly IBungieService _bungieService;
@@ -211,29 +209,9 @@ public sealed class BungieOAuthProvider : IOAuthProvider
                 OAuthStateFlow.Login);
         }
 
-        var displayName = string.IsNullOrWhiteSpace(providerUserName)
-            ? $"Bungie-{token.MembershipId}"
-            : providerUserName;
-        var registration = await _accountService.RegisterUserAccountAsync(
-            new RegisterUserAccountCommand
-            {
-                Name = displayName,
-                Password = GenerateAccountSecret()
-            },
-            cancellationToken).ConfigureAwait(false);
-        var createdAccount = registration.Data ??
-            throw new InvalidOperationException("Unable to create the account for the Bungie identity.");
-
-        await _accountDataProvider.LinkThirdPartyAsync(
-            CreateBinding(createdAccount.Id, token),
-            cancellationToken).ConfigureAwait(false);
-
-        return GenerateJwt(
-            createdAccount.Id,
-            createdAccount.DisplayName,
-            token.MembershipId,
-            providerUserName,
-            OAuthStateFlow.Login);
+        return RegistrationRequired(
+            token,
+            providerUserName);
     }
 
     private async Task<OAuthCallbackResponse> LinkAsync(
@@ -370,12 +348,29 @@ public sealed class BungieOAuthProvider : IOAuthProvider
             : now.AddSeconds(token.RefreshExpiresIn);
     }
 
-    private static string GenerateAccountSecret()
+    private static OAuthCallbackResponse RegistrationRequired(
+        BungieApiGenerateTokenResponse token,
+        string providerUserName)
     {
-        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(AccountSecretByteLength))
-            .TrimEnd('=')
-            .Replace('+', '-')
-            .Replace('/', '_');
+        var now = DateTimeOffset.Now;
+        return new OAuthCallbackResponse
+        {
+            Data = new OAuthCallbackData
+            {
+                Platform = BungieProvider,
+                Flow = OAuthStateFlow.Register,
+                ProviderUserId = token.MembershipId,
+                ProviderUserName = providerUserName,
+                AccessToken = token.AccessToken,
+                AccessTokenExpiresAt = string.IsNullOrEmpty(token.AccessToken)
+                    ? null
+                    : now.AddSeconds(token.AccessTokenExpiresIn),
+                RefreshToken = token.RefreshToken,
+                RefreshTokenExpiresAt = string.IsNullOrEmpty(token.RefreshToken)
+                    ? null
+                    : now.AddSeconds(token.RefreshExpiresIn)
+            }
+        };
     }
 
     private static TResponse Error<TResponse>(OAuthError error)

@@ -65,6 +65,7 @@ https://voidbot.cyooops.icu/oauth/callback
 
 ```text
 OAuth__FrontendCallbackUrl=https://test.voidbot.cyooops.icu/oauth/callback
+OAuth__RegistrationTtlSeconds=600
 ```
 
 前端不需要、也不能通过请求参数指定任意 `returnUrl`。

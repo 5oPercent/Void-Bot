@@ -21,10 +21,18 @@ public static class OAuthFrontendRedirectUrl
         if (response.Data is { } data)
         {
             parameters["flow"] = data.Flow.ToString().ToLowerInvariant();
-            parameters["result"] = "success";
-            if (data.Flow == OAuthStateFlow.Login)
+            if (data.Flow == OAuthStateFlow.Register)
             {
-                parameters["code"] = data.ExchangeCode;
+                parameters["result"] = "registration_required";
+                parameters["code"] = data.RegistrationCode;
+            }
+            else
+            {
+                parameters["result"] = "success";
+                if (data.Flow == OAuthStateFlow.Login)
+                {
+                    parameters["code"] = data.ExchangeCode;
+                }
             }
         }
         else
