@@ -219,7 +219,7 @@ public sealed class OAuthService : IOAuthService
         var accountResponse = await _accountService.GetUserAccountAsync(
             new GetUserAccountRequest { DisplayName = $"{command.Name}#{command.Suffix}" },
             cancellationToken).ConfigureAwait(false);
-        if (accountResponse.Data is not { } account ||
+        if (accountResponse?.Data is not { } account ||
             !await _accountService.VerifyPassword(account.Id, command.Password, cancellationToken).ConfigureAwait(false))
         {
             return Error<OAuthBindResponse>(OAuthError.InvalidCredentials);
