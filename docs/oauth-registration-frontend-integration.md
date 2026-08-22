@@ -58,6 +58,8 @@ https://test.voidbot.cyooops.icu/oauth/callback
 
 URL 不包含第三方 access token、refresh token、用户 ID 或 Void JWT。
 
+registrationCode 默认 600 秒过期，可通过后端环境变量 `OAuth__RegistrationTtlSeconds` 调整。
+
 ## 4. Callback 页面处理
 
 页面识别到以下组合时进入“待绑定身份”状态：

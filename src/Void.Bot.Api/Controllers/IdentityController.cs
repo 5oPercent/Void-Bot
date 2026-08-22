@@ -111,6 +111,28 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
 
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("oauth/register")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> OAuthRegisterAsync([FromBody] OAuthRegisterCommand command)
+    {
+        var response = await _mediator.SendAsync<OAuthRegisterCommand, OAuthRegisterResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("oauth/bind")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> OAuthBindAsync([FromBody] OAuthBindCommand command)
+    {
+        var response = await _mediator.SendAsync<OAuthBindCommand, OAuthBindResponse>(command).ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
     [HttpPost]
     [Route("oauth/{platform}/unlink")]
     [SkipPermissionCheck]

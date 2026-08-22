@@ -24,7 +24,7 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
     private static readonly Guid CurrentUserId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
     [Fact]
-    public async Task LoginWithNewDiscordIdentityCreatesAccountAndBindingAsync()
+    public async Task LoginWithNewDiscordIdentityRequiresRegistrationWithoutCreatingAccountAsync()
     {
         var identity = CreateIdentity("discord-new-user");
         var response = await CallbackAsync(CreateState(OAuthStateFlow.Login), identity);
@@ -34,24 +34,15 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
         response.Data.Platform.ShouldBe(Provider);
         response.Data.ProviderUserId.ShouldBe(identity.UserId);
         response.Data.ProviderUserName.ShouldBe(identity.DisplayName);
-        response.Data.ExchangeCode.ShouldBe("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        response.Data.Flow.ShouldBe(OAuthStateFlow.Register);
+        response.Data.RegistrationCode.ShouldBe("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
         response.Data.AccessToken.ShouldBeEmpty();
         response.Data.RefreshToken.ShouldBeEmpty();
 
-        await Run<IAccountDataProvider>(async provider =>
+        await Run<IRepository<UserAccount>, IRepository<UserThirdParty>>(async (accounts, bindings) =>
         {
-            var account = await provider.GetUserAccountByThirdPartyAsync(
-                Provider,
-                identity.UserId,
-                CancellationToken.None);
-            account.ShouldNotBeNull();
-            account.Name.ShouldBe(identity.DisplayName);
-
-            var binding = await provider.GetThirdPartyBindingAsync(
-                Provider,
-                identity.UserId,
-                CancellationToken.None);
-            AssertBinding(binding, account.Id, identity);
+            (await accounts.GetAllAsync()).ShouldBeEmpty();
+            (await bindings.GetAllAsync()).ShouldBeEmpty();
         });
     }
 
@@ -343,6 +334,7 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
             builder.RegisterInstance(stateStore).As<IOAuthStateStore>();
             builder.RegisterInstance(discordService).As<IDiscordService>();
             builder.RegisterInstance(CreateExchangeStore()).As<IOAuthExchangeStore>();
+            builder.RegisterInstance(CreateRegistrationStore()).As<IOAuthRegistrationStore>();
         };
     }
 
@@ -355,6 +347,7 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
             builder.RegisterInstance(discordService).As<IDiscordService>();
             builder.RegisterInstance(timeProvider).As<TimeProvider>();
             builder.RegisterInstance(CreateExchangeStore()).As<IOAuthExchangeStore>();
+            builder.RegisterInstance(CreateRegistrationStore()).As<IOAuthRegistrationStore>();
         };
     }
 
@@ -368,6 +361,18 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
             .Returns(new CreateOAuthExchangeResult.Created(
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
         return exchangeStore;
+    }
+
+    private static IOAuthRegistrationStore CreateRegistrationStore()
+    {
+        var registrationStore = Substitute.For<IOAuthRegistrationStore>();
+        registrationStore.CreateAsync(
+                Arg.Any<OAuthRegistrationIdentity>(),
+                Arg.Any<TimeSpan>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new CreateOAuthRegistrationResult.Created(
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+        return registrationStore;
     }
 
     private async Task AddAccountAsync(Guid id, string name)

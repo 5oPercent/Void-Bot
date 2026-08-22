@@ -9,5 +9,8 @@ public enum OAuthStateFlow
     Login,
 
     [JsonStringEnumMemberName("link")]
-    Link
+    Link,
+
+    [JsonStringEnumMemberName("register")]
+    Register
 }

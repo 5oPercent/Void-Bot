@@ -36,6 +36,18 @@ public sealed class OAuthCallbackData : ThirdPartyOAuthData
     [JsonIgnore]
     public string ExchangeCode { get; set; } = string.Empty;
 
+    [JsonIgnore]
+    public string RegistrationCode { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public DateTimeOffset? AccessTokenExpiresAt { get; init; }
+
+    [JsonIgnore]
+    public DateTimeOffset? RefreshTokenExpiresAt { get; init; }
+
+    [JsonIgnore]
+    public string ExtraData { get; init; } = string.Empty;
+
     public string ProviderUserId { get; init; } = string.Empty;
 
     public string ProviderUserName { get; init; } = string.Empty;

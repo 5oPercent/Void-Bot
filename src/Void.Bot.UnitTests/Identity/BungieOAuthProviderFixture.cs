@@ -106,6 +106,35 @@ public class BungieOAuthProviderFixture
     }
 
     [Fact]
+    public async Task CallbackUnboundIdentityRequiresRegistrationWithoutCreatingAccountAsync()
+    {
+        var stateStore = Substitute.For<IOAuthStateStore>();
+        var state = CreateState(OAuthStateFlow.Login);
+        stateStore.TakeAsync(Arg.Any<TakeOAuthStateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new TakeOAuthStateResponse.Found(state));
+        var accountService = Substitute.For<IAccountService>();
+        var accountDataProvider = Substitute.For<IAccountDataProvider>();
+        var provider = CreateProvider(
+            stateStore,
+            CreateAuthenticatedBungieService(),
+            accountService,
+            accountDataProvider);
+
+        var response = await provider.CallbackAsync(
+            new OAuthCallbackContext("oauth-code", state.State, null),
+            CancellationToken.None);
+
+        response.Data.ShouldNotBeNull();
+        response.Data.Flow.ShouldBe(OAuthStateFlow.Register);
+        response.Data.ProviderUserId.ShouldBe("123456");
+        response.Data.ProviderUserName.ShouldBe("Guardian#1234");
+        response.Data.AccessToken.ShouldBe("bungie-access-token");
+        response.Data.RefreshToken.ShouldBe("bungie-refresh-token");
+        await accountService.DidNotReceiveWithAnyArgs().RegisterUserAccountAsync(default!, default);
+        await accountDataProvider.DidNotReceiveWithAnyArgs().LinkThirdPartyAsync(default!, default);
+    }
+
+    [Fact]
     public async Task LinkCallbackDoesNotGenerateVoidTokensAsync()
     {
         var stateStore = Substitute.For<IOAuthStateStore>();
