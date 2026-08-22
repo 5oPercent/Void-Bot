@@ -179,8 +179,23 @@ public class OAuthServiceFixture
     [Fact]
     public async Task BindInvalidCredentialsDoesNotConsumeRegistrationCodeAsync()
     {
+        var accountId = Guid.NewGuid();
         _registrationStore.GetAsync(RegistrationCode, Arg.Any<CancellationToken>())
             .Returns(new GetOAuthRegistrationResult.Found(CreateRegistrationRecord()));
+        _accountService.GetUserAccountAsync(
+                Arg.Any<GetUserAccountRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new GetUserAccountResponse
+            {
+                Data = new UserAccountInfoDto
+                {
+                    Id = accountId,
+                    Name = "VoidUser",
+                    Suffix = "0001"
+                }
+            });
+        _accountService.VerifyPassword(accountId, "wrong-password", Arg.Any<CancellationToken>())
+            .Returns(false);
 
         var response = await _service.BindAsync(
             new OAuthBindCommand
