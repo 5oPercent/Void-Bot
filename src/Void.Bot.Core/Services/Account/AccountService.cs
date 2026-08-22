@@ -112,6 +112,7 @@ public class AccountService : IAccountService
     public async Task<LinkUserAccountFromThirdPartyResponse> LinkAccountFromThirdPartyAsync(
         LinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken)
     {
+        Guid? registeredAccountId = null;
         var getUserByThirdPartyResponse = await GetUserAccountByThirdPartyAsync(
             new GetUserAccountByThirdPartyRequest
             {
@@ -132,6 +133,7 @@ public class AccountService : IAccountService
                 }, cancellationToken).ConfigureAwait(false);
 
                 userInfo = registerResponse.Data ?? throw new Exception($"创建{AppPlatformEnum.Void}账号失败.");
+                registeredAccountId = userInfo.Id;
             }
             else
             {
@@ -177,7 +179,10 @@ public class AccountService : IAccountService
             }
         }
 
-        return new LinkUserAccountFromThirdPartyResponse();
+        return new LinkUserAccountFromThirdPartyResponse
+        {
+            RegisteredAccountId = registeredAccountId
+        };
     }
 
     public async Task<UnlinkUserAccountFromThirdPartyResponse> UnlinkAccountFromThirdPartyAsync(

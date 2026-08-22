@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Identity;
@@ -19,4 +20,9 @@ public sealed class OAuthRegisterCommand : ICommand
 
 public sealed class OAuthRegisterResponse : VoidBotResponse<JwtToken>
 {
+    /// <summary>
+    /// 用于 Handler 判断是否需要发布账号注册事件.
+    /// </summary>
+    [JsonIgnore]
+    public Guid? RegisteredAccountId { get; set; }
 }

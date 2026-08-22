@@ -2,6 +2,7 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Message.Commands.Account;
+using Void.Bot.Message.Events.EventAction;
 
 namespace Void.Bot.Core.Handler.CommandHandler.Account;
 
@@ -16,6 +17,15 @@ public class LinkUserAccountFromThirdPartyCommandHandler : ICommandHandler<LinkU
 
     public async Task<LinkUserAccountFromThirdPartyResponse> Handle(IReceiveContext<LinkUserAccountFromThirdPartyCommand> context, CancellationToken cancellationToken)
     {
-        return await _service.LinkAccountFromThirdPartyAsync(context.Message, cancellationToken).ConfigureAwait(false);
+        var response = await _service.LinkAccountFromThirdPartyAsync(
+            context.Message, cancellationToken).ConfigureAwait(false);
+        if (response.RegisteredAccountId.HasValue)
+        {
+            await context.PublishAsync(
+                new AccountRegisteredEvent(response.RegisteredAccountId.Value),
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return response;
     }
 }

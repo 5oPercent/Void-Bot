@@ -195,7 +195,11 @@ public sealed class OAuthService : IOAuthService
             await _accountDataProvider.LinkThirdPartyAsync(
                 CreateBinding(account.Id, record),
                 cancellationToken).ConfigureAwait(false);
-            return new OAuthRegisterResponse { Data = GenerateJwt(account.Id, account.DisplayName) };
+            return new OAuthRegisterResponse
+            {
+                Data = GenerateJwt(account.Id, account.DisplayName),
+                RegisteredAccountId = account.Id
+            };
         }
         catch
         {
