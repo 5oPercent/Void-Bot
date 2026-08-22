@@ -254,7 +254,7 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
                 Platform,
                 account.Id,
                 identity.UserId);
-            return GenerateJwt(account.Id, account.DisplayName, identity);
+            return GenerateJwt(account.Id, account.DisplayName, identity, OAuthStateFlow.Login);
         }
 
         var registration = await _accountService.RegisterUserAccountAsync(
@@ -276,7 +276,7 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
             Platform,
             createdAccount.Id,
             identity.UserId);
-        return GenerateJwt(createdAccount.Id, createdAccount.DisplayName, identity);
+        return GenerateJwt(createdAccount.Id, createdAccount.DisplayName, identity, OAuthStateFlow.Login);
     }
 
     private async Task<OAuthCallbackResponse> LinkAsync(
@@ -358,7 +358,7 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
                 identity.UserId);
         }
 
-        return GenerateJwt(account.Id, account.DisplayName, identity);
+        return GenerateJwt(account.Id, account.DisplayName, identity, OAuthStateFlow.Link);
     }
 
     private async Task<UserAccountDto> GetAccountAsync(Guid accountId, CancellationToken cancellationToken)
@@ -373,7 +373,8 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
     private OAuthCallbackResponse GenerateJwt(
         Guid accountId,
         string displayName,
-        DiscordOAuthIdentity identity)
+        DiscordOAuthIdentity identity,
+        OAuthStateFlow flow)
     {
         var claims = new List<Claim>
         {
@@ -386,10 +387,15 @@ public sealed class DiscordOAuthProvider : IOAuthProvider
             Data = new OAuthCallbackData
             {
                 Platform = DiscordProvider,
+                Flow = flow,
                 ProviderUserId = identity.UserId,
                 ProviderUserName = identity.DisplayName,
-                AccessToken = _tokenClaimService.GenerateAccessToken(claims),
-                RefreshToken = _tokenClaimService.GenerateRefreshToken(claims)
+                AccessToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateAccessToken(claims)
+                    : string.Empty,
+                RefreshToken = flow == OAuthStateFlow.Login
+                    ? _tokenClaimService.GenerateRefreshToken(claims)
+                    : string.Empty
             }
         };
     }

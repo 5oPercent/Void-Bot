@@ -3,6 +3,7 @@ using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Enum.Identity;
 
 namespace Void.Bot.Message.Commands.Identity;
 
@@ -23,9 +24,17 @@ public sealed class OAuthCallbackCommand : ICommand
 
 public sealed class OAuthCallbackData : ThirdPartyOAuthData
 {
+    [JsonIgnore]
+    public required OAuthStateFlow Flow { get; init; }
+
+    [JsonIgnore]
     public string AccessToken { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public string RefreshToken { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string ExchangeCode { get; set; } = string.Empty;
 
     public string ProviderUserId { get; init; } = string.Empty;
 

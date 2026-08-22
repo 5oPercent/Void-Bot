@@ -95,6 +95,7 @@ public class BungieOAuthProviderFixture
 
         response.Data.ShouldNotBeNull();
         response.Data.Platform.ShouldBe(nameof(AppPlatformEnum.Bungie));
+        response.Data.Flow.ShouldBe(OAuthStateFlow.Login);
         response.Data.ProviderUserId.ShouldBe("123456");
         response.Data.ProviderUserName.ShouldBe("Guardian#1234");
         response.Data.AccessToken.ShouldBe("void-access-token");
@@ -102,6 +103,41 @@ public class BungieOAuthProviderFixture
         binding.AccessToken.ShouldBe("bungie-access-token");
         binding.RefreshToken.ShouldBe("bungie-refresh-token");
         await accountDataProvider.Received(1).UpdateThirdPartyAsync(binding, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task LinkCallbackDoesNotGenerateVoidTokensAsync()
+    {
+        var stateStore = Substitute.For<IOAuthStateStore>();
+        var state = CreateState(OAuthStateFlow.Link, CurrentUserId);
+        stateStore.TakeAsync(Arg.Any<TakeOAuthStateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new TakeOAuthStateResponse.Found(state));
+        var accountDataProvider = Substitute.For<IAccountDataProvider>();
+        accountDataProvider.GetUserAccountAsync(CurrentUserId, string.Empty, Arg.Any<CancellationToken>())
+            .Returns(new UserAccountDto { Id = CurrentUserId, Name = "Void User", Suffix = "0001" });
+        var tokenClaimService = Substitute.For<ITokenClaimService>();
+        var provider = CreateProvider(
+            stateStore,
+            CreateAuthenticatedBungieService(),
+            accountDataProvider: accountDataProvider,
+            tokenClaimService: tokenClaimService);
+
+        var response = await provider.CallbackAsync(
+            new OAuthCallbackContext("oauth-code", state.State, null),
+            CancellationToken.None);
+
+        response.Data.ShouldNotBeNull();
+        response.Data.Flow.ShouldBe(OAuthStateFlow.Link);
+        response.Data.AccessToken.ShouldBeEmpty();
+        response.Data.RefreshToken.ShouldBeEmpty();
+        tokenClaimService.DidNotReceiveWithAnyArgs().GenerateAccessToken(default!);
+        tokenClaimService.DidNotReceiveWithAnyArgs().GenerateRefreshToken(default!);
+        await accountDataProvider.Received(1).LinkThirdPartyAsync(
+            Arg.Is<UserThirdPartyDto>(binding =>
+                binding.UserId == CurrentUserId &&
+                binding.Provider == nameof(AppPlatformEnum.Bungie) &&
+                binding.ThirdPartyUserId == "123456"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

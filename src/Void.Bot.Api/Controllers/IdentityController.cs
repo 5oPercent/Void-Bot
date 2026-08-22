@@ -1,7 +1,9 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
+using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Authorization;
@@ -17,10 +19,12 @@ namespace Void.Bot.Api.Controllers;
 public class IdentityController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly OAuthSetting _oauthSetting;
 
-    public IdentityController(IMediator mediator)
+    public IdentityController(IMediator mediator, OAuthSetting oauthSetting)
     {
         _mediator = mediator;
+        _oauthSetting = oauthSetting;
     }
 
     [AllowAnonymous]
@@ -75,6 +79,16 @@ public class IdentityController : ControllerBase
         command.Platform = platform;
 
         var response = await _mediator.SendAsync<OAuthCallbackCommand, OAuthCallbackResponse>(command).ConfigureAwait(false);
+
+        return Redirect(OAuthFrontendRedirectUrl.Create(_oauthSetting, platform, response));
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("oauth/exchange")]
+    public async Task<IActionResult> OAuthExchangeAsync([FromBody] OAuthExchangeCommand command)
+    {
+        var response = await _mediator.SendAsync<OAuthExchangeCommand, OAuthExchangeResponse>(command).ConfigureAwait(false);
 
         return Ok(response);
     }
