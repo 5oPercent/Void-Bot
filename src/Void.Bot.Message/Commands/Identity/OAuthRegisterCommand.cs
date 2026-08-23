@@ -11,7 +11,8 @@ public sealed class OAuthRegisterCommand : ICommand
     [Required]
     public required string Code { get; init; }
 
-    [Required]
+    [MinLength(1)]
+    [MaxLength(64)]
     public required string Name { get; init; }
 
     [Required]
