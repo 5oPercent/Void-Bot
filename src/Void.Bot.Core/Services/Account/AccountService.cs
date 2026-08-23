@@ -1,3 +1,4 @@
+using System.Net;
 using AutoMapper;
 using Void.Bot.Core.Extension;
 using Void.Bot.Message.Commands.Account;
@@ -24,6 +25,12 @@ public interface IAccountService : IScope
 
     Task<RegisterUserAccountResponse> RegisterUserAccountAsync(
         RegisterUserAccountCommand command, CancellationToken cancellationToken);
+
+    Task<CanChangeUserAccountNameResponse> CanChangeUserAccountNameAsync(
+        CanChangeUserAccountNameRequest request, CancellationToken cancellationToken);
+
+    Task<ChangeUserAccountNameResponse> ChangeUserAccountNameAsync(
+        ChangeUserAccountNameCommand command, CancellationToken cancellationToken);
 
     Task<LinkUserAccountFromThirdPartyResponse> LinkAccountFromThirdPartyAsync(
         LinkUserAccountFromThirdPartyCommand command, CancellationToken cancellationToken);
@@ -100,12 +107,78 @@ public class AccountService : IAccountService
     public async Task<RegisterUserAccountResponse> RegisterUserAccountAsync(
         RegisterUserAccountCommand command, CancellationToken cancellationToken)
     {
+        if (command.Name is null || command.Name.Length is < 1 or > 64)
+        {
+            return new RegisterUserAccountResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "Name must be between 1 and 64 characters long."
+            };
+        }
+
         var user = await _dataProvider.RegisterUserAccountAsync(
             command.Name, command.Password.SHAEncrypt(), cancellationToken).ConfigureAwait(false);
 
         return new RegisterUserAccountResponse
         {
             Data = _mapper.Map<UserAccountInfoDto>(user)
+        };
+    }
+
+    public async Task<CanChangeUserAccountNameResponse> CanChangeUserAccountNameAsync(
+        CanChangeUserAccountNameRequest request, CancellationToken cancellationToken)
+    {
+        var canChangeName = request.UserId.HasValue &&
+                            request.Name is { Length: >= 1 and <= 64 } &&
+                            request.Name.All(character => !char.IsWhiteSpace(character)) &&
+                            await _dataProvider.CanChangeUserAccountNameAsync(
+                                request.UserId.Value, request.Name, cancellationToken).ConfigureAwait(false);
+
+        return new CanChangeUserAccountNameResponse
+        {
+            Data = canChangeName
+        };
+    }
+
+    public async Task<ChangeUserAccountNameResponse> ChangeUserAccountNameAsync(
+        ChangeUserAccountNameCommand command, CancellationToken cancellationToken)
+    {
+        if (command.Name is null || command.Name.Length is < 1 or > 64 ||
+            command.Name.Any(char.IsWhiteSpace))
+        {
+            return new ChangeUserAccountNameResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "Name must be between 1 and 64 characters long and cannot contain whitespace characters."
+            };
+        }
+
+        if (!command.UserId.HasValue)
+        {
+            return new ChangeUserAccountNameResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "Account not found."
+            };
+        }
+
+        var user = await _dataProvider.ChangeUserAccountNameAsync(
+            command.UserId.Value, command.Name, cancellationToken).ConfigureAwait(false);
+        if (user == null)
+        {
+            return new ChangeUserAccountNameResponse
+            {
+                Code = HttpStatusCode.Conflict,
+                Message = "Name cannot be changed."
+            };
+        }
+
+        var account = await _dataProvider.GetUserAccountAsync(
+            command.UserId.Value, string.Empty, cancellationToken).ConfigureAwait(false);
+
+        return new ChangeUserAccountNameResponse
+        {
+            Data = _mapper.Map<UserAccountInfoDto>(account)
         };
     }
 
@@ -197,28 +270,36 @@ public class AccountService : IAccountService
     public async Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
         ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken)
     {
-        //先获取账户 需要ID
+        var response = new ChangeUserAccountPasswordResponse();
         var user = await _dataProvider.GetUserAccountAsync(
-        command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+            command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
 
-        //先判断用户是否为空
         if (user == null)
         {
-            return new ChangeUserAccountPasswordResponse();
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Account not found.";
+            return response;
         }
 
-        //然后判断输入的密码是否正确,再验证新密码与确认密码是否一致
-        if (!command.OldPassword.SHAEncrypt().Equals(user.Password) || !command.NewPassword.Equals(command.NewPasswordConfirm))
+        if (command.OldPassword.SHAEncrypt() != user.Password)
         {
-            return new ChangeUserAccountPasswordResponse();
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Old password is incorrect.";
+            return response;
         }
 
-        //最后保存数据库
+        if (command.NewPassword != command.NewPasswordConfirm)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "New password confirmation does not match.";
+            return response;
+        }
+
         user.Password = command.NewPassword.SHAEncrypt();
 
         await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
 
-        return new ChangeUserAccountPasswordResponse();
+        return response;
     }
 
     public async Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken)

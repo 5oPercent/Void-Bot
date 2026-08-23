@@ -7,7 +7,8 @@ namespace Void.Bot.Message.Commands.Account;
 
 public class RegisterUserAccountCommand : ICommand
 {
-    [Required]
+    [MinLength(1)]
+    [MaxLength(64)]
     public required string Name { get; set; }
     
     [Required]

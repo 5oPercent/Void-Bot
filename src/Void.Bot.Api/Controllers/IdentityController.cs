@@ -74,6 +74,48 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost]
+    [Route("change-password")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangeUserAccountPasswordCommand command)
+    {
+        command.UserId = _currentUser.Id;
+
+        var response = await _mediator
+            .SendAsync<ChangeUserAccountPasswordCommand, ChangeUserAccountPasswordResponse>(command)
+            .ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("change-name/availability")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> CanChangeNameAsync([FromQuery] CanChangeUserAccountNameRequest request)
+    {
+        request.UserId = _currentUser.Id;
+
+        var response = await _mediator
+            .RequestAsync<CanChangeUserAccountNameRequest, CanChangeUserAccountNameResponse>(request)
+            .ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("change-name")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> ChangeNameAsync([FromBody] ChangeUserAccountNameCommand command)
+    {
+        command.UserId = _currentUser.Id;
+
+        var response = await _mediator
+            .SendAsync<ChangeUserAccountNameCommand, ChangeUserAccountNameResponse>(command)
+            .ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
     [AllowAnonymous]
     [HttpGet]
     [Route("oauth/{platform}/authorize")]

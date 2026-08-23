@@ -32,6 +32,12 @@ public interface IAccountDataProvider : IScope
     
     Task<UserAccountDto?> RegisterUserAccountAsync(
         string name, string encryptionPassword, CancellationToken cancellationToken);
+
+    Task<bool> CanChangeUserAccountNameAsync(
+        Guid userId, string name, CancellationToken cancellationToken);
+
+    Task<UserAccountDto?> ChangeUserAccountNameAsync(
+        Guid userId, string name, CancellationToken cancellationToken);
     
     Task LinkThirdPartyAsync(UserThirdPartyDto thirdParty, CancellationToken cancellationToken);
     
@@ -68,11 +74,14 @@ public class AccountDataProvider : IAccountDataProvider
     public async Task<UserAccountDto?> GetUserAccountAsync(
         Guid? userId, string displayName, CancellationToken cancellationToken)
     {
-        var (name, suffix) = displayName.Split('#') switch
+        string? name = null;
+        string? suffix = null;
+        var separatorIndex = displayName.LastIndexOf('#');
+        if (separatorIndex > 0 && separatorIndex < displayName.Length - 1)
         {
-            [var n, var s] => (n, s),
-            _ => (null, null)
-        };
+            name = displayName[..separatorIndex];
+            suffix = displayName[(separatorIndex + 1)..];
+        }
 
         if (userId == null && string.IsNullOrEmpty(name) && string.IsNullOrEmpty(suffix))
         {
@@ -209,6 +218,55 @@ public class AccountDataProvider : IAccountDataProvider
             }, cancellationToken).ConfigureAwait(false);
         }
         
+        return _mapper.Map<UserAccountDto>(user);
+    }
+
+    public async Task<bool> CanChangeUserAccountNameAsync(
+        Guid userId, string name, CancellationToken cancellationToken)
+    {
+        if (!await _userAccountRep.AnyAsync(x => x.Id == userId, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        var accountCount = await _userAccountRep.CountAsync(
+            x => x.Id != userId && x.Name == name, cancellationToken).ConfigureAwait(false);
+
+        return accountCount < 100;
+    }
+
+    public async Task<UserAccountDto?> ChangeUserAccountNameAsync(
+        Guid userId, string name, CancellationToken cancellationToken)
+    {
+        var user = await _userAccountRep.SingleOrDefaultAsync(
+            x => x.Id == userId, cancellationToken).ConfigureAwait(false);
+        if (user == null)
+        {
+            return null;
+        }
+
+        var accountCount = await _userAccountRep.CountAsync(
+            x => x.Id != userId && x.Name == name, cancellationToken).ConfigureAwait(false);
+        if (accountCount >= 100)
+        {
+            return null;
+        }
+
+        var originalSuffix = user.Suffix;
+        var suffix = string.Empty;
+        var isExist = true;
+        while (suffix == originalSuffix || isExist)
+        {
+            suffix = "".GenerateNumberSuffix();
+            isExist = await _userAccountRep.AnyAsync(
+                x => x.Id != userId && x.Name == name && x.Suffix == suffix,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        user.Name = name;
+        user.Suffix = suffix;
+        await _userAccountRep.UpdateAsync(user, cancellationToken).ConfigureAwait(false);
+
         return _mapper.Map<UserAccountDto>(user);
     }
 
