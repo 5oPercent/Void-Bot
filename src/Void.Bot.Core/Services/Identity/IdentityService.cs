@@ -42,7 +42,8 @@ public class IdentityService : IIdentityService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.DisplayName),
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim("token_version", user.TokenVersion.ToString())
         };
         
         return claims;
@@ -119,6 +120,16 @@ public class IdentityService : IIdentityService
         {
             response.Code = HttpStatusCode.Unauthorized;
             response.Message = "用户不存在";
+            return response;
+        }
+
+        var tokenVersion = 0;
+        var tokenVersionClaim = principal.FindFirstValue("token_version");
+        if ((!string.IsNullOrEmpty(tokenVersionClaim) && !int.TryParse(tokenVersionClaim, out tokenVersion)) ||
+            tokenVersion != accountResponse.Data.TokenVersion)
+        {
+            response.Code = HttpStatusCode.Unauthorized;
+            response.Message = "刷新令牌已失效";
             return response;
         }
 

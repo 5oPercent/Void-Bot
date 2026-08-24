@@ -183,7 +183,8 @@ public sealed class OAuthService : IOAuthService
                 new RegisterUserAccountCommand
                 {
                     Name = command.Name,
-                    Password = command.Password
+                    Password = command.Password,
+                    EmailVerification = command.EmailVerification
                 },
                 cancellationToken).ConfigureAwait(false);
             if (registration.Data is not { } account)
@@ -197,7 +198,7 @@ public sealed class OAuthService : IOAuthService
                 cancellationToken).ConfigureAwait(false);
             return new OAuthRegisterResponse
             {
-                Data = GenerateJwt(account.Id, account.DisplayName),
+                Data = GenerateJwt(account.Id, account.DisplayName, account.TokenVersion),
                 RegisteredAccountId = account.Id
             };
         }
@@ -262,7 +263,10 @@ public sealed class OAuthService : IOAuthService
             await _accountDataProvider.LinkThirdPartyAsync(
                 CreateBinding(account.Id, record),
                 cancellationToken).ConfigureAwait(false);
-            return new OAuthBindResponse { Data = GenerateJwt(account.Id, account.DisplayName) };
+            return new OAuthBindResponse
+            {
+                Data = GenerateJwt(account.Id, account.DisplayName, account.TokenVersion)
+            };
         }
         catch
         {
@@ -305,12 +309,13 @@ public sealed class OAuthService : IOAuthService
         return response;
     }
 
-    private JwtToken GenerateJwt(Guid accountId, string displayName)
+    private JwtToken GenerateJwt(Guid accountId, string displayName, int tokenVersion)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.Name, displayName),
-            new(ClaimTypes.NameIdentifier, accountId.ToString())
+            new(ClaimTypes.NameIdentifier, accountId.ToString()),
+            new("token_version", tokenVersion.ToString())
         };
         return new JwtToken
         {

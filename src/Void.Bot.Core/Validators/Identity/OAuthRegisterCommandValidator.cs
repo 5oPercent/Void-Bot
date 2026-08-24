@@ -1,5 +1,6 @@
 using FluentValidation;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
+using Void.Bot.Core.Validators.Account;
 using Void.Bot.Message.Commands.Identity;
 
 namespace Void.Bot.Core.Validators.Identity;
@@ -16,5 +17,9 @@ public sealed class OAuthRegisterCommandValidator : FluentMessageValidator<OAuth
             .NotEmpty().WithMessage("Password is required")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
             .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$").WithMessage("Password must contain uppercase letters, lowercase letters, and digits");
+
+        RuleFor(x => x.EmailVerification!)
+            .SetValidator(new EmailVerificationDtoValidator())
+            .When(x => x.EmailVerification is not null);
     }
 }
