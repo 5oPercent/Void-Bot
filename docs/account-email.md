@@ -40,10 +40,20 @@ Authenticated users can call:
 GET  /api/identity/email/status
 POST /api/identity/email/send-code
 POST /api/identity/email/bind
+POST /api/identity/email/unbind
 ```
 
 The status endpoint returns only a masked address. The account identifier comes from
-the authenticated user and is never accepted from the request body.
+the authenticated user and is never accepted from the request body. Unbinding requires
+the current account password. It is idempotent and clears both the email address and its
+verification timestamp, allowing the account to bind another email through the same
+send-code and bind flow.
+
+```json
+{
+  "password": "CurrentPassword1"
+}
+```
 
 ## Reset a password
 

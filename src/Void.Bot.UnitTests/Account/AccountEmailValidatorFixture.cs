@@ -34,4 +34,16 @@ public sealed class AccountEmailValidatorFixture
 
         result.IsValid.ShouldBeFalse();
     }
+
+    [Fact]
+    public void EmailUnbindRequiresPassword()
+    {
+        var result = new UnbindUserEmailCommandValidator().Validate(
+            new UnbindUserEmailCommand
+            {
+                Password = string.Empty
+            });
+
+        result.IsValid.ShouldBeFalse();
+    }
 }

@@ -89,6 +89,18 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost]
+    [Route("email/unbind")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> UnbindEmailAsync(
+        [FromBody] UnbindUserEmailCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<UnbindUserEmailCommand, UnbindUserEmailResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [AllowAnonymous]
     [HttpPost]
     [Route("password-reset/send-code")]
