@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Void.Bot.Core.Services.Identity;
@@ -28,7 +29,8 @@ public class SecurityAuthorizationFilter : IAsyncAuthorizationFilter
     
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
-        if (context.ActionDescriptor.EndpointMetadata.OfType<SkipPermissionCheckAttribute>().Any())
+        if (context.ActionDescriptor.EndpointMetadata.OfType<IAllowAnonymous>().Any() ||
+            context.ActionDescriptor.EndpointMetadata.OfType<SkipPermissionCheckAttribute>().Any())
         {
             return;
         }
