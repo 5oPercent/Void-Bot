@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Void.Bot.Message.Dto.Account;
 
 public class UserAccountInfoDto
@@ -9,6 +11,9 @@ public class UserAccountInfoDto
     public string Suffix { get; set; } = string.Empty;
     
     public string DisplayName => $"{Name}#{Suffix}";
+
+    [JsonIgnore]
+    public int TokenVersion { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; }
 

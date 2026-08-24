@@ -27,6 +27,16 @@ public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
     [StringLength(255)]
     [Required]
     public string Password { get; set; } = string.Empty;
+
+    [Column("email")]
+    [StringLength(320)]
+    public string? Email { get; set; }
+
+    [Column("email_verified_at")]
+    public DateTimeOffset? EmailVerifiedAt { get; set; }
+
+    [Column("token_version")]
+    public int TokenVersion { get; set; }
     
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

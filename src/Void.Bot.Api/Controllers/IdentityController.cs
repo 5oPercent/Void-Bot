@@ -43,6 +43,89 @@ public class IdentityController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpPost]
+    [Route("register/email/send-code")]
+    public async Task<IActionResult> SendRegistrationEmailCodeAsync(
+        [FromBody] SendRegistrationEmailCodeCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<SendRegistrationEmailCodeCommand, SendRegistrationEmailCodeResponse>(
+                command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("email/status")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> GetEmailStatusAsync(CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetUserEmailStatusRequest, GetUserEmailStatusResponse>(
+            new GetUserEmailStatusRequest(), cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("email/send-code")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> SendEmailBindingCodeAsync(
+        [FromBody] SendEmailBindingCodeCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SendEmailBindingCodeCommand, SendEmailBindingCodeResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("email/bind")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> BindEmailAsync(
+        [FromBody] BindUserEmailCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<BindUserEmailCommand, BindUserEmailResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("email/unbind")]
+    [SkipPermissionCheck]
+    public async Task<IActionResult> UnbindEmailAsync(
+        [FromBody] UnbindUserEmailCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<UnbindUserEmailCommand, UnbindUserEmailResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("password-reset/send-code")]
+    public async Task<IActionResult> SendPasswordResetCodeAsync(
+        [FromBody] SendPasswordResetCodeCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SendPasswordResetCodeCommand, SendPasswordResetCodeResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost]
+    [Route("password-reset")]
+    public async Task<IActionResult> ResetPasswordAsync(
+        [FromBody] ResetUserAccountPasswordCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<ResetUserAccountPasswordCommand, ResetUserAccountPasswordResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
     [HttpGet]
     [Route("login")]
     public async Task<IActionResult> LoginAsync([FromQuery]AuthenticateRequest command)

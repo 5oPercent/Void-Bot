@@ -11,6 +11,12 @@ public class UserAccountDto
     public string DisplayName => $"{Name}#{Suffix}";
     
     public string Password { get; set; } = string.Empty;
+
+    public string? Email { get; set; }
+
+    public DateTimeOffset? EmailVerifiedAt { get; set; }
+
+    public int TokenVersion { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 

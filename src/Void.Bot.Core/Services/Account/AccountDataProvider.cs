@@ -20,6 +20,12 @@ public interface IAccountDataProvider : IScope
     
     Task<UserAccountDto?> GetUserAccountByThirdPartyAsync(
         string provider, string thirdPartyUserId, CancellationToken cancellationToken);
+
+    Task<UserAccountDto?> GetUserAccountByEmailAsync(
+        string email, CancellationToken cancellationToken);
+
+    Task<bool> IsEmailAvailableAsync(
+        string email, Guid? excludedUserId, CancellationToken cancellationToken);
     
     Task<UserThirdPartyDto?> GetThirdPartyByThirdPartyAsync(
         string currentProvider, string thirdPartyUserId, string targetProvider, CancellationToken cancellationToken);
@@ -31,7 +37,11 @@ public interface IAccountDataProvider : IScope
         string provider, string thirdPartyUserId, CancellationToken cancellationToken);
     
     Task<UserAccountDto?> RegisterUserAccountAsync(
-        string name, string encryptionPassword, CancellationToken cancellationToken);
+        string name,
+        string encryptionPassword,
+        string? email,
+        DateTimeOffset? emailVerifiedAt,
+        CancellationToken cancellationToken);
 
     Task<bool> CanChangeUserAccountNameAsync(
         Guid userId, string name, CancellationToken cancellationToken);
@@ -133,6 +143,25 @@ public class AccountDataProvider : IAccountDataProvider
         return user;
     }
 
+    public async Task<UserAccountDto?> GetUserAccountByEmailAsync(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var user = await _userAccountRep.QueryNoTracking(x => x.Email == email)
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        return _mapper.Map<UserAccountDto>(user);
+    }
+
+    public async Task<bool> IsEmailAvailableAsync(
+        string email,
+        Guid? excludedUserId,
+        CancellationToken cancellationToken)
+    {
+        return !await _userAccountRep.QueryNoTracking()
+            .WhereIF(excludedUserId.HasValue, x => x.Id != excludedUserId)
+            .AnyAsync(x => x.Email == email, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<UserThirdPartyDto?> GetThirdPartyByThirdPartyAsync(
         string currentProvider, string thirdPartyUserId, string targetProvider, CancellationToken cancellationToken)
     {
@@ -173,7 +202,11 @@ public class AccountDataProvider : IAccountDataProvider
     }
 
     public async Task<UserAccountDto?> RegisterUserAccountAsync(
-        string name, string encryptionPassword, CancellationToken cancellationToken)
+        string name,
+        string encryptionPassword,
+        string? email,
+        DateTimeOffset? emailVerifiedAt,
+        CancellationToken cancellationToken)
     {
         var accountCount = await _userAccountRep.QueryNoTracking(x => x.Name == name)
             .CountAsync(cancellationToken).ConfigureAwait(false);
@@ -185,7 +218,9 @@ public class AccountDataProvider : IAccountDataProvider
         var user = new UserAccount
         {
             Name = name,
-            Password = encryptionPassword
+            Password = encryptionPassword,
+            Email = email,
+            EmailVerifiedAt = emailVerifiedAt
         };
 
         var isExist = true;

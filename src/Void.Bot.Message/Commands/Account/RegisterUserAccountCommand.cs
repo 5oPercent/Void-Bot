@@ -13,6 +13,8 @@ public class RegisterUserAccountCommand : ICommand
     
     [Required]
     public required string Password { get; set; }
+
+    public EmailVerificationDto? EmailVerification { get; set; }
 }
 
 public class RegisterUserAccountResponse : VoidBotResponse<UserAccountInfoDto>
