@@ -24,6 +24,10 @@ public partial interface IAccountService
         BindUserEmailCommand command,
         CancellationToken cancellationToken);
 
+    Task<UnbindUserEmailResponse> UnbindUserEmailAsync(
+        UnbindUserEmailCommand command,
+        CancellationToken cancellationToken);
+
     Task<GetUserEmailStatusResponse> GetUserEmailStatusAsync(
         GetUserEmailStatusRequest request,
         CancellationToken cancellationToken);
@@ -239,6 +243,58 @@ public partial class AccountService
                 Message = "account_not_found"
             }
             : new GetUserEmailStatusResponse { Data = CreateEmailStatus(user) };
+    }
+
+    public async Task<UnbindUserEmailResponse> UnbindUserEmailAsync(
+        UnbindUserEmailCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (!_currentUser.Id.HasValue)
+        {
+            return new UnbindUserEmailResponse
+            {
+                Code = HttpStatusCode.Unauthorized,
+                Message = "account_not_authenticated"
+            };
+        }
+
+        var userId = _currentUser.Id.Value;
+        var user = await _dataProvider.GetUserAccountAsync(
+            userId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+        {
+            return new UnbindUserEmailResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "account_not_found"
+            };
+        }
+
+        if (command.Password.SHAEncrypt() != user.Password)
+        {
+            _logger.Warning("Email unbind password verification failed for account {UserId}", userId);
+            return new UnbindUserEmailResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "invalid_password"
+            };
+        }
+
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            _logger.Information("Email unbind skipped because account {UserId} has no bound email", userId);
+            return new UnbindUserEmailResponse { Data = CreateEmailStatus(user) };
+        }
+
+        var maskedEmail = MaskEmail(user.Email);
+        user.Email = null;
+        user.EmailVerifiedAt = null;
+        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        _logger.Information("Email {Email} unbound from account {UserId}", maskedEmail, userId);
+        return new UnbindUserEmailResponse
+        {
+            Data = CreateEmailStatus(user)
+        };
     }
 
     public async Task<SendPasswordResetCodeResponse> SendPasswordResetCodeAsync(
