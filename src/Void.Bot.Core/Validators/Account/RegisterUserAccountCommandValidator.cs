@@ -16,5 +16,9 @@ public class RegisterUserAccountCommandValidator : FluentMessageValidator<Regist
             .NotEmpty().WithMessage("Password is required")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
             .Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$").WithMessage("Password must contain uppercase letters, lowercase letters, and digits");
+
+        RuleFor(x => x.EmailVerification!)
+            .SetValidator(new EmailVerificationDtoValidator())
+            .When(x => x.EmailVerification is not null);
     }
 }

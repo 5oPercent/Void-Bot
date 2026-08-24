@@ -1,15 +1,21 @@
 using System.Net;
 using AutoMapper;
+using Serilog;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Services.Email;
+using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Settings.Account;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Enum.Account;
 using Void.Bot.Message.Request.Account;
 
 namespace Void.Bot.Core.Services.Account;
 
-public interface IAccountService : IScope
+public partial interface IAccountService : IScope
 {
     Task<GetUserAccountResponse> GetUserAccountAsync(
         GetUserAccountRequest request, CancellationToken cancellationToken);
@@ -44,15 +50,32 @@ public interface IAccountService : IScope
     Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken);
 }
 
-public class AccountService : IAccountService
+public partial class AccountService : IAccountService
 {
     private readonly IMapper _mapper;
     private readonly IAccountDataProvider _dataProvider;
+    private readonly IAccountEmailVerificationStore _emailVerificationStore;
+    private readonly IEmailService _emailService;
+    private readonly ICurrentUser _currentUser;
+    private readonly ILogger _logger;
+    private readonly AccountEmailSetting _accountEmailSetting;
 
-    public AccountService(IMapper mapper, IAccountDataProvider dataProvider)
+    public AccountService(
+        IMapper mapper,
+        IAccountDataProvider dataProvider,
+        IAccountEmailVerificationStore emailVerificationStore,
+        IEmailService emailService,
+        ICurrentUser currentUser,
+        ILogger logger,
+        AccountEmailSetting accountEmailSetting)
     {
         _mapper = mapper;
         _dataProvider = dataProvider;
+        _emailVerificationStore = emailVerificationStore;
+        _emailService = emailService;
+        _currentUser = currentUser;
+        _logger = logger;
+        _accountEmailSetting = accountEmailSetting;
     }
 
     public async Task<GetUserAccountResponse> GetUserAccountAsync(
@@ -116,8 +139,83 @@ public class AccountService : IAccountService
             };
         }
 
-        var user = await _dataProvider.RegisterUserAccountAsync(
-            command.Name, command.Password.SHAEncrypt(), cancellationToken).ConfigureAwait(false);
+        AccountEmailVerificationRecord? verifiedEmail = null;
+        if (command.EmailVerification is not null)
+        {
+            var verification = NormalizeEmailVerification(command.EmailVerification);
+            if (!await _dataProvider.IsEmailAvailableAsync(
+                    verification.Email, null, cancellationToken).ConfigureAwait(false))
+            {
+                return new RegisterUserAccountResponse
+                {
+                    Code = HttpStatusCode.Conflict,
+                    Message = "email_already_bound"
+                };
+            }
+
+            var verifyResult = await _emailVerificationStore.VerifyAndTakeAsync(
+                verification,
+                EmailVerificationPurposeEnum.Registration,
+                null,
+                cancellationToken).ConfigureAwait(false);
+            if (verifyResult is VerifyEmailVerificationResult.Unavailable)
+            {
+                return new RegisterUserAccountResponse
+                {
+                    Code = HttpStatusCode.ServiceUnavailable,
+                    Message = "email_verification_unavailable"
+                };
+            }
+
+            if (verifyResult is not VerifyEmailVerificationResult.Verified verified)
+            {
+                _logger.Warning(
+                    "Registration email verification challenge {ChallengeId} was rejected",
+                    verification.ChallengeId);
+                return new RegisterUserAccountResponse
+                {
+                    Code = HttpStatusCode.BadRequest,
+                    Message = "invalid_or_expired_email_verification"
+                };
+            }
+
+            verifiedEmail = verified.Record;
+        }
+
+        UserAccountDto? user;
+        try
+        {
+            user = await _dataProvider.RegisterUserAccountAsync(
+                command.Name,
+                command.Password.SHAEncrypt(),
+                verifiedEmail?.Email,
+                verifiedEmail is null ? null : DateTimeOffset.UtcNow,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (verifiedEmail is not null)
+            {
+                await _emailVerificationStore.RestoreAsync(
+                    verifiedEmail, CancellationToken.None).ConfigureAwait(false);
+            }
+
+            throw;
+        }
+
+        if (user is null && verifiedEmail is not null)
+        {
+            await _emailVerificationStore.RestoreAsync(
+                verifiedEmail, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        if (user is not null)
+        {
+            _logger.Information(
+                "Account {UserId} registered with email verification: {HasVerifiedEmail}",
+                user.Id,
+                verifiedEmail is not null);
+        }
 
         return new RegisterUserAccountResponse
         {
@@ -296,8 +394,13 @@ public class AccountService : IAccountService
         }
 
         user.Password = command.NewPassword.SHAEncrypt();
+        user.TokenVersion++;
 
         await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        _logger.Information(
+            "Account password changed for {UserId}; token version advanced to {TokenVersion}",
+            user.Id,
+            user.TokenVersion);
 
         return response;
     }

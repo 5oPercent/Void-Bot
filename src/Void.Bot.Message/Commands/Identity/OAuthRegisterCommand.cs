@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
+using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Dto.Identity;
 
 namespace Void.Bot.Message.Commands.Identity;
@@ -17,6 +18,8 @@ public sealed class OAuthRegisterCommand : ICommand
 
     [Required]
     public required string Password { get; init; }
+
+    public EmailVerificationDto? EmailVerification { get; init; }
 }
 
 public sealed class OAuthRegisterResponse : VoidBotResponse<JwtToken>
