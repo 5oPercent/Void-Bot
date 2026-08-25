@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
 using Void.Bot.Message.Commands.Sync;
+using Void.Bot.Message.Request.Sync;
 
 namespace Void.Bot.Api.Controllers;
 
@@ -17,6 +18,21 @@ public class SyncController : ControllerBase
     public SyncController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    /// <summary>
+    /// 获取 Destiny 2 Manifest 可同步的语言和清单标识。
+    /// </summary>
+    [HttpGet]
+    [Route("destiny2/manifest/options")]
+    public async Task<IActionResult> GetDestiny2ManifestSyncOptionsAsync()
+    {
+        var response = await _mediator
+            .RequestAsync<GetDestiny2ManifestSyncOptionsRequest, GetDestiny2ManifestSyncOptionsResponse>(
+                new GetDestiny2ManifestSyncOptionsRequest())
+            .ConfigureAwait(false);
+
+        return Ok(response);
     }
     
     /// <summary>
