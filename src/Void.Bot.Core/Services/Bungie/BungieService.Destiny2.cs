@@ -187,6 +187,11 @@ public partial class BungieService : IBungieService
         var activityModeJson = await _cacheManager.Get<string>(
             $"{Destiny2ManifestConstants.ActivityModeCacheKey}:{manifestLanguageCode}", cancellationToken)
             .ConfigureAwait(false);
+        var englishActivityModeJson = string.Equals(manifestLanguageCode, "en", StringComparison.OrdinalIgnoreCase)
+            ? activityModeJson
+            : await _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.ActivityModeCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        activityModeJson ??= englishActivityModeJson;
         var metricJson = await _cacheManager.Get<string>(
             $"{Destiny2ManifestConstants.MetricCacheKey}:en", cancellationToken).ConfigureAwait(false);
         var activityJson = await _cacheManager.Get<string>(
@@ -196,6 +201,7 @@ public partial class BungieService : IBungieService
             ? activityJson
             : await _cacheManager.Get<string>(
                 $"{Destiny2ManifestConstants.ActivityCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        activityJson ??= englishActivityJson;
         var activityModeManifest = activityModeJson?.DeserializeJson<Destiny2ManifestActivityModeDto>();
         var metricManifest = metricJson?.DeserializeJson<Destiny2ManifestMetricDto>();
         var activityManifest = activityJson?.DeserializeJson<Destiny2ManifestActivityDto>();

@@ -88,3 +88,7 @@ GET /api/Destiny2/player/raid-dungeon/stats
 难度枚举：`1` Normal、`2` Master、`3` Expert、`4` Contest、`5` Prestige、`6` Challenge。导师次数仅在 Bungie 提供对应难度的独立 Carries Metric 时归入该难度，不会在普通和大师间重复。
 
 接口结果缓存 5 分钟。前端如需展示小时数，应使用 `playtimeSeconds / 3600` 自行格式化，避免丢失原始精度。
+
+## Manifest 依赖
+
+服务端必须至少同步英文的 `Activity`、`ActivityMode` 和 `Metric` 组件；用户语言的活动清单不存在时，接口会回退到英文。首次增加这些组件时，即使 Bungie Manifest 版本未变化，也需要使用 `forceSync: true` 强制同步一次。
