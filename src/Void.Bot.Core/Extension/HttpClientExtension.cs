@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Serilog;
 using Void.Bot.Message.Dto;
 
@@ -89,7 +90,32 @@ public static class HttpClientExtension
         
         if (typeof(T) == typeof(Stream))
             return (T)(object) await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException();
+
+        if (response.StatusCode == HttpStatusCode.NoContent || response.Content.Headers.ContentLength == 0)
+            return default!;
+
+        var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        if (contentStream.CanSeek)
+        {
+            var originalPosition = contentStream.Position;
+            var buffer = new byte[1];
+            while (await contentStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false) > 0)
+            {
+                if (buffer[0] is not (0x20 or 0x09 or 0x0A or 0x0D))
+                {
+                    contentStream.Position = originalPosition;
+                    return await JsonSerializer.DeserializeAsync<T>(
+                               contentStream, JsonSerializerOptions.Web, cancellationToken).ConfigureAwait(false)
+                           ?? throw new InvalidOperationException();
+                }
+            }
+
+            contentStream.Position = originalPosition;
+            return default!;
+        }
+
+        return await JsonSerializer.DeserializeAsync<T>(
+                   contentStream, JsonSerializerOptions.Web, cancellationToken).ConfigureAwait(false)
+               ?? throw new InvalidOperationException();
     }
 }
