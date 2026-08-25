@@ -309,11 +309,6 @@ public partial class BungieService : IBungieService
                 : null;
         }
 
-        static long GetStatSeconds(Destiny2Activity activity, string statId)
-        {
-            return GetStatValue(activity.Values, statId) ?? 0;
-        }
-
         async Task<KeyValuePair<long, Destiny2PgcrStartSummaryDto?>> ReadPgcrCacheAsync(long instanceId)
         {
             var pgcrCacheKey = $"{Destiny2Constants.PostGameCarnageReportCachePrefix}:{instanceId}";
