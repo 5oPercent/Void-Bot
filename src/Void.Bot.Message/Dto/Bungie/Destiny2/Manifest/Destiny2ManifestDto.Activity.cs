@@ -65,7 +65,7 @@ public class Destiny2ManifestActivityDefinitionDto : Destiny2ManifestDefinitionD
     /// <summary>
     /// 奖励清单
     /// </summary>
-    public Destiny2ManifestActivityRewardsDto Rewards { get; set; } = new();
+    public List<Destiny2ManifestActivityRewardsDto>? Rewards { get; set; } = [];
     
     /// <summary>
     /// 修改器清单
@@ -153,6 +153,8 @@ public class Destiny2ManifestActivityDefinitionDto : Destiny2ManifestDefinitionD
 /// </summary>
 public class Destiny2ManifestActivityRewardsDto
 {
+    public string RewardText { get; set; } = string.Empty;
+
     public List<Destiny2ManifestRewardDefinitionDto> RewardItems { get; set; } = [];
 }
 

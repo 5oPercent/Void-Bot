@@ -8,6 +8,11 @@ public class Destiny2StatsResponse : BungieApiResponse
     public Destiny2HistoricalStatsAccountResultDto Response { get; set; } = new();
 }
 
+public class Destiny2HistoricalStatsResponse : BungieApiResponse
+{
+    public Dictionary<string, Destiny2HistoricalStatsByPeriodDto> Response { get; set; } = [];
+}
+
 public class Destiny2HistoricalStatsAccountResultDto
 {
     public Destiny2HistoricalStatsWithMergedDto MergedDeletedCharacters { get; set; } = new();
@@ -42,6 +47,8 @@ public class Destiny2HistoricalStatsByPeriodDto
 public class Destiny2AllTimeStatsDto
 {
     public Destiny2HistoricalStatsValueDto? SecondsPlayed { get; set; }
+
+    public Destiny2HistoricalStatsValueDto? ActivitiesEntered { get; set; }
 
     public Destiny2HistoricalStatsValueDto? ActivitiesCleared { get; set; }
 }

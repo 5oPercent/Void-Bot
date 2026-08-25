@@ -53,7 +53,7 @@ public class Destiny2ManifestDisplayPropertiesDefinitionDto
     /// <summary>
     /// 图标序列
     /// </summary>
-    public Destiny2ManifestSequenceDefinitionDto IconSequences { get; set; } = new();
+    public List<Destiny2ManifestSequenceDefinitionDto> IconSequences { get; set; } = [];
     
     /// <summary>
     /// 高清图标
