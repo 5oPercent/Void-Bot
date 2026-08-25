@@ -13,8 +13,6 @@ public class Destiny2EndgameActivityStatsDto
 
     public string Name { get; set; } = string.Empty;
 
-    public string IconUrl { get; set; } = string.Empty;
-
     public long ActivityCount { get; set; }
 
     public long CompletionCount { get; set; }
@@ -33,8 +31,6 @@ public class Destiny2EndgameActivityDetailStatsDto
     public string Name { get; set; } = string.Empty;
 
     public Destiny2EndgameActivityDifficultyEnum Difficulty { get; set; }
-
-    public string IconUrl { get; set; } = string.Empty;
 
     public string ImageUrl { get; set; } = string.Empty;
 

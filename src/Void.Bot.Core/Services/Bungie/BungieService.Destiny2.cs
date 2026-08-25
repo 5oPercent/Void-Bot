@@ -318,16 +318,10 @@ public partial class BungieService : IBungieService
 
                 if (!details.TryGetValue(detailKey, out var detail))
                 {
-                    var iconPath = string.IsNullOrEmpty(definition.OriginalDisplayProperties.Icon)
-                        ? definition.DisplayProperties.Icon
-                        : definition.OriginalDisplayProperties.Icon;
                     detail = new Destiny2EndgameActivityDetailStatsDto
                     {
                         Name = localizedName,
                         Difficulty = difficulty,
-                        IconUrl = string.IsNullOrEmpty(iconPath)
-                            ? string.Empty
-                            : $"{BungieConstants.BungieUrl}{iconPath}",
                         ImageUrl = string.IsNullOrEmpty(definition.PgcrImage)
                             ? string.Empty
                             : $"{BungieConstants.BungieUrl}{definition.PgcrImage}",
@@ -401,15 +395,11 @@ public partial class BungieService : IBungieService
                 .FirstOrDefault(x => string.Equals(x.Key, activityType.ToString(), StringComparison.OrdinalIgnoreCase))
                 .Value?.AllTime;
             var definition = activityModeManifest.Values.FirstOrDefault(x => x.ModeType == activityType);
-            var iconPath = string.IsNullOrEmpty(definition?.DisplayProperties.HighResIcon)
-                ? definition?.DisplayProperties.Icon
-                : definition.DisplayProperties.HighResIcon;
 
             return new Destiny2EndgameActivityStatsDto
             {
                 ActivityType = activityType,
                 Name = definition?.DisplayProperties.Name ?? activityType.ToString(),
-                IconUrl = string.IsNullOrEmpty(iconPath) ? string.Empty : $"{BungieConstants.BungieUrl}{iconPath}",
                 ActivityCount = Math.Max(0, (long)(allTime?.ActivitiesEntered?.Basic?.Value ?? 0)),
                 CompletionCount = Math.Max(0, (long)(allTime?.ActivitiesCleared?.Basic?.Value ?? 0)),
                 MentorCount = mentorCounts.Values.Sum(),
