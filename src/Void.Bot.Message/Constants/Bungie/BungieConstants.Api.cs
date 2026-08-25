@@ -3,6 +3,8 @@ namespace Void.Bot.Message.Constants.Bungie;
 public partial class BungieConstants
 {
     public const string BungieUrl = "https://www.bungie.net";
+
+    public const string BungieStatsUrl = "https://stats.bungie.net";
     
     public const string AuthorizeUrl = BungieUrl + "/zh-chs/OAuth/Authorize";
     

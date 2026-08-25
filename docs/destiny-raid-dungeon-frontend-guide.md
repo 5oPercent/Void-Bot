@@ -107,8 +107,8 @@ GET /api/Destiny2/player/raid-dungeon/stats
 | `mentorCount` | `number` | 该活动与难度对应的 Carries 次数 |
 | `playtimeSeconds` | `number` | 累计游玩秒数 |
 | `fullCompletionCount` | `number` | 玩家从活动开始参与至通关的次数 |
-| `fastestCompletionSeconds` | `number \| null` | PGCR 明确确认的全程通关记录中的最短完整活动时长；没有确认记录时为 `null` |
-| `averageFullCompletionSeconds` | `number \| null` | PGCR 明确确认的全程通关记录的平均完整活动时长；没有确认记录时为 `null` |
+| `fastestCompletionSeconds` | `number \| null` | 最短完整活动时长；优先使用 PGCR 确认记录，没有确认记录时回退到推断全程记录 |
+| `averageFullCompletionSeconds` | `number \| null` | 平均完整活动时长；优先使用 PGCR 确认记录，没有确认记录时回退到推断全程记录 |
 | `hasFullTrioCompletion` | `boolean` | 是否存在三人全程通关记录 |
 | `hasFullDuoCompletion` | `boolean` | 是否存在双人全程通关记录 |
 | `hasFullSoloCompletion` | `boolean` | 是否存在单人全程通关记录 |
@@ -126,7 +126,7 @@ GET /api/Destiny2/player/raid-dungeon/stats
 - `activityWasStartedFromBeginning == false` 的检查点开局不会计入全程；凌光之刻之前的旧活动使用 `startingPhaseIndex == 0` 判断从头开局。
 - 玩家条目的 `startSeconds <= 30` 视为从活动开始参与，以容纳正常加载产生的数秒偏差；超过该值视为中途加入。
 - PGCR 或玩家开始时间不可用时，回退使用活动历史的 `startSeconds`，最终再使用 `timePlayedSeconds >= activityDurationSeconds` 推算，避免历史统计因字段缺失而丢失。
-- 全程次数可以包含 PGCR 不可用时推算的记录；最短和平均全程通关时长仅采用 PGCR 明确确认从头开始的记录，避免检查点新实例因计时重置而成为错误的最快记录。
+- 全程次数可以包含 PGCR 不可用时推算的记录。最短和平均时间优先只使用 PGCR 明确确认从头开始的记录；若该活动完全没有确认记录，则回退使用推断全程记录，避免历史活动的时间字段全部为空。
 - 最短和平均全程通关时长均采用 `activityDurationSeconds`。
 
 ### PGCR 存储与缓存

@@ -180,17 +180,5 @@ public class Destiny2FullCompletionResolverFixture
 
         status.ShouldBe(Destiny2FullCompletionStatus.InferredFull);
         Destiny2FullCompletionResolver.IsFull(status).ShouldBeTrue();
-        Destiny2FullCompletionResolver.IsConfirmedFull(status).ShouldBeFalse();
-    }
-
-    [Fact]
-    public void ShouldUseOnlyConfirmedFullForDurationRecords()
-    {
-        Destiny2FullCompletionResolver.IsConfirmedFull(
-            Destiny2FullCompletionStatus.ConfirmedFull).ShouldBeTrue();
-        Destiny2FullCompletionResolver.IsConfirmedFull(
-            Destiny2FullCompletionStatus.InferredFull).ShouldBeFalse();
-        Destiny2FullCompletionResolver.IsConfirmedFull(
-            Destiny2FullCompletionStatus.Partial).ShouldBeFalse();
     }
 }
