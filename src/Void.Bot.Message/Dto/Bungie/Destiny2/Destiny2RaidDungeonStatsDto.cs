@@ -41,4 +41,10 @@ public class Destiny2EndgameActivityDetailStatsDto
     public long MentorCount { get; set; }
 
     public long PlaytimeSeconds { get; set; }
+
+    public long? FastestCompletionSeconds { get; set; }
+
+    public bool HasLowmanCompletion { get; set; }
+
+    public bool HasSoloCompletion { get; set; }
 }

@@ -337,6 +337,21 @@ public partial class BungieService : IBungieService
                     completed.Basic?.Value > 0)
                 {
                     detail.CompletionCount++;
+
+                    var playerCount = Math.Max(0, (int)(activity.Values
+                        .GetValueOrDefault("playerCount")?.Basic?.Value ?? 0));
+                    var standardPlayerCount = activityType == Destiny2ActivityModeTypeEnum.Raid ? 6 : 3;
+                    detail.HasSoloCompletion |= playerCount == 1;
+                    detail.HasLowmanCompletion |= playerCount is > 1 && playerCount < standardPlayerCount;
+
+                    var completionSeconds = Math.Max(0, (long)(activity.Values
+                        .GetValueOrDefault("activityDurationSeconds")?.Basic?.Value ?? 0));
+                    if (completionSeconds > 0 &&
+                        (detail.FastestCompletionSeconds == null ||
+                         completionSeconds < detail.FastestCompletionSeconds))
+                    {
+                        detail.FastestCompletionSeconds = completionSeconds;
+                    }
                 }
 
                 var playtime = activity.Values.GetValueOrDefault("timePlayedSeconds") ??
