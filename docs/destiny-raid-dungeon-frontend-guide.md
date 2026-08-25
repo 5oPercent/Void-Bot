@@ -38,7 +38,10 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "activityCount": 20,
             "completionCount": 10,
             "mentorCount": 2,
-            "playtimeSeconds": 72000
+            "playtimeSeconds": 72000,
+            "fastestCompletionSeconds": 2450,
+            "hasLowmanCompletion": true,
+            "hasSoloCompletion": false
           },
           {
             "activityHashes": [1661734047],
@@ -77,8 +80,11 @@ GET /api/Destiny2/player/raid-dungeon/stats
 | `mentorCount` | 游戏内 Carries 统计追踪器累计值；同一活动的不同阈值追踪器会去重 |
 | `playtimeSeconds` | 跨所有角色累计游玩秒数 |
 | `details` | 各个具体突袭或地牢的统计列表，普通、大师等难度分开展示 |
+| `fastestCompletionSeconds` | 该具体活动与难度下，已通关记录中的最短活动时长；无有效通关记录时为 `null` |
+| `hasLowmanCompletion` | 是否存在非单人的少人通关记录：突袭少于 6 人、地牢少于 3 人 |
+| `hasSoloCompletion` | 是否存在单人通关记录 |
 
-明细使用“活动原名 + 难度”作为分组条件，因此同一活动的普通和大师会返回两条相邻记录，次数、通关和时长各自累计，不会合并。`activityHashes` 只合并同一活动、同一难度下的 Bungie 版本哈希；`imageUrl` 是该活动独立的 PGCR 背景图。明细游玩时长优先采用玩家实际参与时长，汇总游玩时长保持 Bungie 历史统计接口的官方数值。
+明细使用“活动原名 + 难度”作为分组条件，因此同一活动的普通和大师会返回两条相邻记录，次数、通关和时长各自累计，不会合并。`activityHashes` 只合并同一活动、同一难度下的 Bungie 版本哈希；`imageUrl` 是该活动独立的 PGCR 背景图。明细游玩时长优先采用玩家实际参与时长，汇总游玩时长保持 Bungie 历史统计接口的官方数值。最短通关时长采用完整活动时长 `activityDurationSeconds`，不会因玩家中途加入而缩短。少人标识基于该活动与难度下的全部有效通关记录，与最快记录是否满编无关；同一明细曾分别完成单人和其他少人挑战时，两个标识可以同时为 `true`。
 
 难度枚举：`1` Normal、`2` Master、`3` Expert、`4` Contest、`5` Prestige、`6` Challenge。导师次数仅在 Bungie 提供对应难度的独立 Carries Metric 时归入该难度，不会在普通和大师间重复。
 
