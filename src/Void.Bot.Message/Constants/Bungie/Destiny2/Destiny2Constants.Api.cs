@@ -18,5 +18,6 @@ public partial class Destiny2Constants
     
     public const string CharacterActivityHistoryUrl = BaseUrl + "/{membershipType}/Account/{membershipId}/Character/{characterId}/Stats/Activities/";
 
-    public const string PostGameCarnageReportUrl = BaseUrl + "/Stats/PostGameCarnageReport/{activityId}/";
+    public const string PostGameCarnageReportUrl = BungieConstants.BungieStatsUrl +
+                                                     "/Platform/Destiny2/Stats/PostGameCarnageReport/{activityId}/";
 }

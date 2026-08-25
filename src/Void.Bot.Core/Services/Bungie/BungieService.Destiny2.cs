@@ -554,8 +554,8 @@ public partial class BungieService : IBungieService
         {
             var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
                 StringComparer.OrdinalIgnoreCase);
-            var confirmedFullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-            var confirmedFullCompletionCounts = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var fullCompletionDurations =
+                new Dictionary<string, Destiny2FullCompletionDurationAccumulator>(StringComparer.OrdinalIgnoreCase);
             var detailActivityNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var activityReleaseTimes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -636,21 +636,13 @@ public partial class BungieService : IBungieService
                     if (isFullCompletion)
                     {
                         detail.FullCompletionCount++;
-                    }
-
-                    if (Destiny2FullCompletionResolver.IsConfirmedFull(fullCompletionStatus))
-                    {
-                        confirmedFullCompletionDurationTotals[detailKey] =
-                            confirmedFullCompletionDurationTotals.GetValueOrDefault(detailKey) +
-                            activityDurationSeconds;
-                        confirmedFullCompletionCounts[detailKey] =
-                            confirmedFullCompletionCounts.GetValueOrDefault(detailKey) + 1;
-
-                        if (detail.FastestCompletionSeconds == null ||
-                            activityDurationSeconds < detail.FastestCompletionSeconds)
+                        if (!fullCompletionDurations.TryGetValue(detailKey, out var durations))
                         {
-                            detail.FastestCompletionSeconds = activityDurationSeconds;
+                            durations = new Destiny2FullCompletionDurationAccumulator();
+                            fullCompletionDurations[detailKey] = durations;
                         }
+
+                        durations.Add(fullCompletionStatus, activityDurationSeconds);
                     }
                 }
 
@@ -660,12 +652,11 @@ public partial class BungieService : IBungieService
 
             foreach (var (detailKey, detail) in details)
             {
-                if (confirmedFullCompletionCounts.TryGetValue(detailKey, out var confirmedCount) &&
-                    confirmedCount > 0)
-                {
-                    detail.AverageFullCompletionSeconds =
-                        (double)confirmedFullCompletionDurationTotals[detailKey] / confirmedCount;
-                }
+                if (!fullCompletionDurations.TryGetValue(detailKey, out var durations))
+                    continue;
+
+                detail.FastestCompletionSeconds = durations.FastestSeconds;
+                detail.AverageFullCompletionSeconds = durations.AverageSeconds;
             }
 
             return details

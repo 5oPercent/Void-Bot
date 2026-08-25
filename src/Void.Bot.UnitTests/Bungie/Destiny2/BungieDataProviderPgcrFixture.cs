@@ -6,12 +6,20 @@ using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Bungie;
+using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.UnitTest.Security;
 
 namespace Void.Bot.UnitTest.Bungie.Destiny2;
 
 public class BungieDataProviderPgcrFixture
 {
+    [Fact]
+    public void ShouldUseStatsHostForPgcrRequests()
+    {
+        Destiny2Constants.PostGameCarnageReportUrl.ShouldStartWith(
+            "https://stats.bungie.net/Platform/Destiny2/Stats/PostGameCarnageReport/");
+    }
+
     [Fact]
     public async Task ShouldInsertMissingPgcrAndPlayerSummary()
     {
