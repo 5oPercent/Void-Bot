@@ -554,7 +554,8 @@ public partial class BungieService : IBungieService
         {
             var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
                 StringComparer.OrdinalIgnoreCase);
-            var fullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var confirmedFullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var confirmedFullCompletionCounts = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
             var detailActivityNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var activityReleaseTimes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -635,8 +636,15 @@ public partial class BungieService : IBungieService
                     if (isFullCompletion)
                     {
                         detail.FullCompletionCount++;
-                        fullCompletionDurationTotals[detailKey] =
-                            fullCompletionDurationTotals.GetValueOrDefault(detailKey) + activityDurationSeconds;
+                    }
+
+                    if (Destiny2FullCompletionResolver.IsConfirmedFull(fullCompletionStatus))
+                    {
+                        confirmedFullCompletionDurationTotals[detailKey] =
+                            confirmedFullCompletionDurationTotals.GetValueOrDefault(detailKey) +
+                            activityDurationSeconds;
+                        confirmedFullCompletionCounts[detailKey] =
+                            confirmedFullCompletionCounts.GetValueOrDefault(detailKey) + 1;
 
                         if (detail.FastestCompletionSeconds == null ||
                             activityDurationSeconds < detail.FastestCompletionSeconds)
@@ -652,10 +660,11 @@ public partial class BungieService : IBungieService
 
             foreach (var (detailKey, detail) in details)
             {
-                if (detail.FullCompletionCount > 0)
+                if (confirmedFullCompletionCounts.TryGetValue(detailKey, out var confirmedCount) &&
+                    confirmedCount > 0)
                 {
                     detail.AverageFullCompletionSeconds =
-                        (double)fullCompletionDurationTotals[detailKey] / detail.FullCompletionCount;
+                        (double)confirmedFullCompletionDurationTotals[detailKey] / confirmedCount;
                 }
             }
 

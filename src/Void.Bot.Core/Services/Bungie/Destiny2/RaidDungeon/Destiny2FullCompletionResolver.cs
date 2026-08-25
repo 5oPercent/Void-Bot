@@ -57,4 +57,9 @@ internal static class Destiny2FullCompletionResolver
     {
         return status is Destiny2FullCompletionStatus.ConfirmedFull or Destiny2FullCompletionStatus.InferredFull;
     }
+
+    public static bool IsConfirmedFull(Destiny2FullCompletionStatus status)
+    {
+        return status == Destiny2FullCompletionStatus.ConfirmedFull;
+    }
 }
