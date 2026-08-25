@@ -138,10 +138,10 @@ public class Destiny2FullCompletionResolverFixture
     }
 
     [Theory]
-    [InlineData(0, Destiny2FullCompletionStatus.ConfirmedFull)]
-    [InlineData(1, Destiny2FullCompletionStatus.Partial)]
+    [InlineData(0, (int)Destiny2FullCompletionStatus.ConfirmedFull)]
+    [InlineData(1, (int)Destiny2FullCompletionStatus.Partial)]
     public void ShouldUseStartingPhaseForPreBeyondLightActivities(
-        int startingPhaseIndex, Destiny2FullCompletionStatus expected)
+        int startingPhaseIndex, int expected)
     {
         var legacyPeriod = new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
@@ -154,7 +154,7 @@ public class Destiny2FullCompletionResolverFixture
                 StartingPhaseIndex = startingPhaseIndex
             });
 
-        status.ShouldBe(expected);
+        status.ShouldBe((Destiny2FullCompletionStatus)expected);
     }
 
     [Fact]
