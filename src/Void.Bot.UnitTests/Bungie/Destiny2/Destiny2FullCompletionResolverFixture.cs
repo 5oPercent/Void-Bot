@@ -90,6 +90,26 @@ public class Destiny2FullCompletionResolverFixture
     }
 
     [Fact]
+    public void ShouldUseConfiguredPlayerStartDelayThreshold()
+    {
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1437, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            new Destiny2PgcrPlayerSummaryDto
+            {
+                Completed = true,
+                StartSeconds = 90
+            },
+            playerStartThresholdSeconds: 90);
+
+        status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
+    }
+
+    [Fact]
     public void ShouldUseActivityHistoryStartOffsetWhenPgcrPlayerIsMissing()
     {
         var status = Destiny2FullCompletionResolver.Resolve(

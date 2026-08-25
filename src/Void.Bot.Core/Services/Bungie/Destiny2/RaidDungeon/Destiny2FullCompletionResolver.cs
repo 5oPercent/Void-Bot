@@ -4,8 +4,6 @@ namespace Void.Bot.Core.Services.Bungie.Destiny2.RaidDungeon;
 
 internal static class Destiny2FullCompletionResolver
 {
-    private const long PlayerStartToleranceSeconds = 30;
-
     private static readonly DateTimeOffset BeyondLightRelease =
         new(2020, 11, 10, 0, 0, 0, TimeSpan.Zero);
 
@@ -16,7 +14,8 @@ internal static class Destiny2FullCompletionResolver
         DateTimeOffset activityPeriod,
         Destiny2PgcrStartSummaryDto? pgcr,
         Destiny2PgcrPlayerSummaryDto? pgcrPlayer = null,
-        long? playerStartSeconds = null)
+        long? playerStartSeconds = null,
+        long playerStartThresholdSeconds = 60)
     {
         if (!completed)
             return Destiny2FullCompletionStatus.NotCompleted;
@@ -31,7 +30,7 @@ internal static class Destiny2FullCompletionResolver
 
         var resolvedStartSeconds = pgcrPlayer?.StartSeconds ?? playerStartSeconds;
         var playerStartedFromBeginning = resolvedStartSeconds.HasValue
-            ? resolvedStartSeconds.Value <= PlayerStartToleranceSeconds
+            ? resolvedStartSeconds.Value <= playerStartThresholdSeconds
             : timePlayedSeconds >= activityDurationSeconds;
         if (!playerStartedFromBeginning)
             return Destiny2FullCompletionStatus.Partial;
