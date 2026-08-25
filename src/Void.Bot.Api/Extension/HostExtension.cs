@@ -137,6 +137,7 @@ public static class HostExtension
             app.MapOpenApi();
             app.MapScalarApiReference((options, context) =>
             {
+                options.WithTheme(ScalarTheme.Purple);
                 options.WithJavaScriptConfiguration("/scalar/config.js");
 
                 if (scalarSetting.ForceHttps)
