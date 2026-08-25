@@ -122,10 +122,20 @@ GET /api/Destiny2/player/raid-dungeon/stats
 - `activityHashes` 仅合并同一活动、同一难度下的 Bungie 版本哈希。
 - 明细按照活动发布时间从新到旧排列，同一活动的不同难度保持相邻；缺少发布时间的活动排在最后。
 - 明细游玩时长优先采用玩家实际参与时长；汇总游玩时长采用 Bungie 历史统计接口的官方数值。
-- 全程通关首先要求记录已通关，且 `timePlayedSeconds >= activityDurationSeconds`；中途加入的通关不会计入全程次数。
-- 对满足上述条件的记录，服务端会通过 `instanceId` 查询 PGCR。`activityWasStartedFromBeginning == false` 的检查点开局不会计入全程；凌光之刻之前的旧活动使用 `startingPhaseIndex == 0` 判断从头开局。
-- PGCR 不可用，或活动处于官方开局字段覆盖不完整的时期时，保留基于玩家参与时长的推算结果，避免历史统计因缺少 PGCR 字段而丢失。
+- 全程通关首先要求记录已通关，服务端会通过 `instanceId` 查询 PGCR，并按角色 ID 找到对应的玩家条目。
+- `activityWasStartedFromBeginning == false` 的检查点开局不会计入全程；凌光之刻之前的旧活动使用 `startingPhaseIndex == 0` 判断从头开局。
+- 玩家条目的 `startSeconds <= 30` 视为从活动开始参与，以容纳正常加载产生的数秒偏差；超过该值视为中途加入。
+- PGCR 或玩家开始时间不可用时，回退使用活动历史的 `startSeconds`，最终再使用 `timePlayedSeconds >= activityDurationSeconds` 推算，避免历史统计因字段缺失而丢失。
 - 最短和平均全程通关时长均采用 `activityDurationSeconds`，统计数据源仅包含全程通关记录。
+
+### PGCR 存储与缓存
+
+- PGCR 只保存全程判定需要的活动级和玩家级摘要，不保存完整响应、武器或击杀明细。
+- 查询顺序为临时缓存、数据库、Bungie PGCR；数据库中不存在的成功响应会写入数据库。
+- 成功摘要在临时缓存中保留 15 分钟；请求失败使用 5 分钟负缓存，避免短时间内重复请求 Bungie。
+- 活动摘要保存 `data_version`。缓存或数据库版本低于当前代码版本时不会直接使用，而是重新请求 Bungie PGCR，并通过 Upsert 更新活动和玩家摘要。
+- 新增需要历史回填的 PGCR 字段或修改解析规则时，应提升 `CurrentPgcrDataVersion`；旧记录会在再次访问时自动回填，`updated_at` 记录更新时间。
+- 数据库读取或写入失败不会中断基础统计，当前请求仍使用缓存或即时获取的摘要继续计算。
 
 ### Trio、Duo、Solo 与 Flawless
 

@@ -94,28 +94,11 @@ public static class HttpClientExtension
         if (response.StatusCode == HttpStatusCode.NoContent || response.Content.Headers.ContentLength == 0)
             return default!;
 
-        var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        if (contentStream.CanSeek)
-        {
-            var originalPosition = contentStream.Position;
-            var buffer = new byte[1];
-            while (await contentStream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false) > 0)
-            {
-                if (buffer[0] is not (0x20 or 0x09 or 0x0A or 0x0D))
-                {
-                    contentStream.Position = originalPosition;
-                    return await JsonSerializer.DeserializeAsync<T>(
-                               contentStream, JsonSerializerOptions.Web, cancellationToken).ConfigureAwait(false)
-                           ?? throw new InvalidOperationException();
-                }
-            }
-
-            contentStream.Position = originalPosition;
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        if (content.Length == 0 || content.All(x => x is 0x20 or 0x09 or 0x0A or 0x0D))
             return default!;
-        }
 
-        return await JsonSerializer.DeserializeAsync<T>(
-                   contentStream, JsonSerializerOptions.Web, cancellationToken).ConfigureAwait(false)
+        return JsonSerializer.Deserialize<T>(content, JsonSerializerOptions.Web)
                ?? throw new InvalidOperationException();
     }
 }

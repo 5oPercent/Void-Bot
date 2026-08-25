@@ -4,34 +4,43 @@ namespace Void.Bot.Core.Services.Bungie.Destiny2.RaidDungeon;
 
 internal static class Destiny2FullCompletionResolver
 {
+    private const long PlayerStartToleranceSeconds = 30;
+
     private static readonly DateTimeOffset BeyondLightRelease =
         new(2020, 11, 10, 0, 0, 0, TimeSpan.Zero);
-
-    public static bool IsCandidate(bool completed, long timePlayedSeconds, long activityDurationSeconds)
-    {
-        return completed && activityDurationSeconds > 0 && timePlayedSeconds >= activityDurationSeconds;
-    }
 
     public static Destiny2FullCompletionStatus Resolve(
         bool completed,
         long timePlayedSeconds,
         long activityDurationSeconds,
         DateTimeOffset activityPeriod,
-        Destiny2PgcrStartSummaryDto? pgcr)
+        Destiny2PgcrStartSummaryDto? pgcr,
+        Destiny2PgcrPlayerSummaryDto? pgcrPlayer = null,
+        long? playerStartSeconds = null)
     {
         if (!completed)
             return Destiny2FullCompletionStatus.NotCompleted;
-        if (!IsCandidate(completed, timePlayedSeconds, activityDurationSeconds))
+        if (activityDurationSeconds <= 0)
             return Destiny2FullCompletionStatus.Partial;
+
+        if (pgcr is { Available: true, ActivityWasStartedFromBeginning: false })
+            return Destiny2FullCompletionStatus.Partial;
+
+        if (pgcrPlayer is { Completed: false })
+            return Destiny2FullCompletionStatus.Partial;
+
+        var resolvedStartSeconds = pgcrPlayer?.StartSeconds ?? playerStartSeconds;
+        var playerStartedFromBeginning = resolvedStartSeconds.HasValue
+            ? resolvedStartSeconds.Value <= PlayerStartToleranceSeconds
+            : timePlayedSeconds >= activityDurationSeconds;
+        if (!playerStartedFromBeginning)
+            return Destiny2FullCompletionStatus.Partial;
+
         if (pgcr is not { Available: true })
             return Destiny2FullCompletionStatus.InferredFull;
 
-        if (pgcr.ActivityWasStartedFromBeginning.HasValue)
-        {
-            return pgcr.ActivityWasStartedFromBeginning.Value
-                ? Destiny2FullCompletionStatus.ConfirmedFull
-                : Destiny2FullCompletionStatus.Partial;
-        }
+        if (pgcr.ActivityWasStartedFromBeginning == true)
+            return Destiny2FullCompletionStatus.ConfirmedFull;
 
         var period = pgcr.Period == default ? activityPeriod : pgcr.Period;
         if (period < BeyondLightRelease && pgcr.StartingPhaseIndex.HasValue)
