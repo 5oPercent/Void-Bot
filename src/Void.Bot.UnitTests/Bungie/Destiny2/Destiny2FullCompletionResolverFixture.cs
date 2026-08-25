@@ -1,11 +1,19 @@
+using Microsoft.Extensions.Configuration;
 using Shouldly;
 using Void.Bot.Core.Services.Bungie.Destiny2.RaidDungeon;
+using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 
 namespace Void.Bot.UnitTest.Bungie.Destiny2;
 
 public class Destiny2FullCompletionResolverFixture
 {
+    private static readonly Destiny2Setting Setting =
+        new(new ConfigurationBuilder().Build());
+
+    private static int PlayerStartThresholdSeconds =>
+        Setting.RaidDungeonPlayerStartThresholdSeconds;
+
     private static readonly DateTimeOffset RecentActivityPeriod =
         new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
@@ -18,7 +26,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
     }
@@ -32,7 +40,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = false
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
     }
@@ -46,7 +54,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
     }
@@ -61,6 +69,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
@@ -80,18 +89,20 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
-                StartSeconds = 61
+                StartSeconds = PlayerStartThresholdSeconds + 1
             });
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
     }
 
     [Fact]
-    public void ShouldUseConfiguredPlayerStartDelayThreshold()
+    public void ShouldUseConfiguredPlayerStartThreshold()
     {
+        var configuredThreshold = PlayerStartThresholdSeconds + 30;
         var status = Destiny2FullCompletionResolver.Resolve(
             true, 1437, 1497, RecentActivityPeriod,
             new Destiny2PgcrStartSummaryDto
@@ -99,12 +110,12 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            configuredThreshold,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
-                StartSeconds = 90
-            },
-            playerStartThresholdSeconds: 90);
+                StartSeconds = configuredThreshold
+            });
 
         status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
     }
@@ -119,6 +130,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             playerStartSeconds: 2);
 
         status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
@@ -134,6 +146,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = false,
@@ -152,7 +165,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.NotCompleted);
     }
@@ -172,7 +185,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 Period = legacyPeriod,
                 StartingPhaseIndex = startingPhaseIndex
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe((Destiny2FullCompletionStatus)expected);
     }
@@ -187,7 +200,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 Period = RecentActivityPeriod,
                 StartingPhaseIndex = 1
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.InferredFull);
     }
@@ -196,7 +209,7 @@ public class Destiny2FullCompletionResolverFixture
     public void ShouldInferFullCompletionWhenPgcrIsUnavailable()
     {
         var status = Destiny2FullCompletionResolver.Resolve(
-            true, 3600, 3600, RecentActivityPeriod, null);
+            true, 3600, 3600, RecentActivityPeriod, null, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.InferredFull);
         Destiny2FullCompletionResolver.IsFull(status).ShouldBeTrue();

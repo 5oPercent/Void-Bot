@@ -13,9 +13,9 @@ internal static class Destiny2FullCompletionResolver
         long activityDurationSeconds,
         DateTimeOffset activityPeriod,
         Destiny2PgcrStartSummaryDto? pgcr,
+        long playerStartThresholdSeconds,
         Destiny2PgcrPlayerSummaryDto? pgcrPlayer = null,
-        long? playerStartSeconds = null,
-        long playerStartThresholdSeconds = 60)
+        long? playerStartSeconds = null)
     {
         if (!completed)
             return Destiny2FullCompletionStatus.NotCompleted;
