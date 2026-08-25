@@ -83,7 +83,7 @@ public class Destiny2FullCompletionResolverFixture
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
-                StartSeconds = 60
+                StartSeconds = 61
             });
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
