@@ -42,9 +42,17 @@ public class Destiny2EndgameActivityDetailStatsDto
 
     public long PlaytimeSeconds { get; set; }
 
+    public long FullCompletionCount { get; set; }
+
     public long? FastestCompletionSeconds { get; set; }
 
-    public bool HasLowmanCompletion { get; set; }
+    public double? AverageFullCompletionSeconds { get; set; }
 
-    public bool HasSoloCompletion { get; set; }
+    public bool HasFullTrioCompletion { get; set; }
+
+    public bool HasFullDuoCompletion { get; set; }
+
+    public bool HasFullSoloCompletion { get; set; }
+
+    public bool HasFlawlessCompletion { get; set; }
 }

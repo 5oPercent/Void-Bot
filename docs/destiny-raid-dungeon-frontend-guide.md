@@ -39,9 +39,13 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "completionCount": 10,
             "mentorCount": 2,
             "playtimeSeconds": 72000,
+            "fullCompletionCount": 7,
             "fastestCompletionSeconds": 2450,
-            "hasLowmanCompletion": true,
-            "hasSoloCompletion": false
+            "averageFullCompletionSeconds": 4102.57,
+            "hasFullTrioCompletion": true,
+            "hasFullDuoCompletion": false,
+            "hasFullSoloCompletion": false,
+            "hasFlawlessCompletion": true
           },
           {
             "activityHashes": [1661734047],
@@ -51,7 +55,14 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "activityCount": 5,
             "completionCount": 3,
             "mentorCount": 0,
-            "playtimeSeconds": 24000
+            "playtimeSeconds": 24000,
+            "fullCompletionCount": 0,
+            "fastestCompletionSeconds": null,
+            "averageFullCompletionSeconds": null,
+            "hasFullTrioCompletion": false,
+            "hasFullDuoCompletion": false,
+            "hasFullSoloCompletion": false,
+            "hasFlawlessCompletion": false
           }
         ]
       },
@@ -69,24 +80,77 @@ GET /api/Destiny2/player/raid-dungeon/stats
 }
 ```
 
-## 字段说明
+## 响应字段
 
-| 字段 | 说明 |
+### 活动类型汇总
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `activityType` | `number` | Bungie 活动模式：`4` 为突袭，`82` 为地牢 |
+| `name` | `string` | 根据用户语言返回的活动类型名称 |
+| `activityCount` | `number` | 跨所有角色累计进入次数 |
+| `completionCount` | `number` | 跨所有角色累计通关次数 |
+| `mentorCount` | `number` | 游戏内 Carries 统计追踪器累计值 |
+| `playtimeSeconds` | `number` | 跨所有角色累计游玩秒数 |
+| `details` | `array` | 具体突袭或地牢的统计，按活动和难度分组 |
+
+### 活动明细
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `activityHashes` | `number[]` | 同一活动、同一难度对应的 Bungie 活动哈希 |
+| `name` | `string` | 根据用户语言返回的活动名称 |
+| `difficulty` | `number` | 活动难度，取值见下方难度枚举 |
+| `imageUrl` | `string` | 该活动的 PGCR 背景图地址 |
+| `activityCount` | `number` | 累计进入次数 |
+| `completionCount` | `number` | 累计通关次数 |
+| `mentorCount` | `number` | 该活动与难度对应的 Carries 次数 |
+| `playtimeSeconds` | `number` | 累计游玩秒数 |
+| `fullCompletionCount` | `number` | 玩家从活动开始参与至通关的次数 |
+| `fastestCompletionSeconds` | `number \| null` | 全程通关记录中的最短完整活动时长；没有全程通关记录时为 `null` |
+| `averageFullCompletionSeconds` | `number \| null` | 全程通关记录的平均完整活动时长；没有全程通关记录时为 `null` |
+| `hasFullTrioCompletion` | `boolean` | 是否存在三人全程通关记录 |
+| `hasFullDuoCompletion` | `boolean` | 是否存在双人全程通关记录 |
+| `hasFullSoloCompletion` | `boolean` | 是否存在单人全程通关记录 |
+| `hasFlawlessCompletion` | `boolean` | 是否存在死亡次数为 0 的全程无暇通关记录 |
+
+## 统计规则
+
+### 分组与时长
+
+- 明细以“活动原名 + 难度”分组，同一活动的普通、大师等难度不会合并。
+- `activityHashes` 仅合并同一活动、同一难度下的 Bungie 版本哈希。
+- 明细游玩时长优先采用玩家实际参与时长；汇总游玩时长采用 Bungie 历史统计接口的官方数值。
+- 全程通关要求记录已通关，且 `timePlayedSeconds >= activityDurationSeconds`；中途加入的通关不会计入全程次数。
+- 最短和平均全程通关时长均采用 `activityDurationSeconds`，统计数据源仅包含全程通关记录。
+
+### Trio、Duo、Solo 与 Flawless
+
+标识仅根据该活动与难度下的全程通关记录计算，与最快记录无关。
+
+| 标识 | 判定条件 |
 | --- | --- |
-| `activityType` | Bungie 活动模式：`4` 为突袭，`82` 为地牢 |
-| `name` | 根据用户语言返回的活动类型名称 |
-| `activityCount` | 跨所有角色累计进入该活动类型的次数 |
-| `completionCount` | 跨所有角色累计通关次数 |
-| `mentorCount` | 游戏内 Carries 统计追踪器累计值；同一活动的不同阈值追踪器会去重 |
-| `playtimeSeconds` | 跨所有角色累计游玩秒数 |
-| `details` | 各个具体突袭或地牢的统计列表，普通、大师等难度分开展示 |
-| `fastestCompletionSeconds` | 该具体活动与难度下，已通关记录中的最短活动时长；无有效通关记录时为 `null` |
-| `hasLowmanCompletion` | 是否存在非单人的少人通关记录：突袭少于 6 人、地牢少于 3 人 |
-| `hasSoloCompletion` | 是否存在单人通关记录 |
+| Trio | `playerCount == 3` |
+| Duo | `playerCount == 2` |
+| Solo | `playerCount == 1` |
+| Flawless | `deaths == 0`，缺少死亡数据时不视为无暇 |
 
-明细使用“活动原名 + 难度”作为分组条件，因此同一活动的普通和大师会返回两条相邻记录，次数、通关和时长各自累计，不会合并。`activityHashes` 只合并同一活动、同一难度下的 Bungie 版本哈希；`imageUrl` 是该活动独立的 PGCR 背景图。明细游玩时长优先采用玩家实际参与时长，汇总游玩时长保持 Bungie 历史统计接口的官方数值。最短通关时长采用完整活动时长 `activityDurationSeconds`，不会因玩家中途加入而缩短。少人标识基于该活动与难度下的全部有效通关记录，与最快记录是否满编无关；同一明细曾分别完成单人和其他少人挑战时，两个标识可以同时为 `true`。
+Trio、Duo、Solo 仅提供全程通关标识。Flawless 本身即表示全程无暇，因此不额外提供 Full 字段。同一条记录可以同时满足人数状态和 Flawless 状态。
 
-难度枚举：`1` Normal、`2` Master、`3` Expert、`4` Contest、`5` Prestige、`6` Challenge。导师次数仅在 Bungie 提供对应难度的独立 Carries Metric 时归入该难度，不会在普通和大师间重复。
+### 难度枚举
+
+| 值 | 名称 |
+| --- | --- |
+| `1` | Normal |
+| `2` | Master |
+| `3` | Expert |
+| `4` | Contest |
+| `5` | Prestige |
+| `6` | Challenge |
+
+导师次数仅在 Bungie 提供对应难度的独立 Carries Metric 时归入该难度，不会在普通和大师之间重复。同一活动的不同阈值追踪器会去重。
+
+## 缓存与前端展示
 
 接口结果缓存 5 分钟。前端如需展示小时数，应使用 `playtimeSeconds / 3600` 自行格式化，避免丢失原始精度。
 
