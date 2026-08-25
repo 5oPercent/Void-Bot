@@ -1,18 +1,12 @@
-using Microsoft.Extensions.Configuration;
 using Shouldly;
 using Void.Bot.Core.Services.Bungie.Destiny2.RaidDungeon;
-using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
 
 namespace Void.Bot.UnitTest.Bungie.Destiny2;
 
 public class Destiny2FullCompletionResolverFixture
 {
-    private static readonly Destiny2Setting Setting =
-        new(new ConfigurationBuilder().Build());
-
-    private static int PlayerStartThresholdSeconds =>
-        Setting.RaidDungeonPlayerStartThresholdSeconds;
+    private const long PlayerStartThresholdSeconds = 60;
 
     private static readonly DateTimeOffset RecentActivityPeriod =
         new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
