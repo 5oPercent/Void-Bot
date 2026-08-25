@@ -1,5 +1,5 @@
 name: Deploy to Test
-run-name: "[TEST] Deploy ${{ github.ref_name }} · attempt ${{ github.run_attempt }}"
+run-name: "[TEST] Deploy ${{ github.event.head_commit.message }} · attempt ${{ github.run_attempt }}"
 
 on:
   push:
