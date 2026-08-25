@@ -28,6 +28,9 @@ public partial interface IBungieService : IScope
     
     public Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
+
+    public Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
+        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken);
     
     Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
         GetDestiny2SeasonCommand command, CancellationToken cancellationToken);
@@ -119,6 +122,127 @@ public partial class BungieService : IBungieService
         }
 
         response.Data = result;
+
+        return response;
+    }
+
+    public async Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
+        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken)
+    {
+        var response = new GetDestiny2RaidDungeonStatsResponse();
+
+        if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Player not bound";
+            return response;
+        }
+
+        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
+            return response;
+        }
+
+        var cacheKey = $"{Destiny2Constants.RaidDungeonStatsCachePrefix}:" +
+                       $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}:{_playerData.Language}";
+        var cached = await _cacheManager.Get<Destiny2RaidDungeonStatsDto>(cacheKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (cached != null)
+        {
+            response.Data = cached;
+            response.Code = HttpStatusCode.OK;
+            response.Message = "Cached";
+            return response;
+        }
+
+        var statsTask = _dataProvider.GetHistoricalStatsAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            [Destiny2ActivityModeTypeEnum.Raid, Destiny2ActivityModeTypeEnum.Dungeon],
+            cancellationToken);
+        var metricsTask = _dataProvider.GetDestiny2ProfileAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            [Destiny2ComponentTypeEnum.Metrics], cancellationToken);
+
+        await Task.WhenAll(statsTask, metricsTask).ConfigureAwait(false);
+        var statsResult = await statsTask.ConfigureAwait(false);
+        var metricsResult = await metricsTask.ConfigureAwait(false);
+
+        if (statsResult is not { ErrorCode: 1 } || metricsResult is not { ErrorCode: 1 })
+        {
+            var errorMessage = statsResult is not { ErrorCode: 1 }
+                ? statsResult?.Message
+                : metricsResult?.Message;
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = string.IsNullOrEmpty(errorMessage)
+                ? "Failed to fetch raid and dungeon stats from Bungie API"
+                : errorMessage;
+            return response;
+        }
+
+        var manifestLanguageCode = LanguageExtension.MapI18nCodeToEnum(_playerData.Language).ToI18nCode();
+        var activityModeJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.ActivityModeCacheKey}:{manifestLanguageCode}", cancellationToken)
+            .ConfigureAwait(false);
+        var metricJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.MetricCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        var activityModeManifest = activityModeJson?.DeserializeJson<Destiny2ManifestActivityModeDto>();
+        var metricManifest = metricJson?.DeserializeJson<Destiny2ManifestMetricDto>();
+
+        if (activityModeManifest == null || metricManifest == null)
+        {
+            response.Code = HttpStatusCode.ServiceUnavailable;
+            response.Message = "Destiny 2 activity mode or metric manifest is unavailable";
+            return response;
+        }
+
+        var metricValues = metricsResult.Response.Metrics.Data.Metrics;
+        long GetMentorCount(uint parentNodeHash)
+        {
+            return metricManifest
+                .Where(x => x.Value.ParentNodeHashes.Contains(parentNodeHash) &&
+                            x.Value.DisplayProperties.Name.EndsWith(" Carries", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(x => x.Value.DisplayProperties.Name, StringComparer.OrdinalIgnoreCase)
+                .Sum(group => (long)group.Max(x =>
+                    metricValues.GetValueOrDefault(x.Value.Hash)?.ObjectiveProgress.Progress ?? 0));
+        }
+
+        Destiny2EndgameActivityStatsDto MapStats(Destiny2ActivityModeTypeEnum activityType, uint metricParentNodeHash)
+        {
+            var allTime = statsResult.Response
+                .FirstOrDefault(x => string.Equals(x.Key, activityType.ToString(), StringComparison.OrdinalIgnoreCase))
+                .Value?.AllTime;
+            var definition = activityModeManifest.Values.FirstOrDefault(x => x.ModeType == activityType);
+            var iconPath = string.IsNullOrEmpty(definition?.DisplayProperties.HighResIcon)
+                ? definition?.DisplayProperties.Icon
+                : definition.DisplayProperties.HighResIcon;
+
+            return new Destiny2EndgameActivityStatsDto
+            {
+                ActivityType = activityType,
+                Name = definition?.DisplayProperties.Name ?? activityType.ToString(),
+                IconUrl = string.IsNullOrEmpty(iconPath) ? string.Empty : $"{BungieConstants.BungieUrl}{iconPath}",
+                ActivityCount = Math.Max(0, (long)(allTime?.ActivitiesEntered?.Basic?.Value ?? 0)),
+                CompletionCount = Math.Max(0, (long)(allTime?.ActivitiesCleared?.Basic?.Value ?? 0)),
+                MentorCount = GetMentorCount(metricParentNodeHash),
+                PlaytimeSeconds = Math.Max(0, (long)(allTime?.SecondsPlayed?.Basic?.Value ?? 0))
+            };
+        }
+
+        response.Data = new Destiny2RaidDungeonStatsDto
+        {
+            Activities =
+            [
+                MapStats(Destiny2ActivityModeTypeEnum.Raid, Destiny2Constants.RaidMetricParentNodeHash),
+                MapStats(Destiny2ActivityModeTypeEnum.Dungeon, Destiny2Constants.DungeonMetricParentNodeHash)
+            ]
+        };
+        response.Code = HttpStatusCode.OK;
+        response.Message = "Success";
+
+        await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken)
+            .ConfigureAwait(false);
 
         return response;
     }
