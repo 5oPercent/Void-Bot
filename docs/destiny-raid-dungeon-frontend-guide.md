@@ -25,7 +25,6 @@ GET /api/Destiny2/player/raid-dungeon/stats
       {
         "activityType": 4,
         "name": "突袭",
-        "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
         "activityCount": 120,
         "completionCount": 45,
         "mentorCount": 8,
@@ -35,7 +34,6 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "activityHashes": [2122313384, 1661734046],
             "name": "最后一愿",
             "difficulty": 1,
-            "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
             "imageUrl": "https://www.bungie.net/img/destiny_content/pgcr/raid_beanstalk.jpg",
             "activityCount": 20,
             "completionCount": 10,
@@ -46,7 +44,6 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "activityHashes": [1661734047],
             "name": "最后一愿",
             "difficulty": 2,
-            "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
             "imageUrl": "https://www.bungie.net/img/destiny_content/pgcr/raid_beanstalk.jpg",
             "activityCount": 5,
             "completionCount": 3,
@@ -58,7 +55,6 @@ GET /api/Destiny2/player/raid-dungeon/stats
       {
         "activityType": 82,
         "name": "地牢",
-        "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
         "activityCount": 80,
         "completionCount": 32,
         "mentorCount": 3,
@@ -76,7 +72,6 @@ GET /api/Destiny2/player/raid-dungeon/stats
 | --- | --- |
 | `activityType` | Bungie 活动模式：`4` 为突袭，`82` 为地牢 |
 | `name` | 根据用户语言返回的活动类型名称 |
-| `iconUrl` | 可直接用于前端展示的 Bungie CDN 完整地址 |
 | `activityCount` | 跨所有角色累计进入该活动类型的次数 |
 | `completionCount` | 跨所有角色累计通关次数 |
 | `mentorCount` | 游戏内 Carries 统计追踪器累计值；同一活动的不同阈值追踪器会去重 |
