@@ -52,6 +52,78 @@ public class Destiny2FullCompletionResolverFixture
     }
 
     [Fact]
+    public void ShouldAllowSmallPlayerStartOffsetForFullCompletion()
+    {
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1495, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            new Destiny2PgcrPlayerSummaryDto
+            {
+                Completed = true,
+                StartSeconds = 2
+            });
+
+        status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
+    }
+
+    [Fact]
+    public void ShouldRejectPlayerWhoStartedAfterTolerance()
+    {
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1437, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            new Destiny2PgcrPlayerSummaryDto
+            {
+                Completed = true,
+                StartSeconds = 60
+            });
+
+        status.ShouldBe(Destiny2FullCompletionStatus.Partial);
+    }
+
+    [Fact]
+    public void ShouldUseActivityHistoryStartOffsetWhenPgcrPlayerIsMissing()
+    {
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1495, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            playerStartSeconds: 2);
+
+        status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
+    }
+
+    [Fact]
+    public void ShouldRejectPlayerMarkedIncompleteByPgcr()
+    {
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1497, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            new Destiny2PgcrPlayerSummaryDto
+            {
+                Completed = false,
+                StartSeconds = 0
+            });
+
+        status.ShouldBe(Destiny2FullCompletionStatus.Partial);
+    }
+
+    [Fact]
     public void ShouldRejectActivityThatWasNotCompleted()
     {
         var status = Destiny2FullCompletionResolver.Resolve(

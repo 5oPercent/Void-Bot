@@ -14,4 +14,20 @@ public class Destiny2PostGameCarnageReportData
     public bool? ActivityWasStartedFromBeginning { get; set; }
 
     public Destiny2HistoricalStatsActivityDetailsDto ActivityDetails { get; set; } = new();
+
+    public List<Destiny2PostGameCarnageReportEntryDto> Entries { get; set; } = [];
+}
+
+public class Destiny2PostGameCarnageReportEntryDto
+{
+    public Destiny2PostGameCarnageReportPlayerDto Player { get; set; } = new();
+
+    public string CharacterId { get; set; } = string.Empty;
+
+    public Dictionary<string, Destiny2HistoricalStatsValueDto> Values { get; set; } = [];
+}
+
+public class Destiny2PostGameCarnageReportPlayerDto
+{
+    public Destiny2PlayerByBungieNameDto DestinyUserInfo { get; set; } = new();
 }

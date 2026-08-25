@@ -39,6 +39,20 @@ public class HttpClientExtensionFixture
     }
 
     [Fact]
+    public async Task EmptyJsonResponseShouldReturnDefaultForNonSeekableStream()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new NonSeekableEmptyContent()
+        };
+
+        var result = await HttpClientExtension.ReadResponseContentAsAsync<TestResponse>(
+            response, CancellationToken.None);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task WhitespaceJsonResponseShouldReturnDefault()
     {
         using var response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -72,7 +86,7 @@ public class HttpClientExtensionFixture
         public string Value { get; set; } = string.Empty;
     }
 
-    private sealed class UnknownLengthEmptyContent : HttpContent
+    private class UnknownLengthEmptyContent : HttpContent
     {
         protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
@@ -83,6 +97,25 @@ public class HttpClientExtensionFixture
         {
             length = 0;
             return false;
+        }
+    }
+
+    private sealed class NonSeekableEmptyContent : UnknownLengthEmptyContent
+    {
+        protected override Task<Stream> CreateContentReadStreamAsync()
+        {
+            return Task.FromResult<Stream>(new NonSeekableEmptyStream());
+        }
+    }
+
+    private sealed class NonSeekableEmptyStream : MemoryStream
+    {
+        public override bool CanSeek => false;
+
+        public override long Position
+        {
+            get => base.Position;
+            set => throw new NotSupportedException();
         }
     }
 }
