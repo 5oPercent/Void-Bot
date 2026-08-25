@@ -267,11 +267,6 @@ public partial class BungieDataProvider : IBungieDataProvider
             await _pgcrPlayerRepository.InsertManyAsync(newPlayers, cancellationToken).ConfigureAwait(false);
         if (updatedPlayers.Count > 0)
             await _pgcrPlayerRepository.UpdateManyAsync(updatedPlayers, cancellationToken).ConfigureAwait(false);
-        if (newPgcrs.Count > 0 || updatedPgcrs.Count > 0 ||
-            newPlayers.Count > 0 || updatedPlayers.Count > 0)
-        {
-            await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
     }
 
     public async Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(

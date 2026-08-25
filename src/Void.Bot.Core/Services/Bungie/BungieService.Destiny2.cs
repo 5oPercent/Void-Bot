@@ -31,7 +31,7 @@ public partial interface IBungieService : IScope
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
 
     public Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
-        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken);
+        GetDestiny2RaidDungeonStatsCommand command, CancellationToken cancellationToken);
     
     Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
         GetDestiny2SeasonCommand command, CancellationToken cancellationToken);
@@ -128,7 +128,7 @@ public partial class BungieService : IBungieService
     }
 
     public async Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
-        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken)
+        GetDestiny2RaidDungeonStatsCommand command, CancellationToken cancellationToken)
     {
         const int activityPageSize = 250;
         const int activityHistoryConcurrency = 3;
@@ -142,10 +142,10 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        if (command.MembershipType != _playerData.PrimaryMembershipType)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
+            response.Message = $"Not found Destiny 2 profile by {command.MembershipType} platform.";
             return response;
         }
 

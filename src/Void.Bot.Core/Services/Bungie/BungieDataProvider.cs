@@ -35,15 +35,13 @@ public partial class BungieDataProvider : IBungieDataProvider
     private readonly IRepository<Destiny2SeasonHistory> _seasonHistoryRepository;
     private readonly IRepository<Destiny2Pgcr> _pgcrRepository;
     private readonly IRepository<Destiny2PgcrPlayer> _pgcrPlayerRepository;
-    private readonly IUnitOfWork _unitOfWork;
     
     public BungieDataProvider(
         BungieSetting setting,
         IVoidBotHttpClientFactory httpClientFactory,
         IRepository<Destiny2SeasonHistory> seasonHistoryRepository,
         IRepository<Destiny2Pgcr> pgcrRepository,
-        IRepository<Destiny2PgcrPlayer> pgcrPlayerRepository,
-        IUnitOfWork unitOfWork)
+        IRepository<Destiny2PgcrPlayer> pgcrPlayerRepository)
     {
         _setting = setting;
         _httpClientFactory = httpClientFactory;
@@ -56,7 +54,6 @@ public partial class BungieDataProvider : IBungieDataProvider
         _seasonHistoryRepository = seasonHistoryRepository;
         _pgcrRepository = pgcrRepository;
         _pgcrPlayerRepository = pgcrPlayerRepository;
-        _unitOfWork = unitOfWork;
     }
 
     public HttpClient GetBungieHttpClient(string token = "", TimeSpan? timeout = null, bool beginScope = false)
