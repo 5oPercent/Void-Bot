@@ -3,16 +3,25 @@
 ## 接口
 
 ```http
-GET /api/Destiny2/player/raid-dungeon/stats
+POST /api/Destiny2/player/raid-dungeon/stats
+Content-Type: application/json
 ```
 
-查询参数：
+请求体：
 
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
 | `displayName` | `string` | Bungie 显示名称，不包含 `#` |
 | `displayNameCode` | `string` | Bungie 名称后的数字代码 |
 | `membershipType` | `number` | Bungie 平台类型 |
+
+```json
+{
+  "displayName": "Guardian",
+  "displayNameCode": "1234",
+  "membershipType": 3
+}
+```
 
 ## 响应示例
 
@@ -132,11 +141,14 @@ GET /api/Destiny2/player/raid-dungeon/stats
 ### PGCR 存储与缓存
 
 - PGCR 只保存全程判定需要的活动级和玩家级摘要，不保存完整响应、武器或击杀明细。
+- `destiny2_pgcr` 保存活动实例、开始时间、活动哈希、开始阶段、是否从头开始及数据版本；`destiny2_pgcr_player` 保存该实例中各角色的账号标识、通关状态和加入时间。
 - 查询顺序为临时缓存、数据库、Bungie PGCR；数据库中不存在的成功响应会写入数据库。
+- 该接口使用 `POST` 接收 Command。PGCR 仓储变更在 Command 执行期间登记，并由 UnitOfWork 管道在 Handler 成功结束后统一调用 `SaveChangesAsync` 和提交事务。
 - 成功摘要在临时缓存中保留 15 分钟；请求失败使用 5 分钟负缓存，避免短时间内重复请求 Bungie。
 - 活动摘要保存 `data_version`。缓存或数据库版本低于当前代码版本时不会直接使用，而是重新请求 Bungie PGCR，并通过 Upsert 更新活动和玩家摘要。
 - 新增需要历史回填的 PGCR 字段或修改解析规则时，应提升 `CurrentPgcrDataVersion`；旧记录会在再次访问时自动回填，`updated_at` 记录更新时间。
-- 数据库读取或写入失败不会中断基础统计，当前请求仍使用缓存或即时获取的摘要继续计算。
+- Redis 缓存版本与 `CurrentPgcrDataVersion` 相互独立。只有缓存数据结构、字段含义或序列化格式与旧缓存不兼容时才提升缓存版本；同一功能合并到大杂烩分支前，多轮结构调整只提升一次。
+- 数据库读取或仓储登记失败会记录日志，并允许当前请求使用即时摘要继续计算；UnitOfWork 最终保存或事务提交失败时会回滚事务并使请求失败，避免返回成功但数据未落库。
 
 ### Trio、Duo、Solo 与 Flawless
 
