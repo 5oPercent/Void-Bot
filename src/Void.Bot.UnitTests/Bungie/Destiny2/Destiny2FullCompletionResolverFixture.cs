@@ -6,6 +6,8 @@ namespace Void.Bot.UnitTest.Bungie.Destiny2;
 
 public class Destiny2FullCompletionResolverFixture
 {
+    private const long PlayerStartThresholdSeconds = 60;
+
     private static readonly DateTimeOffset RecentActivityPeriod =
         new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
@@ -18,7 +20,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
     }
@@ -32,7 +34,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = false
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
     }
@@ -46,7 +48,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
     }
@@ -61,6 +63,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
@@ -80,13 +83,35 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = true,
-                StartSeconds = 60
+                StartSeconds = PlayerStartThresholdSeconds + 1
             });
 
         status.ShouldBe(Destiny2FullCompletionStatus.Partial);
+    }
+
+    [Fact]
+    public void ShouldUseConfiguredPlayerStartThreshold()
+    {
+        var configuredThreshold = PlayerStartThresholdSeconds + 30;
+        var status = Destiny2FullCompletionResolver.Resolve(
+            true, 1437, 1497, RecentActivityPeriod,
+            new Destiny2PgcrStartSummaryDto
+            {
+                Available = true,
+                ActivityWasStartedFromBeginning = true
+            },
+            configuredThreshold,
+            new Destiny2PgcrPlayerSummaryDto
+            {
+                Completed = true,
+                StartSeconds = configuredThreshold
+            });
+
+        status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
     }
 
     [Fact]
@@ -99,6 +124,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             playerStartSeconds: 2);
 
         status.ShouldBe(Destiny2FullCompletionStatus.ConfirmedFull);
@@ -114,6 +140,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 ActivityWasStartedFromBeginning = true
             },
+            PlayerStartThresholdSeconds,
             new Destiny2PgcrPlayerSummaryDto
             {
                 Completed = false,
@@ -132,7 +159,7 @@ public class Destiny2FullCompletionResolverFixture
             {
                 Available = true,
                 ActivityWasStartedFromBeginning = true
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.NotCompleted);
     }
@@ -152,7 +179,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 Period = legacyPeriod,
                 StartingPhaseIndex = startingPhaseIndex
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe((Destiny2FullCompletionStatus)expected);
     }
@@ -167,7 +194,7 @@ public class Destiny2FullCompletionResolverFixture
                 Available = true,
                 Period = RecentActivityPeriod,
                 StartingPhaseIndex = 1
-            });
+            }, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.InferredFull);
     }
@@ -176,7 +203,7 @@ public class Destiny2FullCompletionResolverFixture
     public void ShouldInferFullCompletionWhenPgcrIsUnavailable()
     {
         var status = Destiny2FullCompletionResolver.Resolve(
-            true, 3600, 3600, RecentActivityPeriod, null);
+            true, 3600, 3600, RecentActivityPeriod, null, PlayerStartThresholdSeconds);
 
         status.ShouldBe(Destiny2FullCompletionStatus.InferredFull);
         Destiny2FullCompletionResolver.IsFull(status).ShouldBeTrue();

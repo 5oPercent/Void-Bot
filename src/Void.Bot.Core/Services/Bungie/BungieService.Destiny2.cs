@@ -309,11 +309,6 @@ public partial class BungieService : IBungieService
                 : null;
         }
 
-        static long GetStatSeconds(Destiny2Activity activity, string statId)
-        {
-            return GetStatValue(activity.Values, statId) ?? 0;
-        }
-
         async Task<KeyValuePair<long, Destiny2PgcrStartSummaryDto?>> ReadPgcrCacheAsync(long instanceId)
         {
             var pgcrCacheKey = $"{Destiny2Constants.PostGameCarnageReportCachePrefix}:{instanceId}";
@@ -626,7 +621,8 @@ public partial class BungieService : IBungieService
                         : null;
                     var fullCompletionStatus = Destiny2FullCompletionResolver.Resolve(
                         isCompleted, timePlayedSeconds, activityDurationSeconds, activity.Period,
-                        pgcrSummary, pgcrPlayer, GetStatValue(activity.Values, "startSeconds"));
+                        pgcrSummary, _destiny2Setting.RaidDungeonPlayerStartThresholdSeconds,
+                        pgcrPlayer, GetStatValue(activity.Values, "startSeconds"));
                     var isFullCompletion = Destiny2FullCompletionResolver.IsFull(fullCompletionStatus);
                     detail.HasFullTrioCompletion |= isTrioCompletion && isFullCompletion;
                     detail.HasFullDuoCompletion |= isDuoCompletion && isFullCompletion;
@@ -739,7 +735,9 @@ public partial class BungieService : IBungieService
         response.Code = HttpStatusCode.OK;
         response.Message = "Success";
 
-        await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken)
+        await _cacheManager.Set(
+                cacheKey, response.Data,
+                TimeSpan.FromMinutes(_destiny2Setting.CacheRaidDungeonStatsMinutes), cancellationToken)
             .ConfigureAwait(false);
 
         return response;

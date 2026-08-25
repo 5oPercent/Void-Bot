@@ -15,6 +15,10 @@ public class Destiny2Setting : IConfigurationSetting
 
     public int CachePlayerDataMinutes { get; }
 
+    public int CacheRaidDungeonStatsMinutes { get; }
+
+    public int RaidDungeonPlayerStartThresholdSeconds { get; }
+
     public Destiny2Setting(IConfiguration configuration)
     {
         SyncLanguages = configuration.GetSection("Destiny2:SyncLanguages").Get<List<string>>() ?? [];
@@ -28,6 +32,10 @@ public class Destiny2Setting : IConfigurationSetting
             ? "zh-chs"
             : normalizedLanguages.FirstOrDefault() ?? "zh-chs";
         SyncManifests = configuration.GetSection("Destiny2:SyncManifests").Get<List<string>>() ?? [];
-        CachePlayerDataMinutes = configuration.GetSection("Destiny2:Cache:PlayerDataMinutes").Get<int?>() ?? 3;
+        CachePlayerDataMinutes = configuration.GetSection("Destiny2:Cache:PlayerDataMinutes").Get<int?>() ?? 5;
+        CacheRaidDungeonStatsMinutes = configuration
+            .GetSection("Destiny2:Cache:RaidDungeonStatsMinutes").Get<int?>() ?? 5;
+        RaidDungeonPlayerStartThresholdSeconds = configuration
+            .GetSection("Destiny2:RaidDungeon:PlayerStartThresholdSeconds").Get<int?>() ?? 60;
     }
 }
