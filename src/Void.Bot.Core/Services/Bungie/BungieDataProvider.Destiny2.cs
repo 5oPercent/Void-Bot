@@ -27,8 +27,9 @@ public partial interface IBungieDataProvider : IScope
         BungieMembershipTypeEnum membershipType, string membershipId,
         CancellationToken cancellationToken, string accessToken = "");
 
-    Task<Destiny2StatsResponse?> GetCharacterStatsAsync(
-        BungieMembershipTypeEnum membershipType, string membershipId, string characterId,
+    Task<Destiny2HistoricalStatsResponse?> GetHistoricalStatsAsync(
+        BungieMembershipTypeEnum membershipType, string membershipId,
+        IReadOnlyCollection<Destiny2ActivityModeTypeEnum> modes,
         CancellationToken cancellationToken, string accessToken = "");
 
     Task<Destiny2ActivityHistoryResponse?> GetCharacterActivityHistoryAsync(
@@ -117,17 +118,20 @@ public partial class BungieDataProvider : IBungieDataProvider
         return result.Data;
     }
 
-    public async Task<Destiny2StatsResponse?> GetCharacterStatsAsync(
-        BungieMembershipTypeEnum membershipType, string membershipId, string characterId,
+    public async Task<Destiny2HistoricalStatsResponse?> GetHistoricalStatsAsync(
+        BungieMembershipTypeEnum membershipType, string membershipId,
+        IReadOnlyCollection<Destiny2ActivityModeTypeEnum> modes,
         CancellationToken cancellationToken, string accessToken = "")
     {
         var url = Destiny2Constants.CharacterStatsUrl
             .Replace("{membershipType}", ((int)membershipType).ToString(), StringComparison.OrdinalIgnoreCase)
             .Replace("{membershipId}", membershipId, StringComparison.OrdinalIgnoreCase)
-            .Replace("{characterId}", characterId, StringComparison.OrdinalIgnoreCase);
+            .Replace("{characterId}", "0", StringComparison.OrdinalIgnoreCase);
+
+        url += $"?modes={string.Join(",", modes.Select(x => (int)x))}";
 
         var result = await GetBungieHttpClient(accessToken)
-            .GetAsync<Destiny2StatsResponse>(url, cancellationToken).ConfigureAwait(false);
+            .GetAsync<Destiny2HistoricalStatsResponse>(url, cancellationToken).ConfigureAwait(false);
 
         return result.Data;
     }

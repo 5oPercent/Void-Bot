@@ -47,6 +47,17 @@ public class Destiny2Controller : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet]
+    [Route("player/raid-dungeon/stats")]
+    public async Task<IActionResult> GetPlayerRaidDungeonStats([FromQuery] GetDestiny2RaidDungeonStatsRequest request)
+    {
+        var response = await _mediator
+            .RequestAsync<GetDestiny2RaidDungeonStatsRequest, GetDestiny2RaidDungeonStatsResponse>(request)
+            .ConfigureAwait(false);
+
+        return Ok(response);
+    }
+
     [HttpPost]
     [Route("player/season")]
     public async Task<IActionResult> GetPlayerSeason([FromBody] GetDestiny2SeasonCommand command)
