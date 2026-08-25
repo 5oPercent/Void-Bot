@@ -6,17 +6,36 @@ using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2;
+using Void.Bot.Message.Request.Sync;
 
 namespace Void.Bot.Core.Services.Sync;
 
 public partial interface ISyncService : IScope
 {
+    public Task<GetDestiny2ManifestSyncOptionsResponse> GetDestiny2ManifestSyncOptionsAsync(
+        CancellationToken cancellationToken);
+
     public Task<SynchronizeDestiny2ManifestResponse> SynchronizeDestiny2ManifestAsync(
         SynchronizeDestiny2ManifestCommand command, CancellationToken cancellationToken);
 }
 
 public partial class SyncService : ISyncService
 {
+    public Task<GetDestiny2ManifestSyncOptionsResponse> GetDestiny2ManifestSyncOptionsAsync(
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.FromResult(new GetDestiny2ManifestSyncOptionsResponse
+        {
+            Data = new Destiny2ManifestSyncOptionsDto
+            {
+                Languages = _destiny2Setting.SyncLanguages.ToList(),
+                Components = _destiny2Setting.SyncManifests.ToList()
+            }
+        });
+    }
+
     public async Task<SynchronizeDestiny2ManifestResponse> SynchronizeDestiny2ManifestAsync(
         SynchronizeDestiny2ManifestCommand command, CancellationToken cancellationToken)
     {

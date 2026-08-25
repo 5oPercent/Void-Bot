@@ -16,13 +16,13 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 故事
     /// </summary>
-    [Description("故事")]
+    [Description("剧情")]
     Story = 2,
 
     /// <summary>
     /// 打击
     /// </summary>
-    [Description("打击")]
+    [Description("突击")]
     Strike = 3,
 
     /// <summary>
@@ -82,25 +82,25 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 深红双打
     /// </summary>
-    [Description("深红双打")]
+    [Description("绯红双打")]
     CrimsonDoubles = 15,
 
     /// <summary>
     /// 夜幕
     /// </summary>
-    [Description("夜幕")]
+    [Description("日落")]
     Nightfall = 16,
 
     /// <summary>
     /// 英雄夜幕
     /// </summary>
-    [Description("英雄夜幕")]
+    [Description("英雄日落")]
     HeroicNightfall = 17,
 
     /// <summary>
     /// 所有打击
     /// </summary>
-    [Description("所有打击")]
+    [Description("所有突击")]
     AllStrikes = 18,
 
     /// <summary>
@@ -136,7 +136,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 所有混战
     /// </summary>
-    [Description("所有混战")]
+    [Description("所有狂欢")]
     AllMayhem = 25,
 
     /// <summary>
@@ -172,7 +172,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 至高无上
     /// </summary>
-    [Description("至高无上")]
+    [Description("霸权")]
     Supremacy = 31,
 
     /// <summary>
@@ -196,7 +196,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 玖的试炼
     /// </summary>
-    [Description("玖的试炼")]
+    [Description("九巨头试炼")]
     TrialsOfTheNine = 39,
 
     /// <summary>
@@ -208,43 +208,43 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 试炼倒计时
     /// </summary>
-    [Description("试炼倒计时")]
+    [Description("九巨头试炼：倒计时")]
     TrialsCountdown = 41,
 
     /// <summary>
     /// 试炼生存
     /// </summary>
-    [Description("试炼生存")]
+    [Description("九巨头试炼：生存")]
     TrialsSurvival = 42,
 
     /// <summary>
     /// 铁旗控制
     /// </summary>
-    [Description("铁旗控制")]
+    [Description("铁旗：控制")]
     IronBannerControl = 43,
 
     /// <summary>
     /// 铁旗冲突
     /// </summary>
-    [Description("铁旗冲突")]
+    [Description("铁旗：冲突")]
     IronBannerClash = 44,
 
     /// <summary>
     /// 铁旗至高无上
     /// </summary>
-    [Description("铁旗至高无上")]
+    [Description("铁旗：霸权")]
     IronBannerSupremacy = 45,
 
     /// <summary>
     /// 计分夜幕
     /// </summary>
-    [Description("计分夜幕")]
+    [Description("计分日落")]
     ScoredNightfall = 46,
 
     /// <summary>
     /// 计分英雄夜幕
     /// </summary>
-    [Description("计分英雄夜幕")]
+    [Description("计分英雄日落")]
     ScoredHeroicNightfall = 47,
 
     /// <summary>
@@ -268,43 +268,43 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 私人比赛冲突
     /// </summary>
-    [Description("私人比赛冲突")]
+    [Description("私人比赛：冲突")]
     PrivateMatchesClash = 51,
 
     /// <summary>
     /// 私人比赛控制
     /// </summary>
-    [Description("私人比赛控制")]
+    [Description("私人比赛：控制")]
     PrivateMatchesControl = 52,
 
     /// <summary>
     /// 私人比赛至高无上
     /// </summary>
-    [Description("私人比赛至高无上")]
+    [Description("私人比赛：霸权")]
     PrivateMatchesSupremacy = 53,
 
     /// <summary>
     /// 私人比赛倒计时
     /// </summary>
-    [Description("私人比赛倒计时")]
+    [Description("私人比赛：倒计时")]
     PrivateMatchesCountdown = 54,
 
     /// <summary>
     /// 私人比赛生存
     /// </summary>
-    [Description("私人比赛生存")]
+    [Description("私人比赛：生存")]
     PrivateMatchesSurvival = 55,
 
     /// <summary>
     /// 私人比赛混战
     /// </summary>
-    [Description("私人比赛混战")]
+    [Description("私人比赛：狂欢")]
     PrivateMatchesMayhem = 56,
 
     /// <summary>
     /// 私人比赛混战
     /// </summary>
-    [Description("私人比赛混战")]
+    [Description("私人比赛：混战")]
     PrivateMatchesRumble = 57,
 
     /// <summary>
@@ -346,7 +346,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 所有 PvE 竞争
     /// </summary>
-    [Description("所有 PvE 竞争")]
+    [Description("所有 PvE 竞技")]
     AllPvECompetitive = 64,
 
     /// <summary>
@@ -358,7 +358,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 黑色军械库运行
     /// </summary>
-    [Description("黑色军械库运行")]
+    [Description("黑色军械库熔炉")]
     BlackArmoryRun = 66,
 
     /// <summary>
@@ -370,49 +370,49 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 铁旗打捞
     /// </summary>
-    [Description("铁旗打捞")]
+    [Description("铁旗：打捞")]
     IronBannerSalvage = 68,
 
     /// <summary>
     /// PvP 竞争
     /// </summary>
-    [Description("PvP 竞争")]
+    [Description("PvP 竞技")]
     PvPCompetitive = 69,
 
     /// <summary>
     /// PvP 快速游戏
     /// </summary>
-    [Description("PvP 快速游戏")]
+    [Description("PvP 快速比赛")]
     PvPQuickplay = 70,
 
     /// <summary>
     /// 冲突快速游戏
     /// </summary>
-    [Description("冲突快速游戏")]
+    [Description("快速比赛：冲突")]
     ClashQuickplay = 71,
 
     /// <summary>
     /// 冲突竞争
     /// </summary>
-    [Description("冲突竞争")]
+    [Description("竞技比赛：冲突")]
     ClashCompetitive = 72,
 
     /// <summary>
     /// 控制快速游戏
     /// </summary>
-    [Description("控制快速游戏")]
+    [Description("快速比赛：控制")]
     ControlQuickplay = 73,
 
     /// <summary>
     /// 控制竞争
     /// </summary>
-    [Description("控制竞争")]
+    [Description("竞技比赛：控制")]
     ControlCompetitive = 74,
 
     /// <summary>
     /// 智谋Prime
     /// </summary>
-    [Description("智谋Prime")]
+    [Description("巅峰智谋")]
     GambitPrime = 75,
 
     /// <summary>
@@ -424,13 +424,13 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 大熔炉
     /// </summary>
-    [Description("大熔炉")]
+    [Description("万兽园")]
     Menagerie = 77,
 
     /// <summary>
     /// Vex入侵
     /// </summary>
-    [Description("Vex入侵")]
+    [Description("Vex 攻势")]
     VexOffensive = 78,
 
     /// <summary>
@@ -472,13 +472,13 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 挑战
     /// </summary>
-    [Description("挑战")]
+    [Description("永恒挑战")]
     Dares = 85,
 
     /// <summary>
     /// 猛攻
     /// </summary>
-    [Description("猛攻")]
+    [Description("攻势")]
     Offensive = 86,
 
     /// <summary>
@@ -490,7 +490,7 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 裂隙
     /// </summary>
-    [Description("裂隙")]
+    [Description("裂痕")]
     Rift = 88,
 
     /// <summary>
@@ -502,18 +502,18 @@ public enum Destiny2ActivityModeTypeEnum
     /// <summary>
     /// 铁旗裂隙
     /// </summary>
-    [Description("铁旗裂隙")]
+    [Description("铁旗：裂痕")]
     IronBannerRift = 90,
 
     /// <summary>
     /// 铁旗区域控制
     /// </summary>
-    [Description("铁旗区域控制")]
+    [Description("铁旗：区域控制")]
     IronBannerZoneControl = 91,
 
     /// <summary>
     /// 圣遗物
     /// </summary>
-    [Description("圣遗物")]
+    [Description("遗迹")]
     Relic = 92,
 }

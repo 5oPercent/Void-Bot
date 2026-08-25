@@ -26,4 +26,9 @@ public class Destiny2ProfileDataDto
     /// 角色
     /// </summary>
     public Destiny2ComponentCharactersDto Characters { get; set; } = new();
+
+    /// <summary>
+    /// 统计追踪器
+    /// </summary>
+    public Destiny2ComponentMetricsDto Metrics { get; set; } = new();
 }

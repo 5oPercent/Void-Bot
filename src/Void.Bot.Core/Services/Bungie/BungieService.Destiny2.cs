@@ -28,6 +28,9 @@ public partial interface IBungieService : IScope
     
     public Task<GetDestiny2CareerResponse> GetDestiny2CareerAsync(
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
+
+    public Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
+        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken);
     
     Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
         GetDestiny2SeasonCommand command, CancellationToken cancellationToken);
@@ -119,6 +122,308 @@ public partial class BungieService : IBungieService
         }
 
         response.Data = result;
+
+        return response;
+    }
+
+    public async Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
+        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken)
+    {
+        const int activityPageSize = 250;
+        const int activityHistoryConcurrency = 3;
+        var response = new GetDestiny2RaidDungeonStatsResponse();
+
+        if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "Player not bound";
+            return response;
+        }
+
+        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
+            return response;
+        }
+
+        var cacheKey = $"{Destiny2Constants.RaidDungeonStatsCachePrefix}:" +
+                       $"{_playerData.PrimaryMembershipType}:{_playerData.PrimaryMembershipId}:{_playerData.Language}";
+        var cached = await _cacheManager.Get<Destiny2RaidDungeonStatsDto>(cacheKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (cached != null)
+        {
+            response.Data = cached;
+            response.Code = HttpStatusCode.OK;
+            response.Message = "Cached";
+            return response;
+        }
+
+        var statsTask = _dataProvider.GetHistoricalStatsAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            [Destiny2ActivityModeTypeEnum.Raid, Destiny2ActivityModeTypeEnum.Dungeon],
+            cancellationToken);
+        var metricsTask = _dataProvider.GetDestiny2ProfileAsync(
+            _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+            [Destiny2ComponentTypeEnum.Characters, Destiny2ComponentTypeEnum.Metrics], cancellationToken);
+
+        await Task.WhenAll(statsTask, metricsTask).ConfigureAwait(false);
+        var statsResult = await statsTask.ConfigureAwait(false);
+        var metricsResult = await metricsTask.ConfigureAwait(false);
+
+        if (statsResult is not { ErrorCode: 1 } || metricsResult is not { ErrorCode: 1 })
+        {
+            var errorMessage = statsResult is not { ErrorCode: 1 }
+                ? statsResult?.Message
+                : metricsResult?.Message;
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = string.IsNullOrEmpty(errorMessage)
+                ? "Failed to fetch raid and dungeon stats from Bungie API"
+                : errorMessage;
+            return response;
+        }
+
+        var manifestLanguageCode = LanguageExtension.MapI18nCodeToEnum(_playerData.Language).ToI18nCode();
+        var activityModeJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.ActivityModeCacheKey}:{manifestLanguageCode}", cancellationToken)
+            .ConfigureAwait(false);
+        var englishActivityModeJson = string.Equals(manifestLanguageCode, "en", StringComparison.OrdinalIgnoreCase)
+            ? activityModeJson
+            : await _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.ActivityModeCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        activityModeJson ??= englishActivityModeJson;
+        var metricJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.MetricCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        var activityJson = await _cacheManager.Get<string>(
+            $"{Destiny2ManifestConstants.ActivityCacheKey}:{manifestLanguageCode}", cancellationToken)
+            .ConfigureAwait(false);
+        var englishActivityJson = string.Equals(manifestLanguageCode, "en", StringComparison.OrdinalIgnoreCase)
+            ? activityJson
+            : await _cacheManager.Get<string>(
+                $"{Destiny2ManifestConstants.ActivityCacheKey}:en", cancellationToken).ConfigureAwait(false);
+        activityJson ??= englishActivityJson;
+        var activityModeManifest = activityModeJson?.DeserializeJson<Destiny2ManifestActivityModeDto>();
+        var metricManifest = metricJson?.DeserializeJson<Destiny2ManifestMetricDto>();
+        var activityManifest = activityJson?.DeserializeJson<Destiny2ManifestActivityDto>();
+        var englishActivityManifest = englishActivityJson?.DeserializeJson<Destiny2ManifestActivityDto>();
+
+        if (activityModeManifest == null || metricManifest == null ||
+            activityManifest == null || englishActivityManifest == null)
+        {
+            response.Code = HttpStatusCode.ServiceUnavailable;
+            response.Message = "Destiny 2 activity, activity mode, or metric manifest is unavailable";
+            return response;
+        }
+
+        var metricValues = metricsResult.Response.Metrics.Data.Metrics;
+        Dictionary<string, long> GetMentorCounts(uint parentNodeHash)
+        {
+            const string carriesSuffix = " Carries";
+
+            return metricManifest
+                .Where(x => x.Value.ParentNodeHashes.Contains(parentNodeHash) &&
+                            x.Value.DisplayProperties.Name.EndsWith(carriesSuffix, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(x =>
+                {
+                    var activityName = x.Value.DisplayProperties.Name[..^carriesSuffix.Length];
+                    const string dungeonPrefix = "Dungeon \"";
+                    if (activityName.StartsWith(dungeonPrefix, StringComparison.OrdinalIgnoreCase) &&
+                        activityName.EndsWith('"'))
+                    {
+                        activityName = activityName[dungeonPrefix.Length..^1];
+                    }
+
+                    return activityName;
+                }, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (long)group.Max(x =>
+                        metricValues.GetValueOrDefault(x.Value.Hash)?.ObjectiveProgress.Progress ?? 0),
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        async Task<(Destiny2ActivityModeTypeEnum ActivityType, List<Destiny2Activity> Activities, string? ErrorMessage)>
+            LoadActivityHistoryAsync(string characterId, Destiny2ActivityModeTypeEnum activityType)
+        {
+            var result = new List<Destiny2Activity>();
+            for (var page = 0; ; page++)
+            {
+                var history = await _dataProvider.GetCharacterActivityHistoryAsync(
+                    _playerData.PrimaryMembershipType, _playerData.PrimaryMembershipId,
+                    characterId, (int)activityType, activityPageSize, page,
+                    cancellationToken).ConfigureAwait(false);
+                if (history is not { ErrorCode: 1 })
+                    return (activityType, result, history?.Message ?? "Failed to fetch activity history from Bungie API");
+
+                var activities = history.Response?.Activities ?? [];
+                result.AddRange(activities);
+                if (activities.Count < activityPageSize)
+                    break;
+            }
+
+            return (activityType, result, null);
+        }
+
+        var historyRequests = metricsResult.Response.Characters.Data.Keys
+            .SelectMany(characterId => new[]
+            {
+                (CharacterId: characterId, ActivityType: Destiny2ActivityModeTypeEnum.Raid),
+                (CharacterId: characterId, ActivityType: Destiny2ActivityModeTypeEnum.Dungeon)
+            })
+            .ToList();
+        var activityHistories = new Dictionary<Destiny2ActivityModeTypeEnum, List<Destiny2Activity>>
+        {
+            [Destiny2ActivityModeTypeEnum.Raid] = [],
+            [Destiny2ActivityModeTypeEnum.Dungeon] = []
+        };
+
+        foreach (var requestBatch in historyRequests.Chunk(activityHistoryConcurrency))
+        {
+            var historyResults = await Task.WhenAll(requestBatch.Select(x =>
+                LoadActivityHistoryAsync(x.CharacterId, x.ActivityType))).ConfigureAwait(false);
+            var failedHistory = historyResults.FirstOrDefault(x => x.ErrorMessage != null);
+            if (failedHistory.ErrorMessage != null)
+            {
+                response.Code = HttpStatusCode.BadRequest;
+                response.Message = failedHistory.ErrorMessage;
+                return response;
+            }
+
+            foreach (var historyResult in historyResults)
+                activityHistories[historyResult.ActivityType].AddRange(historyResult.Activities);
+        }
+
+        List<Destiny2EndgameActivityDetailStatsDto> MapDetailStats(
+            Destiny2ActivityModeTypeEnum activityType, IReadOnlyDictionary<string, long> mentorCounts)
+        {
+            var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var activity in activityHistories[activityType])
+            {
+                if (!englishActivityManifest.TryGetValue(activity.ActivityDetails.ReferenceId.ToString(),
+                        out var englishDefinition))
+                    continue;
+
+                activityManifest.TryGetValue(activity.ActivityDetails.ReferenceId.ToString(), out var definition);
+                definition ??= englishDefinition;
+                var englishName = string.IsNullOrWhiteSpace(englishDefinition.OriginalDisplayProperties.Name)
+                    ? englishDefinition.DisplayProperties.Name
+                    : englishDefinition.OriginalDisplayProperties.Name;
+                var localizedName = string.IsNullOrWhiteSpace(definition.OriginalDisplayProperties.Name)
+                    ? definition.DisplayProperties.Name
+                    : definition.OriginalDisplayProperties.Name;
+                var difficulty = ResolveDifficulty(englishDefinition);
+                var detailKey = $"{englishName}:{(int)difficulty}";
+
+                if (!details.TryGetValue(detailKey, out var detail))
+                {
+                    detail = new Destiny2EndgameActivityDetailStatsDto
+                    {
+                        Name = localizedName,
+                        Difficulty = difficulty,
+                        ImageUrl = string.IsNullOrEmpty(definition.PgcrImage)
+                            ? string.Empty
+                            : $"{BungieConstants.BungieUrl}{definition.PgcrImage}",
+                        MentorCount = GetDetailMentorCount(englishName, difficulty, mentorCounts)
+                    };
+                    details[detailKey] = detail;
+                }
+
+                if (!detail.ActivityHashes.Contains(activity.ActivityDetails.ReferenceId))
+                    detail.ActivityHashes.Add(activity.ActivityDetails.ReferenceId);
+                detail.ActivityCount++;
+                if (activity.Values.TryGetValue("completed", out var completed) &&
+                    completed.Basic?.Value > 0)
+                {
+                    detail.CompletionCount++;
+                }
+
+                var playtime = activity.Values.GetValueOrDefault("timePlayedSeconds") ??
+                               activity.Values.GetValueOrDefault("activityDurationSeconds");
+                detail.PlaytimeSeconds += Math.Max(0, (long)(playtime?.Basic?.Value ?? 0));
+            }
+
+            return details.Values
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Difficulty)
+                .ToList();
+        }
+
+        static Destiny2EndgameActivityDifficultyEnum ResolveDifficulty(
+            Destiny2ManifestActivityDefinitionDto definition)
+        {
+            var name = definition.DisplayProperties.Name;
+            if (name.Contains(": Master", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("Epic Raid", StringComparison.OrdinalIgnoreCase))
+                return Destiny2EndgameActivityDifficultyEnum.Master;
+            if (name.Contains(": Expert", StringComparison.OrdinalIgnoreCase))
+                return Destiny2EndgameActivityDifficultyEnum.Expert;
+            if (name.Contains(": Contest", StringComparison.OrdinalIgnoreCase))
+                return Destiny2EndgameActivityDifficultyEnum.Contest;
+            if (name.Contains(": Prestige", StringComparison.OrdinalIgnoreCase))
+                return Destiny2EndgameActivityDifficultyEnum.Prestige;
+            if (name.Contains("Challenge Mode", StringComparison.OrdinalIgnoreCase) ||
+                name.StartsWith("The Pantheon:", StringComparison.OrdinalIgnoreCase))
+                return Destiny2EndgameActivityDifficultyEnum.Challenge;
+
+            return Destiny2EndgameActivityDifficultyEnum.Normal;
+        }
+
+        static long GetDetailMentorCount(
+            string activityName,
+            Destiny2EndgameActivityDifficultyEnum difficulty,
+            IReadOnlyDictionary<string, long> mentorCounts)
+        {
+            return difficulty switch
+            {
+                Destiny2EndgameActivityDifficultyEnum.Normal => mentorCounts.GetValueOrDefault(activityName),
+                Destiny2EndgameActivityDifficultyEnum.Master =>
+                    mentorCounts.GetValueOrDefault($"{activityName} Epic Raid") +
+                    mentorCounts.GetValueOrDefault($"{activityName} Master"),
+                Destiny2EndgameActivityDifficultyEnum.Expert =>
+                    mentorCounts.GetValueOrDefault($"{activityName} Expert"),
+                _ => 0
+            };
+        }
+
+        Destiny2EndgameActivityStatsDto MapStats(
+            Destiny2ActivityModeTypeEnum activityType,
+            IReadOnlyDictionary<string, long> mentorCounts)
+        {
+            var allTime = statsResult.Response
+                .FirstOrDefault(x => string.Equals(x.Key, activityType.ToString(), StringComparison.OrdinalIgnoreCase))
+                .Value?.AllTime;
+            var definition = activityModeManifest.Values.FirstOrDefault(x => x.ModeType == activityType);
+
+            return new Destiny2EndgameActivityStatsDto
+            {
+                ActivityType = activityType,
+                Name = definition?.DisplayProperties.Name ?? activityType.ToString(),
+                ActivityCount = Math.Max(0, (long)(allTime?.ActivitiesEntered?.Basic?.Value ?? 0)),
+                CompletionCount = Math.Max(0, (long)(allTime?.ActivitiesCleared?.Basic?.Value ?? 0)),
+                MentorCount = mentorCounts.Values.Sum(),
+                PlaytimeSeconds = Math.Max(0, (long)(allTime?.SecondsPlayed?.Basic?.Value ?? 0)),
+                Details = MapDetailStats(activityType, mentorCounts)
+            };
+        }
+
+        var raidMentorCounts = GetMentorCounts(Destiny2Constants.RaidMetricParentNodeHash);
+        var dungeonMentorCounts = GetMentorCounts(Destiny2Constants.DungeonMetricParentNodeHash);
+
+        response.Data = new Destiny2RaidDungeonStatsDto
+        {
+            Activities =
+            [
+                MapStats(Destiny2ActivityModeTypeEnum.Raid, raidMentorCounts),
+                MapStats(Destiny2ActivityModeTypeEnum.Dungeon, dungeonMentorCounts)
+            ]
+        };
+        response.Code = HttpStatusCode.OK;
+        response.Message = "Success";
+
+        await _cacheManager.Set(cacheKey, response.Data, TimeSpan.FromMinutes(5), cancellationToken)
+            .ConfigureAwait(false);
 
         return response;
     }
