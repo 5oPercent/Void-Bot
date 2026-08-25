@@ -120,6 +120,7 @@ GET /api/Destiny2/player/raid-dungeon/stats
 
 - 明细以“活动原名 + 难度”分组，同一活动的普通、大师等难度不会合并。
 - `activityHashes` 仅合并同一活动、同一难度下的 Bungie 版本哈希。
+- 明细按照活动发布时间从新到旧排列，同一活动的不同难度保持相邻；缺少发布时间的活动排在最后。
 - 明细游玩时长优先采用玩家实际参与时长；汇总游玩时长采用 Bungie 历史统计接口的官方数值。
 - 全程通关要求记录已通关，且 `timePlayedSeconds >= activityDurationSeconds`；中途加入的通关不会计入全程次数。
 - 最短和平均全程通关时长均采用 `activityDurationSeconds`，统计数据源仅包含全程通关记录。
