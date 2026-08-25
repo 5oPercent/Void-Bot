@@ -37,6 +37,9 @@ public partial interface IBungieDataProvider : IScope
         int mode, int count, int page,
         CancellationToken cancellationToken, string accessToken = "");
 
+    Task<Destiny2PostGameCarnageReportResponse?> GetPostGameCarnageReportAsync(
+        long activityId, CancellationToken cancellationToken, string accessToken = "");
+
     Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(
         BungieMembershipTypeEnum primaryMembershipType, string primaryMembershipId,
         CancellationToken cancellationToken);
@@ -150,6 +153,18 @@ public partial class BungieDataProvider : IBungieDataProvider
 
         var result = await GetBungieHttpClient(accessToken)
             .GetAsync<Destiny2ActivityHistoryResponse>(url, cancellationToken).ConfigureAwait(false);
+
+        return result.Data;
+    }
+
+    public async Task<Destiny2PostGameCarnageReportResponse?> GetPostGameCarnageReportAsync(
+        long activityId, CancellationToken cancellationToken, string accessToken = "")
+    {
+        var url = Destiny2Constants.PostGameCarnageReportUrl
+            .Replace("{activityId}", activityId.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        var result = await GetBungieHttpClient(accessToken)
+            .GetAsync<Destiny2PostGameCarnageReportResponse>(url, cancellationToken).ConfigureAwait(false);
 
         return result.Data;
     }
