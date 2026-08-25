@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Message.Commands.Sync;
 using Void.Bot.Message.Request.Sync;
 
@@ -11,6 +12,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(320)]
 public class SyncController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -25,6 +27,7 @@ public class SyncController : ControllerBase
     /// </summary>
     [HttpGet]
     [Route("destiny2/manifest/options")]
+    [ProducesResponseType(typeof(GetDestiny2ManifestSyncOptionsResponse), 200)]
     public async Task<IActionResult> GetDestiny2ManifestSyncOptionsAsync()
     {
         var response = await _mediator
@@ -40,6 +43,7 @@ public class SyncController : ControllerBase
     /// </summary>
     [HttpPost]
     [Route("destiny2/manifest")]
+    [ProducesResponseType(typeof(SynchronizeDestiny2ManifestResponse), 200)]
     public async Task<IActionResult> SynchronizeDestiny2ManifestAsync([FromBody]SynchronizeDestiny2ManifestCommand command)
     {
         var response = await _mediator.SendAsync<SynchronizeDestiny2ManifestCommand, SynchronizeDestiny2ManifestResponse>(command).ConfigureAwait(false);

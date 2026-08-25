@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Message.Commands.Email;
 using Void.Bot.Message.Request.Email;
 
@@ -11,9 +12,11 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(210)]
 public sealed class EmailController(IMediator mediator) : ControllerBase
 {
     [HttpGet("oauth/authorize")]
+    [ProducesResponseType(typeof(AuthorizeEmailResponse), 200)]
     public async Task<IActionResult> AuthorizeAsync(CancellationToken cancellationToken)
     {
         var response = await mediator.SendAsync<AuthorizeEmailCommand, AuthorizeEmailResponse>(
@@ -23,6 +26,7 @@ public sealed class EmailController(IMediator mediator) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("oauth/callback")]
+    [ProducesResponseType(typeof(CompleteEmailAuthorizationResponse), 200)]
     public async Task<IActionResult> CallbackAsync(
         [FromQuery] CompleteEmailAuthorizationCommand command,
         CancellationToken cancellationToken)
@@ -34,6 +38,7 @@ public sealed class EmailController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("oauth/reauthorize")]
+    [ProducesResponseType(typeof(AuthorizeEmailResponse), 200)]
     public async Task<IActionResult> ReauthorizeAsync(CancellationToken cancellationToken)
     {
         var response = await mediator.SendAsync<AuthorizeEmailCommand, AuthorizeEmailResponse>(
@@ -43,6 +48,7 @@ public sealed class EmailController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("status")]
+    [ProducesResponseType(typeof(GetEmailServiceStatusResponse), 200)]
     public async Task<IActionResult> GetStatusAsync(CancellationToken cancellationToken)
     {
         var response = await mediator.RequestAsync<GetEmailServiceStatusRequest, GetEmailServiceStatusResponse>(
@@ -51,6 +57,7 @@ public sealed class EmailController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost("test")]
+    [ProducesResponseType(typeof(SendTestEmailResponse), 200)]
     public async Task<IActionResult> SendTestEmailAsync(
         [FromBody] SendTestEmailCommand command,
         CancellationToken cancellationToken)

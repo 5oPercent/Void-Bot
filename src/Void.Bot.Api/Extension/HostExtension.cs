@@ -15,6 +15,7 @@ using Serilog;
 using Void.Bot.Api.ActionFilters;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Api.HostedService;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Settings;
@@ -74,6 +75,7 @@ public static class HostExtension
         {
             options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
             options.AddDocumentTransformer<ApiKeySecuritySchemeTransformer>();
+            options.AddDocumentTransformer<OpenApiTagOrderDocumentTransformer>();
         });
         
         services.AddAuthorization(options =>
@@ -131,9 +133,13 @@ public static class HostExtension
         
         if (scalarSetting.Enable)
         {
+            app.UseStaticFiles();
             app.MapOpenApi();
             app.MapScalarApiReference((options, context) =>
             {
+                options.WithTheme(ScalarTheme.Purple);
+                options.WithJavaScriptConfiguration("/scalar/config.js");
+
                 if (scalarSetting.ForceHttps)
                 {
                     var serverUrl = UriHelper.BuildAbsolute(

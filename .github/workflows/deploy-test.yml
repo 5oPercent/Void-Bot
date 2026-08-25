@@ -1,23 +1,41 @@
 name: Deploy to Test
+run-name: "[TEST] Deploy ${{ github.event.head_commit.message }} · attempt ${{ github.run_attempt }}"
 
 on:
   push:
     branches: [ "all-in-one*" ]
+
+permissions:
+  contents: read
 
 jobs:
 
   build:
 
     runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.image-tag.outputs.value }}
 
     steps:
       - uses: actions/checkout@v4
+      - name: Generate image tag
+        id: image-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq '.tagName' 2>/dev/null || echo 'v0.0.0')
+          SAFE_RELEASE_TAG=$(echo "$RELEASE_TAG" | sed 's/[^A-Za-z0-9_.-]/-/g')
+          printf -v RUN_SEQUENCE '%06d' "$GITHUB_RUN_NUMBER"
+          printf -v RUN_ATTEMPT '%02d' "$GITHUB_RUN_ATTEMPT"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          IMAGE_TAG="${SAFE_RELEASE_TAG}-all-in-one-${RUN_SEQUENCE}-${SHORT_SHA}-r${RUN_ATTEMPT}"
+          echo "value=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
       - name: Build the docker test image
-        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}
+        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ steps.image-tag.outputs.value }}
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Push image to aliyun docker repository
-        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}
+        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ steps.image-tag.outputs.value }}
         
   deployment:
     
@@ -26,18 +44,19 @@ jobs:
     
     steps:
       - name: Export Environment variant
-        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-${{ github.run_id }}' > /home/void-bot-test/.env
+        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:${{ needs.build.outputs.image-tag }}' > /home/void-bot-test/.env
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Deploy docker container
         run: docker compose -f /home/void-bot-test/docker-compose.yml --project-directory /home/void-bot-test up -d
       - name: Clean up old images
         run: |
-         KEEP_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-' | sort -r | head -3)
-         ALL_IMAGES=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '${{ secrets.ALIYUN_DOCKER_REPO }}:all-in-one-')
-         for IMG in $ALL_IMAGES; do
-           if ! echo "$KEEP_IMAGES" | grep -q "$IMG"; then
-             echo "Removing old image: $IMG"
-             docker rmi "$IMG" || true
-           fi
-         done
+          TEST_IMAGES=$(docker images --format '{{.CreatedAt}}|{{.Repository}}:{{.Tag}}' | grep '|${{ secrets.ALIYUN_DOCKER_REPO }}:' | grep -E ':(.+-)?all-in-one-' | sort -r)
+          KEEP_IMAGES=$(echo "$TEST_IMAGES" | head -3 | cut -d '|' -f2)
+          ALL_IMAGES=$(echo "$TEST_IMAGES" | cut -d '|' -f2)
+          for IMG in $ALL_IMAGES; do
+            if ! echo "$KEEP_IMAGES" | grep -Fxq "$IMG"; then
+              echo "Removing old image: $IMG"
+              docker rmi "$IMG" || true
+            fi
+          done

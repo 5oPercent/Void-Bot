@@ -1,8 +1,13 @@
 name: Deploy to Production
+run-name: "[PRD] Deploy ${{ github.event.release.tag_name }} · attempt ${{ github.run_attempt }}"
 
 on:
-  push:
-    branches: [ "master" ]
+  release:
+    types: [published]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
 
@@ -12,12 +17,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
       - name: Build the docker prd image
-        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.event.release.tag_name }}
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Push image to aliyun docker repository
-        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}
+        run: docker push ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.event.release.tag_name }}
       
   deployment:
   
@@ -26,7 +33,7 @@ jobs:
     
     steps:
       - name: Export Environment variant
-        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.run_id }}' > /home/void-bot/.env
+        run: echo 'IMAGE=${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.event.release.tag_name }}' > /home/void-bot/.env
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Deploy docker container
