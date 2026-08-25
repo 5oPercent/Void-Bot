@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Request.Account;
@@ -13,6 +14,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(200)]
 public class SecurityController : ControllerBase
 {
     private readonly IMediator _mediator;

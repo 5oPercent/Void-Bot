@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Message.Commands.Sync;
 
 namespace Void.Bot.Api.Controllers;
@@ -10,6 +11,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(320)]
 public class SyncController : ControllerBase
 {
     private readonly IMediator _mediator;

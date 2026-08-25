@@ -2,6 +2,7 @@ using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Message.Commands.Email;
 using Void.Bot.Message.Request.Email;
 
@@ -11,6 +12,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(210)]
 public sealed class EmailController(IMediator mediator) : ControllerBase
 {
     [HttpGet("oauth/authorize")]

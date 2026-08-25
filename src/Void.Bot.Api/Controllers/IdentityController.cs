@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Attributes;
@@ -19,6 +20,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(100)]
 public class IdentityController : ControllerBase
 {
     private readonly IMediator _mediator;
