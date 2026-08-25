@@ -30,14 +30,12 @@ public class BungieDataProviderPgcrFixture
             new AsyncQueryableWrapper<Destiny2Pgcr>([]));
         playerRepository.QueryNoTracking().Returns(
             new AsyncQueryableWrapper<Destiny2PgcrPlayer>([]));
-        var unitOfWork = Substitute.For<IUnitOfWork>();
         var provider = new BungieDataProvider(
             new BungieSetting(Substitute.For<IConfiguration>()),
             Substitute.For<IVoidBotHttpClientFactory>(),
             Substitute.For<IRepository<Destiny2SeasonHistory>>(),
             pgcrRepository,
-            playerRepository,
-            unitOfWork);
+            playerRepository);
 
         await provider.SavePgcrSummariesToDatabaseAsync(
             [new Destiny2Pgcr { Id = instanceId, DataVersion = 1 }],
@@ -59,7 +57,6 @@ public class BungieDataProviderPgcrFixture
             Arg.Any<IEnumerable<Destiny2Pgcr>>(), Arg.Any<CancellationToken>());
         await playerRepository.DidNotReceive().UpdateManyAsync(
             Arg.Any<IEnumerable<Destiny2PgcrPlayer>>(), Arg.Any<CancellationToken>());
-        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -89,14 +86,12 @@ public class BungieDataProviderPgcrFixture
             new AsyncQueryableWrapper<Destiny2Pgcr>([existingPgcr]));
         playerRepository.QueryNoTracking().Returns(
             new AsyncQueryableWrapper<Destiny2PgcrPlayer>([existingPlayer]));
-        var unitOfWork = Substitute.For<IUnitOfWork>();
         var provider = new BungieDataProvider(
             new BungieSetting(Substitute.For<IConfiguration>()),
             Substitute.For<IVoidBotHttpClientFactory>(),
             Substitute.For<IRepository<Destiny2SeasonHistory>>(),
             pgcrRepository,
-            playerRepository,
-            unitOfWork);
+            playerRepository);
         var period = new DateTimeOffset(2023, 1, 19, 14, 31, 20, TimeSpan.Zero);
 
         await provider.SavePgcrSummariesToDatabaseAsync(
@@ -137,6 +132,5 @@ public class BungieDataProviderPgcrFixture
             Arg.Any<IEnumerable<Destiny2Pgcr>>(), Arg.Any<CancellationToken>());
         await playerRepository.DidNotReceive().InsertManyAsync(
             Arg.Any<IEnumerable<Destiny2PgcrPlayer>>(), Arg.Any<CancellationToken>());
-        await unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

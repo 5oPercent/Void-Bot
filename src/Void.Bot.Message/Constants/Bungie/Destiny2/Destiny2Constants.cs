@@ -4,9 +4,9 @@ public partial class Destiny2Constants
 {
     public const string Destiny2 = nameof(Destiny2);
 
-    public const string RaidDungeonStatsCachePrefix = $"{Destiny2}:RaidDungeonStats:V9";
+    public const string RaidDungeonStatsCachePrefix = $"{Destiny2}:RaidDungeonStats:V1";
 
-    public const string PostGameCarnageReportCachePrefix = $"{Destiny2}:PGCR:V4";
+    public const string PostGameCarnageReportCachePrefix = $"{Destiny2}:PGCR:V1";
 
     // Increment when persisted PGCR fields or parsing rules require historical data to be refreshed.
     public const int CurrentPgcrDataVersion = 1;
