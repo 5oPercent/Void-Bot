@@ -298,6 +298,9 @@ public partial class BungieService : IBungieService
         {
             var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
                 StringComparer.OrdinalIgnoreCase);
+            var fullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var detailActivityNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var activityReleaseTimes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var activity in activityHistories[activityType])
             {
@@ -315,6 +318,13 @@ public partial class BungieService : IBungieService
                     : definition.OriginalDisplayProperties.Name;
                 var difficulty = ResolveDifficulty(englishDefinition);
                 var detailKey = $"{englishName}:{(int)difficulty}";
+                var releaseTime = Math.Max(0, englishDefinition.ReleaseTime);
+                if (releaseTime > 0 &&
+                    (!activityReleaseTimes.TryGetValue(englishName, out var currentReleaseTime) ||
+                     releaseTime < currentReleaseTime))
+                {
+                    activityReleaseTimes[englishName] = releaseTime;
+                }
 
                 if (!details.TryGetValue(detailKey, out var detail))
                 {
@@ -328,11 +338,16 @@ public partial class BungieService : IBungieService
                         MentorCount = GetDetailMentorCount(englishName, difficulty, mentorCounts)
                     };
                     details[detailKey] = detail;
+                    detailActivityNames[detailKey] = englishName;
                 }
 
                 if (!detail.ActivityHashes.Contains(activity.ActivityDetails.ReferenceId))
                     detail.ActivityHashes.Add(activity.ActivityDetails.ReferenceId);
                 detail.ActivityCount++;
+                var timePlayed = activity.Values.GetValueOrDefault("timePlayedSeconds");
+                var activityDuration = activity.Values.GetValueOrDefault("activityDurationSeconds");
+                var timePlayedSeconds = Math.Max(0, (long)(timePlayed?.Basic?.Value ?? 0));
+                var activityDurationSeconds = Math.Max(0, (long)(activityDuration?.Basic?.Value ?? 0));
                 if (activity.Values.TryGetValue("completed", out var completed) &&
                     completed.Basic?.Value > 0)
                 {
@@ -340,28 +355,50 @@ public partial class BungieService : IBungieService
 
                     var playerCount = Math.Max(0, (int)(activity.Values
                         .GetValueOrDefault("playerCount")?.Basic?.Value ?? 0));
-                    var standardPlayerCount = activityType == Destiny2ActivityModeTypeEnum.Raid ? 6 : 3;
-                    detail.HasSoloCompletion |= playerCount == 1;
-                    detail.HasLowmanCompletion |= playerCount is > 1 && playerCount < standardPlayerCount;
+                    var isTrioCompletion = playerCount == 3;
+                    var isDuoCompletion = playerCount == 2;
+                    var isSoloCompletion = playerCount == 1;
+                    var isFlawlessCompletion = activity.Values.TryGetValue("deaths", out var deaths) &&
+                                               deaths.Basic?.Value == 0;
+                    var isFullCompletion = activityDurationSeconds > 0 &&
+                                           timePlayedSeconds >= activityDurationSeconds;
+                    detail.HasFullTrioCompletion |= isTrioCompletion && isFullCompletion;
+                    detail.HasFullDuoCompletion |= isDuoCompletion && isFullCompletion;
+                    detail.HasFullSoloCompletion |= isSoloCompletion && isFullCompletion;
+                    detail.HasFlawlessCompletion |= isFlawlessCompletion && isFullCompletion;
 
-                    var completionSeconds = Math.Max(0, (long)(activity.Values
-                        .GetValueOrDefault("activityDurationSeconds")?.Basic?.Value ?? 0));
-                    if (completionSeconds > 0 &&
-                        (detail.FastestCompletionSeconds == null ||
-                         completionSeconds < detail.FastestCompletionSeconds))
+                    if (isFullCompletion)
                     {
-                        detail.FastestCompletionSeconds = completionSeconds;
+                        detail.FullCompletionCount++;
+                        fullCompletionDurationTotals[detailKey] =
+                            fullCompletionDurationTotals.GetValueOrDefault(detailKey) + activityDurationSeconds;
+
+                        if (detail.FastestCompletionSeconds == null ||
+                            activityDurationSeconds < detail.FastestCompletionSeconds)
+                        {
+                            detail.FastestCompletionSeconds = activityDurationSeconds;
+                        }
                     }
                 }
 
-                var playtime = activity.Values.GetValueOrDefault("timePlayedSeconds") ??
-                               activity.Values.GetValueOrDefault("activityDurationSeconds");
+                var playtime = timePlayed ?? activityDuration;
                 detail.PlaytimeSeconds += Math.Max(0, (long)(playtime?.Basic?.Value ?? 0));
             }
 
-            return details.Values
-                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(x => x.Difficulty)
+            foreach (var (detailKey, detail) in details)
+            {
+                if (detail.FullCompletionCount > 0)
+                {
+                    detail.AverageFullCompletionSeconds =
+                        (double)fullCompletionDurationTotals[detailKey] / detail.FullCompletionCount;
+                }
+            }
+
+            return details
+                .OrderByDescending(x => activityReleaseTimes.GetValueOrDefault(detailActivityNames[x.Key]))
+                .ThenBy(x => x.Value.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Value.Difficulty)
+                .Select(x => x.Value)
                 .ToList();
         }
 

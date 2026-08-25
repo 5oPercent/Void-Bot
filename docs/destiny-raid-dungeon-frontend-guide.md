@@ -39,9 +39,13 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "completionCount": 10,
             "mentorCount": 2,
             "playtimeSeconds": 72000,
+            "fullCompletionCount": 7,
             "fastestCompletionSeconds": 2450,
-            "hasLowmanCompletion": true,
-            "hasSoloCompletion": false
+            "averageFullCompletionSeconds": 4102.57,
+            "hasFullTrioCompletion": true,
+            "hasFullDuoCompletion": false,
+            "hasFullSoloCompletion": false,
+            "hasFlawlessCompletion": true
           },
           {
             "activityHashes": [1661734047],
@@ -52,9 +56,13 @@ GET /api/Destiny2/player/raid-dungeon/stats
             "completionCount": 3,
             "mentorCount": 0,
             "playtimeSeconds": 24000,
+            "fullCompletionCount": 0,
             "fastestCompletionSeconds": null,
-            "hasLowmanCompletion": false,
-            "hasSoloCompletion": false
+            "averageFullCompletionSeconds": null,
+            "hasFullTrioCompletion": false,
+            "hasFullDuoCompletion": false,
+            "hasFullSoloCompletion": false,
+            "hasFlawlessCompletion": false
           }
         ]
       },
@@ -98,9 +106,13 @@ GET /api/Destiny2/player/raid-dungeon/stats
 | `completionCount` | `number` | 累计通关次数 |
 | `mentorCount` | `number` | 该活动与难度对应的 Carries 次数 |
 | `playtimeSeconds` | `number` | 累计游玩秒数 |
-| `fastestCompletionSeconds` | `number \| null` | 有效通关记录中的最短完整活动时长；没有有效记录时为 `null` |
-| `hasLowmanCompletion` | `boolean` | 是否存在非单人的少人通关记录 |
-| `hasSoloCompletion` | `boolean` | 是否存在单人通关记录 |
+| `fullCompletionCount` | `number` | 玩家从活动开始参与至通关的次数 |
+| `fastestCompletionSeconds` | `number \| null` | 全程通关记录中的最短完整活动时长；没有全程通关记录时为 `null` |
+| `averageFullCompletionSeconds` | `number \| null` | 全程通关记录的平均完整活动时长；没有全程通关记录时为 `null` |
+| `hasFullTrioCompletion` | `boolean` | 是否存在三人全程通关记录 |
+| `hasFullDuoCompletion` | `boolean` | 是否存在双人全程通关记录 |
+| `hasFullSoloCompletion` | `boolean` | 是否存在单人全程通关记录 |
+| `hasFlawlessCompletion` | `boolean` | 是否存在死亡次数为 0 的全程无暇通关记录 |
 
 ## 统计规则
 
@@ -108,19 +120,23 @@ GET /api/Destiny2/player/raid-dungeon/stats
 
 - 明细以“活动原名 + 难度”分组，同一活动的普通、大师等难度不会合并。
 - `activityHashes` 仅合并同一活动、同一难度下的 Bungie 版本哈希。
+- 明细按照活动发布时间从新到旧排列，同一活动的不同难度保持相邻；缺少发布时间的活动排在最后。
 - 明细游玩时长优先采用玩家实际参与时长；汇总游玩时长采用 Bungie 历史统计接口的官方数值。
-- 最短通关时长采用 `activityDurationSeconds`，避免玩家中途加入导致记录时长偏短。
+- 全程通关要求记录已通关，且 `timePlayedSeconds >= activityDurationSeconds`；中途加入的通关不会计入全程次数。
+- 最短和平均全程通关时长均采用 `activityDurationSeconds`，统计数据源仅包含全程通关记录。
 
-### Lowman 与 Solo
+### Trio、Duo、Solo 与 Flawless
 
-标识根据该活动与难度下的全部有效通关记录计算，与最快记录是否满编无关。
+标识仅根据该活动与难度下的全程通关记录计算，与最快记录无关。
 
-| 标识 | 突袭 | 地牢 |
-| --- | --- | --- |
-| Lowman | 2–5 人 | 2 人 |
-| Solo | 1 人 | 1 人 |
+| 标识 | 判定条件 |
+| --- | --- |
+| Trio | `playerCount == 3` |
+| Duo | `playerCount == 2` |
+| Solo | `playerCount == 1` |
+| Flawless | `deaths == 0`，缺少死亡数据时不视为无暇 |
 
-同一明细曾分别完成 Solo 和其他 Lowman 挑战时，两个标识可以同时为 `true`。
+Trio、Duo、Solo 仅提供全程通关标识。Flawless 本身即表示全程无暇，因此不额外提供 Full 字段。同一条记录可以同时满足人数状态和 Flawless 状态。
 
 ### 难度枚举
 
