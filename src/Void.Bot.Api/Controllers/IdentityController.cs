@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
+using Void.Bot.Api.OpenApi;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Attributes;
@@ -19,6 +20,7 @@ namespace Void.Bot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Security]
+[OpenApiTagOrder(100)]
 public class IdentityController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -35,6 +37,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("register")]
+    [ProducesResponseType(typeof(RegisterUserAccountResponse), 200)]
     public async Task<IActionResult> RegisterUserAccount([FromBody]RegisterUserAccountCommand command)
     {
         var response = await _mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(command).ConfigureAwait(false);
@@ -45,6 +48,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("register/email/send-code")]
+    [ProducesResponseType(typeof(SendRegistrationEmailCodeResponse), 200)]
     public async Task<IActionResult> SendRegistrationEmailCodeAsync(
         [FromBody] SendRegistrationEmailCodeCommand command,
         CancellationToken cancellationToken)
@@ -58,6 +62,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("email/status")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(GetUserEmailStatusResponse), 200)]
     public async Task<IActionResult> GetEmailStatusAsync(CancellationToken cancellationToken)
     {
         var response = await _mediator.RequestAsync<GetUserEmailStatusRequest, GetUserEmailStatusResponse>(
@@ -68,6 +73,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("email/send-code")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(SendEmailBindingCodeResponse), 200)]
     public async Task<IActionResult> SendEmailBindingCodeAsync(
         [FromBody] SendEmailBindingCodeCommand command,
         CancellationToken cancellationToken)
@@ -80,6 +86,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("email/bind")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(BindUserEmailResponse), 200)]
     public async Task<IActionResult> BindEmailAsync(
         [FromBody] BindUserEmailCommand command,
         CancellationToken cancellationToken)
@@ -92,6 +99,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("email/unbind")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(UnbindUserEmailResponse), 200)]
     public async Task<IActionResult> UnbindEmailAsync(
         [FromBody] UnbindUserEmailCommand command,
         CancellationToken cancellationToken)
@@ -104,6 +112,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("password-reset/send-code")]
+    [ProducesResponseType(typeof(SendPasswordResetCodeResponse), 200)]
     public async Task<IActionResult> SendPasswordResetCodeAsync(
         [FromBody] SendPasswordResetCodeCommand command,
         CancellationToken cancellationToken)
@@ -116,6 +125,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("password-reset")]
+    [ProducesResponseType(typeof(ResetUserAccountPasswordResponse), 200)]
     public async Task<IActionResult> ResetPasswordAsync(
         [FromBody] ResetUserAccountPasswordCommand command,
         CancellationToken cancellationToken)
@@ -128,6 +138,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpGet]
     [Route("login")]
+    [ProducesResponseType(typeof(AuthenticateResponse), 200)]
     public async Task<IActionResult> LoginAsync([FromQuery]AuthenticateRequest command)
     {
         var response = await _mediator.RequestAsync<AuthenticateRequest, AuthenticateResponse>(command).ConfigureAwait(false);
@@ -138,6 +149,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("refresh-token")]
+    [ProducesResponseType(typeof(RefreshTokenResponse), 200)]
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
     {
         var response = await _mediator.RequestAsync<RefreshTokenRequest, RefreshTokenResponse>(request).ConfigureAwait(false);
@@ -160,6 +172,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("change-password")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(ChangeUserAccountPasswordResponse), 200)]
     public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangeUserAccountPasswordCommand command)
     {
         command.UserId = _currentUser.Id;
@@ -174,6 +187,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("change-name/availability")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(CanChangeUserAccountNameResponse), 200)]
     public async Task<IActionResult> CanChangeNameAsync([FromQuery] CanChangeUserAccountNameRequest request)
     {
         request.UserId = _currentUser.Id;
@@ -188,6 +202,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("change-name")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(ChangeUserAccountNameResponse), 200)]
     public async Task<IActionResult> ChangeNameAsync([FromBody] ChangeUserAccountNameCommand command)
     {
         command.UserId = _currentUser.Id;
@@ -203,6 +218,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("oauth/{platform}/authorize")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(OAuthAuthorizeResponse), 200)]
     public async Task<IActionResult> OAuthAuthorizeAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthAuthorizeCommand command)
     {
@@ -216,6 +232,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpGet]
     [Route("oauth/{platform}/callback")]
+    [ProducesResponseType(302)]
     public async Task<IActionResult> OAuthCallbackAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthCallbackCommand command)
     {
@@ -229,6 +246,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpPost]
     [Route("oauth/exchange")]
+    [ProducesResponseType(typeof(OAuthExchangeResponse), 200)]
     public async Task<IActionResult> OAuthExchangeAsync([FromBody] OAuthExchangeCommand command)
     {
         var response = await _mediator.SendAsync<OAuthExchangeCommand, OAuthExchangeResponse>(command).ConfigureAwait(false);
@@ -240,6 +258,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("oauth/register")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(OAuthRegisterResponse), 200)]
     public async Task<IActionResult> OAuthRegisterAsync([FromBody] OAuthRegisterCommand command)
     {
         var response = await _mediator.SendAsync<OAuthRegisterCommand, OAuthRegisterResponse>(command).ConfigureAwait(false);
@@ -251,6 +270,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("oauth/bind")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(OAuthBindResponse), 200)]
     public async Task<IActionResult> OAuthBindAsync([FromBody] OAuthBindCommand command)
     {
         var response = await _mediator.SendAsync<OAuthBindCommand, OAuthBindResponse>(command).ConfigureAwait(false);
@@ -261,6 +281,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("oauth/{platform}/unlink")]
     [SkipPermissionCheck]
+    [ProducesResponseType(typeof(OAuthUnlinkResponse), 200)]
     public async Task<IActionResult> OAuthUnlinkAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthUnlinkCommand command)
     {
@@ -273,6 +294,7 @@ public class IdentityController : ControllerBase
 
     [HttpGet]
     [Route("generate/url/steam")]
+    [ProducesResponseType(typeof(GenerateAuthenticateUrlFromSteamResponse), 200)]
     public async Task<IActionResult> GenerateAuthenticateUrlFromSteam([FromQuery]GenerateAuthenticateUrlFromSteamRequest request)
     {
         var response = await _mediator.RequestAsync<GenerateAuthenticateUrlFromSteamRequest, GenerateAuthenticateUrlFromSteamResponse>(request).ConfigureAwait(false);
@@ -283,6 +305,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
+    [ProducesResponseType(typeof(LoginSteamResponse), 200)]
     public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand command)
     {
         var request = new LoginSteamCommand
@@ -298,6 +321,7 @@ public class IdentityController : ControllerBase
     
     [HttpPost]
     [Route("apikey/cretae")]
+    [ProducesResponseType(typeof(CreateApiKeyResponse), 200)]
     public async Task<IActionResult> CreateApiKeyAsync([FromBody]CreateApiKeyCommand request)
     {
         var response = await _mediator.SendAsync<CreateApiKeyCommand, CreateApiKeyResponse>(request).ConfigureAwait(false);
@@ -307,6 +331,7 @@ public class IdentityController : ControllerBase
     
     [HttpPost]
     [Route("apikey/delete")]
+    [ProducesResponseType(typeof(DeleteApiKeyResponse), 200)]
     public async Task<IActionResult> DeleteApiKeyAsync([FromBody]DeleteApiKeyCommand request)
     {
         var response = await _mediator.SendAsync<DeleteApiKeyCommand, DeleteApiKeyResponse>(request).ConfigureAwait(false);
