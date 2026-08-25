@@ -26,6 +26,7 @@ public class SyncController : ControllerBase
     /// </summary>
     [HttpPost]
     [Route("destiny2/manifest")]
+    [ProducesResponseType(typeof(SynchronizeDestiny2ManifestResponse), 200)]
     public async Task<IActionResult> SynchronizeDestiny2ManifestAsync([FromBody]SynchronizeDestiny2ManifestCommand command)
     {
         var response = await _mediator.SendAsync<SynchronizeDestiny2ManifestCommand, SynchronizeDestiny2ManifestResponse>(command).ConfigureAwait(false);

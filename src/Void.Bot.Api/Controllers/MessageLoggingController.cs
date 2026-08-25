@@ -16,6 +16,7 @@ public class MessageLoggingController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
     [Route("page")]
+    [ProducesResponseType(typeof(GetMessageLogPageResponse), 200)]
     public async Task<IActionResult> GetMessageLogPageAsync([FromQuery] GetMessageLogPageRequest request)
     {
         var response = await mediator.RequestAsync<GetMessageLogPageRequest, GetMessageLogPageResponse>(request).ConfigureAwait(false);

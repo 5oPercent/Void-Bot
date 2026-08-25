@@ -24,30 +24,38 @@ public class DiscordController : ControllerBase
     
     [HttpGet]
     [Route("bot/start")]
-    public async Task StartBotAsync([FromQuery]DiscordStartBotRequest request)
+    [ProducesResponseType(typeof(DiscordStartBotResponse), 200)]
+    public async Task<IActionResult> StartBotAsync([FromQuery]DiscordStartBotRequest request)
     {
-        await _mediator.RequestAsync<DiscordStartBotRequest, DiscordStartBotResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<DiscordStartBotRequest, DiscordStartBotResponse>(request).ConfigureAwait(false);
+        return Ok(response);
     }
     
     [HttpGet]
     [Route("bot/stop")]
-    public async Task StopBotAsync([FromQuery]DiscordStopBotRequest request)
+    [ProducesResponseType(typeof(DiscordStopBotResponse), 200)]
+    public async Task<IActionResult> StopBotAsync([FromQuery]DiscordStopBotRequest request)
     {
-        await _mediator.RequestAsync<DiscordStopBotRequest, DiscordStopBotResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<DiscordStopBotRequest, DiscordStopBotResponse>(request).ConfigureAwait(false);
+        return Ok(response);
     }
     
     [HttpGet]
     [Route("bot/apply/global/slashCommand")]
-    public async Task ApplyGlobalSlashCommandAsync([FromQuery]DiscordApplyGlobalSlashCommandRequest request)
+    [ProducesResponseType(typeof(DiscordApplyGlobalSlashCommandResponse), 200)]
+    public async Task<IActionResult> ApplyGlobalSlashCommandAsync([FromQuery]DiscordApplyGlobalSlashCommandRequest request)
     {
-        await _mediator.RequestAsync<DiscordApplyGlobalSlashCommandRequest, DiscordApplyGlobalSlashCommandResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<DiscordApplyGlobalSlashCommandRequest, DiscordApplyGlobalSlashCommandResponse>(request).ConfigureAwait(false);
+        return Ok(response);
     }
     
     [HttpGet]
     [Route("bot/apply/guild/slashCommand")]
-    public async Task ApplyGuildSlashCommandAsync([FromQuery]DiscordApplyGuildSlashCommandRequest request)
+    [ProducesResponseType(typeof(DiscordApplyGuildSlashCommandResponse), 200)]
+    public async Task<IActionResult> ApplyGuildSlashCommandAsync([FromQuery]DiscordApplyGuildSlashCommandRequest request)
     {
-        await _mediator.RequestAsync<DiscordApplyGuildSlashCommandRequest, DiscordApplyGuildSlashCommandResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.RequestAsync<DiscordApplyGuildSlashCommandRequest, DiscordApplyGuildSlashCommandResponse>(request).ConfigureAwait(false);
+        return Ok(response);
     }
 
     [HttpGet]
