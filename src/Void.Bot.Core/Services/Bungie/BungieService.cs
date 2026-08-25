@@ -1,6 +1,7 @@
 using System.Net;
 using Serilog;
 using Void.Bot.Core.Caching;
+using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Commands.Bungie;
 using Void.Bot.Message.Request.Bungie;
 
@@ -28,17 +29,20 @@ public partial class BungieService : IBungieService
     private readonly IBungieDataProvider _dataProvider;
     private readonly Destiny2PlayerData _playerData;
     private readonly ICacheManager _cacheManager;
+    private readonly Destiny2Setting _destiny2Setting;
     private readonly ILogger _logger;
 
     public BungieService(
         IBungieDataProvider dataProvider,
         Destiny2PlayerData playerData,
         ICacheManager cacheManager,
+        Destiny2Setting destiny2Setting,
         ILogger logger)
     {
         _dataProvider = dataProvider;
         _playerData = playerData;
         _cacheManager = cacheManager;
+        _destiny2Setting = destiny2Setting;
         _logger = logger;
     }
     
