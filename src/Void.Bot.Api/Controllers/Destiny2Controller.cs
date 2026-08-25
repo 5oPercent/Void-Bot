@@ -52,13 +52,13 @@ public class Destiny2Controller : ControllerBase
         return Ok(response);
     }
 
-    [HttpGet]
+    [HttpPost]
     [Route("player/raid-dungeon/stats")]
     [ProducesResponseType(typeof(GetDestiny2RaidDungeonStatsResponse), 200)]
-    public async Task<IActionResult> GetPlayerRaidDungeonStats([FromQuery] GetDestiny2RaidDungeonStatsRequest request)
+    public async Task<IActionResult> GetPlayerRaidDungeonStats([FromBody] GetDestiny2RaidDungeonStatsCommand command)
     {
         var response = await _mediator
-            .RequestAsync<GetDestiny2RaidDungeonStatsRequest, GetDestiny2RaidDungeonStatsResponse>(request)
+            .SendAsync<GetDestiny2RaidDungeonStatsCommand, GetDestiny2RaidDungeonStatsResponse>(command)
             .ConfigureAwait(false);
 
         return Ok(response);

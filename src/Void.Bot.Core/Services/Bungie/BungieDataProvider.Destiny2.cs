@@ -37,6 +37,18 @@ public partial interface IBungieDataProvider : IScope
         int mode, int count, int page,
         CancellationToken cancellationToken, string accessToken = "");
 
+    Task<Destiny2PostGameCarnageReportResponse?> GetPostGameCarnageReportAsync(
+        long activityId, CancellationToken cancellationToken, string accessToken = "");
+
+    Task<(List<Destiny2Pgcr> Pgcrs, List<Destiny2PgcrPlayer> Players)>
+        GetPgcrSummariesByDatabaseAsync(
+            IReadOnlyCollection<long> instanceIds, CancellationToken cancellationToken);
+
+    Task SavePgcrSummariesToDatabaseAsync(
+        IReadOnlyCollection<Destiny2Pgcr> pgcrs,
+        IReadOnlyCollection<Destiny2PgcrPlayer> players,
+        CancellationToken cancellationToken);
+
     Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(
         BungieMembershipTypeEnum primaryMembershipType, string primaryMembershipId,
         CancellationToken cancellationToken);
@@ -152,6 +164,109 @@ public partial class BungieDataProvider : IBungieDataProvider
             .GetAsync<Destiny2ActivityHistoryResponse>(url, cancellationToken).ConfigureAwait(false);
 
         return result.Data;
+    }
+
+    public async Task<Destiny2PostGameCarnageReportResponse?> GetPostGameCarnageReportAsync(
+        long activityId, CancellationToken cancellationToken, string accessToken = "")
+    {
+        var url = Destiny2Constants.PostGameCarnageReportUrl
+            .Replace("{activityId}", activityId.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        var result = await GetBungieHttpClient(accessToken)
+            .GetAsync<Destiny2PostGameCarnageReportResponse>(url, cancellationToken).ConfigureAwait(false);
+
+        return result.Data;
+    }
+
+    public async Task<(List<Destiny2Pgcr> Pgcrs, List<Destiny2PgcrPlayer> Players)>
+        GetPgcrSummariesByDatabaseAsync(
+            IReadOnlyCollection<long> instanceIds, CancellationToken cancellationToken)
+    {
+        var pgcrs = new List<Destiny2Pgcr>();
+        var players = new List<Destiny2PgcrPlayer>();
+        foreach (var instanceIdBatch in instanceIds.Distinct().Chunk(500))
+        {
+            pgcrs.AddRange(await _pgcrRepository.QueryNoTracking()
+                .Where(x => instanceIdBatch.Contains(x.Id))
+                .ToListAsync(cancellationToken).ConfigureAwait(false));
+            players.AddRange(await _pgcrPlayerRepository.QueryNoTracking()
+                .Where(x => instanceIdBatch.Contains(x.InstanceId))
+                .ToListAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        return (pgcrs, players);
+    }
+
+    public async Task SavePgcrSummariesToDatabaseAsync(
+        IReadOnlyCollection<Destiny2Pgcr> pgcrs,
+        IReadOnlyCollection<Destiny2PgcrPlayer> players,
+        CancellationToken cancellationToken)
+    {
+        if (pgcrs.Count == 0)
+            return;
+
+        var instanceIds = pgcrs.Select(x => x.Id).Distinct().ToList();
+        var existingPgcrs = new List<Destiny2Pgcr>();
+        var existingPlayers = new List<Destiny2PgcrPlayer>();
+        foreach (var instanceIdBatch in instanceIds.Chunk(500))
+        {
+            existingPgcrs.AddRange(await _pgcrRepository.QueryNoTracking()
+                .Where(x => instanceIdBatch.Contains(x.Id))
+                .ToListAsync(cancellationToken).ConfigureAwait(false));
+            existingPlayers.AddRange(await _pgcrPlayerRepository.QueryNoTracking()
+                .Where(x => instanceIdBatch.Contains(x.InstanceId))
+                .ToListAsync(cancellationToken).ConfigureAwait(false));
+        }
+
+        var existingPgcrById = existingPgcrs.ToDictionary(x => x.Id);
+        var newPgcrs = new List<Destiny2Pgcr>();
+        var updatedPgcrs = new List<Destiny2Pgcr>();
+        foreach (var pgcr in pgcrs.GroupBy(x => x.Id).Select(x => x.Last()))
+        {
+            if (!existingPgcrById.TryGetValue(pgcr.Id, out var existingPgcr))
+            {
+                newPgcrs.Add(pgcr);
+                continue;
+            }
+
+            existingPgcr.Period = pgcr.Period;
+            existingPgcr.ReferenceId = pgcr.ReferenceId;
+            existingPgcr.StartingPhaseIndex = pgcr.StartingPhaseIndex;
+            existingPgcr.StartedFromBeginning = pgcr.StartedFromBeginning;
+            existingPgcr.DataVersion = pgcr.DataVersion;
+            updatedPgcrs.Add(existingPgcr);
+        }
+
+        var existingPlayerByKey = existingPlayers.ToDictionary(
+            x => (x.InstanceId, x.CharacterId));
+        var newPlayers = new List<Destiny2PgcrPlayer>();
+        var updatedPlayers = new List<Destiny2PgcrPlayer>();
+        foreach (var player in players
+                     .GroupBy(x => (x.InstanceId, x.CharacterId))
+                     .Select(x => x.Last()))
+        {
+            if (!existingPlayerByKey.TryGetValue(
+                    (player.InstanceId, player.CharacterId), out var existingPlayer))
+            {
+                newPlayers.Add(player);
+                continue;
+            }
+
+            existingPlayer.MembershipType = player.MembershipType;
+            existingPlayer.MembershipId = player.MembershipId;
+            existingPlayer.Completed = player.Completed;
+            existingPlayer.StartSeconds = player.StartSeconds;
+            updatedPlayers.Add(existingPlayer);
+        }
+
+        if (newPgcrs.Count > 0)
+            await _pgcrRepository.InsertManyAsync(newPgcrs, cancellationToken).ConfigureAwait(false);
+        if (updatedPgcrs.Count > 0)
+            await _pgcrRepository.UpdateManyAsync(updatedPgcrs, cancellationToken).ConfigureAwait(false);
+        if (newPlayers.Count > 0)
+            await _pgcrPlayerRepository.InsertManyAsync(newPlayers, cancellationToken).ConfigureAwait(false);
+        if (updatedPlayers.Count > 0)
+            await _pgcrPlayerRepository.UpdateManyAsync(updatedPlayers, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<List<Destiny2SeasonHistory>> GetPlayerSeasonHistoryByDatabaseAsync(

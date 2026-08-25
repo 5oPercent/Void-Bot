@@ -4,6 +4,7 @@ using Serilog;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Domain.Destiny2;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Services.Bungie.Destiny2.RaidDungeon;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Constants.Bungie.Destiny2;
@@ -30,7 +31,7 @@ public partial interface IBungieService : IScope
         GetDestiny2CareerRequest request, CancellationToken cancellationToken);
 
     public Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
-        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken);
+        GetDestiny2RaidDungeonStatsCommand command, CancellationToken cancellationToken);
     
     Task<GetDestiny2SeasonResponse> GetDestiny2SeasonAsync(
         GetDestiny2SeasonCommand command, CancellationToken cancellationToken);
@@ -127,10 +128,11 @@ public partial class BungieService : IBungieService
     }
 
     public async Task<GetDestiny2RaidDungeonStatsResponse> GetDestiny2RaidDungeonStatsAsync(
-        GetDestiny2RaidDungeonStatsRequest request, CancellationToken cancellationToken)
+        GetDestiny2RaidDungeonStatsCommand command, CancellationToken cancellationToken)
     {
         const int activityPageSize = 250;
         const int activityHistoryConcurrency = 3;
+        const int pgcrConcurrency = 3;
         var response = new GetDestiny2RaidDungeonStatsResponse();
 
         if (string.IsNullOrEmpty(_playerData.PrimaryMembershipId))
@@ -140,10 +142,10 @@ public partial class BungieService : IBungieService
             return response;
         }
 
-        if (request.MembershipType != _playerData.PrimaryMembershipType)
+        if (command.MembershipType != _playerData.PrimaryMembershipType)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = $"Not found Destiny 2 profile by {request.MembershipType} platform.";
+            response.Message = $"Not found Destiny 2 profile by {command.MembershipType} platform.";
             return response;
         }
 
@@ -242,10 +244,11 @@ public partial class BungieService : IBungieService
                     StringComparer.OrdinalIgnoreCase);
         }
 
-        async Task<(Destiny2ActivityModeTypeEnum ActivityType, List<Destiny2Activity> Activities, string? ErrorMessage)>
+        async Task<(Destiny2ActivityModeTypeEnum ActivityType, List<Destiny2CharacterActivity> Activities,
+            string? ErrorMessage)>
             LoadActivityHistoryAsync(string characterId, Destiny2ActivityModeTypeEnum activityType)
         {
-            var result = new List<Destiny2Activity>();
+            var result = new List<Destiny2CharacterActivity>();
             for (var page = 0; ; page++)
             {
                 var history = await _dataProvider.GetCharacterActivityHistoryAsync(
@@ -256,7 +259,7 @@ public partial class BungieService : IBungieService
                     return (activityType, result, history?.Message ?? "Failed to fetch activity history from Bungie API");
 
                 var activities = history.Response?.Activities ?? [];
-                result.AddRange(activities);
+                result.AddRange(activities.Select(activity => new Destiny2CharacterActivity(characterId, activity)));
                 if (activities.Count < activityPageSize)
                     break;
             }
@@ -271,7 +274,7 @@ public partial class BungieService : IBungieService
                 (CharacterId: characterId, ActivityType: Destiny2ActivityModeTypeEnum.Dungeon)
             })
             .ToList();
-        var activityHistories = new Dictionary<Destiny2ActivityModeTypeEnum, List<Destiny2Activity>>
+        var activityHistories = new Dictionary<Destiny2ActivityModeTypeEnum, List<Destiny2CharacterActivity>>
         {
             [Destiny2ActivityModeTypeEnum.Raid] = [],
             [Destiny2ActivityModeTypeEnum.Dungeon] = []
@@ -293,17 +296,272 @@ public partial class BungieService : IBungieService
                 activityHistories[historyResult.ActivityType].AddRange(historyResult.Activities);
         }
 
+        static bool IsCompleted(Destiny2Activity activity)
+        {
+            return GetStatValue(activity.Values, "completed") > 0;
+        }
+
+        static long? GetStatValue(
+            IReadOnlyDictionary<string, Destiny2HistoricalStatsValueDto> values, string statId)
+        {
+            return values.TryGetValue(statId, out var stat) && stat.Basic != null
+                ? Math.Max(0, (long)stat.Basic.Value)
+                : null;
+        }
+
+        static long GetStatSeconds(Destiny2Activity activity, string statId)
+        {
+            return GetStatValue(activity.Values, statId) ?? 0;
+        }
+
+        async Task<KeyValuePair<long, Destiny2PgcrStartSummaryDto?>> ReadPgcrCacheAsync(long instanceId)
+        {
+            var pgcrCacheKey = $"{Destiny2Constants.PostGameCarnageReportCachePrefix}:{instanceId}";
+            try
+            {
+                var cachedSummary = await _cacheManager.Get<Destiny2PgcrStartSummaryDto>(
+                    pgcrCacheKey, cancellationToken).ConfigureAwait(false);
+                return KeyValuePair.Create(instanceId, cachedSummary);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to read Destiny 2 PGCR cache {InstanceId}", instanceId);
+                return KeyValuePair.Create<long, Destiny2PgcrStartSummaryDto?>(instanceId, null);
+            }
+        }
+
+        async Task WritePgcrCacheAsync(long instanceId, Destiny2PgcrStartSummaryDto summary)
+        {
+            var pgcrCacheKey = $"{Destiny2Constants.PostGameCarnageReportCachePrefix}:{instanceId}";
+            var cacheDuration = summary.Available ? TimeSpan.FromMinutes(15) : TimeSpan.FromMinutes(5);
+            try
+            {
+                await _cacheManager.Set(pgcrCacheKey, summary, cacheDuration, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to write Destiny 2 PGCR cache {InstanceId}", instanceId);
+            }
+        }
+
+        async Task<KeyValuePair<long, Destiny2PgcrStartSummaryDto>> FetchPgcrStartSummaryAsync(long instanceId)
+        {
+            Destiny2PgcrStartSummaryDto summary;
+            try
+            {
+                var pgcrResult = await _dataProvider.GetPostGameCarnageReportAsync(
+                    instanceId, cancellationToken).ConfigureAwait(false);
+                summary = pgcrResult is { ErrorCode: 1, Response: not null }
+                    ? new Destiny2PgcrStartSummaryDto
+                    {
+                        Available = true,
+                        DataVersion = Destiny2Constants.CurrentPgcrDataVersion,
+                        Period = pgcrResult.Response.Period,
+                        ReferenceId = pgcrResult.Response.ActivityDetails.ReferenceId,
+                        StartingPhaseIndex = pgcrResult.Response.StartingPhaseIndex,
+                        ActivityWasStartedFromBeginning = pgcrResult.Response.ActivityWasStartedFromBeginning,
+                        Players = pgcrResult.Response.Entries
+                            .Where(entry => !string.IsNullOrEmpty(entry.CharacterId))
+                            .GroupBy(entry => entry.CharacterId, StringComparer.Ordinal)
+                            .ToDictionary(
+                                group => group.Key,
+                                group =>
+                                {
+                                    var entry = group.First();
+                                    var completionValue = GetStatValue(entry.Values, "completed");
+                                    return new Destiny2PgcrPlayerSummaryDto
+                                    {
+                                        MembershipType = entry.Player.DestinyUserInfo.MembershipType,
+                                        MembershipId = entry.Player.DestinyUserInfo.MembershipId,
+                                        Completed = completionValue.HasValue
+                                            ? completionValue.Value > 0
+                                            : null,
+                                        StartSeconds = GetStatValue(entry.Values, "startSeconds")
+                                    };
+                                },
+                                StringComparer.Ordinal)
+                    }
+                    : new Destiny2PgcrStartSummaryDto();
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to fetch Destiny 2 PGCR {InstanceId}", instanceId);
+                summary = new Destiny2PgcrStartSummaryDto();
+            }
+
+            await WritePgcrCacheAsync(instanceId, summary).ConfigureAwait(false);
+            return KeyValuePair.Create(instanceId, summary);
+        }
+
+        var pgcrInstanceIds = activityHistories.Values
+            .SelectMany(x => x)
+            .Where(characterActivity => englishActivityManifest.ContainsKey(
+                characterActivity.Activity.ActivityDetails.ReferenceId.ToString()))
+            .Where(characterActivity => IsCompleted(characterActivity.Activity))
+            .Select(characterActivity => characterActivity.Activity.ActivityDetails.InstanceId)
+            .Where(instanceId => instanceId > 0)
+            .Distinct()
+            .ToList();
+        var pgcrStartSummaries = new Dictionary<long, Destiny2PgcrStartSummaryDto>();
+        var negativeCachedInstanceIds = new HashSet<long>();
+        foreach (var pgcrBatch in pgcrInstanceIds.Chunk(pgcrConcurrency))
+        {
+            var cachedSummaries = await Task.WhenAll(pgcrBatch.Select(ReadPgcrCacheAsync))
+                .ConfigureAwait(false);
+            foreach (var cachedSummary in cachedSummaries)
+            {
+                if (cachedSummary.Value is { Available: true } &&
+                    cachedSummary.Value.DataVersion >= Destiny2Constants.CurrentPgcrDataVersion)
+                {
+                    pgcrStartSummaries[cachedSummary.Key] = cachedSummary.Value;
+                }
+                else if (cachedSummary.Value is { Available: false })
+                {
+                    negativeCachedInstanceIds.Add(cachedSummary.Key);
+                }
+            }
+        }
+
+        var databaseInstanceIds = pgcrInstanceIds
+            .Where(instanceId => !pgcrStartSummaries.ContainsKey(instanceId))
+            .ToList();
+        try
+        {
+            var databaseSummaries = await _dataProvider.GetPgcrSummariesByDatabaseAsync(
+                databaseInstanceIds, cancellationToken).ConfigureAwait(false);
+            var databasePlayers = databaseSummaries.Players.ToLookup(x => x.InstanceId);
+            foreach (var pgcr in databaseSummaries.Pgcrs)
+            {
+                if (pgcr.DataVersion < Destiny2Constants.CurrentPgcrDataVersion)
+                    continue;
+
+                var summary = new Destiny2PgcrStartSummaryDto
+                {
+                    Available = true,
+                    DataVersion = pgcr.DataVersion,
+                    Period = pgcr.Period,
+                    ReferenceId = pgcr.ReferenceId,
+                    StartingPhaseIndex = pgcr.StartingPhaseIndex,
+                    ActivityWasStartedFromBeginning = pgcr.StartedFromBeginning,
+                    Players = databasePlayers[pgcr.Id]
+                        .GroupBy(player => player.CharacterId, StringComparer.Ordinal)
+                        .ToDictionary(
+                            group => group.Key,
+                            group =>
+                            {
+                                var player = group.First();
+                                return new Destiny2PgcrPlayerSummaryDto
+                                {
+                                    MembershipType = player.MembershipType,
+                                    MembershipId = player.MembershipId,
+                                    Completed = player.Completed,
+                                    StartSeconds = player.StartSeconds
+                                };
+                            },
+                            StringComparer.Ordinal)
+                };
+                pgcrStartSummaries[pgcr.Id] = summary;
+            }
+
+            foreach (var cacheBatch in databaseSummaries.Pgcrs
+                         .Select(x => x.Id)
+                         .Where(pgcrStartSummaries.ContainsKey)
+                         .Chunk(pgcrConcurrency))
+            {
+                await Task.WhenAll(cacheBatch.Select(instanceId =>
+                        WritePgcrCacheAsync(instanceId, pgcrStartSummaries[instanceId])))
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Failed to read Destiny 2 PGCR summaries from database");
+        }
+
+        var bungieInstanceIds = pgcrInstanceIds
+            .Where(instanceId => !pgcrStartSummaries.ContainsKey(instanceId) &&
+                                 !negativeCachedInstanceIds.Contains(instanceId))
+            .ToList();
+        var fetchedSummaries = new Dictionary<long, Destiny2PgcrStartSummaryDto>();
+        foreach (var pgcrBatch in bungieInstanceIds.Chunk(pgcrConcurrency))
+        {
+            var summaries = await Task.WhenAll(pgcrBatch.Select(FetchPgcrStartSummaryAsync))
+                .ConfigureAwait(false);
+            foreach (var summary in summaries)
+            {
+                pgcrStartSummaries[summary.Key] = summary.Value;
+                if (summary.Value.Available)
+                    fetchedSummaries[summary.Key] = summary.Value;
+            }
+        }
+
+        if (fetchedSummaries.Count > 0)
+        {
+            var pgcrEntities = fetchedSummaries.Select(x => new Destiny2Pgcr
+            {
+                Id = x.Key,
+                Period = x.Value.Period,
+                ReferenceId = x.Value.ReferenceId,
+                StartingPhaseIndex = x.Value.StartingPhaseIndex,
+                StartedFromBeginning = x.Value.ActivityWasStartedFromBeginning,
+                DataVersion = Destiny2Constants.CurrentPgcrDataVersion
+            }).ToList();
+            var playerEntities = fetchedSummaries.SelectMany(pgcr => pgcr.Value.Players.Select(player =>
+                new Destiny2PgcrPlayer
+                {
+                    Id = Guid.NewGuid(),
+                    InstanceId = pgcr.Key,
+                    CharacterId = player.Key,
+                    MembershipType = player.Value.MembershipType,
+                    MembershipId = player.Value.MembershipId,
+                    Completed = player.Value.Completed,
+                    StartSeconds = player.Value.StartSeconds
+                })).ToList();
+            try
+            {
+                await _dataProvider.SavePgcrSummariesToDatabaseAsync(
+                    pgcrEntities, playerEntities, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to save Destiny 2 PGCR summaries to database");
+            }
+        }
+
         List<Destiny2EndgameActivityDetailStatsDto> MapDetailStats(
             Destiny2ActivityModeTypeEnum activityType, IReadOnlyDictionary<string, long> mentorCounts)
         {
             var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
                 StringComparer.OrdinalIgnoreCase);
-            var fullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var fullCompletionDurations =
+                new Dictionary<string, Destiny2FullCompletionDurationAccumulator>(StringComparer.OrdinalIgnoreCase);
             var detailActivityNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var activityReleaseTimes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var activity in activityHistories[activityType])
+            foreach (var characterActivity in activityHistories[activityType])
             {
+                var activity = characterActivity.Activity;
                 if (!englishActivityManifest.TryGetValue(activity.ActivityDetails.ReferenceId.ToString(),
                         out var englishDefinition))
                     continue;
@@ -348,8 +606,8 @@ public partial class BungieService : IBungieService
                 var activityDuration = activity.Values.GetValueOrDefault("activityDurationSeconds");
                 var timePlayedSeconds = Math.Max(0, (long)(timePlayed?.Basic?.Value ?? 0));
                 var activityDurationSeconds = Math.Max(0, (long)(activityDuration?.Basic?.Value ?? 0));
-                if (activity.Values.TryGetValue("completed", out var completed) &&
-                    completed.Basic?.Value > 0)
+                var isCompleted = IsCompleted(activity);
+                if (isCompleted)
                 {
                     detail.CompletionCount++;
 
@@ -360,8 +618,16 @@ public partial class BungieService : IBungieService
                     var isSoloCompletion = playerCount == 1;
                     var isFlawlessCompletion = activity.Values.TryGetValue("deaths", out var deaths) &&
                                                deaths.Basic?.Value == 0;
-                    var isFullCompletion = activityDurationSeconds > 0 &&
-                                           timePlayedSeconds >= activityDurationSeconds;
+                    pgcrStartSummaries.TryGetValue(activity.ActivityDetails.InstanceId, out var pgcrSummary);
+                    var pgcrPlayer = pgcrSummary != null &&
+                                     pgcrSummary.Players.TryGetValue(
+                                         characterActivity.CharacterId, out var playerSummary)
+                        ? playerSummary
+                        : null;
+                    var fullCompletionStatus = Destiny2FullCompletionResolver.Resolve(
+                        isCompleted, timePlayedSeconds, activityDurationSeconds, activity.Period,
+                        pgcrSummary, pgcrPlayer, GetStatValue(activity.Values, "startSeconds"));
+                    var isFullCompletion = Destiny2FullCompletionResolver.IsFull(fullCompletionStatus);
                     detail.HasFullTrioCompletion |= isTrioCompletion && isFullCompletion;
                     detail.HasFullDuoCompletion |= isDuoCompletion && isFullCompletion;
                     detail.HasFullSoloCompletion |= isSoloCompletion && isFullCompletion;
@@ -370,14 +636,13 @@ public partial class BungieService : IBungieService
                     if (isFullCompletion)
                     {
                         detail.FullCompletionCount++;
-                        fullCompletionDurationTotals[detailKey] =
-                            fullCompletionDurationTotals.GetValueOrDefault(detailKey) + activityDurationSeconds;
-
-                        if (detail.FastestCompletionSeconds == null ||
-                            activityDurationSeconds < detail.FastestCompletionSeconds)
+                        if (!fullCompletionDurations.TryGetValue(detailKey, out var durations))
                         {
-                            detail.FastestCompletionSeconds = activityDurationSeconds;
+                            durations = new Destiny2FullCompletionDurationAccumulator();
+                            fullCompletionDurations[detailKey] = durations;
                         }
+
+                        durations.Add(fullCompletionStatus, activityDurationSeconds);
                     }
                 }
 
@@ -387,11 +652,11 @@ public partial class BungieService : IBungieService
 
             foreach (var (detailKey, detail) in details)
             {
-                if (detail.FullCompletionCount > 0)
-                {
-                    detail.AverageFullCompletionSeconds =
-                        (double)fullCompletionDurationTotals[detailKey] / detail.FullCompletionCount;
-                }
+                if (!fullCompletionDurations.TryGetValue(detailKey, out var durations))
+                    continue;
+
+                detail.FastestCompletionSeconds = durations.FastestSeconds;
+                detail.AverageFullCompletionSeconds = durations.AverageSeconds;
             }
 
             return details

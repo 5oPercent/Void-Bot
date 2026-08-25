@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Serilog;
 using Void.Bot.Message.Dto;
 
@@ -89,7 +90,15 @@ public static class HttpClientExtension
         
         if (typeof(T) == typeof(Stream))
             return (T)(object) await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException();
+
+        if (response.StatusCode == HttpStatusCode.NoContent || response.Content.Headers.ContentLength == 0)
+            return default!;
+
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        if (content.Length == 0 || content.All(x => x is 0x20 or 0x09 or 0x0A or 0x0D))
+            return default!;
+
+        return JsonSerializer.Deserialize<T>(content, JsonSerializerOptions.Web)
+               ?? throw new InvalidOperationException();
     }
 }
