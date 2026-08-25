@@ -299,6 +299,8 @@ public partial class BungieService : IBungieService
             var details = new Dictionary<string, Destiny2EndgameActivityDetailStatsDto>(
                 StringComparer.OrdinalIgnoreCase);
             var fullCompletionDurationTotals = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var detailActivityNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var activityReleaseTimes = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var activity in activityHistories[activityType])
             {
@@ -316,6 +318,13 @@ public partial class BungieService : IBungieService
                     : definition.OriginalDisplayProperties.Name;
                 var difficulty = ResolveDifficulty(englishDefinition);
                 var detailKey = $"{englishName}:{(int)difficulty}";
+                var releaseTime = Math.Max(0, englishDefinition.ReleaseTime);
+                if (releaseTime > 0 &&
+                    (!activityReleaseTimes.TryGetValue(englishName, out var currentReleaseTime) ||
+                     releaseTime < currentReleaseTime))
+                {
+                    activityReleaseTimes[englishName] = releaseTime;
+                }
 
                 if (!details.TryGetValue(detailKey, out var detail))
                 {
@@ -329,6 +338,7 @@ public partial class BungieService : IBungieService
                         MentorCount = GetDetailMentorCount(englishName, difficulty, mentorCounts)
                     };
                     details[detailKey] = detail;
+                    detailActivityNames[detailKey] = englishName;
                 }
 
                 if (!detail.ActivityHashes.Contains(activity.ActivityDetails.ReferenceId))
@@ -384,9 +394,11 @@ public partial class BungieService : IBungieService
                 }
             }
 
-            return details.Values
-                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(x => x.Difficulty)
+            return details
+                .OrderByDescending(x => activityReleaseTimes.GetValueOrDefault(detailActivityNames[x.Key]))
+                .ThenBy(x => x.Value.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.Value.Difficulty)
+                .Select(x => x.Value)
                 .ToList();
         }
 
