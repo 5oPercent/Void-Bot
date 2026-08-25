@@ -29,7 +29,31 @@ GET /api/Destiny2/player/raid-dungeon/stats
         "activityCount": 120,
         "completionCount": 45,
         "mentorCount": 8,
-        "playtimeSeconds": 360000
+        "playtimeSeconds": 360000,
+        "details": [
+          {
+            "activityHashes": [2122313384, 1661734046],
+            "name": "最后一愿",
+            "difficulty": 1,
+            "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
+            "imageUrl": "https://www.bungie.net/img/destiny_content/pgcr/raid_beanstalk.jpg",
+            "activityCount": 20,
+            "completionCount": 10,
+            "mentorCount": 2,
+            "playtimeSeconds": 72000
+          },
+          {
+            "activityHashes": [1661734047],
+            "name": "最后一愿",
+            "difficulty": 2,
+            "iconUrl": "https://www.bungie.net/common/destiny2_content/icons/example.png",
+            "imageUrl": "https://www.bungie.net/img/destiny_content/pgcr/raid_beanstalk.jpg",
+            "activityCount": 5,
+            "completionCount": 3,
+            "mentorCount": 0,
+            "playtimeSeconds": 24000
+          }
+        ]
       },
       {
         "activityType": 82,
@@ -38,7 +62,8 @@ GET /api/Destiny2/player/raid-dungeon/stats
         "activityCount": 80,
         "completionCount": 32,
         "mentorCount": 3,
-        "playtimeSeconds": 180000
+        "playtimeSeconds": 180000,
+        "details": []
       }
     ]
   }
@@ -56,5 +81,10 @@ GET /api/Destiny2/player/raid-dungeon/stats
 | `completionCount` | 跨所有角色累计通关次数 |
 | `mentorCount` | 游戏内 Carries 统计追踪器累计值；同一活动的不同阈值追踪器会去重 |
 | `playtimeSeconds` | 跨所有角色累计游玩秒数 |
+| `details` | 各个具体突袭或地牢的统计列表，普通、大师等难度分开展示 |
+
+明细使用“活动原名 + 难度”作为分组条件，因此同一活动的普通和大师会返回两条相邻记录，次数、通关和时长各自累计，不会合并。`activityHashes` 只合并同一活动、同一难度下的 Bungie 版本哈希；`imageUrl` 是该活动独立的 PGCR 背景图。明细游玩时长优先采用玩家实际参与时长，汇总游玩时长保持 Bungie 历史统计接口的官方数值。
+
+难度枚举：`1` Normal、`2` Master、`3` Expert、`4` Contest、`5` Prestige、`6` Challenge。导师次数仅在 Bungie 提供对应难度的独立 Carries Metric 时归入该难度，不会在普通和大师间重复。
 
 接口结果缓存 5 分钟。前端如需展示小时数，应使用 `playtimeSeconds / 3600` 自行格式化，避免丢失原始精度。

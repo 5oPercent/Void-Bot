@@ -4,7 +4,7 @@ public partial class Destiny2Constants
 {
     public const string Destiny2 = nameof(Destiny2);
 
-    public const string RaidDungeonStatsCachePrefix = $"{Destiny2}:RaidDungeonStats";
+    public const string RaidDungeonStatsCachePrefix = $"{Destiny2}:RaidDungeonStats:V2";
 
     public const uint RaidMetricParentNodeHash = 926976517;
 
