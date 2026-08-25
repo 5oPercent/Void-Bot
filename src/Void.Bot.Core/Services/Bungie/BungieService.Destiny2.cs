@@ -621,8 +621,8 @@ public partial class BungieService : IBungieService
                         : null;
                     var fullCompletionStatus = Destiny2FullCompletionResolver.Resolve(
                         isCompleted, timePlayedSeconds, activityDurationSeconds, activity.Period,
-                        pgcrSummary, pgcrPlayer, GetStatValue(activity.Values, "startSeconds"),
-                        _destiny2Setting.RaidDungeonPlayerStartThresholdSeconds);
+                        pgcrSummary, _destiny2Setting.RaidDungeonPlayerStartThresholdSeconds,
+                        pgcrPlayer, GetStatValue(activity.Values, "startSeconds"));
                     var isFullCompletion = Destiny2FullCompletionResolver.IsFull(fullCompletionStatus);
                     detail.HasFullTrioCompletion |= isTrioCompletion && isFullCompletion;
                     detail.HasFullDuoCompletion |= isDuoCompletion && isFullCompletion;
