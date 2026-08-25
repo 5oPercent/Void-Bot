@@ -54,6 +54,7 @@ public class Destiny2Controller : ControllerBase
 
     [HttpGet]
     [Route("player/raid-dungeon/stats")]
+    [ProducesResponseType(typeof(GetDestiny2RaidDungeonStatsResponse), 200)]
     public async Task<IActionResult> GetPlayerRaidDungeonStats([FromQuery] GetDestiny2RaidDungeonStatsRequest request)
     {
         var response = await _mediator

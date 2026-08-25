@@ -27,6 +27,7 @@ public class SyncController : ControllerBase
     /// </summary>
     [HttpGet]
     [Route("destiny2/manifest/options")]
+    [ProducesResponseType(typeof(GetDestiny2ManifestSyncOptionsResponse), 200)]
     public async Task<IActionResult> GetDestiny2ManifestSyncOptionsAsync()
     {
         var response = await _mediator
