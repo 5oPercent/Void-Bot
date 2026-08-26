@@ -17,6 +17,7 @@ public class Program
         
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
+            .Enrich.FromLogContext()
             .Enrich.WithProperty("MachineName", Environment.MachineName)
             .Enrich.WithProperty("ReleaseVersion", configuration.GetValue<string>("ReleaseVersion"))
             .CreateLogger();
