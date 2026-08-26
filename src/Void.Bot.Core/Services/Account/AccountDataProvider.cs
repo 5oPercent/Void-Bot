@@ -124,6 +124,25 @@ public class AccountDataProvider : IAccountDataProvider
         }
         
         var result = await query.ToPagedAsync(pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
+
+        var users = result.Items.ToList();
+        if (users.Count > 0)
+        {
+            var userIdSet = users.Select(x => x.Id).ToHashSet();
+            var thirdParties = await _userThirdPartyRep.QueryNoTracking(x => userIdSet.Contains(x.UserId))
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            var thirdPartiesByUserId = thirdParties
+                .GroupBy(x => x.UserId)
+                .ToDictionary(x => x.Key, x => x.ToList());
+
+            foreach (var user in users)
+            {
+                if (thirdPartiesByUserId.TryGetValue(user.Id, out var userThirdParties))
+                {
+                    user.ThirdParties = userThirdParties;
+                }
+            }
+        }
         
         return _mapper.Map<PagedListDto<UserAccountDto>>(result);
     }

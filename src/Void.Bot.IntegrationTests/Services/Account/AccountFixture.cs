@@ -1,6 +1,9 @@
 using Mediator.Net;
 using Shouldly;
+using Void.Bot.Core.Data;
+using Void.Bot.Core.Domain.Account;
 using Void.Bot.IntegrationTest.Utils;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
 
 namespace Void.Bot.IntegrationTest.Services.Account;
@@ -32,6 +35,37 @@ public class AccountFixture(IntegrationTestBase testBase) : IntegrationFixture(t
             response.Data.Total.ShouldBe(3);
             response.Data.Items.ShouldNotBeNull();
             response.Data.Items.Count().ShouldBe(3);
+        });
+    }
+
+    [Fact]
+    public async Task GetUserAccountPageIncludesThirdPartyBindingsAsync()
+    {
+        var userId = await _util.AddUserAccountAsync();
+        await RunWithUnitOfWork<IRepository<UserThirdParty>>(repository =>
+            repository.InsertAsync(new UserThirdParty
+            {
+                UserId = userId,
+                Provider = nameof(AppPlatformEnum.Discord),
+                ThirdPartyUserId = "discord-user",
+                AccessToken = "access-token",
+                RefreshToken = "refresh-token"
+            }));
+
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(
+                new GetUserAccountPageRequest
+                {
+                    PageIndex = 1,
+                    PageSize = 20
+                }).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+            var user = response.Data.Items.ShouldHaveSingleItem();
+            var thirdParty = user.ThirdParties.ShouldHaveSingleItem();
+            thirdParty.Provider.ShouldBe(nameof(AppPlatformEnum.Discord));
+            thirdParty.ThirdPartyUserId.ShouldBe("discord-user");
         });
     }
     
