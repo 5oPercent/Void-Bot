@@ -40,20 +40,28 @@ Authenticated users can call:
 GET  /api/identity/email/status
 POST /api/identity/email/send-code
 POST /api/identity/email/bind
+POST /api/identity/email/unbind/send-code
 POST /api/identity/email/unbind
 ```
 
 The status endpoint returns only a masked address. The account identifier comes from
-the authenticated user and is never accepted from the request body. Unbinding requires
-the current account password. It is idempotent and clears both the email address and its
-verification timestamp, allowing the account to bind another email through the same
-send-code and bind flow.
+the authenticated user and is never accepted from the request body. To unbind an email,
+first call the unbind send-code endpoint without a request body. The verification code is
+sent only to the current account's verified email address. Submit the returned challenge
+identifier and the six-digit code to the unbind endpoint:
 
 ```json
 {
-  "password": "CurrentPassword1"
+  "challengeId": "00000000-0000-0000-0000-000000000000",
+  "code": "123456"
 }
 ```
+
+The unbinding challenge is scoped to the authenticated user, bound email, and `Unbinding`
+purpose. It uses the same expiration, resend interval, hourly send limit, failed-attempt
+limit, and single-use policy as the other email verification flows. Successful unbinding
+clears both the email address and its verification timestamp, allowing the account to bind
+another email through the same send-code and bind flow.
 
 ## Reset a password
 

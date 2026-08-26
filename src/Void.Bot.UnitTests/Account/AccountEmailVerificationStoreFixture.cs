@@ -110,4 +110,32 @@ public sealed class AccountEmailVerificationStoreFixture
 
         result.ShouldBeOfType<VerifyEmailVerificationResult.Invalid>();
     }
+
+    [Fact]
+    public async Task UnbindingChallengeIsScopedToCurrentUserAsync()
+    {
+        var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var created = (await _store.CreateAsync(
+                "user@example.com",
+                EmailVerificationPurposeEnum.Unbinding,
+                userId,
+                CancellationToken.None))
+            .ShouldBeOfType<CreateEmailVerificationResult.Created>();
+        _cacheManager.Get<AccountEmailVerificationRecord>(
+                Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(created.Record);
+
+        var result = await _store.VerifyAndTakeAsync(
+            new EmailVerificationDto
+            {
+                Email = created.Record.Email,
+                ChallengeId = created.Record.ChallengeId,
+                Code = created.Code
+            },
+            EmailVerificationPurposeEnum.Unbinding,
+            Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            CancellationToken.None);
+
+        result.ShouldBeOfType<VerifyEmailVerificationResult.Invalid>();
+    }
 }

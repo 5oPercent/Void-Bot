@@ -8,7 +8,10 @@ public sealed class UnbindUserEmailCommandValidator : FluentMessageValidator<Unb
 {
     public UnbindUserEmailCommandValidator()
     {
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required");
+        RuleFor(x => x.ChallengeId)
+            .NotEmpty().WithMessage("Email verification challenge is required");
+
+        RuleFor(x => x.Code)
+            .Matches(@"^\d{6}$").WithMessage("Email verification code must contain 6 digits");
     }
 }

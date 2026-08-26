@@ -36,12 +36,13 @@ public sealed class AccountEmailValidatorFixture
     }
 
     [Fact]
-    public void EmailUnbindRequiresPassword()
+    public void EmailUnbindRequiresValidChallengeAndCode()
     {
         var result = new UnbindUserEmailCommandValidator().Validate(
             new UnbindUserEmailCommand
             {
-                Password = string.Empty
+                ChallengeId = Guid.Empty,
+                Code = "123"
             });
 
         result.IsValid.ShouldBeFalse();
