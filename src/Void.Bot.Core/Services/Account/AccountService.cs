@@ -46,6 +46,12 @@ public partial interface IAccountService : IScope
 
     Task<ChangeUserAccountPasswordResponse> ChangeUserAccountPasswordAsync(
         ChangeUserAccountPasswordCommand command, CancellationToken cancellationToken);
+
+    Task<ForceResetUserAccountPasswordResponse> ForceResetUserAccountPasswordAsync(
+        ForceResetUserAccountPasswordCommand command, CancellationToken cancellationToken);
+
+    Task<ForceUnlinkUserAccountThirdPartyResponse> ForceUnlinkUserAccountThirdPartyAsync(
+        ForceUnlinkUserAccountThirdPartyCommand command, CancellationToken cancellationToken);
     
     Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken);
 }
@@ -55,6 +61,7 @@ public partial class AccountService : IAccountService
     private readonly IMapper _mapper;
     private readonly IAccountDataProvider _dataProvider;
     private readonly IAccountEmailVerificationStore _emailVerificationStore;
+    private readonly IAccountPasswordResetLinkStore _passwordResetLinkStore;
     private readonly IEmailService _emailService;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger _logger;
@@ -64,6 +71,7 @@ public partial class AccountService : IAccountService
         IMapper mapper,
         IAccountDataProvider dataProvider,
         IAccountEmailVerificationStore emailVerificationStore,
+        IAccountPasswordResetLinkStore passwordResetLinkStore,
         IEmailService emailService,
         ICurrentUser currentUser,
         ILogger logger,
@@ -72,6 +80,7 @@ public partial class AccountService : IAccountService
         _mapper = mapper;
         _dataProvider = dataProvider;
         _emailVerificationStore = emailVerificationStore;
+        _passwordResetLinkStore = passwordResetLinkStore;
         _emailService = emailService;
         _currentUser = currentUser;
         _logger = logger;
@@ -403,6 +412,68 @@ public partial class AccountService : IAccountService
             user.TokenVersion);
 
         return response;
+    }
+
+    public async Task<ForceResetUserAccountPasswordResponse> ForceResetUserAccountPasswordAsync(
+        ForceResetUserAccountPasswordCommand command, CancellationToken cancellationToken)
+    {
+        var user = await _dataProvider.GetUserAccountAsync(
+            command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+        {
+            return new ForceResetUserAccountPasswordResponse
+            {
+                Code = HttpStatusCode.NotFound,
+                Message = "Account not found."
+            };
+        }
+
+        user.Password = command.NewPassword.SHAEncrypt();
+        user.TokenVersion++;
+
+        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        _logger.Information(
+            "Account password forcibly reset for {UserId}; token version advanced to {TokenVersion}",
+            user.Id,
+            user.TokenVersion);
+
+        return new ForceResetUserAccountPasswordResponse();
+    }
+
+    public async Task<ForceUnlinkUserAccountThirdPartyResponse> ForceUnlinkUserAccountThirdPartyAsync(
+        ForceUnlinkUserAccountThirdPartyCommand command, CancellationToken cancellationToken)
+    {
+        var account = await _dataProvider.GetUserAccountAsync(
+            command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (account is null)
+        {
+            return new ForceUnlinkUserAccountThirdPartyResponse
+            {
+                Code = HttpStatusCode.NotFound,
+                Message = "Account not found."
+            };
+        }
+
+        var binding = await _dataProvider.GetThirdPartyByUserIdAsync(
+            command.UserId, command.Platform.ToString(), cancellationToken).ConfigureAwait(false);
+        if (binding is null)
+        {
+            return new ForceUnlinkUserAccountThirdPartyResponse
+            {
+                Code = HttpStatusCode.NotFound,
+                Message = "Third-party binding not found."
+            };
+        }
+
+        await _dataProvider.DeleteThirdPartyAsync(
+            command.UserId, command.Platform.ToString(), cancellationToken).ConfigureAwait(false);
+        _logger.Information(
+            "Third-party binding forcibly unlinked for account {UserId}, platform {Platform}, provider user {ProviderUserId}",
+            command.UserId,
+            command.Platform,
+            binding.ThirdPartyUserId);
+
+        return new ForceUnlinkUserAccountThirdPartyResponse();
     }
 
     public async Task<bool> VerifyPassword(Guid userId, string password, CancellationToken cancellationToken)

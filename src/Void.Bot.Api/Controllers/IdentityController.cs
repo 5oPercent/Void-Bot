@@ -136,6 +136,20 @@ public class IdentityController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpPost]
+    [Route("password-reset/link")]
+    [ProducesResponseType(typeof(ResetUserAccountPasswordByLinkResponse), 200)]
+    public async Task<IActionResult> ResetUserAccountPasswordByLinkAsync(
+        [FromBody] ResetUserAccountPasswordByLinkCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<ResetUserAccountPasswordByLinkCommand, ResetUserAccountPasswordByLinkResponse>(
+                command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
     [HttpGet]
     [Route("login")]
     [ProducesResponseType(typeof(AuthenticateResponse), 200)]

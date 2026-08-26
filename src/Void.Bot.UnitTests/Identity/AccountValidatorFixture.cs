@@ -3,6 +3,7 @@ using Void.Bot.Core.Validators.Account;
 using Void.Bot.Core.Validators.Identity;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Identity;
+using Void.Bot.Message.Enum;
 
 namespace Void.Bot.UnitTest.Identity;
 
@@ -90,6 +91,60 @@ public class AccountValidatorFixture
             NewPassword = "weak",
             NewPasswordConfirm = "different"
         }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ForceResetPasswordShouldRequireUserAndValidMatchingPassword()
+    {
+        var validator = new ForceResetUserAccountPasswordCommandValidator();
+
+        validator.Validate(new ForceResetUserAccountPasswordCommand
+        {
+            UserId = Guid.NewGuid(),
+            NewPassword = "NewPassword1",
+            NewPasswordConfirm = "NewPassword1"
+        }).IsValid.ShouldBeTrue();
+
+        validator.Validate(new ForceResetUserAccountPasswordCommand
+        {
+            UserId = Guid.Empty,
+            NewPassword = "weak",
+            NewPasswordConfirm = "different"
+        }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ForceUnlinkShouldRequireUserAndThirdPartyPlatform()
+    {
+        var validator = new ForceUnlinkUserAccountThirdPartyCommandValidator();
+
+        validator.Validate(new ForceUnlinkUserAccountThirdPartyCommand
+        {
+            UserId = Guid.NewGuid(),
+            Platform = AppPlatformEnum.Discord
+        }).IsValid.ShouldBeTrue();
+
+        validator.Validate(new ForceUnlinkUserAccountThirdPartyCommand
+        {
+            UserId = Guid.Empty,
+            Platform = AppPlatformEnum.Void
+        }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void PasswordResetLinkCommandsRequireValidInputs()
+    {
+        new SendUserAccountPasswordResetLinkCommandValidator().Validate(new SendUserAccountPasswordResetLinkCommand
+        {
+            UserId = Guid.NewGuid()
+        }).IsValid.ShouldBeTrue();
+
+        new ResetUserAccountPasswordByLinkCommandValidator().Validate(new ResetUserAccountPasswordByLinkCommand
+        {
+            Token = new string('a', 43),
+            NewPassword = "NewPassword1",
+            NewPasswordConfirm = "NewPassword1"
+        }).IsValid.ShouldBeTrue();
     }
 
     [Theory]
