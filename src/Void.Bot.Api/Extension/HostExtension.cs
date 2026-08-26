@@ -1,7 +1,10 @@
 using System.Net;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Correlate.AspNetCore;
+using Correlate.DependencyInjection;
 using Hangfire;
+using Hangfire.Correlate;
 using Hangfire.Dashboard.BasicAuthorization;
 using Hangfire.MemoryStorage;
 using Hangfire.Redis.StackExchange;
@@ -54,6 +57,7 @@ public static class HostExtension
         var connectionSetting = new ConnectionStringSetting(configuration);
         
         services.AddMemoryCache();
+        services.AddCorrelate();
         services.AddHttpClient();
         services.AddHttpContextAccessor();
         services.Configure<ForwardedHeadersOptions>(options =>
@@ -104,8 +108,10 @@ public static class HostExtension
 
         services.AddCustomValidationErrorHandling();
         
-        services.AddHangfire(config =>
+        services.AddHangfire((serviceProvider, config) =>
         {
+            config.UseCorrelate(serviceProvider);
+
             switch(hangfireSetting.UseStorage)
             {
                 case CacheTypeEnum.Redis:
@@ -130,6 +136,7 @@ public static class HostExtension
         var scalarSetting = new ScalarSetting(configuration);
 
         app.UseForwardedHeaders();
+        app.UseCorrelate();
         
         if (scalarSetting.Enable)
         {

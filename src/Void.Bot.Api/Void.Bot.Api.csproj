@@ -8,6 +8,8 @@
 
     <ItemGroup>
         <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="10.0.0" />
+        <PackageReference Include="Correlate.AspNetCore" Version="6.1.1" />
+        <PackageReference Include="Hangfire.Correlate" Version="2.2.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.13.11" />
