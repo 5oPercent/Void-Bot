@@ -66,6 +66,19 @@ The send-code endpoint returns the same response shape whether an email exists o
 Only accounts with a verified email can complete a reset. A successful password reset
 increments the account token version, invalidating previously issued refresh tokens.
 
+Administrators with the corresponding endpoint permission can send a one-time reset link:
+
+```text
+POST /api/account/password/reset-link
+POST /api/identity/password-reset/link
+```
+
+The first endpoint accepts a `userId`, requires a verified account email, invalidates any
+previous link for that account, and sends a 256-bit single-use token in the URL fragment.
+The anonymous completion endpoint accepts `token`, `newPassword`, and
+`newPasswordConfirm`. Completing the reset increments the account token version. Link
+delivery and completion do not publish EventSystem events.
+
 ## Verification policy
 
 Defaults are configured under `AccountEmail`:
@@ -76,7 +89,9 @@ Defaults are configured under `AccountEmail`:
     "CodeTtlMinutes": 10,
     "ResendIntervalSeconds": 60,
     "MaxSendsPerHour": 5,
-    "MaxAttempts": 5
+    "MaxAttempts": 5,
+    "PasswordResetLinkTtlMinutes": 15,
+    "PasswordResetFrontendUrl": "https://voidbot.example/password-reset"
   }
 }
 ```

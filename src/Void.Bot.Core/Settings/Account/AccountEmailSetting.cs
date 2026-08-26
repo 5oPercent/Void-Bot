@@ -11,6 +11,8 @@ public sealed class AccountEmailSetting : IConfigurationSetting
     public int MaxSendsPerHour { get; }
 
     public int MaxAttempts { get; }
+    public int PasswordResetLinkTtlMinutes { get; }
+    public string PasswordResetFrontendUrl { get; }
 
     public AccountEmailSetting(IConfiguration configuration)
     {
@@ -18,5 +20,7 @@ public sealed class AccountEmailSetting : IConfigurationSetting
         ResendIntervalSeconds = configuration.GetValue("AccountEmail:ResendIntervalSeconds", 60);
         MaxSendsPerHour = configuration.GetValue("AccountEmail:MaxSendsPerHour", 5);
         MaxAttempts = configuration.GetValue("AccountEmail:MaxAttempts", 5);
+        PasswordResetLinkTtlMinutes = configuration.GetValue("AccountEmail:PasswordResetLinkTtlMinutes", 15);
+        PasswordResetFrontendUrl = configuration["AccountEmail:PasswordResetFrontendUrl"] ?? string.Empty;
     }
 }

@@ -39,10 +39,76 @@ public partial interface IAccountService
     Task<ResetUserAccountPasswordResponse> ResetUserAccountPasswordAsync(
         ResetUserAccountPasswordCommand command,
         CancellationToken cancellationToken);
+
+    Task<SendUserAccountPasswordResetLinkResponse> SendUserAccountPasswordResetLinkAsync(
+        SendUserAccountPasswordResetLinkCommand command, CancellationToken cancellationToken);
+
+    Task<ResetUserAccountPasswordByLinkResponse> ResetUserAccountPasswordByLinkAsync(
+        ResetUserAccountPasswordByLinkCommand command, CancellationToken cancellationToken);
 }
 
 public partial class AccountService
 {
+    public async Task<SendUserAccountPasswordResetLinkResponse> SendUserAccountPasswordResetLinkAsync(
+        SendUserAccountPasswordResetLinkCommand command, CancellationToken cancellationToken)
+    {
+        var user = await _dataProvider.GetUserAccountAsync(command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.NotFound, Message = "account_not_found" };
+        if (string.IsNullOrWhiteSpace(user.Email) || !user.EmailVerifiedAt.HasValue)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.Conflict, Message = "verified_email_required" };
+        if (!Uri.TryCreate(_accountEmailSetting.PasswordResetFrontendUrl, UriKind.Absolute, out var frontendUrl) ||
+            frontendUrl.Scheme is not ("http" or "https"))
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_url_not_configured" };
+
+        var created = await _passwordResetLinkStore.CreateAsync(
+            user.Id, user.Email, TimeSpan.FromMinutes(_accountEmailSetting.PasswordResetLinkTtlMinutes), cancellationToken).ConfigureAwait(false);
+        if (created is not CreatePasswordResetLinkResult.Created link)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_link_unavailable" };
+
+        var url = $"{frontendUrl.GetLeftPart(UriPartial.Path)}#token={Uri.EscapeDataString(link.Token)}";
+        try
+        {
+            await _emailService.SendAsync(new EmailMessageDto
+            {
+                To = user.Email,
+                Subject = "Void Bot password reset",
+                TextContent = $"Open this link to reset your password: {url}\nThis link expires at {link.ExpiresAt:O}."
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await _passwordResetLinkStore.RemoveAsync(link.Token, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await _passwordResetLinkStore.RemoveAsync(link.Token, CancellationToken.None).ConfigureAwait(false);
+            _logger.Warning(exception, "Password reset link email failed for account {UserId}", user.Id);
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.BadGateway, Message = "email_send_failed" };
+        }
+        return new SendUserAccountPasswordResetLinkResponse { Message = "password_reset_link_sent" };
+    }
+
+    public async Task<ResetUserAccountPasswordByLinkResponse> ResetUserAccountPasswordByLinkAsync(
+        ResetUserAccountPasswordByLinkCommand command, CancellationToken cancellationToken)
+    {
+        var taken = await _passwordResetLinkStore.TakeAsync(command.Token, cancellationToken).ConfigureAwait(false);
+        if (taken is TakePasswordResetLinkResult.Unavailable)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_link_unavailable" };
+        if (taken is not TakePasswordResetLinkResult.Found found)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.BadRequest, Message = "invalid_or_expired_password_reset_link" };
+
+        var user = await _dataProvider.GetUserAccountAsync(found.Record.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null || !string.Equals(user.Email, found.Record.Email, StringComparison.OrdinalIgnoreCase) || !user.EmailVerifiedAt.HasValue)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.BadRequest, Message = "invalid_or_expired_password_reset_link" };
+        user.Password = command.NewPassword.SHAEncrypt();
+        user.TokenVersion++;
+        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        _logger.Information("Account password reset through management link for {UserId}", user.Id);
+        return new ResetUserAccountPasswordByLinkResponse();
+    }
+
     public async Task<SendRegistrationEmailCodeResponse> SendRegistrationEmailCodeAsync(
         SendRegistrationEmailCodeCommand command,
         CancellationToken cancellationToken)
