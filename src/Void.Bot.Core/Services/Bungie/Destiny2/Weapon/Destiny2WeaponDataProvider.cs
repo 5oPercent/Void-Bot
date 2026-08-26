@@ -1274,7 +1274,8 @@ internal sealed class Destiny2WeaponDataProvider : IDestiny2WeaponDataProvider, 
         foreach (var trait in traitIds.EnumerateArray())
         {
             if (trait.ValueKind != JsonValueKind.String ||
-                !Destiny2WeaponReleaseSeasonMap.TryResolveSeason(trait.GetString(), out var seasonNumber))
+                trait.GetString() is not { } traitId ||
+                !Destiny2WeaponReleaseSeasonMap.TryResolveSeason(traitId, out var seasonNumber))
             {
                 continue;
             }
