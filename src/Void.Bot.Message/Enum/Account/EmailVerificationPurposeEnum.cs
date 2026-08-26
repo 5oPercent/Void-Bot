@@ -4,5 +4,6 @@ public enum EmailVerificationPurposeEnum
 {
     Registration = 1,
     Binding = 2,
-    PasswordReset = 3
+    PasswordReset = 3,
+    Unbinding = 4
 }

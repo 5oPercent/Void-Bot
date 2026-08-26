@@ -24,6 +24,10 @@ public partial interface IAccountService
         BindUserEmailCommand command,
         CancellationToken cancellationToken);
 
+    Task<SendEmailUnbindingCodeResponse> SendEmailUnbindingCodeAsync(
+        SendEmailUnbindingCodeCommand command,
+        CancellationToken cancellationToken);
+
     Task<UnbindUserEmailResponse> UnbindUserEmailAsync(
         UnbindUserEmailCommand command,
         CancellationToken cancellationToken);
@@ -39,10 +43,76 @@ public partial interface IAccountService
     Task<ResetUserAccountPasswordResponse> ResetUserAccountPasswordAsync(
         ResetUserAccountPasswordCommand command,
         CancellationToken cancellationToken);
+
+    Task<SendUserAccountPasswordResetLinkResponse> SendUserAccountPasswordResetLinkAsync(
+        SendUserAccountPasswordResetLinkCommand command, CancellationToken cancellationToken);
+
+    Task<ResetUserAccountPasswordByLinkResponse> ResetUserAccountPasswordByLinkAsync(
+        ResetUserAccountPasswordByLinkCommand command, CancellationToken cancellationToken);
 }
 
 public partial class AccountService
 {
+    public async Task<SendUserAccountPasswordResetLinkResponse> SendUserAccountPasswordResetLinkAsync(
+        SendUserAccountPasswordResetLinkCommand command, CancellationToken cancellationToken)
+    {
+        var user = await _dataProvider.GetUserAccountAsync(command.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.NotFound, Message = "account_not_found" };
+        if (string.IsNullOrWhiteSpace(user.Email) || !user.EmailVerifiedAt.HasValue)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.Conflict, Message = "verified_email_required" };
+        if (!Uri.TryCreate(_accountEmailSetting.PasswordResetFrontendUrl, UriKind.Absolute, out var frontendUrl) ||
+            frontendUrl.Scheme is not ("http" or "https"))
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_url_not_configured" };
+
+        var created = await _passwordResetLinkStore.CreateAsync(
+            user.Id, user.Email, TimeSpan.FromMinutes(_accountEmailSetting.PasswordResetLinkTtlMinutes), cancellationToken).ConfigureAwait(false);
+        if (created is not CreatePasswordResetLinkResult.Created link)
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_link_unavailable" };
+
+        var url = $"{frontendUrl.GetLeftPart(UriPartial.Path)}#token={Uri.EscapeDataString(link.Token)}";
+        try
+        {
+            await _emailService.SendAsync(new EmailMessageDto
+            {
+                To = user.Email,
+                Subject = "Void Bot password reset",
+                TextContent = $"Open this link to reset your password: {url}\nThis link expires at {link.ExpiresAt:O}."
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await _passwordResetLinkStore.RemoveAsync(link.Token, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await _passwordResetLinkStore.RemoveAsync(link.Token, CancellationToken.None).ConfigureAwait(false);
+            _logger.Warning(exception, "Password reset link email failed for account {UserId}", user.Id);
+            return new SendUserAccountPasswordResetLinkResponse { Code = HttpStatusCode.BadGateway, Message = "email_send_failed" };
+        }
+        return new SendUserAccountPasswordResetLinkResponse { Message = "password_reset_link_sent" };
+    }
+
+    public async Task<ResetUserAccountPasswordByLinkResponse> ResetUserAccountPasswordByLinkAsync(
+        ResetUserAccountPasswordByLinkCommand command, CancellationToken cancellationToken)
+    {
+        var taken = await _passwordResetLinkStore.TakeAsync(command.Token, cancellationToken).ConfigureAwait(false);
+        if (taken is TakePasswordResetLinkResult.Unavailable)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.ServiceUnavailable, Message = "password_reset_link_unavailable" };
+        if (taken is not TakePasswordResetLinkResult.Found found)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.BadRequest, Message = "invalid_or_expired_password_reset_link" };
+
+        var user = await _dataProvider.GetUserAccountAsync(found.Record.UserId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null || !string.Equals(user.Email, found.Record.Email, StringComparison.OrdinalIgnoreCase) || !user.EmailVerifiedAt.HasValue)
+            return new ResetUserAccountPasswordByLinkResponse { Code = HttpStatusCode.BadRequest, Message = "invalid_or_expired_password_reset_link" };
+        user.Password = command.NewPassword.SHAEncrypt();
+        user.TokenVersion++;
+        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        _logger.Information("Account password reset through management link for {UserId}", user.Id);
+        return new ResetUserAccountPasswordByLinkResponse();
+    }
+
     public async Task<SendRegistrationEmailCodeResponse> SendRegistrationEmailCodeAsync(
         SendRegistrationEmailCodeCommand command,
         CancellationToken cancellationToken)
@@ -245,6 +315,53 @@ public partial class AccountService
             : new GetUserEmailStatusResponse { Data = CreateEmailStatus(user) };
     }
 
+    public async Task<SendEmailUnbindingCodeResponse> SendEmailUnbindingCodeAsync(
+        SendEmailUnbindingCodeCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (!_currentUser.Id.HasValue)
+        {
+            return new SendEmailUnbindingCodeResponse
+            {
+                Code = HttpStatusCode.Unauthorized,
+                Message = "account_not_authenticated"
+            };
+        }
+
+        var userId = _currentUser.Id.Value;
+        var user = await _dataProvider.GetUserAccountAsync(
+            userId, string.Empty, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+        {
+            return new SendEmailUnbindingCodeResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "account_not_found"
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email) || !user.EmailVerifiedAt.HasValue)
+        {
+            return new SendEmailUnbindingCodeResponse
+            {
+                Code = HttpStatusCode.Conflict,
+                Message = "account_email_not_bound"
+            };
+        }
+
+        var result = await CreateAndSendVerificationCodeAsync(
+            user.Email,
+            EmailVerificationPurposeEnum.Unbinding,
+            userId,
+            cancellationToken).ConfigureAwait(false);
+        return new SendEmailUnbindingCodeResponse
+        {
+            Code = result.Code,
+            Message = result.Message,
+            Data = result.Data
+        };
+    }
+
     public async Task<UnbindUserEmailResponse> UnbindUserEmailAsync(
         UnbindUserEmailCommand command,
         CancellationToken cancellationToken)
@@ -270,26 +387,58 @@ public partial class AccountService
             };
         }
 
-        if (command.Password.SHAEncrypt() != user.Password)
-        {
-            _logger.Warning("Email unbind password verification failed for account {UserId}", userId);
-            return new UnbindUserEmailResponse
-            {
-                Code = HttpStatusCode.BadRequest,
-                Message = "invalid_password"
-            };
-        }
-
         if (string.IsNullOrEmpty(user.Email))
         {
             _logger.Information("Email unbind skipped because account {UserId} has no bound email", userId);
             return new UnbindUserEmailResponse { Data = CreateEmailStatus(user) };
         }
 
+        var verifyResult = await _emailVerificationStore.VerifyAndTakeAsync(
+            new EmailVerificationDto
+            {
+                Email = NormalizeEmail(user.Email),
+                ChallengeId = command.ChallengeId,
+                Code = command.Code.Trim()
+            },
+            EmailVerificationPurposeEnum.Unbinding,
+            userId,
+            cancellationToken).ConfigureAwait(false);
+        if (verifyResult is VerifyEmailVerificationResult.Unavailable)
+        {
+            return new UnbindUserEmailResponse
+            {
+                Code = HttpStatusCode.ServiceUnavailable,
+                Message = "email_verification_unavailable"
+            };
+        }
+
+        if (verifyResult is not VerifyEmailVerificationResult.Verified verified)
+        {
+            _logger.Warning(
+                "Email unbinding verification challenge {ChallengeId} was rejected for account {UserId}",
+                command.ChallengeId,
+                userId);
+            return new UnbindUserEmailResponse
+            {
+                Code = HttpStatusCode.BadRequest,
+                Message = "invalid_or_expired_email_verification"
+            };
+        }
+
         var maskedEmail = MaskEmail(user.Email);
         user.Email = null;
         user.EmailVerifiedAt = null;
-        await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _dataProvider.UpdateUserAccountAsync(user, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await _emailVerificationStore.RestoreAsync(
+                verified.Record, CancellationToken.None).ConfigureAwait(false);
+            throw;
+        }
+
         _logger.Information("Email {Email} unbound from account {UserId}", maskedEmail, userId);
         return new UnbindUserEmailResponse
         {
@@ -516,9 +665,12 @@ public partial class AccountService
 
     private static string GetVerificationEmailSubject(EmailVerificationPurposeEnum purpose)
     {
-        return purpose == EmailVerificationPurposeEnum.PasswordReset
-            ? "Void Bot password reset code"
-            : "Void Bot email verification code";
+        return purpose switch
+        {
+            EmailVerificationPurposeEnum.PasswordReset => "Void Bot password reset code",
+            EmailVerificationPurposeEnum.Unbinding => "Void Bot email unbinding code",
+            _ => "Void Bot email verification code"
+        };
     }
 
     private static ResetUserAccountPasswordResponse InvalidPasswordResetResponse()

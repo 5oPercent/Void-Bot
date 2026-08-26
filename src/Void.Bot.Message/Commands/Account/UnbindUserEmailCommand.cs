@@ -6,7 +6,9 @@ namespace Void.Bot.Message.Commands.Account;
 
 public sealed class UnbindUserEmailCommand : ICommand
 {
-    public required string Password { get; init; }
+    public Guid ChallengeId { get; init; }
+
+    public required string Code { get; init; }
 }
 
 public sealed class UnbindUserEmailResponse : VoidBotResponse<UserEmailStatusDto>

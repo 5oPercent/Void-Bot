@@ -14,6 +14,7 @@ using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.EventAction;
 using Void.Bot.Message.Constants.EventAction;
 using Void.Bot.Message.Dto.EventAction;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Events.EventAction;
 using Void.Bot.Message.Request.EventAction;
 
@@ -53,6 +54,29 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         return GivenGrantRoleRuleExists(true, null, null);
     }
 
+    private Task GivenEnabledPasswordForceResetGrantRoleRuleExists()
+    {
+        return GivenGrantRoleRuleExists(
+            BuiltInEventNames.AccountPasswordForceReset, true, null, null);
+    }
+
+    private Task GivenEnabledThirdPartyForceUnlinkedGrantRoleRuleExists()
+    {
+        return GivenGrantRoleRuleExists(
+            BuiltInEventNames.AccountThirdPartyForceUnlinked,
+            true,
+            null,
+            null,
+            [
+                new EventActionConditionDto
+                {
+                    Field = "Platform",
+                    Operator = EventActionConditionOperators.Equal,
+                    Values = [AppPlatformEnum.Discord.ToString()]
+                }
+            ]);
+    }
+
     private Task GivenEnabledGrantRoleRuleWithDurationExists()
     {
         return GivenGrantRoleRuleExists(true, DurationHours, "Hour");
@@ -64,6 +88,20 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
     }
 
     private async Task GivenGrantRoleRuleExists(bool enabled, int? duration, string? durationUnit)
+    {
+        await GivenGrantRoleRuleExists(
+            BuiltInEventNames.AccountRegistered,
+            enabled,
+            duration,
+            durationUnit);
+    }
+
+    private async Task GivenGrantRoleRuleExists(
+        string eventName,
+        bool enabled,
+        int? duration,
+        string? durationUnit,
+        List<EventActionConditionDto>? conditions = null)
     {
         var arguments = new Dictionary<string, string[]>
         {
@@ -82,8 +120,9 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                 new AddEventActionRuleCommand
                 {
                     Name = RuleName,
-                    Event = BuiltInEventNames.AccountRegistered,
+                    Event = eventName,
                     Enabled = enabled,
+                    Conditions = conditions ?? [],
                     Actions =
                     [
                         new ConfiguredEventActionDto
@@ -191,6 +230,105 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
 
             response.Data.ShouldNotBeNull();
             _userId = response.Data.Id;
+        });
+    }
+
+    private async Task GivenRegisteredUserExists()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
+                new RegisterUserAccountCommand
+                {
+                    Name = "ManagedEventUser",
+                    Password = StringExtension.GenerateRandomPassword()
+                }).ConfigureAwait(false);
+
+            response.Data.ShouldNotBeNull();
+            _userId = response.Data.Id;
+        });
+    }
+
+    private Task GivenDiscordBindingExists()
+    {
+        return RunWithUnitOfWork<IRepository<UserThirdParty>>(repository =>
+            repository.InsertAsync(new UserThirdParty
+            {
+                UserId = _userId,
+                Provider = AppPlatformEnum.Discord.ToString(),
+                ThirdPartyUserId = "event-system-discord-user"
+            }, CancellationToken.None));
+    }
+
+    private async Task WhenUserPasswordIsForceReset()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<
+                ForceResetUserAccountPasswordCommand,
+                ForceResetUserAccountPasswordResponse>(new ForceResetUserAccountPasswordCommand
+            {
+                UserId = _userId,
+                NewPassword = "ResetPassword1",
+                NewPasswordConfirm = "ResetPassword1"
+            }).ConfigureAwait(false);
+
+            response.Code.ShouldBe(HttpStatusCode.OK);
+        });
+    }
+
+    private async Task WhenDiscordBindingIsForceUnlinked()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<
+                ForceUnlinkUserAccountThirdPartyCommand,
+                ForceUnlinkUserAccountThirdPartyResponse>(new ForceUnlinkUserAccountThirdPartyCommand
+            {
+                UserId = _userId,
+                Platform = AppPlatformEnum.Discord
+            }).ConfigureAwait(false);
+
+            response.Code.ShouldBe(HttpStatusCode.OK);
+        });
+    }
+
+    private Task GivenMissingUserId()
+    {
+        _userId = Guid.NewGuid();
+        return Task.CompletedTask;
+    }
+
+    private async Task WhenMissingUserPasswordIsForceReset()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<
+                ForceResetUserAccountPasswordCommand,
+                ForceResetUserAccountPasswordResponse>(new ForceResetUserAccountPasswordCommand
+            {
+                UserId = _userId,
+                NewPassword = "ResetPassword1",
+                NewPasswordConfirm = "ResetPassword1"
+            }).ConfigureAwait(false);
+
+            response.Code.ShouldBe(HttpStatusCode.NotFound);
+        });
+    }
+
+    private async Task WhenMissingDiscordBindingIsForceUnlinked()
+    {
+        await Run<IMediator>(async mediator =>
+        {
+            var response = await mediator.SendAsync<
+                ForceUnlinkUserAccountThirdPartyCommand,
+                ForceUnlinkUserAccountThirdPartyResponse>(new ForceUnlinkUserAccountThirdPartyCommand
+            {
+                UserId = _userId,
+                Platform = AppPlatformEnum.Discord
+            }).ConfigureAwait(false);
+
+            response.Code.ShouldBe(HttpStatusCode.NotFound);
         });
     }
 
@@ -331,14 +469,39 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         eventDefinition.Fields.ShouldContain(x =>
             x.Name == "UserId" && x.ValueType == "Guid");
 
+        var passwordForceResetDefinition = _definitions.Events.Single(x =>
+            x.Name == BuiltInEventNames.AccountPasswordForceReset);
+        passwordForceResetDefinition.Fields.ShouldContain(x =>
+            x.Name == "UserId" && x.ValueType == "Guid");
+
+        var thirdPartyForceUnlinkedDefinition = _definitions.Events.Single(x =>
+            x.Name == BuiltInEventNames.AccountThirdPartyForceUnlinked);
+        thirdPartyForceUnlinkedDefinition.Fields.ShouldContain(x =>
+            x.Name == "UserId" && x.ValueType == "Guid");
+        thirdPartyForceUnlinkedDefinition.Fields.ShouldContain(x =>
+            x.Name == "Platform" &&
+            x.ValueType == "String" &&
+            x.Options.Any(option => option.Value == AppPlatformEnum.Discord.ToString()));
+
         var actionDefinition = _definitions.Actions.Single(x =>
             x.Type == GrantRolesEventActionExecutor.ActionType);
         actionDefinition.Version.ShouldBe(1);
+        actionDefinition.SupportedEvents.ShouldContain(BuiltInEventNames.AccountPasswordForceReset);
+        actionDefinition.SupportedEvents.ShouldContain(BuiltInEventNames.AccountThirdPartyForceUnlinked);
         var durationDefinition = actionDefinition.Arguments.Single(x => x.Name == "Duration");
         durationDefinition.ValueType.ShouldBe("Integer");
         durationDefinition.Minimum.ShouldBe(1);
         durationDefinition.RequiredWith.ShouldContain("DurationUnit");
         durationDefinition.MaximumByOption["Hour"].ShouldBe(876000L);
+
+        var sendEmailDefinition = _definitions.Actions.Single(x =>
+            x.Type == SendEmailEventActionExecutor.ActionType);
+        sendEmailDefinition.Version.ShouldBe(1);
+        sendEmailDefinition.SupportedEvents.ShouldContain(BuiltInEventNames.AccountRegistered);
+        sendEmailDefinition.SupportedEvents.ShouldContain(BuiltInEventNames.AccountPasswordForceReset);
+        sendEmailDefinition.SupportedEvents.ShouldContain(BuiltInEventNames.AccountThirdPartyForceUnlinked);
+        sendEmailDefinition.Arguments.ShouldContain(x => x.Name == "Subject" && x.Required);
+        sendEmailDefinition.Arguments.ShouldContain(x => x.Name == "Content" && x.Required);
 
         _definitions.FailurePolicies.Select(x => x.Value)
             .ShouldContain(EventActionFailurePolicies.Continue);
@@ -355,6 +518,16 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                              execution.ActionVersion == 1 &&
                              execution.Status == EventActionExecutionStatuses.Succeeded,
                 CancellationToken.None).ConfigureAwait(false)).ShouldBeTrue();
+        });
+    }
+
+    private async Task ThenExecutionShouldNotBeRecorded()
+    {
+        await Run<IRepository<EventActionExecution>>(async repository =>
+        {
+            (await repository.AnyAsync(
+                execution => execution.RuleName == RuleName,
+                CancellationToken.None).ConfigureAwait(false)).ShouldBeFalse();
         });
     }
 
@@ -424,6 +597,53 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
             .When(x => x.WhenUserRegisters())
             .Then(x => x.ThenUserShouldHaveConfiguredRole())
             .And(x => x.ThenSuccessfulExecutionShouldBeRecorded())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void EnabledRuleRunsAfterPasswordIsForceReset()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenRegisteredUserExists())
+            .And(x => x.GivenEnabledPasswordForceResetGrantRoleRuleExists())
+            .When(x => x.WhenUserPasswordIsForceReset())
+            .Then(x => x.ThenUserShouldHaveConfiguredRole())
+            .And(x => x.ThenSuccessfulExecutionShouldBeRecorded())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void EnabledRuleRunsAfterThirdPartyIsForceUnlinked()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenRegisteredUserExists())
+            .And(x => x.GivenDiscordBindingExists())
+            .And(x => x.GivenEnabledThirdPartyForceUnlinkedGrantRoleRuleExists())
+            .When(x => x.WhenDiscordBindingIsForceUnlinked())
+            .Then(x => x.ThenUserShouldHaveConfiguredRole())
+            .And(x => x.ThenSuccessfulExecutionShouldBeRecorded())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void FailedPasswordForceResetDoesNotRunRule()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenMissingUserId())
+            .And(x => x.GivenEnabledPasswordForceResetGrantRoleRuleExists())
+            .When(x => x.WhenMissingUserPasswordIsForceReset())
+            .Then(x => x.ThenExecutionShouldNotBeRecorded())
+            .BDDfy();
+    }
+
+    [Fact]
+    public void FailedThirdPartyForceUnlinkDoesNotRunRule()
+    {
+        this.Given(x => x.GivenRoleExists())
+            .And(x => x.GivenRegisteredUserExists())
+            .And(x => x.GivenEnabledThirdPartyForceUnlinkedGrantRoleRuleExists())
+            .When(x => x.WhenMissingDiscordBindingIsForceUnlinked())
+            .Then(x => x.ThenExecutionShouldNotBeRecorded())
             .BDDfy();
     }
 

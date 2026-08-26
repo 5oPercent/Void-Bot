@@ -49,6 +49,8 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterIdentity(builder);
         
         RegisterLogger(builder);
+
+        RegisterTimeProvider(builder);
         
         RegisterMediator(builder);
 
@@ -106,6 +108,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     private void RegisterLogger(ContainerBuilder builder)
     {
         builder.RegisterInstance(logger).AsSelf().AsImplementedInterfaces().SingleInstance();
+    }
+
+    private static void RegisterTimeProvider(ContainerBuilder builder)
+    {
+        builder.RegisterInstance(TimeProvider.System).As<TimeProvider>().SingleInstance();
     }
     
     // 注册中介者，用于解耦，后续调用 Service 请使用 IMediator
