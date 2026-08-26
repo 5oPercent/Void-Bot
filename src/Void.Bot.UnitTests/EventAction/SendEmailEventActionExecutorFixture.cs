@@ -45,6 +45,17 @@ public sealed class SendEmailEventActionExecutorFixture
     }
 
     [Fact]
+    public async Task ValidationRejectsPasswordPlaceholderInSubjectAsync()
+    {
+        var error = await CreateExecutor().ValidateAsync(
+            BuiltInEventNames.AccountPasswordForceReset,
+            CreateArguments("Temporary password: {Password}", "Your temporary password is {Password}."),
+            CancellationToken.None);
+
+        error.ShouldContain("Subject cannot contain the Password placeholder");
+    }
+
+    [Fact]
     public async Task ExecuteSendsToVerifiedEventUserAndReplacesPlaceholdersAsync()
     {
         _accountDataProvider.GetUserAccountAsync(

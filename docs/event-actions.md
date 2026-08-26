@@ -70,7 +70,7 @@
 
 三个账号事件均提供 `UserId` 条件字段；`Account.ThirdPartyForceUnlinked` 额外提供 `Platform` 条件字段，可按第三方平台筛选规则。失败的密码重置或解绑操作不会发布事件。
 
-`SendEmail` 向事件关联用户的已验证邮箱发送纯文本邮件，不允许在规则中指定任意外部收件地址。动作参数为单值 `Subject` 和 `Content`，分别最多 200 和 10000 个字符；两者都支持 `{UserId}`、`{DisplayName}`、`{Platform}` 和 `{Password}` 占位符。非第三方解绑事件中的 `{Platform}` 会替换为空字符串；`{Password}` 仅在 `Account.PasswordForceReset` 事件中有值，其他事件会替换为空字符串。密码只在本次事件的内存执行链中传递，不会进入事件定义字段、规则、执行记录或结构化日志。
+`SendEmail` 向事件关联用户的已验证邮箱发送纯文本邮件，不允许在规则中指定任意外部收件地址。动作参数为单值 `Subject` 和 `Content`，分别最多 200 和 10000 个字符。两者都支持 `{UserId}`、`{DisplayName}` 和 `{Platform}` 占位符；只有 `Content` 支持 `{Password}`，邮件标题禁止包含密码。非第三方解绑事件中的 `{Platform}` 会替换为空字符串；`{Password}` 仅在 `Account.PasswordForceReset` 事件正文中有值，其他事件会替换为空字符串。密码只在本次事件的内存执行链中传递，不会进入事件定义字段、规则、执行记录或结构化日志。
 
 规则中的动作按数组顺序执行；多条规则按 `Sequence`、`CreatedAt` 排序执行。禁用的规则或动作不会执行。
 
