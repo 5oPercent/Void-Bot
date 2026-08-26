@@ -636,6 +636,7 @@ public class Destiny2WeaponServiceFixture
                 PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }]
             },
             CancellationToken.None);
+        holofoilResponse.Data.ShouldNotBeNull();
         holofoilResponse.Data.Items.Select(weapon => weapon.WeaponHash).ShouldBe([101u]);
     }
 

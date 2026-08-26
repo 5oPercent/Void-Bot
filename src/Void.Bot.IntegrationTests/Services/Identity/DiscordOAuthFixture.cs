@@ -146,7 +146,9 @@ public class DiscordOAuthFixture(IntegrationTestBase testBase) : IntegrationFixt
         authorizeResponse.Code.ShouldBe(HttpStatusCode.OK);
         authorizeResponse.Data.ShouldNotBeNull();
         authorizeResponse.Data.Platform.ShouldBe(Provider);
-        var state = ExtractQueryParameter(authorizeResponse.Data.RedirectUrl, "state");
+        var redirectUrl = authorizeResponse.Data.RedirectUrl;
+        redirectUrl.ShouldNotBeNull();
+        var state = ExtractQueryParameter(redirectUrl, "state");
         await Run<IMediator>(async mediator =>
         {
             firstResponse = await SendCallbackAsync(mediator, state);

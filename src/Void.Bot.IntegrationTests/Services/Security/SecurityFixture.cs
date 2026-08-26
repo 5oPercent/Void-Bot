@@ -227,6 +227,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
             response.Code.ShouldBe(System.Net.HttpStatusCode.OK);
             var roles = await userRoleService.GetRolesByUserIdAsync(
                 new GetRolesByUserIdRequest { UserId = targetUserId }, CancellationToken.None);
+            roles.Data.ShouldNotBeNull();
             roles.Data.UserRoles.ShouldContain(x => x.RoleId == RoleConstants.SuperAdminId);
         });
     }
@@ -316,6 +317,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
             var roles = await userRoleService.GetRolesByUserIdAsync(
                 new GetRolesByUserIdRequest { UserId = otherSuperAdminId }, CancellationToken.None);
+            roles.Data.ShouldNotBeNull();
             roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
                 .Deadline.ShouldNotBeNull();
         });
@@ -344,6 +346,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
             var roles = await userRoleService.GetRolesByUserIdAsync(
                 new GetRolesByUserIdRequest { UserId = TestUserId }, CancellationToken.None);
+            roles.Data.ShouldNotBeNull();
             roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
                 .Deadline.ShouldBeNull();
         });
@@ -391,6 +394,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
             var roles = await userRoleService.GetRolesByUserIdAsync(
                 new GetRolesByUserIdRequest { UserId = bootstrapSuperAdminId }, CancellationToken.None);
+            roles.Data.ShouldNotBeNull();
             roles.Data.UserRoles.Single(x => x.RoleId == RoleConstants.SuperAdminId)
                 .Deadline.ShouldBeNull();
         });
@@ -416,6 +420,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
 
             var roles = await userRoleService.GetRolesByUserIdAsync(
                 new GetRolesByUserIdRequest { UserId = userId }, CancellationToken.None);
+            roles.Data.ShouldNotBeNull();
             roles.Data.UserRoles.Single(x => x.RoleId == existingRoleId)
                 .Deadline.ShouldNotBeNull();
             roles.Data.UserRoles.Single(x => x.RoleId == addedRoleId)
@@ -557,13 +562,15 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
                 .ShouldBeLessThanOrEqualTo(2);
             response.Data.Permissions.Count.ShouldBe(1);
             response.Data.Permissions[0].Id.ShouldBe(activePermissionId);
-            response.Data.Permissions[0].Deadline.ShouldNotBeNull();
-            Math.Abs(response.Data.Permissions[0].Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
+            var permissionDeadline = response.Data.Permissions[0].Deadline;
+            permissionDeadline.ShouldNotBeNull();
+            Math.Abs(permissionDeadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
                 .ShouldBeLessThanOrEqualTo(2);
             response.Data.Menus.Count.ShouldBe(1);
             response.Data.Menus[0].Id.ShouldBe(menuId);
-            response.Data.Menus[0].Deadline.ShouldNotBeNull();
-            Math.Abs(response.Data.Menus[0].Deadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
+            var menuDeadline = response.Data.Menus[0].Deadline;
+            menuDeadline.ShouldNotBeNull();
+            Math.Abs(menuDeadline.Value.ToUnixTimeSeconds() - activeDeadline.ToUnixTimeSeconds())
                 .ShouldBeLessThanOrEqualTo(2);
         });
     }
@@ -586,6 +593,7 @@ public class SecurityFixture(IntegrationTestBase testBase) : IntegrationFixture(
             var response = await mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(
                 new GetCurrentUserPermissionsRequest()).ConfigureAwait(false);
 
+            response.Data.ShouldNotBeNull();
             response.Data.Roles.Single().Id.ShouldBe(RoleConstants.SuperAdminId);
             response.Data.Permissions.Single().Id.ShouldBe(permissionId);
             response.Data.Menus.Single().Id.ShouldBe(menuId);
