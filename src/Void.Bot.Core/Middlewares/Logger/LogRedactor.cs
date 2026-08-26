@@ -137,7 +137,8 @@ internal static class LogRedactor
     private static bool IsUniversallySensitiveName(string name)
     {
         var normalized = Normalize(name);
-        return normalized is "password" or "accountsecret" or "jwt" ||
+        return normalized.Contains("password", StringComparison.Ordinal) ||
+               normalized is "accountsecret" or "jwt" ||
                normalized.EndsWith("token", StringComparison.Ordinal) ||
                normalized.Contains("secret", StringComparison.Ordinal);
     }

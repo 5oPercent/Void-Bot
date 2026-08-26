@@ -28,7 +28,12 @@ public class GrantRolesEventActionExecutor(
         Version = Version,
         DisplayName = "授权角色",
         Description = "为事件关联的用户授予一个或多个角色。",
-        SupportedEvents = [BuiltInEventNames.AccountRegistered],
+        SupportedEvents =
+        [
+            BuiltInEventNames.AccountRegistered,
+            BuiltInEventNames.AccountPasswordForceReset,
+            BuiltInEventNames.AccountThirdPartyForceUnlinked
+        ],
         Arguments =
         [
             new EventActionArgumentDefinitionDto
@@ -119,7 +124,7 @@ public class GrantRolesEventActionExecutor(
         IReadOnlyDictionary<string, string[]> arguments,
         CancellationToken cancellationToken)
     {
-        if (builtInEvent is not AccountRegisteredEvent accountRegistered)
+        if (builtInEvent is not IUserBuiltInEvent userEvent)
         {
             throw new InvalidOperationException(
                 $"Event action '{ActionType}' does not support event '{builtInEvent.Name}'.");
@@ -134,12 +139,12 @@ public class GrantRolesEventActionExecutor(
 
         var resolvedRoleIds = roles.Select(x => x.Id).ToHashSet();
         var existingRoleIds = await userRoleRepository.QueryNoTracking()
-            .Where(x => x.UserId == accountRegistered.UserId && resolvedRoleIds.Contains(x.RoleId))
+            .Where(x => x.UserId == userEvent.UserId && resolvedRoleIds.Contains(x.RoleId))
             .Select(x => x.RoleId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
         existingRoleIds.AddRange(dbContext.ChangeTracker.Entries<UserRole>()
-            .Where(x => x.State != EntityState.Deleted && x.Entity.UserId == accountRegistered.UserId)
+            .Where(x => x.State != EntityState.Deleted && x.Entity.UserId == userEvent.UserId)
             .Select(x => x.Entity.RoleId));
 
         var deadline = duration.HasValue
@@ -148,7 +153,7 @@ public class GrantRolesEventActionExecutor(
         var newUserRoles = resolvedRoleIds.Except(existingRoleIds)
             .Select(roleId => new UserRole
             {
-                UserId = accountRegistered.UserId,
+                UserId = userEvent.UserId,
                 RoleId = roleId,
                 Deadline = deadline
             })

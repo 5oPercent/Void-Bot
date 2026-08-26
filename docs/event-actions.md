@@ -64,7 +64,13 @@
 
 | 事件 | 触发时机 | 动作 | 参数 |
 | --- | --- | --- | --- |
-| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles` | `RoleIds`；可选 `Duration` + `DurationUnit` |
+| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
+| `Account.PasswordForceReset` | 管理人员强制重置账号密码事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
+| `Account.ThirdPartyForceUnlinked` | 管理人员强制解绑第三方授权事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
+
+三个账号事件均提供 `UserId` 条件字段；`Account.ThirdPartyForceUnlinked` 额外提供 `Platform` 条件字段，可按第三方平台筛选规则。失败的密码重置或解绑操作不会发布事件。
+
+`SendEmail` 向事件关联用户的已验证邮箱发送纯文本邮件，不允许在规则中指定任意外部收件地址。动作参数为单值 `Subject` 和 `Content`，分别最多 200 和 10000 个字符；两者都支持 `{UserId}`、`{DisplayName}`、`{Platform}` 和 `{Password}` 占位符。非第三方解绑事件中的 `{Platform}` 会替换为空字符串；`{Password}` 仅在 `Account.PasswordForceReset` 事件中有值，其他事件会替换为空字符串。密码只在本次事件的内存执行链中传递，不会进入事件定义字段、规则、执行记录或结构化日志。
 
 规则中的动作按数组顺序执行；多条规则按 `Sequence`、`CreatedAt` 排序执行。禁用的规则或动作不会执行。
 
@@ -148,7 +154,11 @@
         "version": 1,
         "displayName": "授权角色",
         "description": "为事件关联的用户授予一个或多个角色。",
-        "supportedEvents": ["Account.Registered"],
+        "supportedEvents": [
+          "Account.Registered",
+          "Account.PasswordForceReset",
+          "Account.ThirdPartyForceUnlinked"
+        ],
         "arguments": [
           {
             "name": "RoleIds",
