@@ -34,7 +34,7 @@ public sealed class SendEmailEventActionExecutor(
             {
                 Name = "Subject",
                 DisplayName = "邮件主题",
-                Description = "必填，最多 200 个字符；支持 {UserId}、{DisplayName}、{Platform}、{Password} 占位符。",
+                Description = "必填，最多 200 个字符；支持 {UserId}、{DisplayName}、{Platform} 占位符。",
                 ValueType = "String",
                 Required = true,
                 Multiple = false,
@@ -110,7 +110,7 @@ public sealed class SendEmailEventActionExecutor(
         var password = builtInEvent is AccountPasswordForceResetEvent passwordForceReset
             ? passwordForceReset.Password
             : string.Empty;
-        subject = ReplacePlaceholders(subject!, account.Id, account.DisplayName, platform, password);
+        subject = ReplacePlaceholders(subject!, account.Id, account.DisplayName, platform, string.Empty);
         subject = subject.Replace('\r', ' ').Replace('\n', ' ');
         content = ReplacePlaceholders(content!, account.Id, account.DisplayName, platform, password);
         if (subject.Length > 200 || content.Length > 10000)
@@ -152,6 +152,12 @@ public sealed class SendEmailEventActionExecutor(
         if (subject.Length > 200)
         {
             return (null, null, $"Event action '{ActionType}' Subject cannot exceed 200 characters.");
+        }
+
+        if (subject.Contains("{Password}", StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, null,
+                $"Event action '{ActionType}' Subject cannot contain the Password placeholder.");
         }
 
         arguments.TryGetValue("Content", out var contents);

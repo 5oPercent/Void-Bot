@@ -1,6 +1,6 @@
 # 账号安全管理接口前端对接
 
-本文档说明本次新增的管理员密码重置、密码重置链接和第三方授权解绑能力，以及密码重置页面和 EventSystem 配置页面需要配合的内容。
+本文档说明本次新增的管理员密码重置、密码重置链接、第三方授权解绑和邮箱验证码解绑能力，以及密码重置页面和 EventSystem 配置页面需要配合的内容。
 
 ## 接口概览
 
@@ -10,8 +10,10 @@
 | `POST` | `/api/Account/password/reset` | 登录并拥有接口权限 | 管理人员直接为指定账号设置新密码 |
 | `POST` | `/api/Account/oauth/force-unlink` | 登录并拥有接口权限 | 强制解绑指定账号的第三方授权平台 |
 | `POST` | `/api/Identity/password-reset/link` | 匿名 | 用户使用邮件链接中的令牌设置新密码 |
+| `POST` | `/api/Identity/email/unbind/send-code` | 登录 | 向当前账号的已验证邮箱发送解绑验证码 |
+| `POST` | `/api/Identity/email/unbind` | 登录 | 验证邮件验证码并解绑当前账号邮箱 |
 
-前三个管理接口位于 `AccountController`，受登录验证和现有接口权限体系控制。未登录时返回 `401`，没有对应接口权限时返回 `403`。
+前三个管理接口位于 `AccountController`，受登录验证和现有接口权限体系控制。未登录时返回 `401`，没有对应接口权限时返回 `403`。两个邮箱解绑接口位于 `IdentityController`，需要登录但跳过接口权限检查。
 
 接口使用统一响应结构：
 
@@ -167,7 +169,7 @@ Content-Type: application/json
 }
 ```
 
-直接重置成功后会触发 EventSystem 事件 `Account.PasswordForceReset`。如果后台为该事件配置了 `SendEmail` 动作，可以使用 `{Password}` 占位符把本次设置的密码发送到用户的已验证邮箱。
+直接重置成功后会触发 EventSystem 事件 `Account.PasswordForceReset`。如果后台为该事件配置了 `SendEmail` 动作，可以在邮件正文中使用 `{Password}` 占位符，把本次设置的密码发送到用户的已验证邮箱；邮件主题禁止使用该占位符。
 
 前端不得记录、回显或持久化密码。提交完成后应立即清空两个密码输入框。
 
@@ -213,6 +215,49 @@ Content-Type: application/json
 
 解绑成功后触发 EventSystem 事件 `Account.ThirdPartyForceUnlinked`。
 
+## 当前用户解绑邮箱
+
+邮箱解绑不再校验账号密码，改为向当前已验证邮箱发送验证码。两个接口都需要登录，但跳过接口权限检查。
+
+第一步发送验证码，请求不需要 Body：
+
+```http
+POST /api/Identity/email/unbind/send-code
+Authorization: Bearer <token>
+```
+
+成功时返回挑战信息：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "challengeId": "00000000-0000-0000-0000-000000000000",
+    "expiresAt": "2026-08-26T12:00:00+00:00"
+  }
+}
+```
+
+账号未绑定已验证邮箱时返回 `409 / account_email_not_bound`。发送频率受现有邮件验证码策略限制，可能返回 `429 / email_verification_rate_limited`、`502 / email_send_failed` 或 `503 / email_verification_unavailable`。
+
+第二步提交验证码：
+
+```http
+POST /api/Identity/email/unbind
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "challengeId": "00000000-0000-0000-0000-000000000000",
+  "code": "123456"
+}
+```
+
+验证码固定为 6 位数字。验证码与当前登录用户、当前绑定邮箱及解绑用途绑定，不能与注册、绑定或密码重置验证码混用。验证码过期、错误或已使用时返回 `400 / invalid_or_expired_email_verification`。
+
+解绑成功后返回更新后的邮箱状态，`isBound` 为 `false`。前端不再展示或提交账号密码字段。
+
 ## EventSystem 前端配合
 
 本次新增两个事件和一个邮件动作：
@@ -227,10 +272,10 @@ Content-Type: application/json
 
 | 参数 | 必填 | 限制 |
 | --- | --- | --- |
-| `Subject` | 是 | 单值，替换占位符后最多 200 个字符 |
-| `Content` | 是 | 单值，替换占位符后最多 10000 个字符 |
+| `Subject` | 是 | 单值，替换占位符后最多 200 个字符；禁止使用 `{Password}` |
+| `Content` | 是 | 单值，替换占位符后最多 10000 个字符；支持 `{Password}` |
 
-支持 `{UserId}`、`{DisplayName}`、`{Platform}` 和 `{Password}` 占位符。`{Password}` 只有在 `Account.PasswordForceReset` 事件中有值；其他事件会替换为空字符串。
+主题和正文都支持 `{UserId}`、`{DisplayName}` 和 `{Platform}`。只有正文支持 `{Password}`，且仅在 `Account.PasswordForceReset` 事件中有值；其他事件会替换为空字符串。前端应阻止在主题中选择或输入 `{Password}`。
 
 事件和动作定义会由 EventSystem 定义接口返回。前端应根据定义元数据动态渲染，不要硬编码事件、动作或参数列表。发送重置链接和用户通过链接完成重置都不会触发 EventSystem 事件。
 
@@ -242,5 +287,6 @@ Content-Type: application/json
 - 链接无效、过期或已使用时显示统一提示，不泄露账号状态。
 - 管理页可直接设置密码，提交结束后清空密码字段。
 - 第三方解绑只展示允许的平台枚举，并在成功后刷新绑定列表。
+- 邮箱解绑先发送验证码，再提交 `challengeId + code`，不再要求用户输入账号密码。
 - 所有敏感字段均不进入日志、埋点、浏览器持久化或错误上报。
 - EventSystem 页面能通过定义接口识别新增事件及 `SendEmail` 动作。

@@ -97,6 +97,18 @@ public class IdentityController : ControllerBase
     }
 
     [HttpPost]
+    [Route("email/unbind/send-code")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(SendEmailUnbindingCodeResponse), 200)]
+    public async Task<IActionResult> SendEmailUnbindingCodeAsync(CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<SendEmailUnbindingCodeCommand, SendEmailUnbindingCodeResponse>(
+                new SendEmailUnbindingCodeCommand(), cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
     [Route("email/unbind")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(UnbindUserEmailResponse), 200)]
