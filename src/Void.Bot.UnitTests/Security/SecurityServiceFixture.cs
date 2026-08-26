@@ -244,6 +244,7 @@ public class SecurityServiceFixture
 
         var response = await service.GetCurrentUserPermissionsAsync(CancellationToken.None);
 
+        response.Data.ShouldNotBeNull();
         response.Data.Roles.Single().Id.ShouldBe(RoleConstants.SuperAdminId);
         response.Data.Permissions.Single().Id.ShouldBe(permissionId);
         response.Data.Menus.Single().Id.ShouldBe(menuId);
