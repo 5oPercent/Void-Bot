@@ -91,7 +91,7 @@ await router.replace({ path: route.path });
 接口：
 
 ```http
-POST /api/Identity/oauth/register
+POST /api/OAuth/register
 Content-Type: application/json
 ```
 
@@ -142,7 +142,7 @@ Authorization: Bearer {accessToken}
 接口：
 
 ```http
-POST /api/Identity/oauth/bind
+POST /api/OAuth/bind
 Content-Type: application/json
 ```
 
@@ -260,8 +260,8 @@ type OAuthCallbackState =
 - [ ] callback 支持 `result=registration_required`。
 - [ ] 读取 registrationCode 后立即移除地址栏参数。
 - [ ] 展示创建账号、登录已有账号和取消三个选择。
-- [ ] 创建账号调用 `/api/Identity/oauth/register`。
-- [ ] 登录已有账号调用 `/api/Identity/oauth/bind`。
+- [ ] 创建账号调用 `/api/OAuth/register`。
+- [ ] 登录已有账号调用 `/api/OAuth/bind`。
 - [ ] `flow=register` 时不调用 `/oauth/exchange`。
 - [ ] register 或 bind 成功后保存 Void JWT。
 - [ ] 保存 JWT 后调用 `/api/Identity/me`。
