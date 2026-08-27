@@ -152,7 +152,7 @@ export async function getCurrentAccount(
 
 ```text
 前端 OAuth 结果页取得一次性 code
-  → POST /api/Identity/oauth/exchange
+  → POST /api/OAuth/exchange
   → 保存返回的 Void accessToken 和 refreshToken
   → GET /api/Identity/me
   → 保存并展示 Void 主账号和第三方绑定状态
@@ -163,14 +163,14 @@ export async function getCurrentAccount(
 
 ```text
 前端取得 registrationCode
-  → 创建新账号调用 /api/Identity/oauth/register
-    或登录已有账号调用 /api/Identity/oauth/bind
+  → 创建新账号调用 /api/OAuth/register
+    或登录已有账号调用 /api/OAuth/bind
   → 保存接口返回的 Void accessToken 和 refreshToken
   → GET /api/Identity/me
   → 保存并展示 Void 主账号和第三方绑定状态
 ```
 
-详细流程见 [OAuth 未绑定身份注册与登录绑定对接说明](oauth-registration-frontend-integration.md)。
+详细流程见 [OAuth 未绑定身份注册与登录绑定对接说明](../oauth/oauth-registration-frontend-integration.md)。
 
 第三方登录页面不要直接使用 OAuth 平台用户名作为 Void 主账号名称，应以 `me.data.displayName` 为准。
 
@@ -199,7 +199,7 @@ OAuth callback 返回 flow=link&result=success
 ### 解绑成功
 
 ```text
-POST /api/Identity/oauth/{platform}/unlink
+POST /api/OAuth/{platform}/unlink
   → GET /api/Identity/me
   → 用最新 thirdParties 刷新绑定状态
 ```

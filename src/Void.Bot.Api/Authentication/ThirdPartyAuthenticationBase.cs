@@ -2,7 +2,7 @@ namespace Void.Bot.Api.Authentication;
 
 public abstract class ThirdPartyAuthenticationBase
 {
-    private const string AuthorizationPathPrefix = "/api/Identity/oauth";
+    private const string AuthorizationPathPrefix = "/api/OAuth";
 
     public static bool IsAuthorizationPath(PathString path)
     {

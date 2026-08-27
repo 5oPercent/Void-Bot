@@ -74,20 +74,20 @@ OAuth__RegistrationTtlSeconds=600
 
 | 用途 | 方法 | 地址 | 是否需要 Void JWT |
 | --- | --- | --- | --- |
-| 开始登录或绑定 | GET | `/api/Identity/oauth/{platform}/authorize` | 登录不需要；绑定需要 |
-| 第三方回调 | GET | `/api/Identity/oauth/{platform}/callback` | 否，由第三方平台访问 |
-| 使用一次性 code 换取 JWT | POST | `/api/Identity/oauth/exchange` | 否 |
-| 创建 Void 账号并绑定待注册身份 | POST | `/api/Identity/oauth/register` | 否，使用 registrationCode |
-| 登录已有 Void 账号并绑定 | POST | `/api/Identity/oauth/bind` | 否，使用 registrationCode 和账号密码 |
+| 开始登录或绑定 | GET | `/api/OAuth/{platform}/authorize` | 登录不需要；绑定需要 |
+| 第三方回调 | GET | `/api/OAuth/{platform}/callback` | 否，由第三方平台访问 |
+| 使用一次性 code 换取 JWT | POST | `/api/OAuth/exchange` | 否 |
+| 创建 Void 账号并绑定待注册身份 | POST | `/api/OAuth/register` | 否，使用 registrationCode |
+| 登录已有 Void 账号并绑定 | POST | `/api/OAuth/bind` | 否，使用 registrationCode 和账号密码 |
 | 查询当前 Void 账号及绑定 | GET | `/api/Identity/me` | 是 |
-| 解除第三方绑定 | POST | `/api/Identity/oauth/{platform}/unlink` | 是 |
+| 解除第三方绑定 | POST | `/api/OAuth/{platform}/unlink` | 是 |
 
 前端不应主动调用 callback 接口。该地址只提供给 Bungie、Discord 等第三方 OAuth 平台。
 
 ## 4. 开始 OAuth
 
 ```http
-GET /api/Identity/oauth/{platform}/authorize
+GET /api/OAuth/{platform}/authorize
 ```
 
 同一个 authorize 接口根据请求是否携带有效的 Void access token 自动选择流程：
@@ -100,13 +100,13 @@ GET /api/Identity/oauth/{platform}/authorize
 登录请求示例：
 
 ```http
-GET /api/Identity/oauth/bungie/authorize
+GET /api/OAuth/bungie/authorize
 ```
 
 绑定请求示例：
 
 ```http
-GET /api/Identity/oauth/bungie/authorize
+GET /api/OAuth/bungie/authorize
 Authorization: Bearer {voidAccessToken}
 ```
 
@@ -176,7 +176,7 @@ https://test.voidbot.cyooops.icu/oauth/callback?platform=bungie&flow=register&re
 ### 使用 code 换取 JWT
 
 ```http
-POST /api/Identity/oauth/exchange
+POST /api/OAuth/exchange
 Content-Type: application/json
 
 {
@@ -219,7 +219,7 @@ window.history.replaceState({}, "", "/oauth/callback");
 
 前端取得 Void access token 后，使用该 token 查询当前主账号及第三方绑定：
 
-完整字段、TypeScript 类型、调用时机及异常处理见 [Identity Me 前端对接说明](identity-me-frontend-integration.md)。
+完整字段、TypeScript 类型、调用时机及异常处理见 [Identity Me 前端对接说明](../identity/identity-me-frontend-integration.md)。
 
 ```http
 GET /api/Identity/me
@@ -314,14 +314,14 @@ https://test.voidbot.cyooops.icu/oauth/callback?platform=bungie&result=failed&er
 ## 8. 解除绑定
 
 ```http
-POST /api/Identity/oauth/{platform}/unlink
+POST /api/OAuth/{platform}/unlink
 Authorization: Bearer {voidAccessToken}
 ```
 
 Bungie 示例：
 
 ```http
-POST /api/Identity/oauth/bungie/unlink
+POST /api/OAuth/bungie/unlink
 Authorization: Bearer {voidAccessToken}
 ```
 
@@ -343,13 +343,13 @@ Bungie 开发者后台的 OAuth callback 必须配置到后端，不是前端页
 测试环境：
 
 ```text
-https://testapi.voidbot.cyooops.icu/api/Identity/oauth/bungie/callback
+https://testapi.voidbot.cyooops.icu/api/OAuth/bungie/callback
 ```
 
 生产环境：
 
 ```text
-https://api.voidbot.cyooops.icu/api/Identity/oauth/bungie/callback
+https://api.voidbot.cyooops.icu/api/OAuth/bungie/callback
 ```
 
 实际跳转链路：
@@ -386,8 +386,8 @@ GET /api/Identity/link/bungie
 - [ ] 处理 `flow=login/link/register`。
 - [ ] Login 成功时使用 code 调用 exchange。
 - [ ] Register flow 展示创建新账号、登录已有账号和取消三个选择。
-- [ ] 创建新账号调用 `/api/Identity/oauth/register`。
-- [ ] 登录已有账号调用 `/api/Identity/oauth/bind`。
+- [ ] 创建新账号调用 `/api/OAuth/register`。
+- [ ] 登录已有账号调用 `/api/OAuth/bind`。
 - [ ] exchange 成功后保存 Void access token 和 refresh token。
 - [ ] 保存 Token 后调用 `/api/Identity/me` 显示 Void 主账号及绑定状态。
 - [ ] exchange 完成后从地址栏移除 code。

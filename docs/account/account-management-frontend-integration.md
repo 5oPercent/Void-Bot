@@ -24,7 +24,7 @@ Authorization: Bearer {accessToken}
 
 ## 2. 账号名称规则
 
-普通注册 `/api/Identity/register` 和第三方 OAuth 注册 `/api/Identity/oauth/register` 使用相同规则：
+普通注册 `/api/Identity/register` 和第三方 OAuth 注册 `/api/OAuth/register` 使用相同规则：
 
 - 最少 1 个字符；
 - 最多 64 个字符；

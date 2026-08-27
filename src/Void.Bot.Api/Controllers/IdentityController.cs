@@ -1,11 +1,9 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
 using Void.Bot.Api.OpenApi;
 using Void.Bot.Core.Services.Identity;
-using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Commands.Identity;
@@ -25,13 +23,11 @@ public class IdentityController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ICurrentUser _currentUser;
-    private readonly OAuthSetting _oauthSetting;
 
-    public IdentityController(IMediator mediator, ICurrentUser currentUser, OAuthSetting oauthSetting)
+    public IdentityController(IMediator mediator, ICurrentUser currentUser)
     {
         _mediator = mediator;
         _currentUser = currentUser;
-        _oauthSetting = oauthSetting;
     }
 
     [AllowAnonymous]
@@ -240,84 +236,6 @@ public class IdentityController : ControllerBase
         return Ok(response);
     }
 
-    [AllowAnonymous]
-    [HttpGet]
-    [Route("oauth/{platform}/authorize")]
-    [SkipPermissionCheck]
-    [ProducesResponseType(typeof(OAuthAuthorizeResponse), 200)]
-    public async Task<IActionResult> OAuthAuthorizeAsync(
-        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthAuthorizeCommand command)
-    {
-        command.Platform = platform;
-
-        var response = await _mediator.SendAsync<OAuthAuthorizeCommand, OAuthAuthorizeResponse>(command).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [AllowAnonymous]
-    [HttpGet]
-    [Route("oauth/{platform}/callback")]
-    [ProducesResponseType(302)]
-    public async Task<IActionResult> OAuthCallbackAsync(
-        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthCallbackCommand command)
-    {
-        command.Platform = platform;
-
-        var response = await _mediator.SendAsync<OAuthCallbackCommand, OAuthCallbackResponse>(command).ConfigureAwait(false);
-
-        return Redirect(OAuthFrontendRedirectUrl.Create(_oauthSetting, platform, response));
-    }
-
-    [AllowAnonymous]
-    [HttpPost]
-    [Route("oauth/exchange")]
-    [ProducesResponseType(typeof(OAuthExchangeResponse), 200)]
-    public async Task<IActionResult> OAuthExchangeAsync([FromBody] OAuthExchangeCommand command)
-    {
-        var response = await _mediator.SendAsync<OAuthExchangeCommand, OAuthExchangeResponse>(command).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [AllowAnonymous]
-    [HttpPost]
-    [Route("oauth/register")]
-    [SkipPermissionCheck]
-    [ProducesResponseType(typeof(OAuthRegisterResponse), 200)]
-    public async Task<IActionResult> OAuthRegisterAsync([FromBody] OAuthRegisterCommand command)
-    {
-        var response = await _mediator.SendAsync<OAuthRegisterCommand, OAuthRegisterResponse>(command).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [AllowAnonymous]
-    [HttpPost]
-    [Route("oauth/bind")]
-    [SkipPermissionCheck]
-    [ProducesResponseType(typeof(OAuthBindResponse), 200)]
-    public async Task<IActionResult> OAuthBindAsync([FromBody] OAuthBindCommand command)
-    {
-        var response = await _mediator.SendAsync<OAuthBindCommand, OAuthBindResponse>(command).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [HttpPost]
-    [Route("oauth/{platform}/unlink")]
-    [SkipPermissionCheck]
-    [ProducesResponseType(typeof(OAuthUnlinkResponse), 200)]
-    public async Task<IActionResult> OAuthUnlinkAsync(
-        [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthUnlinkCommand command)
-    {
-        command.Platform = platform;
-
-        var response = await _mediator.SendAsync<OAuthUnlinkCommand, OAuthUnlinkResponse>(command).ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
     [HttpGet]
     [Route("generate/url/steam")]
     [ProducesResponseType(typeof(GenerateAuthenticateUrlFromSteamResponse), 200)]
@@ -327,7 +245,7 @@ public class IdentityController : ControllerBase
 
         return Ok(response);
     }
-    
+
     [AllowAnonymous]
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
@@ -339,28 +257,8 @@ public class IdentityController : ControllerBase
             Authorization = new AuthorizationDto { Platform = platform, AccountId = accountId},
             OpenId = command.OpenId
         };
-        
-        var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
-            
-        return Ok(response);
-    }
-    
-    [HttpPost]
-    [Route("apikey/cretae")]
-    [ProducesResponseType(typeof(CreateApiKeyResponse), 200)]
-    public async Task<IActionResult> CreateApiKeyAsync([FromBody]CreateApiKeyCommand request)
-    {
-        var response = await _mediator.SendAsync<CreateApiKeyCommand, CreateApiKeyResponse>(request).ConfigureAwait(false);
 
-        return Ok(response);
-    }
-    
-    [HttpPost]
-    [Route("apikey/delete")]
-    [ProducesResponseType(typeof(DeleteApiKeyResponse), 200)]
-    public async Task<IActionResult> DeleteApiKeyAsync([FromBody]DeleteApiKeyCommand request)
-    {
-        var response = await _mediator.SendAsync<DeleteApiKeyCommand, DeleteApiKeyResponse>(request).ConfigureAwait(false);
+        var response = await _mediator.SendAsync<LoginSteamCommand, LoginSteamResponse>(request).ConfigureAwait(false);
 
         return Ok(response);
     }
