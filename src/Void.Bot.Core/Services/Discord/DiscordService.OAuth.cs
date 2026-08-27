@@ -31,7 +31,7 @@ public partial class DiscordService
     }
 
     private const string Scope = "identify";
-    private const string CallbackPath = "/api/Identity/oauth/discord/callback";
+    private const string CallbackPath = "/api/OAuth/discord/callback";
 
     public string GenerateOAuthAuthorizationUrl(string state)
     {
