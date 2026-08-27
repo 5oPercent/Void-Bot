@@ -219,7 +219,7 @@ window.history.replaceState({}, "", "/oauth/callback");
 
 前端取得 Void access token 后，使用该 token 查询当前主账号及第三方绑定：
 
-完整字段、TypeScript 类型、调用时机及异常处理见 [Identity Me 前端对接说明](identity-me-frontend-integration.md)。
+完整字段、TypeScript 类型、调用时机及异常处理见 [Identity Me 前端对接说明](../identity/identity-me-frontend-integration.md)。
 
 ```http
 GET /api/Identity/me
