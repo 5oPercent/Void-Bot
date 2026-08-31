@@ -25,32 +25,25 @@ public class Destiny2WeaponRequestValidatorFixture
     }
 
     [Fact]
-    public void PerkQueryShouldAcceptConfiguredLanguageAndRejectOtherLanguage()
+    public void PerkQueryShouldAcceptValidWeaponType()
     {
-        var validator = new GetDestiny2WeaponPerksRequestValidator(_setting);
+        var validator = new GetDestiny2WeaponPerksRequestValidator();
 
         validator.Validate(new GetDestiny2WeaponPerksRequest
         {
             WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
-            Language = "en"
         }).IsValid.ShouldBeTrue();
 
-        validator.Validate(new GetDestiny2WeaponPerksRequest
-        {
-            WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
-            Language = "fr"
-        }).IsValid.ShouldBeFalse();
     }
 
     [Fact]
     public void GodRollQueryShouldRequirePerksInEveryGroup()
     {
-        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator();
         var result = validator.Validate(new FilterDestiny2WeaponGodRollRequest
         {
             WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
             PerkGroups = [new Destiny2WeaponPerkGroupDto()],
-            Language = "en"
         });
 
         result.IsValid.ShouldBeFalse();
@@ -59,19 +52,18 @@ public class Destiny2WeaponRequestValidatorFixture
     [Fact]
     public void GodRollQueryShouldAllowAllWeaponTypes()
     {
-        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator();
 
         validator.Validate(new FilterDestiny2WeaponGodRollRequest
         {
             PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
-            Language = "en"
         }).IsValid.ShouldBeTrue();
     }
 
     [Fact]
     public void GodRollQueryShouldRejectNoneAndUndefinedFilterValues()
     {
-        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator();
 
         validator.Validate(new FilterDestiny2WeaponGodRollRequest
         {
@@ -79,14 +71,13 @@ public class Destiny2WeaponRequestValidatorFixture
             DamageTypes = [(Destiny2DamageTypeEnum)999],
             WeaponSlots = [Destiny2WeaponSlotEnum.None],
             PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
-            Language = "en"
         }).IsValid.ShouldBeFalse();
     }
 
     [Fact]
     public void GodRollQueryShouldRejectInvalidExtendedFilters()
     {
-        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator();
 
         validator.Validate(new FilterDestiny2WeaponGodRollRequest
         {
@@ -105,21 +96,19 @@ public class Destiny2WeaponRequestValidatorFixture
             PowerCapHashes = [0],
             ClassTypes = [(Destiny2ClassEnum)999],
             PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
-            Language = "en"
         }).IsValid.ShouldBeFalse();
     }
 
     [Fact]
     public void GodRollQueryShouldRejectInvalidPagination()
     {
-        var validator = new FilterDestiny2WeaponGodRollRequestValidator(_setting);
+        var validator = new FilterDestiny2WeaponGodRollRequestValidator();
 
         validator.Validate(new FilterDestiny2WeaponGodRollRequest
         {
             PageIndex = 0,
             PageSize = 101,
             PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [20] }],
-            Language = "en"
         }).IsValid.ShouldBeFalse();
     }
 }

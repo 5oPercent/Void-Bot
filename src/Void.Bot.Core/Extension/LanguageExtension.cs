@@ -27,9 +27,9 @@ public static class LanguageExtension
     {
         return language?.Trim().ToLowerInvariant() switch
         {
-            "zh-chs" => LanguageEnum.ZhChs,
-            "zh-cht" => LanguageEnum.ZhCht,
-            "en" => LanguageEnum.En,
+            "zh-chs" or "zh-cn" or "zh-sg" => LanguageEnum.ZhChs,
+            "zh-cht" or "zh-tw" or "zh-hk" => LanguageEnum.ZhCht,
+            "en" or "en-us" or "en-gb" => LanguageEnum.En,
             _ => LanguageEnum.Default
         };
     }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Shouldly;
 using Void.Bot.Core.Services.Bungie.Destiny2.Weapon;
 using Void.Bot.Core.Services.Jobs;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
@@ -267,7 +268,8 @@ public class Destiny2WeaponServiceFixture
         _service = new Destiny2WeaponService(
             _dataProvider,
             new Destiny2Setting(configuration),
-            new FakeBackgroundJobClient());
+            new FakeBackgroundJobClient(),
+            new CustomCurrentUser());
     }
 
     [Fact]
@@ -369,11 +371,11 @@ public class Destiny2WeaponServiceFixture
                     ["Destiny2:SyncLanguages:0"] = "en"
                 })
                 .Build()),
-            new FakeBackgroundJobClient());
+            new FakeBackgroundJobClient(),
+            new CustomCurrentUser());
         var response = await service.FilterGodRollAsync(
             new FilterDestiny2WeaponGodRollRequest
             {
-                Language = "en",
                 BreakerTypes = [Destiny2BreakerTypeEnum.ShieldPiercing]
             },
             CancellationToken.None);
@@ -388,7 +390,7 @@ public class Destiny2WeaponServiceFixture
     public async Task GetWeaponTypesShouldReturnOnlyTypesUsedByValidWeapons()
     {
         var response = await _service.GetWeaponTypesAsync(
-            new GetDestiny2WeaponTypesRequest { Language = "en" },
+            new GetDestiny2WeaponTypesRequest(),
             CancellationToken.None);
 
         response.Data.ShouldNotBeNull();
@@ -412,7 +414,6 @@ public class Destiny2WeaponServiceFixture
                     Destiny2ItemSubTypeEnum.SubmachineGun,
                     (Destiny2ItemSubTypeEnum)999
                 ],
-                Language = "en",
                 Keyword = "damage"
             },
             CancellationToken.None);
@@ -435,7 +436,6 @@ public class Destiny2WeaponServiceFixture
             new GetDestiny2WeaponPerksRequest
             {
                 WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
-                Language = "en",
                 Keyword = keyword
             },
             CancellationToken.None);
@@ -461,7 +461,6 @@ public class Destiny2WeaponServiceFixture
         var response = await _service.FilterGodRollAsync(
             new FilterDestiny2WeaponGodRollRequest
             {
-                Language = "en",
                 PerkGroups =
                 [
                     new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }
@@ -516,7 +515,6 @@ public class Destiny2WeaponServiceFixture
         var response = await _service.FilterGodRollAsync(
             new FilterDestiny2WeaponGodRollRequest
             {
-                Language = "en",
                 PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }],
                 PageIndex = 2,
                 PageSize = 1
@@ -540,7 +538,6 @@ public class Destiny2WeaponServiceFixture
             new FilterDestiny2WeaponGodRollRequest
             {
                 WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
-                Language = "en",
                 PerkGroups =
                 [
                     new Destiny2WeaponPerkGroupDto { PerkHashes = [24] },
@@ -582,7 +579,6 @@ public class Destiny2WeaponServiceFixture
 
         foreach (var request in requests)
         {
-            request.Language = "en";
             request.PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }];
 
             var response = await _service.FilterGodRollAsync(request, CancellationToken.None);
@@ -619,7 +615,6 @@ public class Destiny2WeaponServiceFixture
 
         foreach (var request in requests)
         {
-            request.Language = "en";
             request.PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }];
 
             var response = await _service.FilterGodRollAsync(request, CancellationToken.None);
@@ -632,7 +627,6 @@ public class Destiny2WeaponServiceFixture
             new FilterDestiny2WeaponGodRollRequest
             {
                 IsHolofoil = true,
-                Language = "en",
                 PerkGroups = [new Destiny2WeaponPerkGroupDto { PerkHashes = [24] }]
             },
             CancellationToken.None);
@@ -647,7 +641,6 @@ public class Destiny2WeaponServiceFixture
             new FilterDestiny2WeaponGodRollRequest
             {
                 WeaponTypes = [Destiny2ItemSubTypeEnum.AutoRifle],
-                Language = "en",
                 PerkGroups =
                 [
                     new Destiny2WeaponPerkGroupDto { PerkHashes = [20] },

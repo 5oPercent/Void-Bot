@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto.Security;
 
@@ -66,13 +67,16 @@ public static class ScannerExtensions
                             var fullPath = CombineRoutes(controllerRoute, methodTemplate, controllerName);
 
                             var descAttr = method.GetCustomAttribute<DescriptionAttribute>();
-                            var description = descAttr?.Description ?? method.Name;
+                            var keyAttr = method.GetCustomAttribute<DescriptionLocalizationAttribute>();
+                            var descriptionKey = keyAttr?.Key ?? GetLocalizationKey(method.Name);
+                            var description = descAttr?.Description ?? GetDefaultDescription(controllerName, descriptionKey);
 
                             endpoints.Add(new EndpointDto
                             {
                                 Controller = controllerName,
                                 Endpoint = "/" + fullPath.Trim('/'),
                                 Method = httpMethod,
+                                DescriptionKey = descriptionKey,
                                 Description = description
                             });
                         }
@@ -95,5 +99,21 @@ public static class ScannerExtensions
             return methodRoute.TrimStart('~', '/');
 
         return $"{baseRoute}/{methodRoute}".Replace("//", "/");
+    }
+
+    private static string GetDefaultDescription(string category, string key)
+    {
+        var templateType = typeof(IContextTemplate).Assembly.GetType(
+            $"Void.Bot.Core.Resources.i18n.Endpoint.{category}EndpointContextTemplate");
+        var property = templateType?.GetProperty(key);
+        var template = templateType == null ? null : Activator.CreateInstance(templateType);
+        return property?.GetValue(template)?.ToString() ?? $"{category}接口：{key}";
+    }
+
+    private static string GetLocalizationKey(string methodName)
+    {
+        return methodName.EndsWith("Async", StringComparison.Ordinal)
+            ? methodName[..^"Async".Length]
+            : methodName;
     }
 }

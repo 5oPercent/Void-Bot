@@ -1,3 +1,4 @@
+using Void.Bot.Message.Attributes;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 {
     [HttpGet("definitions")]
     [ProducesResponseType(typeof(GetEventActionDefinitionResponse), 200)]
+    [DescriptionLocalization("GetDefinitions")]
     public async Task<IActionResult> GetDefinitionsAsync()
     {
         var response = await mediator.RequestAsync<GetEventActionDefinitionRequest, GetEventActionDefinitionResponse>(
@@ -26,6 +28,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 
     [HttpGet("rules")]
     [ProducesResponseType(typeof(GetEventActionRuleListResponse), 200)]
+    [DescriptionLocalization("GetRules")]
     public async Task<IActionResult> GetRulesAsync([FromQuery] GetEventActionRuleListRequest request)
     {
         var response = await mediator.RequestAsync<GetEventActionRuleListRequest, GetEventActionRuleListResponse>(
@@ -35,6 +38,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 
     [HttpGet("executions")]
     [ProducesResponseType(typeof(GetEventActionExecutionPageResponse), 200)]
+    [DescriptionLocalization("GetExecutions")]
     public async Task<IActionResult> GetExecutionsAsync([FromQuery] GetEventActionExecutionPageRequest request)
     {
         var response = await mediator.RequestAsync<
@@ -45,6 +49,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 
     [HttpPost("rules/add")]
     [ProducesResponseType(typeof(AddEventActionRuleResponse), 200)]
+    [DescriptionLocalization("AddRule")]
     public async Task<IActionResult> AddRuleAsync([FromBody] AddEventActionRuleCommand command)
     {
         var response = await mediator.SendAsync<AddEventActionRuleCommand, AddEventActionRuleResponse>(
@@ -54,6 +59,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 
     [HttpPost("rules/update")]
     [ProducesResponseType(typeof(UpdateEventActionRuleResponse), 200)]
+    [DescriptionLocalization("UpdateRule")]
     public async Task<IActionResult> UpdateRuleAsync([FromBody] UpdateEventActionRuleCommand command)
     {
         var response = await mediator.SendAsync<UpdateEventActionRuleCommand, UpdateEventActionRuleResponse>(
@@ -63,6 +69,7 @@ public class EventActionController(IMediator mediator) : ControllerBase
 
     [HttpPost("rules/delete")]
     [ProducesResponseType(typeof(DeleteEventActionRuleResponse), 200)]
+    [DescriptionLocalization("DeleteRules")]
     public async Task<IActionResult> DeleteRulesAsync([FromBody] DeleteEventActionRuleCommand command)
     {
         var response = await mediator.SendAsync<DeleteEventActionRuleCommand, DeleteEventActionRuleResponse>(

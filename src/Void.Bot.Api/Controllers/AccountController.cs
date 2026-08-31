@@ -1,3 +1,4 @@
+using Void.Bot.Message.Attributes;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ public sealed class AccountController(IMediator mediator) : ControllerBase
 {
     [HttpPost("password/reset-link")]
     [ProducesResponseType(typeof(SendUserAccountPasswordResetLinkResponse), 200)]
+    [DescriptionLocalization("SendUserAccountPasswordResetLink")]
     public async Task<IActionResult> SendUserAccountPasswordResetLinkAsync(
         [FromBody] SendUserAccountPasswordResetLinkCommand command,
         CancellationToken cancellationToken)
@@ -28,6 +30,7 @@ public sealed class AccountController(IMediator mediator) : ControllerBase
 
     [HttpPost("password/reset")]
     [ProducesResponseType(typeof(ForceResetUserAccountPasswordResponse), 200)]
+    [DescriptionLocalization("ForceResetPassword")]
     public async Task<IActionResult> ForceResetPasswordAsync(
         [FromBody] ForceResetUserAccountPasswordCommand command,
         CancellationToken cancellationToken)
@@ -40,6 +43,7 @@ public sealed class AccountController(IMediator mediator) : ControllerBase
 
     [HttpPost("oauth/force-unlink")]
     [ProducesResponseType(typeof(ForceUnlinkUserAccountThirdPartyResponse), 200)]
+    [DescriptionLocalization("ForceUnlinkThirdParty")]
     public async Task<IActionResult> ForceUnlinkThirdPartyAsync(
         [FromBody] ForceUnlinkUserAccountThirdPartyCommand command,
         CancellationToken cancellationToken)

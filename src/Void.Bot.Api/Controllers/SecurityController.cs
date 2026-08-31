@@ -28,6 +28,7 @@ public class SecurityController : ControllerBase
 
     [HttpPost("user/list")]
     [ProducesResponseType(typeof(GetUserAccountPageResponse), 200)]
+    [DescriptionLocalization("GetUserAccountPage")]
     public async Task<IActionResult> GetUserAccountPageAsync([FromBody] GetUserAccountPageRequest request)
     {
         var response = await _mediator.RequestAsync<GetUserAccountPageRequest, GetUserAccountPageResponse>(request).ConfigureAwait(false);
@@ -37,6 +38,7 @@ public class SecurityController : ControllerBase
     [SkipPermissionCheck]
     [HttpGet("user/permissions")]
     [ProducesResponseType(typeof(GetCurrentUserPermissionsResponse), 200)]
+    [DescriptionLocalization("GetCurrentUserPermissions")]
     public async Task<IActionResult> GetCurrentUserPermissionsAsync([FromQuery] GetCurrentUserPermissionsRequest request)
     {
         var response = await _mediator.RequestAsync<GetCurrentUserPermissionsRequest, GetCurrentUserPermissionsResponse>(request).ConfigureAwait(false);
@@ -49,6 +51,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("role")]
     [ProducesResponseType(typeof(GetRoleResponse), 200)]
+    [DescriptionLocalization("GetRole")]
     public async Task<IActionResult> GetRoleAsync([FromQuery] GetRoleRequest request)
     {
         var response = await _mediator.RequestAsync<GetRoleRequest, GetRoleResponse>(request).ConfigureAwait(false);
@@ -57,6 +60,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/list")]
     [ProducesResponseType(typeof(GetRoleListResponse), 200)]
+    [DescriptionLocalization("GetRoleList")]
     public async Task<IActionResult> GetRoleListAsync([FromBody] GetRoleListRequest request)
     {
         var response = await _mediator.RequestAsync<GetRoleListRequest, GetRoleListResponse>(request).ConfigureAwait(false);
@@ -65,6 +69,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("role/tree")]
     [ProducesResponseType(typeof(GetRoleTreeResponse), 200)]
+    [DescriptionLocalization("GetRoleTree")]
     public async Task<IActionResult> GetRoleTreeAsync([FromQuery] GetRoleTreeRequest request)
     {
         var response = await _mediator.RequestAsync<GetRoleTreeRequest, GetRoleTreeResponse>(request).ConfigureAwait(false);
@@ -73,6 +78,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/add")]
     [ProducesResponseType(typeof(AddRoleResponse), 200)]
+    [DescriptionLocalization("AddRole")]
     public async Task<IActionResult> AddRoleAsync([FromBody] AddRoleCommand command)
     {
         var response = await _mediator.SendAsync<AddRoleCommand, AddRoleResponse>(command).ConfigureAwait(false);
@@ -81,6 +87,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/update")]
     [ProducesResponseType(typeof(UpdateRoleResponse), 200)]
+    [DescriptionLocalization("UpdateRole")]
     public async Task<IActionResult> UpdateRoleAsync([FromBody] UpdateRoleCommand command)
     {
         var response = await _mediator.SendAsync<UpdateRoleCommand, UpdateRoleResponse>(command).ConfigureAwait(false);
@@ -89,6 +96,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/delete")]
     [ProducesResponseType(typeof(DeleteRoleCascadeResponse), 200)]
+    [DescriptionLocalization("DeleteRole")]
     public async Task<IActionResult> DeleteRoleAsync([FromBody] DeleteRoleCascadeCommand command)
     {
         var response = await _mediator.SendAsync<DeleteRoleCascadeCommand, DeleteRoleCascadeResponse>(command).ConfigureAwait(false);
@@ -101,6 +109,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("permission")]
     [ProducesResponseType(typeof(GetPermissionResponse), 200)]
+    [DescriptionLocalization("GetPermission")]
     public async Task<IActionResult> GetPermissionAsync([FromQuery] GetPermissionRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionRequest, GetPermissionResponse>(request).ConfigureAwait(false);
@@ -109,6 +118,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/list")]
     [ProducesResponseType(typeof(GetPermissionListResponse), 200)]
+    [DescriptionLocalization("GetPermissionList")]
     public async Task<IActionResult> GetPermissionListAsync([FromBody] GetPermissionListRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionListRequest, GetPermissionListResponse>(request).ConfigureAwait(false);
@@ -117,6 +127,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("permission/tree")]
     [ProducesResponseType(typeof(GetPermissionTreeResponse), 200)]
+    [DescriptionLocalization("GetPermissionTree")]
     public async Task<IActionResult> GetPermissionTreeAsync([FromQuery] GetPermissionTreeRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionTreeRequest, GetPermissionTreeResponse>(request).ConfigureAwait(false);
@@ -125,6 +136,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/add")]
     [ProducesResponseType(typeof(AddPermissionResponse), 200)]
+    [DescriptionLocalization("AddPermission")]
     public async Task<IActionResult> AddPermissionAsync([FromBody] AddPermissionCommand command)
     {
         var response = await _mediator.SendAsync<AddPermissionCommand, AddPermissionResponse>(command).ConfigureAwait(false);
@@ -133,6 +145,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/update")]
     [ProducesResponseType(typeof(UpdatePermissionResponse), 200)]
+    [DescriptionLocalization("UpdatePermission")]
     public async Task<IActionResult> UpdatePermissionAsync([FromBody] UpdatePermissionCommand command)
     {
         var response = await _mediator.SendAsync<UpdatePermissionCommand, UpdatePermissionResponse>(command).ConfigureAwait(false);
@@ -141,6 +154,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/delete")]
     [ProducesResponseType(typeof(DeletePermissionCascadeResponse), 200)]
+    [DescriptionLocalization("DeletePermission")]
     public async Task<IActionResult> DeletePermissionAsync([FromBody] DeletePermissionCascadeCommand command)
     {
         var response = await _mediator.SendAsync<DeletePermissionCascadeCommand, DeletePermissionCascadeResponse>(command).ConfigureAwait(false);
@@ -153,6 +167,7 @@ public class SecurityController : ControllerBase
 
     [HttpGet("menu")]
     [ProducesResponseType(typeof(GetMenuResponse), 200)]
+    [DescriptionLocalization("GetMenu")]
     public async Task<IActionResult> GetMenuAsync([FromQuery] GetMenuRequest request)
     {
         var response = await _mediator.RequestAsync<GetMenuRequest, GetMenuResponse>(request).ConfigureAwait(false);
@@ -161,6 +176,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("menu/list")]
     [ProducesResponseType(typeof(GetMenuListResponse), 200)]
+    [DescriptionLocalization("GetMenuList")]
     public async Task<IActionResult> GetMenuListAsync([FromBody] GetMenuListRequest request)
     {
         var response = await _mediator.RequestAsync<GetMenuListRequest, GetMenuListResponse>(request).ConfigureAwait(false);
@@ -169,6 +185,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("menu/tree")]
     [ProducesResponseType(typeof(GetMenuTreeResponse), 200)]
+    [DescriptionLocalization("GetMenuTree")]
     public async Task<IActionResult> GetMenuTreeAsync([FromQuery] GetMenuTreeRequest request)
     {
         var response = await _mediator.RequestAsync<GetMenuTreeRequest, GetMenuTreeResponse>(request).ConfigureAwait(false);
@@ -177,6 +194,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("menu/add")]
     [ProducesResponseType(typeof(AddMenuResponse), 200)]
+    [DescriptionLocalization("AddMenu")]
     public async Task<IActionResult> AddMenuAsync([FromBody] AddMenuCommand command)
     {
         var response = await _mediator.SendAsync<AddMenuCommand, AddMenuResponse>(command).ConfigureAwait(false);
@@ -185,6 +203,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("menu/update")]
     [ProducesResponseType(typeof(UpdateMenuResponse), 200)]
+    [DescriptionLocalization("UpdateMenu")]
     public async Task<IActionResult> UpdateMenuAsync([FromBody] UpdateMenuCommand command)
     {
         var response = await _mediator.SendAsync<UpdateMenuCommand, UpdateMenuResponse>(command).ConfigureAwait(false);
@@ -193,6 +212,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("menu/delete")]
     [ProducesResponseType(typeof(DeleteMenuCascadeResponse), 200)]
+    [DescriptionLocalization("DeleteMenu")]
     public async Task<IActionResult> DeleteMenuAsync([FromBody] DeleteMenuCascadeCommand command)
     {
         var response = await _mediator.SendAsync<DeleteMenuCascadeCommand, DeleteMenuCascadeResponse>(command).ConfigureAwait(false);
@@ -205,6 +225,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("endpoint/list")]
     [ProducesResponseType(typeof(GetEndpointListResponse), 200)]
+    [DescriptionLocalization("GetEndpointList")]
     public async Task<IActionResult> GetEndpointListAsync([FromQuery] GetEndpointListRequest request)
     {
         var response = await _mediator.RequestAsync<GetEndpointListRequest, GetEndpointListResponse>(request).ConfigureAwait(false);
@@ -217,6 +238,7 @@ public class SecurityController : ControllerBase
     
     [HttpGet("user/roles")]
     [ProducesResponseType(typeof(GetRolesByUserIdResponse), 200)]
+    [DescriptionLocalization("GetRolesByUserId")]
     public async Task<IActionResult> GetRolesByUserIdAsync([FromQuery] GetRolesByUserIdRequest request)
     {
         var response = await _mediator.RequestAsync<GetRolesByUserIdRequest, GetRolesByUserIdResponse>(request).ConfigureAwait(false);
@@ -225,6 +247,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("user/assign/roles")]
     [ProducesResponseType(typeof(AssignRolesToUserResponse), 200)]
+    [DescriptionLocalization("AssignRolesToUser")]
     public async Task<IActionResult> AssignRolesToUserAsync([FromBody] AssignRolesToUserCommand command)
     {
         var response = await _mediator.SendAsync<AssignRolesToUserCommand, AssignRolesToUserResponse>(command).ConfigureAwait(false);
@@ -233,6 +256,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("user/unassign/roles")]
     [ProducesResponseType(typeof(UnassignRolesFromUserResponse), 200)]
+    [DescriptionLocalization("UnassignRolesFromUser")]
     public async Task<IActionResult> UnassignRolesFromUserAsync([FromBody] UnassignRolesFromUserCommand command)
     {
         var response = await _mediator.SendAsync<UnassignRolesFromUserCommand, UnassignRolesFromUserResponse>(command).ConfigureAwait(false);
@@ -241,6 +265,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("user/replace/roles")]
     [ProducesResponseType(typeof(ReplaceUserRolesResponse), 200)]
+    [DescriptionLocalization("ReplaceUserRoles")]
     public async Task<IActionResult> ReplaceUserRolesAsync([FromBody] ReplaceUserRolesCommand command)
     {
         var response = await _mediator.SendAsync<ReplaceUserRolesCommand, ReplaceUserRolesResponse>(command).ConfigureAwait(false);
@@ -249,6 +274,7 @@ public class SecurityController : ControllerBase
 
     [HttpPost("user/role/deadline")]
     [ProducesResponseType(typeof(UpdateUserRoleDeadlineResponse), 200)]
+    [DescriptionLocalization("UpdateUserRoleDeadline")]
     public async Task<IActionResult> UpdateUserRoleDeadlineAsync([FromBody] UpdateUserRoleDeadlineCommand command)
     {
         var response = await _mediator.SendAsync<UpdateUserRoleDeadlineCommand, UpdateUserRoleDeadlineResponse>(command).ConfigureAwait(false);
@@ -261,6 +287,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/permissions")]
     [ProducesResponseType(typeof(GetPermissionsByRoleIdsResponse), 200)]
+    [DescriptionLocalization("GetPermissionsByRoleIds")]
     public async Task<IActionResult> GetPermissionsByRoleIdsAsync([FromBody] GetPermissionsByRoleIdsRequest request)
     {
         var response = await _mediator.RequestAsync<GetPermissionsByRoleIdsRequest, GetPermissionsByRoleIdsResponse>(request).ConfigureAwait(false);
@@ -269,6 +296,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/assign/permissions")]
     [ProducesResponseType(typeof(AssignPermissionsToRoleResponse), 200)]
+    [DescriptionLocalization("AssignPermissionsToRole")]
     public async Task<IActionResult> AssignPermissionsToRoleAsync([FromBody] AssignPermissionsToRoleCommand command)
     {
         var response = await _mediator.SendAsync<AssignPermissionsToRoleCommand, AssignPermissionsToRoleResponse>(command).ConfigureAwait(false);
@@ -277,6 +305,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/unassign/permissions")]
     [ProducesResponseType(typeof(UnassignPermissionsFromRoleResponse), 200)]
+    [DescriptionLocalization("UnassignPermissionsFromRole")]
     public async Task<IActionResult> UnassignPermissionsFromRoleAsync([FromBody] UnassignPermissionsFromRoleCommand command)
     {
         var response = await _mediator.SendAsync<UnassignPermissionsFromRoleCommand, UnassignPermissionsFromRoleResponse>(command).ConfigureAwait(false);
@@ -285,6 +314,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("role/replace/permissions")]
     [ProducesResponseType(typeof(ReplaceRolePermissionsResponse), 200)]
+    [DescriptionLocalization("ReplaceRolePermissions")]
     public async Task<IActionResult> ReplaceRolePermissionsAsync([FromBody] ReplaceRolePermissionsCommand command)
     {
         var response = await _mediator.SendAsync<ReplaceRolePermissionsCommand, ReplaceRolePermissionsResponse>(command).ConfigureAwait(false);
@@ -297,6 +327,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/menus")]
     [ProducesResponseType(typeof(GetMenusByPermissionIdsResponse), 200)]
+    [DescriptionLocalization("GetMenusByPermissionId")]
     public async Task<IActionResult> GetMenusByPermissionIdAsync([FromBody] GetMenusByPermissionIdsRequest request)
     {
         var response = await _mediator.RequestAsync<GetMenusByPermissionIdsRequest, GetMenusByPermissionIdsResponse>(request).ConfigureAwait(false);
@@ -305,6 +336,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/assign/menus")]
     [ProducesResponseType(typeof(AssignMenusToPermissionResponse), 200)]
+    [DescriptionLocalization("AssignMenusToPermission")]
     public async Task<IActionResult> AssignMenusToPermissionAsync([FromBody] AssignMenusToPermissionCommand command)
     {
         var response = await _mediator.SendAsync<AssignMenusToPermissionCommand, AssignMenusToPermissionResponse>(command).ConfigureAwait(false);
@@ -313,6 +345,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/unassign/menus")]
     [ProducesResponseType(typeof(UnassignMenusFromPermissionResponse), 200)]
+    [DescriptionLocalization("UnassignMenusFromPermission")]
     public async Task<IActionResult> UnassignMenusFromPermissionAsync([FromBody] UnassignMenusFromPermissionCommand command)
     {
         var response = await _mediator.SendAsync<UnassignMenusFromPermissionCommand, UnassignMenusFromPermissionResponse>(command).ConfigureAwait(false);
@@ -321,6 +354,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/replace/menus")]
     [ProducesResponseType(typeof(ReplacePermissionMenusResponse), 200)]
+    [DescriptionLocalization("ReplacePermissionMenus")]
     public async Task<IActionResult> ReplacePermissionMenusAsync([FromBody] ReplacePermissionMenusCommand command)
     {
         var response = await _mediator.SendAsync<ReplacePermissionMenusCommand, ReplacePermissionMenusResponse>(command).ConfigureAwait(false);
@@ -333,6 +367,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/endpoints")]
     [ProducesResponseType(typeof(GetEndpointsByPermissionIdsResponse), 200)]
+    [DescriptionLocalization("GetEndpointsByPermissionIds")]
     public async Task<IActionResult> GetEndpointsByPermissionIdsAsync([FromBody] GetEndpointsByPermissionIdsRequest request)
     {
         var response = await _mediator.RequestAsync<GetEndpointsByPermissionIdsRequest, GetEndpointsByPermissionIdsResponse>(request).ConfigureAwait(false);
@@ -341,6 +376,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/assign/endpoints")]
     [ProducesResponseType(typeof(AssignEndpointsToPermissionResponse), 200)]
+    [DescriptionLocalization("AssignEndpointsToPermission")]
     public async Task<IActionResult> AssignEndpointsToPermissionAsync([FromBody] AssignEndpointsToPermissionCommand command)
     {
         var response = await _mediator.SendAsync<AssignEndpointsToPermissionCommand, AssignEndpointsToPermissionResponse>(command).ConfigureAwait(false);
@@ -349,6 +385,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/unassign/endpoints")]
     [ProducesResponseType(typeof(UnassignEndpointsFromPermissionResponse), 200)]
+    [DescriptionLocalization("UnassignEndpointsFromPermission")]
     public async Task<IActionResult> UnassignEndpointsFromPermissionAsync([FromBody] UnassignEndpointsFromPermissionCommand command)
     {
         var response = await _mediator.SendAsync<UnassignEndpointsFromPermissionCommand, UnassignEndpointsFromPermissionResponse>(command).ConfigureAwait(false);
@@ -357,6 +394,7 @@ public class SecurityController : ControllerBase
     
     [HttpPost("permission/replace/endpoints")]
     [ProducesResponseType(typeof(ReplacePermissionEndpointsResponse), 200)]
+    [DescriptionLocalization("ReplacePermissionEndpoints")]
     public async Task<IActionResult> ReplacePermissionEndpointsAsync([FromBody] ReplacePermissionEndpointsCommand command)
     {
         var response = await _mediator.SendAsync<ReplacePermissionEndpointsCommand, ReplacePermissionEndpointsResponse>(command).ConfigureAwait(false);
