@@ -1,6 +1,5 @@
 using FluentValidation;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
-using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -10,7 +9,7 @@ public class GetDestiny2WeaponPerksRequestValidator : FluentMessageValidator<Get
 {
     private const int MaxWeaponTypeCount = 50;
 
-    public GetDestiny2WeaponPerksRequestValidator(Destiny2Setting setting)
+    public GetDestiny2WeaponPerksRequestValidator()
     {
         RuleFor(x => x.WeaponTypes)
             .Cascade(CascadeMode.Stop)
@@ -23,8 +22,5 @@ public class GetDestiny2WeaponPerksRequestValidator : FluentMessageValidator<Get
             .NotEqual(Destiny2ItemSubTypeEnum.None)
             .WithMessage("Weapon type must not be None");
 
-        RuleFor(x => x.Language)
-            .Must(language => Destiny2WeaponLanguageValidation.IsSupported(language, setting))
-            .WithMessage($"Language must be one of: {string.Join(", ", setting.SupportedLanguages)}");
     }
 }

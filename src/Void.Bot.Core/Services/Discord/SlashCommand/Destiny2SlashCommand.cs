@@ -225,7 +225,6 @@ public partial class Destiny2SlashCommand(
                 new GetDestiny2WeaponPerksRequest
                 {
                     WeaponTypes = weaponTypes,
-                    Language = language
                 }, cancellationToken).ConfigureAwait(false);
             if (perkResponse.Data == null)
             {
@@ -284,7 +283,6 @@ public partial class Destiny2SlashCommand(
             {
                 WeaponTypes = weaponTypes,
                 PerkGroups = perkGroups,
-                Language = language,
                 PageSize = 100
             }, cancellationToken).ConfigureAwait(false);
         if (response.Data == null)
