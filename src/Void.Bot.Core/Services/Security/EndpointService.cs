@@ -1,6 +1,7 @@
 using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Dto.Security;
 using Void.Bot.Core.Services.Language;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Security;
 
@@ -16,11 +17,13 @@ public interface IEndpointService : ISingleton
 public class EndpointService : IEndpointService
 {
     private readonly ILanguageService _languageService;
+    private readonly ICurrentUser _currentUser;
     private List<EndpointDto> _endpoints = [];
 
-    public EndpointService(ILanguageService languageService)
+    public EndpointService(ILanguageService languageService, ICurrentUser currentUser)
     {
         _languageService = languageService;
+        _currentUser = currentUser;
     }
 
     public Task<GetEndpointListResponse> GetEndpointListAsync(GetEndpointListRequest request)
@@ -44,7 +47,7 @@ public class EndpointService : IEndpointService
         var description = _languageService.GetEndpointDescription(
             endpoint.Category,
             endpoint.DescriptionKey,
-            LanguageEnum.Default);
+            _currentUser.Language);
         return string.IsNullOrEmpty(description) ? endpoint.Description : description;
     }
 
