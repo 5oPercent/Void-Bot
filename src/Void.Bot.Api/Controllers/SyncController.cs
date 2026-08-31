@@ -1,3 +1,4 @@
+using Void.Bot.Message.Attributes;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,7 @@ public class SyncController : ControllerBase
     [HttpGet]
     [Route("destiny2/manifest/options")]
     [ProducesResponseType(typeof(GetDestiny2ManifestSyncOptionsResponse), 200)]
+    [DescriptionLocalization("GetDestiny2ManifestSyncOptions")]
     public async Task<IActionResult> GetDestiny2ManifestSyncOptionsAsync()
     {
         var response = await _mediator
@@ -44,6 +46,7 @@ public class SyncController : ControllerBase
     [HttpPost]
     [Route("destiny2/manifest")]
     [ProducesResponseType(typeof(SynchronizeDestiny2ManifestResponse), 200)]
+    [DescriptionLocalization("SynchronizeDestiny2Manifest")]
     public async Task<IActionResult> SynchronizeDestiny2ManifestAsync([FromBody]SynchronizeDestiny2ManifestCommand command)
     {
         var response = await _mediator.SendAsync<SynchronizeDestiny2ManifestCommand, SynchronizeDestiny2ManifestResponse>(command).ConfigureAwait(false);

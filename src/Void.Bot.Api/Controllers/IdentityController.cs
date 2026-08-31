@@ -34,6 +34,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("register")]
     [ProducesResponseType(typeof(RegisterUserAccountResponse), 200)]
+    [DescriptionLocalization("RegisterUserAccount")]
     public async Task<IActionResult> RegisterUserAccount([FromBody]RegisterUserAccountCommand command)
     {
         var response = await _mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(command).ConfigureAwait(false);
@@ -45,6 +46,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("register/email/send-code")]
     [ProducesResponseType(typeof(SendRegistrationEmailCodeResponse), 200)]
+    [DescriptionLocalization("SendRegistrationEmailCode")]
     public async Task<IActionResult> SendRegistrationEmailCodeAsync(
         [FromBody] SendRegistrationEmailCodeCommand command,
         CancellationToken cancellationToken)
@@ -59,6 +61,7 @@ public class IdentityController : ControllerBase
     [Route("email/status")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(GetUserEmailStatusResponse), 200)]
+    [DescriptionLocalization("GetEmailStatus")]
     public async Task<IActionResult> GetEmailStatusAsync(CancellationToken cancellationToken)
     {
         var response = await _mediator.RequestAsync<GetUserEmailStatusRequest, GetUserEmailStatusResponse>(
@@ -70,6 +73,7 @@ public class IdentityController : ControllerBase
     [Route("email/send-code")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(SendEmailBindingCodeResponse), 200)]
+    [DescriptionLocalization("SendEmailBindingCode")]
     public async Task<IActionResult> SendEmailBindingCodeAsync(
         [FromBody] SendEmailBindingCodeCommand command,
         CancellationToken cancellationToken)
@@ -83,6 +87,7 @@ public class IdentityController : ControllerBase
     [Route("email/bind")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(BindUserEmailResponse), 200)]
+    [DescriptionLocalization("BindEmail")]
     public async Task<IActionResult> BindEmailAsync(
         [FromBody] BindUserEmailCommand command,
         CancellationToken cancellationToken)
@@ -96,6 +101,7 @@ public class IdentityController : ControllerBase
     [Route("email/unbind/send-code")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(SendEmailUnbindingCodeResponse), 200)]
+    [DescriptionLocalization("SendEmailUnbindingCode")]
     public async Task<IActionResult> SendEmailUnbindingCodeAsync(CancellationToken cancellationToken)
     {
         var response = await _mediator
@@ -108,6 +114,7 @@ public class IdentityController : ControllerBase
     [Route("email/unbind")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(UnbindUserEmailResponse), 200)]
+    [DescriptionLocalization("UnbindEmail")]
     public async Task<IActionResult> UnbindEmailAsync(
         [FromBody] UnbindUserEmailCommand command,
         CancellationToken cancellationToken)
@@ -121,6 +128,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("password-reset/send-code")]
     [ProducesResponseType(typeof(SendPasswordResetCodeResponse), 200)]
+    [DescriptionLocalization("SendPasswordResetCode")]
     public async Task<IActionResult> SendPasswordResetCodeAsync(
         [FromBody] SendPasswordResetCodeCommand command,
         CancellationToken cancellationToken)
@@ -134,6 +142,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("password-reset")]
     [ProducesResponseType(typeof(ResetUserAccountPasswordResponse), 200)]
+    [DescriptionLocalization("ResetPassword")]
     public async Task<IActionResult> ResetPasswordAsync(
         [FromBody] ResetUserAccountPasswordCommand command,
         CancellationToken cancellationToken)
@@ -147,6 +156,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("password-reset/link")]
     [ProducesResponseType(typeof(ResetUserAccountPasswordByLinkResponse), 200)]
+    [DescriptionLocalization("ResetUserAccountPasswordByLink")]
     public async Task<IActionResult> ResetUserAccountPasswordByLinkAsync(
         [FromBody] ResetUserAccountPasswordByLinkCommand command,
         CancellationToken cancellationToken)
@@ -161,6 +171,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("login")]
     [ProducesResponseType(typeof(AuthenticateResponse), 200)]
+    [DescriptionLocalization("Login")]
     public async Task<IActionResult> LoginAsync([FromQuery]AuthenticateRequest command)
     {
         var response = await _mediator.RequestAsync<AuthenticateRequest, AuthenticateResponse>(command).ConfigureAwait(false);
@@ -172,6 +183,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     [Route("refresh-token")]
     [ProducesResponseType(typeof(RefreshTokenResponse), 200)]
+    [DescriptionLocalization("RefreshToken")]
     public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshTokenRequest request)
     {
         var response = await _mediator.RequestAsync<RefreshTokenRequest, RefreshTokenResponse>(request).ConfigureAwait(false);
@@ -183,6 +195,7 @@ public class IdentityController : ControllerBase
     [Route("me")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(GetUserAccountResponse), StatusCodes.Status200OK)]
+    [DescriptionLocalization("GetCurrentUserAccount")]
     public async Task<IActionResult> GetCurrentUserAccountAsync()
     {
         var response = await _mediator.RequestAsync<GetUserAccountRequest, GetUserAccountResponse>(
@@ -195,6 +208,7 @@ public class IdentityController : ControllerBase
     [Route("change-password")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(ChangeUserAccountPasswordResponse), 200)]
+    [DescriptionLocalization("ChangePassword")]
     public async Task<IActionResult> ChangePasswordAsync([FromBody] ChangeUserAccountPasswordCommand command)
     {
         command.UserId = _currentUser.Id;
@@ -210,6 +224,7 @@ public class IdentityController : ControllerBase
     [Route("change-name/availability")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(CanChangeUserAccountNameResponse), 200)]
+    [DescriptionLocalization("CanChangeName")]
     public async Task<IActionResult> CanChangeNameAsync([FromQuery] CanChangeUserAccountNameRequest request)
     {
         request.UserId = _currentUser.Id;
@@ -225,6 +240,7 @@ public class IdentityController : ControllerBase
     [Route("change-name")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(ChangeUserAccountNameResponse), 200)]
+    [DescriptionLocalization("ChangeName")]
     public async Task<IActionResult> ChangeNameAsync([FromBody] ChangeUserAccountNameCommand command)
     {
         command.UserId = _currentUser.Id;
@@ -239,6 +255,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("generate/url/steam")]
     [ProducesResponseType(typeof(GenerateAuthenticateUrlFromSteamResponse), 200)]
+    [DescriptionLocalization("GenerateAuthenticateUrlFromSteam")]
     public async Task<IActionResult> GenerateAuthenticateUrlFromSteam([FromQuery]GenerateAuthenticateUrlFromSteamRequest request)
     {
         var response = await _mediator.RequestAsync<GenerateAuthenticateUrlFromSteamRequest, GenerateAuthenticateUrlFromSteamResponse>(request).ConfigureAwait(false);
@@ -250,6 +267,7 @@ public class IdentityController : ControllerBase
     [HttpGet]
     [Route("link/steam/{platform}/{accountId}")]
     [ProducesResponseType(typeof(LoginSteamResponse), 200)]
+    [DescriptionLocalization("LoginSteam")]
     public async Task<IActionResult> LoginSteamAsync(AppPlatformEnum platform, string accountId, [FromQuery]LoginSteamOIDCCommand command)
     {
         var request = new LoginSteamCommand
