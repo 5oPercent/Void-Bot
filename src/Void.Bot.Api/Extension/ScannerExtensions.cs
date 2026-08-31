@@ -67,7 +67,9 @@ public static class ScannerExtensions
                             var fullPath = CombineRoutes(controllerRoute, methodTemplate, controllerName);
 
                             var descAttr = method.GetCustomAttribute<DescriptionAttribute>();
-                            var description = descAttr?.Description ?? GetDefaultDescription(controllerName, method.Name);
+                            var keyAttr = method.GetCustomAttribute<DescriptionLocalizationAttribute>();
+                            var descriptionKey = keyAttr?.Key ?? GetLocalizationKey(method.Name);
+                            var description = descAttr?.Description ?? GetDefaultDescription(controllerName, descriptionKey);
 
                             endpoints.Add(new EndpointDto
                             {
@@ -75,7 +77,7 @@ public static class ScannerExtensions
                                 Category = controllerName,
                                 Endpoint = "/" + fullPath.Trim('/'),
                                 Method = httpMethod,
-                                DescriptionKey = method.Name,
+                                DescriptionKey = descriptionKey,
                                 Description = description
                             });
                         }
@@ -107,5 +109,12 @@ public static class ScannerExtensions
         var property = templateType?.GetProperty(key);
         var template = templateType == null ? null : Activator.CreateInstance(templateType);
         return property?.GetValue(template)?.ToString() ?? $"{category}接口：{key}";
+    }
+
+    private static string GetLocalizationKey(string methodName)
+    {
+        return methodName.EndsWith("Async", StringComparison.Ordinal)
+            ? methodName[..^"Async".Length]
+            : methodName;
     }
 }
