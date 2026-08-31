@@ -1,6 +1,5 @@
 using FluentValidation;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
-using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
 
@@ -15,7 +14,7 @@ public class FilterDestiny2WeaponGodRollRequestValidator : FluentMessageValidato
     private const int MaxPerkGroupCount = 10;
     private const int MaxPerkCountPerGroup = 20;
 
-    public FilterDestiny2WeaponGodRollRequestValidator(Destiny2Setting setting)
+    public FilterDestiny2WeaponGodRollRequestValidator()
     {
         RuleFor(x => x.PageIndex)
             .GreaterThanOrEqualTo(1)
@@ -142,8 +141,5 @@ public class FilterDestiny2WeaponGodRollRequestValidator : FluentMessageValidato
                 .WithMessage("Perk hash must be greater than zero");
         });
 
-        RuleFor(x => x.Language)
-            .Must(language => Destiny2WeaponLanguageValidation.IsSupported(language, setting))
-            .WithMessage($"Language must be one of: {string.Join(", ", setting.SupportedLanguages)}");
     }
 }

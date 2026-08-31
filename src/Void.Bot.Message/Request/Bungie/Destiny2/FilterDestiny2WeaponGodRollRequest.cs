@@ -41,7 +41,6 @@ public class FilterDestiny2WeaponGodRollRequest : PageInputDto, IRequest
 
     public List<Destiny2WeaponPerkGroupDto> PerkGroups { get; set; } = [];
 
-    public string Language { get; set; } = string.Empty;
 }
 
 /// <summary>

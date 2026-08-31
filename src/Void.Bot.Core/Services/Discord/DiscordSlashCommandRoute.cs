@@ -100,7 +100,8 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
         if (user != null)
         {
             var userProvider = scope.ServiceProvider.GetRequiredService<ICurrentUserProvider>();
-            userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName));
+            var language = LanguageExtension.MapI18nCodeToEnum(callback.UserLocale);
+            userProvider.SetCurrentUser(new CustomCurrentUser(user.Id, user.DisplayName, language));
         }
 
         _logger.Information("Discord Slash Command executed: {@Detail}", new

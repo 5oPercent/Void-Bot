@@ -3,6 +3,7 @@ using Serilog;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Jobs;
+using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.Bungie;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Dto;
@@ -40,15 +41,18 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
     private readonly IDestiny2WeaponDataProvider _dataProvider;
     private readonly Destiny2Setting _setting;
     private readonly IVoidBotBackgroundJobClient _backgroundJob;
+    private readonly ICurrentUser _currentUser;
 
     public Destiny2WeaponService(
         IDestiny2WeaponDataProvider dataProvider,
         Destiny2Setting setting,
-        IVoidBotBackgroundJobClient backgroundJob)
+        IVoidBotBackgroundJobClient backgroundJob,
+        ICurrentUser currentUser)
     {
         _dataProvider = dataProvider;
         _setting = setting;
         _backgroundJob = backgroundJob;
+        _currentUser = currentUser;
     }
 
     public Task<RebuildDestiny2WeaponCacheResponse> RebuildCacheAsync(
@@ -124,7 +128,7 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         GetDestiny2WeaponTypesRequest request,
         CancellationToken cancellationToken)
     {
-        var weaponTypeData = await _dataProvider.GetWeaponTypesAsync(request.Language, cancellationToken).ConfigureAwait(false);
+        var weaponTypeData = await _dataProvider.GetWeaponTypesAsync(_currentUser.Language.ToI18nCode(), cancellationToken).ConfigureAwait(false);
         if (weaponTypeData == null)
             return ManifestUnavailable<GetDestiny2WeaponTypesResponse>();
 
@@ -149,7 +153,7 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         CancellationToken cancellationToken)
     {
         var rollData = await _dataProvider.GetRollDataAsync(
-            request.Language,
+            _currentUser.Language.ToI18nCode(),
             request.WeaponTypes,
             cancellationToken).ConfigureAwait(false);
         if (rollData == null)
@@ -242,7 +246,7 @@ internal sealed class Destiny2WeaponService : IDestiny2WeaponService
         CancellationToken cancellationToken)
     {
         var rollData = await _dataProvider.GetRollDataAsync(
-            request.Language,
+            _currentUser.Language.ToI18nCode(),
             request.WeaponTypes,
             cancellationToken).ConfigureAwait(false);
         if (rollData == null)

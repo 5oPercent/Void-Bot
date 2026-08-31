@@ -12,8 +12,6 @@ public class GetDestiny2WeaponPerksRequest : IRequest
 {
     public List<Destiny2ItemSubTypeEnum> WeaponTypes { get; set; } = [];
 
-    public string Language { get; set; } = string.Empty;
-
     public string? Keyword { get; set; }
 }
 

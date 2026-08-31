@@ -14,9 +14,13 @@ public class CustomCurrentUser : ICurrentUser
     {
     }
 
-    public CustomCurrentUser(Guid? id, string userName)
+    public CustomCurrentUser(
+        Guid? id,
+        string userName,
+        LanguageEnum language = LanguageEnum.Default)
     {
         Id = id;
         UserName = userName;
+        Language = language;
     }
 }
