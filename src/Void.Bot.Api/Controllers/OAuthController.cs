@@ -31,6 +31,7 @@ public sealed class OAuthController : ControllerBase
     [HttpGet("{platform}/authorize")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(OAuthAuthorizeResponse), 200)]
+    [DescriptionLocalization("Authorize")]
     public async Task<IActionResult> AuthorizeAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthAuthorizeCommand command)
     {
@@ -44,6 +45,7 @@ public sealed class OAuthController : ControllerBase
     [AllowAnonymous]
     [HttpGet("{platform}/callback")]
     [ProducesResponseType(302)]
+    [DescriptionLocalization("Callback")]
     public async Task<IActionResult> CallbackAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthCallbackCommand command)
     {
@@ -57,6 +59,7 @@ public sealed class OAuthController : ControllerBase
     [AllowAnonymous]
     [HttpPost("exchange")]
     [ProducesResponseType(typeof(OAuthExchangeResponse), 200)]
+    [DescriptionLocalization("Exchange")]
     public async Task<IActionResult> ExchangeAsync([FromBody] OAuthExchangeCommand command)
     {
         var response = await _mediator.SendAsync<OAuthExchangeCommand, OAuthExchangeResponse>(command).ConfigureAwait(false);
@@ -68,6 +71,7 @@ public sealed class OAuthController : ControllerBase
     [HttpPost("register")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(OAuthRegisterResponse), 200)]
+    [DescriptionLocalization("Register")]
     public async Task<IActionResult> RegisterAsync([FromBody] OAuthRegisterCommand command)
     {
         var response = await _mediator.SendAsync<OAuthRegisterCommand, OAuthRegisterResponse>(command).ConfigureAwait(false);
@@ -79,6 +83,7 @@ public sealed class OAuthController : ControllerBase
     [HttpPost("bind")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(OAuthBindResponse), 200)]
+    [DescriptionLocalization("Bind")]
     public async Task<IActionResult> BindAsync([FromBody] OAuthBindCommand command)
     {
         var response = await _mediator.SendAsync<OAuthBindCommand, OAuthBindResponse>(command).ConfigureAwait(false);
@@ -89,6 +94,7 @@ public sealed class OAuthController : ControllerBase
     [HttpPost("{platform}/unlink")]
     [SkipPermissionCheck]
     [ProducesResponseType(typeof(OAuthUnlinkResponse), 200)]
+    [DescriptionLocalization("Unlink")]
     public async Task<IActionResult> UnlinkAsync(
         [FromRoute] AppPlatformEnum platform, [FromQuery] OAuthUnlinkCommand command)
     {

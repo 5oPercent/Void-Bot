@@ -15,6 +15,8 @@ public interface ILanguageService : ISingleton
 
     public string GetContext<T>(Expression<Func<T, object>> expression, LanguageEnum language = LanguageEnum.Default)
         where T : IContextTemplate;
+
+    public string GetEndpointDescription(string category, string key, LanguageEnum language = LanguageEnum.Default);
 }
 
 public class LanguageService : ILanguageService, IDisposable
@@ -171,6 +173,28 @@ public class LanguageService : ILanguageService, IDisposable
         var value = propertyInfo.GetValue(contextTemplate)?.ToString();
         
         return !string.IsNullOrEmpty(value) ? value : string.Empty;
+    }
+
+    public string GetEndpointDescription(string category, string key, LanguageEnum language = LanguageEnum.Default)
+    {
+        var template = _contextTemplates.Values.FirstOrDefault(context =>
+        {
+            var attribute = context.GetType().GetCustomAttribute<LanguageAttribute>();
+            return attribute?.System.Equals("Endpoint", StringComparison.OrdinalIgnoreCase) == true &&
+                   attribute.ContextTemplateName.Equals(category, StringComparison.OrdinalIgnoreCase);
+        });
+
+        if (template == null)
+            return string.Empty;
+
+        var attribute = template.GetType().GetCustomAttribute<LanguageAttribute>()!;
+        var targetLanguage = language == LanguageEnum.Default ? attribute.Language : language;
+        var yamlKey = $"/{attribute.System}/{attribute.ContextTemplateName}.{targetLanguage.ToI18nCode()}.yaml";
+        if (_languages.TryGetValue(yamlKey.ToLowerInvariant(), out var languageDict) &&
+            languageDict.TryGetValue(key, out var localized))
+            return localized;
+
+        return template.GetType().GetProperty(key)?.GetValue(template)?.ToString() ?? string.Empty;
     }
 
     public void Dispose()

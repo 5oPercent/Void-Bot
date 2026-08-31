@@ -1,3 +1,4 @@
+using Void.Bot.Message.Attributes;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ public sealed class ApiKeyController(IMediator mediator) : ControllerBase
 {
     [HttpPost("create")]
     [ProducesResponseType(typeof(CreateApiKeyResponse), 200)]
+    [DescriptionLocalization("Create")]
     public async Task<IActionResult> CreateAsync([FromBody] CreateApiKeyCommand command)
     {
         var response = await mediator.SendAsync<CreateApiKeyCommand, CreateApiKeyResponse>(command).ConfigureAwait(false);
@@ -25,6 +27,7 @@ public sealed class ApiKeyController(IMediator mediator) : ControllerBase
 
     [HttpPost("delete")]
     [ProducesResponseType(typeof(DeleteApiKeyResponse), 200)]
+    [DescriptionLocalization("Delete")]
     public async Task<IActionResult> DeleteAsync([FromBody] DeleteApiKeyCommand command)
     {
         var response = await mediator.SendAsync<DeleteApiKeyCommand, DeleteApiKeyResponse>(command).ConfigureAwait(false);
