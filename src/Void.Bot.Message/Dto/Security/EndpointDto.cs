@@ -4,11 +4,6 @@ public class EndpointDto
 {
     public string Controller { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Endpoint localization category. Defaults to the controller name.
-    /// </summary>
-    public string Category { get; set; } = string.Empty;
-
     public string Endpoint { get; set; } = string.Empty;
 
     public string Method { get; set; } = string.Empty;

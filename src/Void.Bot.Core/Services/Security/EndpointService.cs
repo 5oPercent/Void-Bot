@@ -33,7 +33,6 @@ public class EndpointService : IEndpointService
             Data = _endpoints.Select(endpoint => new EndpointDto
             {
                 Controller = endpoint.Controller,
-                Category = endpoint.Category,
                 Endpoint = endpoint.Endpoint,
                 Method = endpoint.Method,
                 DescriptionKey = endpoint.DescriptionKey,
@@ -45,7 +44,7 @@ public class EndpointService : IEndpointService
     private string ResolveDescription(EndpointDto endpoint)
     {
         var description = _languageService.GetEndpointDescription(
-            endpoint.Category,
+            endpoint.Controller,
             endpoint.DescriptionKey,
             _currentUser.Language);
         return string.IsNullOrEmpty(description) ? endpoint.Description : description;

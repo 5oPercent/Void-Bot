@@ -74,7 +74,6 @@ public static class ScannerExtensions
                             endpoints.Add(new EndpointDto
                             {
                                 Controller = controllerName,
-                                Category = controllerName,
                                 Endpoint = "/" + fullPath.Trim('/'),
                                 Method = httpMethod,
                                 DescriptionKey = descriptionKey,
