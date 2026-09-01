@@ -1,9 +1,14 @@
 using Discord;
 using Discord.WebSocket;
+using System.Net;
+using System.Text.Json.Serialization;
 using Serilog;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Discord;
+using Void.Bot.Message.Constants.Discord;
+using Void.Bot.Message.Dto.Discord;
+using Void.Bot.Message.Dto.HttpClient;
 using Void.Bot.Message.Request.Discord;
 
 namespace Void.Bot.Core.Services.Discord;
@@ -17,12 +22,22 @@ public partial interface IDiscordService : IScope
     Task ApplyGlobalSlashCommandAsync(DiscordApplyGlobalSlashCommandRequest request, CancellationToken cancellationToken);
 
     Task ApplyGuildSlashCommandAsync(DiscordApplyGuildSlashCommandRequest request, CancellationToken cancellationToken);
+
+    Task<GetDiscordManagedGuildListResponse> GetManagedGuildListAsync(
+        GetDiscordManagedGuildListRequest request,
+        CancellationToken cancellationToken);
+
+    Task<GetDiscordGuildChannelListResponse> GetGuildChannelListAsync(
+        GetDiscordGuildChannelListRequest request,
+        CancellationToken cancellationToken);
 }
 
 public partial class DiscordService : IDiscordService
 {
     private readonly DiscordSetting _setting;
     private readonly IDiscordDataProvider _dataProvider;
+    private readonly IDiscordVoiceChannelDataProvider _voiceChannelDataProvider;
+    private readonly IDiscordBindingContext _bindingContext;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
     private readonly ILogger _logger;
@@ -32,6 +47,8 @@ public partial class DiscordService : IDiscordService
     public DiscordService(
         DiscordSetting setting,
         IDiscordDataProvider dataProvider,
+        IDiscordVoiceChannelDataProvider voiceChannelDataProvider,
+        IDiscordBindingContext bindingContext,
         IDiscordSlashCommandRoute slashCommandRoute,
         IVoidBotHttpClientFactory httpClientFactory,
         ILogger logger,
@@ -39,6 +56,8 @@ public partial class DiscordService : IDiscordService
     {
         _setting = setting;
         _dataProvider = dataProvider;
+        _voiceChannelDataProvider = voiceChannelDataProvider;
+        _bindingContext = bindingContext;
         _slashCommandRoute = slashCommandRoute; 
         _httpClientFactory = httpClientFactory;
         _logger = logger;
@@ -80,5 +99,148 @@ public partial class DiscordService : IDiscordService
         var requestOptions = new RequestOptions { CancelToken = cancellationToken };
 
         await guild.BulkOverwriteApplicationCommandAsync(commands, requestOptions).ConfigureAwait(false);
+    }
+
+    public async Task<GetDiscordManagedGuildListResponse> GetManagedGuildListAsync(
+        GetDiscordManagedGuildListRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = new GetDiscordManagedGuildListResponse();
+
+        var guildResponse = await _httpClientFactory.GetAsync<List<DiscordUserGuildApiDto>>(
+            DiscordConstants.CurrentUserGuildsUrl,
+            cancellationToken,
+            tokenModel: new TokenModel { Parameter = _bindingContext.Binding.AccessToken }).ConfigureAwait(false);
+        if ((int)guildResponse.Code is < 200 or >= 300 || guildResponse.Data == null)
+        {
+            response.Code = (int)guildResponse.Code == 0 ? HttpStatusCode.BadGateway : guildResponse.Code;
+            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
+            return response;
+        }
+
+        response.Data = guildResponse.Data
+            .Where(x => x.Owner || HasGuildManagementPermission(x.Permissions))
+            .Select(x =>
+            {
+                var installed = ulong.TryParse(x.Id, out var guildId) && _client.GetGuild(guildId) != null;
+                return new DiscordManagedGuildDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    IconUrl = string.IsNullOrWhiteSpace(x.Icon)
+                        ? null
+                        : $"https://cdn.discordapp.com/icons/{x.Id}/{x.Icon}.png",
+                    IsOwner = x.Owner,
+                    IsBotInstalled = installed,
+                    CanManageGuild = true
+                };
+            })
+            .ToList();
+
+        return response;
+    }
+
+    public async Task<GetDiscordGuildChannelListResponse> GetGuildChannelListAsync(
+        GetDiscordGuildChannelListRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = new GetDiscordGuildChannelListResponse();
+        if (!ulong.TryParse(request.GuildId, out var guildId) || guildId == 0)
+        {
+            response.Code = HttpStatusCode.BadRequest;
+            response.Message = "GuildId is invalid.";
+            return response;
+        }
+
+        var userGuildResponse = await _httpClientFactory.GetAsync<List<DiscordUserGuildApiDto>>(
+            DiscordConstants.CurrentUserGuildsUrl,
+            cancellationToken,
+            tokenModel: new TokenModel { Parameter = _bindingContext.Binding.AccessToken }).ConfigureAwait(false);
+        if ((int)userGuildResponse.Code is < 200 or >= 300 || userGuildResponse.Data == null)
+        {
+            response.Code = (int)userGuildResponse.Code == 0
+                ? HttpStatusCode.BadGateway
+                : userGuildResponse.Code;
+            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
+            return response;
+        }
+
+        var userGuild = userGuildResponse.Data.FirstOrDefault(x =>
+            ulong.TryParse(x.Id, out var userGuildId) && userGuildId == guildId);
+        if (userGuild == null)
+        {
+            response.Code = HttpStatusCode.Forbidden;
+            response.Message = "You do not have permission to manage this guild.";
+            return response;
+        }
+
+        if (!userGuild.Owner && !HasGuildManagementPermission(userGuild.Permissions))
+        {
+            response.Code = HttpStatusCode.Forbidden;
+            response.Message = "You do not have permission to manage this guild.";
+            return response;
+        }
+
+        var guild = _client.GetGuild(guildId);
+        if (guild == null)
+        {
+            response.Code = HttpStatusCode.NotFound;
+            response.Message = "Discord bot is not installed in this guild.";
+            return response;
+        }
+
+        var configs = await _voiceChannelDataProvider.GetConfigsAsync(guildId, cancellationToken).ConfigureAwait(false);
+        var configuredChannels = configs
+            .SelectMany(x => new[]
+            {
+                (ChannelId: x.TriggerChannelId, ConfigId: (Guid?)x.Id),
+                (ChannelId: x.CreateCategoryId, ConfigId: (Guid?)x.Id)
+            })
+            .GroupBy(x => x.ChannelId)
+            .ToDictionary(x => x.Key, x => x.First().ConfigId);
+
+        response.Data = guild.Channels
+            .Where(x => x.ChannelType is ChannelType.Voice or ChannelType.Category)
+            .OrderBy(x => x.Position)
+            .Select(x => new DiscordGuildChannelDto
+            {
+                Id = x.Id.ToString(),
+                Name = x.Name,
+                Type = x.ChannelType.ToString(),
+                ParentId = x is INestedChannel nestedChannel && nestedChannel.CategoryId.HasValue
+                    ? nestedChannel.CategoryId.Value.ToString()
+                    : null,
+                Position = x.Position,
+                UsableAsTrigger = x.ChannelType == ChannelType.Voice,
+                UsableAsCreateCategory = x.ChannelType == ChannelType.Category,
+                Configured = configuredChannels.ContainsKey(x.Id),
+                ConfigId = configuredChannels.GetValueOrDefault(x.Id)
+            })
+            .ToList();
+
+        return response;
+    }
+
+    private static bool HasGuildManagementPermission(string? permissions)
+    {
+        return ulong.TryParse(permissions, out var value) && (value & (0x8 | 0x20)) != 0;
+    }
+
+    private sealed class DiscordUserGuildApiDto
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; init; } = string.Empty;
+
+        [JsonPropertyName("name")]
+        public string Name { get; init; } = string.Empty;
+
+        [JsonPropertyName("icon")]
+        public string? Icon { get; init; }
+
+        [JsonPropertyName("owner")]
+        public bool Owner { get; init; }
+
+        [JsonPropertyName("permissions")]
+        public string? Permissions { get; init; }
     }
 }

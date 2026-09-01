@@ -13,13 +13,19 @@ public static class HttpClientExtension
         return await SafeProcessAsync(url, async () =>
         {
             var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+
+            var data = response.IsSuccessStatusCode
+                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                : default;
+            var message = response.IsSuccessStatusCode
+                ? string.Empty
+                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
             return new VoidBotResponse<T>
             {
                 Code = response.StatusCode,
-                Data = data
+                Data = data,
+                Message = message
             };
         }, cancellationToken).ConfigureAwait(false);
     }
@@ -29,13 +35,19 @@ public static class HttpClientExtension
         return await SafeProcessAsync(url, async () =>
         {
             var response = await client.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+
+            var data = response.IsSuccessStatusCode
+                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                : default;
+            var message = response.IsSuccessStatusCode
+                ? string.Empty
+                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
             return new VoidBotResponse<T>
             {
                 Code = response.StatusCode,
-                Data = data
+                Data = data,
+                Message = message
             };
         }, cancellationToken).ConfigureAwait(false);
     }
@@ -46,13 +58,19 @@ public static class HttpClientExtension
         return await SafeProcessAsync(url, async () =>
         {
             var response = await client.PostAsJsonAsync(url, content, cancellationToken).ConfigureAwait(false);
-            
-            var data = await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false);
+
+            var data = response.IsSuccessStatusCode
+                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                : default;
+            var message = response.IsSuccessStatusCode
+                ? string.Empty
+                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             return new VoidBotResponse<T>
             {
                 Code = response.StatusCode,
-                Data = data
+                Data = data,
+                Message = message
             };
         }, cancellationToken).ConfigureAwait(false);
     }

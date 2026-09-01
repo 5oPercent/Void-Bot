@@ -13,4 +13,6 @@ public partial class DiscordConstants
     public const string RefreshTokenUrl = GenerateTokenUrl;
 
     public const string CurrentUserUrl = ApiUrl + "/users/@me";
+
+    public const string CurrentUserGuildsUrl = ApiUrl + "/users/@me/guilds";
 }

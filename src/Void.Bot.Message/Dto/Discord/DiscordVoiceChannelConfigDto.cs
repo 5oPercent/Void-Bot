@@ -4,11 +4,11 @@ public class DiscordVoiceChannelConfigDto
 {
     public Guid Id { get; set; }
 
-    public ulong GuildId { get; set; }
+    public string GuildId { get; set; } = string.Empty;
 
-    public ulong TriggerChannelId { get; set; }
+    public string TriggerChannelId { get; set; } = string.Empty;
 
-    public ulong CreateCategoryId { get; set; }
+    public string CreateCategoryId { get; set; } = string.Empty;
 
     public int DefaultUserLimit { get; set; }
 

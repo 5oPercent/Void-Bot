@@ -64,6 +64,36 @@ public class DiscordController : ControllerBase
     }
 
     [HttpGet]
+    [Route("managed-guilds")]
+    [ProducesResponseType(typeof(GetDiscordManagedGuildListResponse), 200)]
+    [DescriptionLocalization("GetManagedGuildList")]
+    public async Task<IActionResult> GetManagedGuildListAsync(
+        [FromQuery] GetDiscordManagedGuildListRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<GetDiscordManagedGuildListRequest, GetDiscordManagedGuildListResponse>(
+                request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("guilds/channels")]
+    [ProducesResponseType(typeof(GetDiscordGuildChannelListResponse), 200)]
+    [DescriptionLocalization("GetGuildChannelList")]
+    public async Task<IActionResult> GetGuildChannelListAsync(
+        [FromQuery] GetDiscordGuildChannelListRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<GetDiscordGuildChannelListRequest, GetDiscordGuildChannelListResponse>(
+                request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet]
     [Route("voice-channel/config")]
     [ProducesResponseType(typeof(GetDiscordVoiceChannelConfigResponse), 200)]
     [DescriptionLocalization("GetVoiceChannelConfig")]

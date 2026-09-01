@@ -30,14 +30,14 @@ public partial class DiscordService
         InvalidIdentityResponse
     }
 
-    private const string Scope = "identify";
+    private const string Scope = "identify guilds";
     private const string CallbackPath = "/api/OAuth/discord/callback";
 
     public string GenerateOAuthAuthorizationUrl(string state)
     {
         var redirectUri = AppSetting.DomainUrl + CallbackPath;
         return $"{DiscordConstants.AuthorizeUrl}?response_type=code&client_id={Uri.EscapeDataString(_setting.ClientId)}" +
-               $"&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope={Scope}" +
+               $"&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope={Uri.EscapeDataString(Scope)}" +
                $"&state={Uri.EscapeDataString(state)}&prompt=consent";
     }
 
