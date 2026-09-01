@@ -183,9 +183,9 @@ Authorization: Bearer {voidAccessToken}
   "data": [
     {
       "id": "4f2c8b64-39ef-4f93-9be4-a64d6d6c90a1",
-      "guildId": 123456789012345678,
-      "triggerChannelId": 111111111111111111,
-      "createCategoryId": 222222222222222222,
+      "guildId": "123456789012345678",
+      "triggerChannelId": "111111111111111111",
+      "createCategoryId": "222222222222222222",
       "defaultUserLimit": 3,
       "channelNameTemplate": "{user} 的频道",
       "enabled": true,
@@ -201,9 +201,9 @@ Authorization: Bearer {voidAccessToken}
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | `id` | `string` | 配置 ID，UUID |
-| `guildId` | `number/string` | Discord Guild ID；提交时建议使用字符串语义处理 |
-| `triggerChannelId` | `number/string` | 触发用户加入的 Voice Channel ID |
-| `createCategoryId` | `number/string` | 创建临时频道所属的 Category ID |
+| `guildId` | `string` | Discord Guild ID |
+| `triggerChannelId` | `string` | 触发用户加入的 Voice Channel ID |
+| `createCategoryId` | `string` | 创建临时频道所属的 Category ID |
 | `defaultUserLimit` | `number` | 默认人数上限，范围为 `3-50` |
 | `channelNameTemplate` | `string` | 临时频道名称模板，最大长度 128 |
 | `enabled` | `boolean` | 是否启用 |
