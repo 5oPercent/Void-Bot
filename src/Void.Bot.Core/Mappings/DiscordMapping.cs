@@ -9,7 +9,10 @@ public class DiscordMapping : Profile
 {
     public DiscordMapping()
     {
-        CreateMap<DiscordVoiceChannelConfig, DiscordVoiceChannelConfigDto>().ReverseMap();
+        CreateMap<DiscordVoiceChannelConfig, DiscordVoiceChannelConfigDto>()
+            .ForMember(destination => destination.GuildId, options => options.MapFrom(source => source.GuildId.ToString()))
+            .ForMember(destination => destination.TriggerChannelId, options => options.MapFrom(source => source.TriggerChannelId.ToString()))
+            .ForMember(destination => destination.CreateCategoryId, options => options.MapFrom(source => source.CreateCategoryId.ToString()));
         CreateMap<DiscordTemporaryVoiceChannel, DiscordTemporaryVoiceChannelDto>().ReverseMap();
 
         CreateMap<AddDiscordVoiceChannelConfigCommand, DiscordVoiceChannelConfig>();
