@@ -18,6 +18,7 @@ using Void.Bot.Core.Caching;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
+using Void.Bot.Core.Middlewares.DiscordBinding;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
 using Void.Bot.Core.Middlewares.Preload;
 using Void.Bot.Core.Middlewares.UnifyResponse;
@@ -126,6 +127,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             p.UseLogger();              // 统一日志记录
             p.UseUnifyResponse();       // 统一响应
             p.UseMessageValidator();    // 消息验证
+            p.UseDiscordBinding();      // Discord 绑定检查
             p.UseLoadDestiny2Player();  // 预加载Bungie Player Data
             p.UseUnitOfWork();          // 事务处理
         });
