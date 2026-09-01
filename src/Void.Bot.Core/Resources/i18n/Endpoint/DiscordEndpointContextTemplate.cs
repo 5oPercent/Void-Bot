@@ -15,5 +15,7 @@ public sealed class DiscordEndpointContextTemplate : IContextTemplate
     public string UpdateVoiceChannelConfig { get; set; } = "更新语音频道配置";
     public string DeleteVoiceChannelConfig { get; set; } = "删除语音频道配置";
     public string GetTemporaryVoiceChannelList { get; set; } = "获取临时语音频道列表";
+    public string GetManagedGuildList { get; set; } = "获取可管理的 Discord 公会列表";
+    public string GetGuildChannelList { get; set; } = "获取 Discord 公会频道列表";
 
 }

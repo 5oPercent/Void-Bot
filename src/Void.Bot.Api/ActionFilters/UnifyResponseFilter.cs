@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Void.Bot.Api.Authentication;
 using Void.Bot.Core.Services.Identity.OAuth;
+using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Settings.OAuth;
 using Void.Bot.Message.Dto;
 using ILogger = Serilog.ILogger;
@@ -45,6 +46,18 @@ public class UnifyResponseExceptionFilter : IExceptionFilter
     
     public void OnException(ExceptionContext context)
     {
+        if (context.Exception is BusinessException businessException)
+        {
+            var response = new VoidBotResponse
+            {
+                Code = businessException.Code,
+                Message = businessException.Message
+            };
+            context.Result = new JsonResult(response);
+            context.ExceptionHandled = true;
+            return;
+        }
+
         if (ThirdPartyAuthenticationBase.TryGetPlatform(context.HttpContext.Request.Path, out var platform))
         {
             _logger.Warning(
