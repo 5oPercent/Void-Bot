@@ -156,8 +156,25 @@ public partial class DiscordService : IDiscordService
             DiscordConstants.CurrentUserGuildsUrl,
             cancellationToken,
             tokenModel: new TokenModel { Parameter = _bindingContext.Binding.AccessToken }).ConfigureAwait(false);
-        var userGuild = userGuildResponse.Data?.FirstOrDefault(x => x.Id == request.GuildId);
-        if (userGuild == null || (!userGuild.Owner && !HasGuildManagementPermission(userGuild.Permissions)))
+        if ((int)userGuildResponse.Code is < 200 or >= 300 || userGuildResponse.Data == null)
+        {
+            response.Code = (int)userGuildResponse.Code == 0
+                ? HttpStatusCode.BadGateway
+                : userGuildResponse.Code;
+            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
+            return response;
+        }
+
+        var userGuild = userGuildResponse.Data.FirstOrDefault(x =>
+            ulong.TryParse(x.Id, out var userGuildId) && userGuildId == guildId);
+        if (userGuild == null)
+        {
+            response.Code = HttpStatusCode.Forbidden;
+            response.Message = "You do not have permission to manage this guild.";
+            return response;
+        }
+
+        if (!userGuild.Owner && !HasGuildManagementPermission(userGuild.Permissions))
         {
             response.Code = HttpStatusCode.Forbidden;
             response.Message = "You do not have permission to manage this guild.";
