@@ -1,6 +1,6 @@
 using Void.Bot.Message.Dto.Account;
 
-namespace Void.Bot.Core.Services.Discord;
+namespace Void.Bot.Core.Services.Discord.Context;
 
 public interface IDiscordBindingContext : IScope
 {

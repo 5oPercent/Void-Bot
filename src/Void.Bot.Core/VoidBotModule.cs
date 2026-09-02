@@ -19,6 +19,7 @@ using Void.Bot.Core.Data;
 using Void.Bot.Core.Jobs;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.DiscordBinding;
+using Void.Bot.Core.Middlewares.DiscordGuild;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
 using Void.Bot.Core.Middlewares.Preload;
 using Void.Bot.Core.Middlewares.UnifyResponse;
@@ -27,6 +28,9 @@ using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord;
+using Void.Bot.Core.Services.Discord.Component;
+using Void.Bot.Core.Services.Discord.Component.Routes;
+using Void.Bot.Core.Services.Discord.RolePanel;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
@@ -128,6 +132,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             p.UseUnifyResponse();       // 统一响应
             p.UseMessageValidator();    // 消息验证
             p.UseDiscordBinding();      // Discord 绑定检查
+            p.UseDiscordGuild();        // Discord 公会可用性检查
             p.UseLoadDestiny2Player();  // 预加载Bungie Player Data
             p.UseUnitOfWork();          // 事务处理
         });
@@ -280,7 +285,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         builder.RegisterInstance(client).AsSelf().SingleInstance().OnActivated(e =>
         {
             var slashCommandRoute = e.Context.Resolve<IDiscordSlashCommandRoute>();
-            var godRollPaginationRoute = e.Context.Resolve<IDiscordGodRollPaginationRoute>();
+            var componentRouter = e.Context.Resolve<IDiscordComponentRouter>();
             var voiceStateRoute = e.Context.Resolve<IDiscordVoiceStateRoute>();
             client.SlashCommandExecuted += callback =>
             {
@@ -289,7 +294,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             };
             client.ButtonExecuted += callback =>
             {
-                _ = Task.Run(() => godRollPaginationRoute.RouteAsync(callback));
+                _ = Task.Run(() => componentRouter.ExecuteAsync(callback));
                 return Task.CompletedTask;
             };
             client.UserVoiceStateUpdated += voiceStateRoute.RouteAsync;

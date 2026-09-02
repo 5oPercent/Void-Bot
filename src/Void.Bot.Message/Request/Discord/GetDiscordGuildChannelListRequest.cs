@@ -5,7 +5,7 @@ using Void.Bot.Message.Dto.Discord;
 
 namespace Void.Bot.Message.Request.Discord;
 
-public sealed class GetDiscordGuildChannelListRequest : IRequest, IRequireDiscordBinding
+public sealed class GetDiscordGuildChannelListRequest : IRequest, IRequireDiscordBinding, IRequireDiscordGuild
 {
     [Required]
     public string GuildId { get; set; } = string.Empty;

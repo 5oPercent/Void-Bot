@@ -8,6 +8,7 @@ using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Core.Resources.i18n.Discord;
+using Void.Bot.Core.Services.Discord.Component.Routes;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Constants.Bungie;
