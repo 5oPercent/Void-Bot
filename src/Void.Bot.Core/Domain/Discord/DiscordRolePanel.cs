@@ -44,9 +44,6 @@ public sealed class DiscordRolePanelItem : IEntity<Guid>, IEntityCreated, IEntit
 
     public ulong RoleId { get; set; }
 
-    [StringLength(64)]
-    public string Emoji { get; set; } = string.Empty;
-
     [StringLength(80)]
     public string Label { get; set; } = string.Empty;
 

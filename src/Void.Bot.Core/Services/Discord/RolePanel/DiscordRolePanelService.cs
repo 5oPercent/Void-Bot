@@ -110,15 +110,14 @@ public sealed class DiscordRolePanelService(
         }
 
         if (command.Items.Count > 25 ||
-            command.Items.Any(x => string.IsNullOrWhiteSpace(x.Emoji) || !ulong.TryParse(x.RoleId, out _)))
+            command.Items.Any(x => string.IsNullOrWhiteSpace(x.Label) || !ulong.TryParse(x.RoleId, out _)))
         {
             response.Code = HttpStatusCode.BadRequest;
             response.Message = "Role panel items are invalid.";
             return response;
         }
 
-        if (command.Items.Select(x => x.Emoji.Trim()).Distinct(StringComparer.Ordinal).Count() != command.Items.Count ||
-            command.Items.Select(x => x.RoleId).Distinct(StringComparer.Ordinal).Count() != command.Items.Count ||
+        if (command.Items.Select(x => x.RoleId).Distinct(StringComparer.Ordinal).Count() != command.Items.Count ||
             command.Items.Any(x => !IsSupportedStyle(x.Style) || !IsSupportedMode(x.Mode)))
         {
             response.Code = HttpStatusCode.BadRequest;
@@ -142,7 +141,6 @@ public sealed class DiscordRolePanelService(
         {
             PanelId = panel.Id,
             RoleId = ulong.Parse(x.RoleId),
-            Emoji = x.Emoji.Trim(),
             Label = x.Label.Trim(),
             Style = x.Style,
             Mode = x.Mode,
@@ -313,8 +311,7 @@ public sealed class DiscordRolePanelService(
             builder.WithButton(
                 item.Label,
                 $"{DiscordConstants.RolePanelButtonCustomIdPrefix}{panel.Id}:{item.Id}",
-                ParseStyle(item.Style),
-                emote: new Emoji(item.Emoji));
+                ParseStyle(item.Style));
         }
 
         return builder.Build();
@@ -376,7 +373,6 @@ public sealed class DiscordRolePanelService(
             Items = panel.Items.OrderBy(x => x.Sort).Select(x => new DiscordRolePanelItemDto
             {
                 Id = x.Id,
-                Emoji = x.Emoji,
                 Label = x.Label,
                 RoleId = x.RoleId.ToString(),
                 Style = x.Style,
