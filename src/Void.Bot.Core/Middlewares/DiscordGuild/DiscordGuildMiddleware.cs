@@ -21,7 +21,7 @@ public static class DiscordGuildMiddleware
 
         var client = configurator.DependencyScope.Resolve<Discord.WebSocket.DiscordSocketClient>();
         var guildContext = configurator.DependencyScope.Resolve<IDiscordGuildContext>();
-        var discordService = configurator.DependencyScope.Resolve<IDiscordService>();
+        var discordService = configurator.DependencyScope.Resolve<Func<IDiscordService>>();
         configurator.AddPipeSpecification(new DiscordGuildSpecification<TContext>(client, guildContext, discordService));
     }
 }

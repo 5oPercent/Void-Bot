@@ -13,7 +13,7 @@ namespace Void.Bot.Core.Middlewares.DiscordGuild;
 public sealed class DiscordGuildSpecification<TContext>(
     DiscordSocketClient client,
     IDiscordGuildContext guildContext,
-    IDiscordService discordService)
+    Func<IDiscordService> discordServiceFactory)
     : IPipeSpecification<TContext>
     where TContext : IContext<IMessage>
 {
@@ -44,7 +44,7 @@ public sealed class DiscordGuildSpecification<TContext>(
         guildContext.GuildId = guild.Id;
         guildContext.BotMember = guild.CurrentUser;
 
-        var managedGuilds = await discordService
+        var managedGuilds = await discordServiceFactory()
             .GetManagedGuildListAsync(
                 new GetDiscordManagedGuildListRequest(),
                 cancellationToken)
