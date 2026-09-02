@@ -6,7 +6,7 @@
 
 - 每个 Guild 只能配置一个角色面板。
 - 每个角色面板只能指定一个文字频道。
-- 面板标题和正文可自定义。
+- 面板内容可自定义，支持 Discord 文本和 Markdown；后端不再拆分标题和正文，也不自动生成 Embed。
 - 最多配置 25 个 Button；每个 Button 绑定一个服务器角色。
 - Button 只配置文本，文本中可以直接包含 Unicode Emoji；`style` 支持 `Primary`、`Secondary`、`Success`、`Danger`。
 - `mode` 支持 `Toggle` 和 `AddOnly`：前者按当前角色状态添加或移除角色，后者只添加角色。

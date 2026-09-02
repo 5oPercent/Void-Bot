@@ -230,8 +230,7 @@ GET /api/Discord/role-panel/config?guildId=123456789012345678
   "guildId": "123456789012345678",
   "channelId": "222222222222222222",
   "messageId": "333333333333333333",
-  "title": "选择你的身份",
-  "content": "点击按钮领取或取消角色。",
+  "content": "**选择你的身份**\n点击按钮领取或取消角色。",
   "enabled": true,
   "published": true,
   "items": [
@@ -254,8 +253,7 @@ GET /api/Discord/role-panel/config?guildId=123456789012345678
 | `guildId` | `string` | Guild ID |
 | `channelId` | `string` | 发布频道 |
 | `messageId` | `string \| null` | 已发布消息 ID |
-| `title` | `string` | Embed 标题；空字符串时不生成 Embed |
-| `content` | `string` | Discord 消息正文 |
+| `content` | `string` | Discord 消息正文，支持 Markdown 和换行 |
 | `enabled` | `boolean` | 是否允许 Button 交互 |
 | `published` | `boolean` | 服务端根据 `messageId` 计算，只读 |
 | `items` | `array` | Button 项目，按 `sort` 升序 |
@@ -276,8 +274,7 @@ Content-Type: application/json
 {
   "guildId": "123456789012345678",
   "channelId": "222222222222222222",
-  "title": "选择你的身份",
-  "content": "点击按钮领取或取消角色。",
+  "content": "**选择你的身份**\n点击按钮领取或取消角色。",
   "enabled": true,
   "items": [
     {
@@ -298,8 +295,7 @@ Content-Type: application/json
 | --- | --- | --- | --- | --- |
 | `guildId` | `string` | 是 | 无 | 目标 Guild；每个 Guild 一个面板 |
 | `channelId` | `string` | 是 | 无 | 必须为可用角色面板的 Text/News 频道 |
-| `title` | `string` | 否 | `""` | 最长 256 字符 |
-| `content` | `string` | 否 | `""` | 最长 4000 字符 |
+| `content` | `string` | 否 | `""` | Discord 消息正文，最长 2000 字符，支持 Markdown 和换行 |
 | `enabled` | `boolean` | 否 | `true` | false 时点击提示面板失效 |
 | `items` | `array` | 是 | 无 | 最少 1 项，最多 25 项 |
 
@@ -457,7 +453,6 @@ interface DiscordRolePanelItem {
 interface SaveDiscordRolePanelRequest {
   guildId: string;
   channelId: string;
-  title: string;
   content: string;
   enabled: boolean;
   items: DiscordRolePanelItem[];

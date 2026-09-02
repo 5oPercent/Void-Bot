@@ -6,7 +6,6 @@ public sealed class DiscordRolePanelDto
     public string GuildId { get; set; } = string.Empty;
     public string ChannelId { get; set; } = string.Empty;
     public string? MessageId { get; set; }
-    public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public bool Enabled { get; set; }
     public bool Published => !string.IsNullOrWhiteSpace(MessageId);
