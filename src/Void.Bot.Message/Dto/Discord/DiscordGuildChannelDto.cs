@@ -16,6 +16,8 @@ public sealed class DiscordGuildChannelDto
 
     public bool UsableAsCreateCategory { get; set; }
 
+    public bool UsableAsRolePanel { get; set; }
+
     public bool Configured { get; set; }
 
     public Guid? ConfigId { get; set; }

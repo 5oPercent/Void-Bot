@@ -93,6 +93,97 @@ public class DiscordController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("guilds/roles")]
+    [ProducesResponseType(typeof(GetDiscordGuildRoleListResponse), 200)]
+    [DescriptionLocalization("GetGuildRoleList")]
+    public async Task<IActionResult> GetGuildRoleListAsync(
+        [FromQuery] GetDiscordGuildRoleListRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<GetDiscordGuildRoleListRequest, GetDiscordGuildRoleListResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("role-panel/config")]
+    [ProducesResponseType(typeof(GetDiscordRolePanelConfigResponse), 200)]
+    [DescriptionLocalization("GetRolePanelConfig")]
+    public async Task<IActionResult> GetRolePanelConfigAsync(
+        [FromQuery] GetDiscordRolePanelConfigRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<GetDiscordRolePanelConfigRequest, GetDiscordRolePanelConfigResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("role-panel/config/save")]
+    [ProducesResponseType(typeof(SaveDiscordRolePanelResponse), 200)]
+    [DescriptionLocalization("SaveRolePanelConfig")]
+    public async Task<IActionResult> SaveRolePanelConfigAsync(
+        [FromBody] SaveDiscordRolePanelCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<SaveDiscordRolePanelCommand, SaveDiscordRolePanelResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("role-panel/config/delete")]
+    [ProducesResponseType(typeof(DeleteDiscordRolePanelResponse), 200)]
+    [DescriptionLocalization("DeleteRolePanelConfig")]
+    public async Task<IActionResult> DeleteRolePanelConfigAsync(
+        [FromBody] DeleteDiscordRolePanelCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<DeleteDiscordRolePanelCommand, DeleteDiscordRolePanelResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("role-panel/publish")]
+    [ProducesResponseType(typeof(PublishDiscordRolePanelResponse), 200)]
+    [DescriptionLocalization("PublishRolePanel")]
+    public async Task<IActionResult> PublishRolePanelAsync(
+        [FromBody] PublishDiscordRolePanelCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<PublishDiscordRolePanelCommand, PublishDiscordRolePanelResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("role-panel/refresh")]
+    [ProducesResponseType(typeof(RefreshDiscordRolePanelResponse), 200)]
+    [DescriptionLocalization("RefreshRolePanel")]
+    public async Task<IActionResult> RefreshRolePanelAsync(
+        [FromBody] RefreshDiscordRolePanelCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<RefreshDiscordRolePanelCommand, RefreshDiscordRolePanelResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("role-panel/unpublish")]
+    [ProducesResponseType(typeof(UnpublishDiscordRolePanelResponse), 200)]
+    [DescriptionLocalization("UnpublishRolePanel")]
+    public async Task<IActionResult> UnpublishRolePanelAsync(
+        [FromBody] UnpublishDiscordRolePanelCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .SendAsync<UnpublishDiscordRolePanelCommand, UnpublishDiscordRolePanelResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpGet]
     [Route("voice-channel/config")]
     [ProducesResponseType(typeof(GetDiscordVoiceChannelConfigResponse), 200)]
