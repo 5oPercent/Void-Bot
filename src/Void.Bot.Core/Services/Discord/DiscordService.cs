@@ -5,7 +5,6 @@ using System.Text.Json.Serialization;
 using Serilog;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Services.Discord.Context;
-using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Message.Constants.Discord;
