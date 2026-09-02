@@ -38,7 +38,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
 
         foreach (var type in entityTypes)
         {
-            modelBuilder.Model.AddEntityType(type);
+            modelBuilder.Entity(type);
         }
     }
     
