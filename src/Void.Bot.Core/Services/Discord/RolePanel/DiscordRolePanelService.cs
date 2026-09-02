@@ -133,12 +133,12 @@ public sealed class DiscordRolePanelService(
         }
         var panel = await dataProvider.GetAsync(guildId, cancellationToken).ConfigureAwait(false) ?? new DiscordRolePanel { GuildId = guildId };
         panel.ChannelId = channelId;
-        panel.Title = command.Title ?? string.Empty;
         panel.Content = command.Content ?? string.Empty;
         panel.Enabled = command.Enabled;
         panel.Items.Clear();
         panel.Items.AddRange(command.Items.OrderBy(x => x.Sort).Select(x => new DiscordRolePanelItem
         {
+            Id = Guid.Empty,
             PanelId = panel.Id,
             RoleId = ulong.Parse(x.RoleId),
             Label = x.Label.Trim(),
@@ -273,7 +273,6 @@ public sealed class DiscordRolePanelService(
 
         var message = await channel.SendMessageAsync(
             panel.Content,
-            embed: BuildEmbed(panel),
             components: BuildComponents(panel));
         panel.MessageId = message.Id;
         await dataProvider.UpdateAsync(panel, cancellationToken);
@@ -296,7 +295,6 @@ public sealed class DiscordRolePanelService(
         await channel.ModifyMessageAsync(messageId, properties =>
         {
             properties.Content = panel.Content;
-            properties.Embed = BuildEmbed(panel);
             properties.Components = BuildComponents(panel);
         });
         response.Data = ToPublishDto(panel, false);
@@ -315,13 +313,6 @@ public sealed class DiscordRolePanelService(
         }
 
         return builder.Build();
-    }
-
-    private static Embed? BuildEmbed(DiscordRolePanel panel)
-    {
-        return string.IsNullOrWhiteSpace(panel.Title)
-            ? null
-            : new EmbedBuilder().WithTitle(panel.Title).Build();
     }
 
     private static ButtonStyle ParseStyle(string style)
@@ -367,7 +358,6 @@ public sealed class DiscordRolePanelService(
             GuildId = panel.GuildId.ToString(),
             ChannelId = panel.ChannelId.ToString(),
             MessageId = panel.MessageId?.ToString(),
-            Title = panel.Title,
             Content = panel.Content,
             Enabled = panel.Enabled,
             Items = panel.Items.OrderBy(x => x.Sort).Select(x => new DiscordRolePanelItemDto

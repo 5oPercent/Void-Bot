@@ -16,10 +16,7 @@ public sealed class DiscordRolePanel : IEntity<Guid>, IEntityCreated, IEntityMod
 
     public ulong? MessageId { get; set; }
 
-    [StringLength(256)]
-    public string Title { get; set; } = string.Empty;
-
-    [StringLength(4000)]
+    [StringLength(2000)]
     public string Content { get; set; } = string.Empty;
 
     public bool Enabled { get; set; } = true;
