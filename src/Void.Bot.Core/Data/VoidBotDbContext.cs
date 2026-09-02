@@ -23,7 +23,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         base.OnModelCreating(modelBuilder);
         
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-        
+
         RegisterAllEntities(modelBuilder);
     }
     

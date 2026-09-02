@@ -39,6 +39,7 @@ public sealed class DiscordRolePanelItem : IEntity<Guid>, IEntityCreated, IEntit
 
     public Guid PanelId { get; set; }
 
+    [ForeignKey(nameof(PanelId))]
     public DiscordRolePanel Panel { get; set; } = null!;
 
     public ulong RoleId { get; set; }
