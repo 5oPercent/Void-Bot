@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using System.Net;
 using System.Text.Json.Serialization;
 using Serilog;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Http;
@@ -35,6 +36,9 @@ public partial interface IDiscordService : IScope
 
 public partial class DiscordService : IDiscordService
 {
+    private const string ManagedGuildCacheKeyPrefix = "discord:managed-guilds:";
+    private static readonly TimeSpan ManagedGuildCacheDuration = TimeSpan.FromMinutes(1);
+
     private readonly DiscordSetting _setting;
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordVoiceChannelDataProvider _voiceChannelDataProvider;
@@ -42,6 +46,7 @@ public partial class DiscordService : IDiscordService
     private readonly IDiscordGuildContext _guildContext;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
+    private readonly ICacheManager _cacheManager;
     private readonly ILogger _logger;
     
     private readonly DiscordSocketClient _client;
@@ -54,6 +59,7 @@ public partial class DiscordService : IDiscordService
         IDiscordGuildContext guildContext,
         IDiscordSlashCommandRoute slashCommandRoute,
         IVoidBotHttpClientFactory httpClientFactory,
+        ICacheManager cacheManager,
         ILogger logger,
         DiscordSocketClient client)
     {
@@ -64,6 +70,7 @@ public partial class DiscordService : IDiscordService
         _guildContext = guildContext;
         _slashCommandRoute = slashCommandRoute; 
         _httpClientFactory = httpClientFactory;
+        _cacheManager = cacheManager;
         _logger = logger;
         _client = client;
     }
@@ -110,6 +117,15 @@ public partial class DiscordService : IDiscordService
         CancellationToken cancellationToken)
     {
         var response = new GetDiscordManagedGuildListResponse();
+        var cacheKey = $"{ManagedGuildCacheKeyPrefix}{_bindingContext.Binding.UserId}";
+        var cachedGuilds = await _cacheManager
+            .Get<List<DiscordManagedGuildDto>>(cacheKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (cachedGuilds != null)
+        {
+            response.Data = cachedGuilds;
+            return response;
+        }
 
         var guildResponse = await _httpClientFactory.GetAsync<List<DiscordUserGuildApiDto>>(
             DiscordConstants.CurrentUserGuildsUrl,
@@ -140,6 +156,10 @@ public partial class DiscordService : IDiscordService
                 };
             })
             .ToList();
+
+        await _cacheManager
+            .Set(cacheKey, response.Data!, ManagedGuildCacheDuration, cancellationToken)
+            .ConfigureAwait(false);
 
         return response;
     }
