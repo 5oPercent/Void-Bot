@@ -39,6 +39,8 @@ public sealed class DiscordRolePanelItem : IEntity<Guid>, IEntityCreated, IEntit
 
     public Guid PanelId { get; set; }
 
+    public DiscordRolePanel Panel { get; set; } = null!;
+
     public ulong RoleId { get; set; }
 
     [StringLength(64)]

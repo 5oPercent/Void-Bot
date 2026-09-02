@@ -1,3 +1,4 @@
+using System.Net;
 using System.Runtime.ExceptionServices;
 using Discord.WebSocket;
 using Mediator.Net.Context;
@@ -49,6 +50,13 @@ public sealed class DiscordGuildSpecification<TContext>(
                 new GetDiscordManagedGuildListRequest(),
                 cancellationToken)
             .ConfigureAwait(false);
+        if (managedGuilds.Data == null)
+        {
+            throw new DiscordGuildManagementCheckFailedException(
+                managedGuilds.Code == 0 ? HttpStatusCode.BadGateway : managedGuilds.Code,
+                managedGuilds.Message);
+        }
+
         if (managedGuilds.Data?.All(x => x.Id != request.GuildId) != false)
         {
             throw new DiscordGuildManagementRequiredException();
