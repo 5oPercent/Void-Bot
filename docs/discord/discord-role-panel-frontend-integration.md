@@ -237,8 +237,7 @@ GET /api/Discord/role-panel/config?guildId=123456789012345678
   "items": [
     {
       "id": "c5e12547-cff4-43ce-88dd-b7de3bf38b54",
-      "emoji": "🎮",
-      "label": "玩家",
+      "label": "🎮 玩家",
       "roleId": "444444444444444444",
       "style": "Primary",
       "mode": "Toggle",
@@ -261,7 +260,7 @@ GET /api/Discord/role-panel/config?guildId=123456789012345678
 | `published` | `boolean` | 服务端根据 `messageId` 计算，只读 |
 | `items` | `array` | Button 项目，按 `sort` 升序 |
 
-项目包含 `id`、`emoji`、`label`、`roleId`、`style`、`mode`、`sort`、`enabled`。读取到的项目 `id` 只用于展示和回填，不要依赖它生成 Discord `custom_id`。
+项目包含 `id`、`label`、`roleId`、`style`、`mode`、`sort`、`enabled`。按钮文本 `label` 可以直接包含 Unicode Emoji。读取到的项目 `id` 只用于展示和回填，不要依赖它生成 Discord `custom_id`。
 
 ## 八、POST `/api/Discord/role-panel/config/save`
 
@@ -282,8 +281,7 @@ Content-Type: application/json
   "enabled": true,
   "items": [
     {
-      "emoji": "🎮",
-      "label": "玩家",
+      "label": "🎮 玩家",
       "roleId": "444444444444444444",
       "style": "Primary",
       "mode": "Toggle",
@@ -309,8 +307,7 @@ Content-Type: application/json
 
 | 字段 | 类型 | 必填 | 默认值 | 约束 |
 | --- | --- | --- | --- | --- |
-| `emoji` | `string` | 是 | 无 | 当前为 Unicode Emoji；不能为空，最长 64 字符，不能重复 |
-| `label` | `string` | 建议是 | 无 | Button 文本，数据库最长 80 字符；建议不能为空 |
+| `label` | `string` | 是 | 无 | Button 文本，可以包含 Unicode Emoji，不能为空，最长 80 字符 |
 | `roleId` | `string` | 是 | 无 | 必须属于 Guild 且 `assignable = true`，不能重复 |
 | `style` | `string` | 否 | `Secondary` | `Primary` / `Secondary` / `Success` / `Danger` |
 | `mode` | `string` | 否 | `Toggle` | `Toggle` / `AddOnly` |
@@ -408,7 +405,7 @@ Button `custom_id` 由服务端生成，格式为 `rp:{panelId}:{itemId}`，前�
 
 ### 首次发布
 
-1. 校验频道、角色、Emoji、数量和枚举值；
+1. 校验频道、角色、按钮文本、数量和枚举值；
 2. `POST config/save`；
 3. `POST publish`；
 4. 用发布响应的 `messageId` 更新页面状态。
@@ -430,8 +427,8 @@ Button `custom_id` 由服务端生成，格式为 `rp:{panelId}:{itemId}`，前�
 | `403` | `You do not have permission to manage this Discord guild.` | 提示当前用户无 Guild 管理权限 |
 | `400` | `ChannelId is invalid.` | 重新选择频道 |
 | `404` | `Discord text channel is not available.` | 刷新频道列表 |
-| `400` | `Role panel items are invalid.` | 检查 Emoji、Role ID 和项目数量 |
-| `400` | `Role panel contains duplicate or unsupported button settings.` | 检查重复 Emoji/角色及 style/mode |
+| `400` | `Role panel items are invalid.` | 检查按钮文本、Role ID 和项目数量 |
+| `400` | `Role panel contains duplicate or unsupported button settings.` | 检查重复角色及 style/mode |
 | `400` | `One or more roles cannot be assigned by the bot.` | 刷新角色并检查 Bot 角色层级 |
 | `404` | `Role panel or channel not found.` | 先保存配置或重新选择频道 |
 | `409` | `Role panel is already published.` | 改调用 `refresh` |
@@ -449,7 +446,6 @@ interface VoidBotResponse<T = undefined> {
 
 interface DiscordRolePanelItem {
   id?: string;
-  emoji: string;
   label: string;
   roleId: string;
   style: DiscordButtonStyle;

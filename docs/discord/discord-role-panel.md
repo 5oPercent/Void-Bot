@@ -8,7 +8,7 @@
 - 每个角色面板只能指定一个文字频道。
 - 面板标题和正文可自定义。
 - 最多配置 25 个 Button；每个 Button 绑定一个服务器角色。
-- 当前 Button 的 `emoji` 使用 Unicode Emoji，`style` 支持 `Primary`、`Secondary`、`Success`、`Danger`。
+- Button 只配置文本，文本中可以直接包含 Unicode Emoji；`style` 支持 `Primary`、`Secondary`、`Success`、`Danger`。
 - `mode` 支持 `Toggle` 和 `AddOnly`：前者按当前角色状态添加或移除角色，后者只添加角色。
 - Button 的 Discord `custom_id` 由服务端生成，格式为 `rp:{panelId}:{itemId}`，前端不需要生成或修改。
 
@@ -51,7 +51,7 @@ Discord 角色层级规则仍然生效：Bot 只能操作低于自身最高角�
 - 当前用户没有该 Guild 的管理权限；
 - 频道不存在、不是可用文字频道，或不属于目标 Guild；
 - 角色不存在、属于其他 Guild，或 Bot 无法分配；
-- 面板项目为空、超过 25 个、Emoji 重复或角色重复；
+- 面板项目为空、超过 25 个、按钮文本为空或角色重复；
 - 刷新/取消发布时 Discord 消息已经不存在。
 
 Discord API 的异常由服务层转换为项目统一的业务错误，不应把 Discord Access Token 暴露给前端。
