@@ -23,7 +23,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
         base.OnModelCreating(modelBuilder);
         
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-        
+
         RegisterAllEntities(modelBuilder);
     }
     
@@ -38,7 +38,7 @@ public class VoidBotDbContext(ConnectionStringSetting connectionString, ICurrent
 
         foreach (var type in entityTypes)
         {
-            modelBuilder.Model.AddEntityType(type);
+            modelBuilder.Entity(type);
         }
     }
     

@@ -4,7 +4,7 @@ using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Services.Account;
-using Void.Bot.Core.Services.Discord;
+using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Discord;

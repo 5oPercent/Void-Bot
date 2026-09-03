@@ -53,25 +53,25 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         var seasonRemainingDays = $"{(int)(currentSeason?.EndDate.Subtract(DateTime.UtcNow).TotalDays ?? 0)}";
 
         var seasonContext = string.Format(
-            _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonBody, languageEnum),
+            _localizationService.GetValue<Destiny2ContextTemplate>(x => x.SeasonBody, languageEnum),
             currentSeason?.DisplayProperties.Name ?? "???",
             currentSeason != null ? seasonTimeRange : "???",
             seasonRemainingDays, seasonDays,
             profileInfo.CurrentSeasonRewardPowerCap);
         
         var careerContext = string.Format(
-            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerBody, languageEnum),
+            _localizationService.GetValue<Destiny2ContextTemplate>(x => x.CareerBody, languageEnum),
             commendationInfo.TotalScore,
             profileInfo.LifetimeHighestGuardianRank,
             profileInfo.RenewedGuardianRank,
             profileInfo.DateLastPlayed.ToLocalTime());
 
         var careerTitle = string.Format(
-            _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerTitle, languageEnum),
+            _localizationService.GetValue<Destiny2ContextTemplate>(x => x.CareerTitle, languageEnum),
             globalDisplayName);
         
-        var careerField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.CareerField, languageEnum);
-        var seasonField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonField, languageEnum);
+        var careerField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.CareerField, languageEnum);
+        var seasonField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.SeasonField, languageEnum);
         
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)
@@ -142,13 +142,13 @@ public partial class DiscordDataProvider : IDiscordDataProvider
         Destiny2SeasonStatsDto data, CancellationToken cancellationToken = default)
     {
         var languageEnum = LanguageExtension.MapI18nCodeToEnum(_destiny2PlayerData.Language);
-        var seasonTitleTemplate = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
+        var seasonTitleTemplate = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.SeasonLatestTitle, languageEnum);
         var seasonTitle = string.Format(seasonTitleTemplate, "Destiny 2");
-        var hourUnit = _languageService.GetContext<Destiny2ContextTemplate>(x => x.PlaytimeHourUnit, languageEnum);
+        var hourUnit = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.PlaytimeHourUnit, languageEnum);
         
         if (!data.HasData)
         {
-            var noDataText = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonNoData, languageEnum);
+            var noDataText = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.SeasonNoData, languageEnum);
 
             var noDataEmbed = new EmbedBuilder()
                 .WithColor(139, 139, 255)
@@ -178,10 +178,10 @@ public partial class DiscordDataProvider : IDiscordDataProvider
             ? FormatPlaytime(warlock.PlaytimeSeconds)
             : "N/A";
 
-        var totalField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
-        var hunterField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
-        var titanField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
-        var warlockField = _languageService.GetContext<Destiny2ContextTemplate>(x => x.WarlockField, languageEnum);
+        var totalField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.SeasonLatestTotalField, languageEnum);
+        var hunterField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.HunterField, languageEnum);
+        var titanField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.TitanField, languageEnum);
+        var warlockField = _localizationService.GetValue<Destiny2ContextTemplate>(x => x.WarlockField, languageEnum);
 
         var embedBuilder = new EmbedBuilder()
             .WithColor(139, 139, 255)

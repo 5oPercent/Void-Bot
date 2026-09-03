@@ -3,7 +3,9 @@ using Discord.WebSocket;
 using System.Net;
 using System.Text.Json.Serialization;
 using Serilog;
+using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Discord.DataProvider;
+using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Http;
 using Void.Bot.Core.Settings.Discord;
 using Void.Bot.Message.Constants.Discord;
@@ -34,12 +36,17 @@ public partial interface IDiscordService : IScope
 
 public partial class DiscordService : IDiscordService
 {
+    private const string ManagedGuildCacheKeyPrefix = "discord:managed-guilds:";
+    private static readonly TimeSpan ManagedGuildCacheDuration = TimeSpan.FromMinutes(1);
+
     private readonly DiscordSetting _setting;
     private readonly IDiscordDataProvider _dataProvider;
     private readonly IDiscordVoiceChannelDataProvider _voiceChannelDataProvider;
     private readonly IDiscordBindingContext _bindingContext;
+    private readonly IDiscordGuildContext _guildContext;
     private readonly IDiscordSlashCommandRoute _slashCommandRoute;
     private readonly IVoidBotHttpClientFactory _httpClientFactory;
+    private readonly ICacheManager _cacheManager;
     private readonly ILogger _logger;
     
     private readonly DiscordSocketClient _client;
@@ -49,8 +56,10 @@ public partial class DiscordService : IDiscordService
         IDiscordDataProvider dataProvider,
         IDiscordVoiceChannelDataProvider voiceChannelDataProvider,
         IDiscordBindingContext bindingContext,
+        IDiscordGuildContext guildContext,
         IDiscordSlashCommandRoute slashCommandRoute,
         IVoidBotHttpClientFactory httpClientFactory,
+        ICacheManager cacheManager,
         ILogger logger,
         DiscordSocketClient client)
     {
@@ -58,8 +67,10 @@ public partial class DiscordService : IDiscordService
         _dataProvider = dataProvider;
         _voiceChannelDataProvider = voiceChannelDataProvider;
         _bindingContext = bindingContext;
+        _guildContext = guildContext;
         _slashCommandRoute = slashCommandRoute; 
         _httpClientFactory = httpClientFactory;
+        _cacheManager = cacheManager;
         _logger = logger;
         _client = client;
     }
@@ -106,6 +117,15 @@ public partial class DiscordService : IDiscordService
         CancellationToken cancellationToken)
     {
         var response = new GetDiscordManagedGuildListResponse();
+        var cacheKey = $"{ManagedGuildCacheKeyPrefix}{_bindingContext.Binding.UserId}";
+        var cachedGuilds = await _cacheManager
+            .Get<List<DiscordManagedGuildDto>>(cacheKey, cancellationToken)
+            .ConfigureAwait(false);
+        if (cachedGuilds != null)
+        {
+            response.Data = cachedGuilds;
+            return response;
+        }
 
         var guildResponse = await _httpClientFactory.GetAsync<List<DiscordUserGuildApiDto>>(
             DiscordConstants.CurrentUserGuildsUrl,
@@ -114,7 +134,13 @@ public partial class DiscordService : IDiscordService
         if ((int)guildResponse.Code is < 200 or >= 300 || guildResponse.Data == null)
         {
             response.Code = (int)guildResponse.Code == 0 ? HttpStatusCode.BadGateway : guildResponse.Code;
-            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
+            response.Message = guildResponse.Code switch
+            {
+                HttpStatusCode.Unauthorized => "Discord authorization has expired. Please authorize Discord again.",
+                HttpStatusCode.Forbidden => "You do not have permission to access Discord guilds.",
+                HttpStatusCode.TooManyRequests => "Discord rate limit reached. Please try again later.",
+                _ => "Discord is temporarily unavailable. Please try again later."
+            };
             return response;
         }
 
@@ -137,6 +163,10 @@ public partial class DiscordService : IDiscordService
             })
             .ToList();
 
+        await _cacheManager
+            .Set(cacheKey, response.Data!, ManagedGuildCacheDuration, cancellationToken)
+            .ConfigureAwait(false);
+
         return response;
     }
 
@@ -145,49 +175,8 @@ public partial class DiscordService : IDiscordService
         CancellationToken cancellationToken)
     {
         var response = new GetDiscordGuildChannelListResponse();
-        if (!ulong.TryParse(request.GuildId, out var guildId) || guildId == 0)
-        {
-            response.Code = HttpStatusCode.BadRequest;
-            response.Message = "GuildId is invalid.";
-            return response;
-        }
-
-        var userGuildResponse = await _httpClientFactory.GetAsync<List<DiscordUserGuildApiDto>>(
-            DiscordConstants.CurrentUserGuildsUrl,
-            cancellationToken,
-            tokenModel: new TokenModel { Parameter = _bindingContext.Binding.AccessToken }).ConfigureAwait(false);
-        if ((int)userGuildResponse.Code is < 200 or >= 300 || userGuildResponse.Data == null)
-        {
-            response.Code = (int)userGuildResponse.Code == 0
-                ? HttpStatusCode.BadGateway
-                : userGuildResponse.Code;
-            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
-            return response;
-        }
-
-        var userGuild = userGuildResponse.Data.FirstOrDefault(x =>
-            ulong.TryParse(x.Id, out var userGuildId) && userGuildId == guildId);
-        if (userGuild == null)
-        {
-            response.Code = HttpStatusCode.Forbidden;
-            response.Message = "You do not have permission to manage this guild.";
-            return response;
-        }
-
-        if (!userGuild.Owner && !HasGuildManagementPermission(userGuild.Permissions))
-        {
-            response.Code = HttpStatusCode.Forbidden;
-            response.Message = "You do not have permission to manage this guild.";
-            return response;
-        }
-
-        var guild = _client.GetGuild(guildId);
-        if (guild == null)
-        {
-            response.Code = HttpStatusCode.NotFound;
-            response.Message = "Discord bot is not installed in this guild.";
-            return response;
-        }
+        var guildId = _guildContext.GuildId;
+        var guild = _guildContext.Guild;
 
         var configs = await _voiceChannelDataProvider.GetConfigsAsync(guildId, cancellationToken).ConfigureAwait(false);
         var configuredChannels = configs
@@ -200,7 +189,7 @@ public partial class DiscordService : IDiscordService
             .ToDictionary(x => x.Key, x => x.First().ConfigId);
 
         response.Data = guild.Channels
-            .Where(x => x.ChannelType is ChannelType.Voice or ChannelType.Category)
+            .Where(x => x.ChannelType is ChannelType.Text or ChannelType.News or ChannelType.Voice or ChannelType.Category)
             .OrderBy(x => x.Position)
             .Select(x => new DiscordGuildChannelDto
             {
@@ -213,6 +202,7 @@ public partial class DiscordService : IDiscordService
                 Position = x.Position,
                 UsableAsTrigger = x.ChannelType == ChannelType.Voice,
                 UsableAsCreateCategory = x.ChannelType == ChannelType.Category,
+                UsableAsRolePanel = x.ChannelType is ChannelType.Text or ChannelType.News,
                 Configured = configuredChannels.ContainsKey(x.Id),
                 ConfigId = configuredChannels.GetValueOrDefault(x.Id)
             })

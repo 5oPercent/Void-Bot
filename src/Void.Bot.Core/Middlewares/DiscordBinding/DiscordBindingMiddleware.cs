@@ -3,7 +3,7 @@ using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Void.Bot.Core.Services.Account;
-using Void.Bot.Core.Services.Discord;
+using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Identity;
 
 namespace Void.Bot.Core.Middlewares.DiscordBinding;
@@ -17,8 +17,7 @@ public static class DiscordBindingMiddleware
         IDiscordBindingContext? bindingContext = null)
         where TContext : IContext<IMessage>
     {
-        if (configurator.DependencyScope == null &&
-            (currentUser == null || accountDataProvider == null || bindingContext == null))
+        if (configurator.DependencyScope == null)
         {
             throw new DependencyScopeNotConfiguredException(
                 "Discord binding middleware dependencies are not configured.");

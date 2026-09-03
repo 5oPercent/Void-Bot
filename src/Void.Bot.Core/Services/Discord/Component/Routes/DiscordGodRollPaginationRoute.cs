@@ -6,24 +6,28 @@ using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
+using Void.Bot.Message.Constants.Discord;
+using Void.Bot.Core.Resources.i18n.Discord;
+using Void.Bot.Core.Services.Language;
 
-namespace Void.Bot.Core.Services.Discord;
+namespace Void.Bot.Core.Services.Discord.Component.Routes;
 
-public interface IDiscordGodRollPaginationRoute : ISingleton
+public interface IDiscordGodRollPaginationRoute : IDiscordComponentRoute
 {
-    Task RouteAsync(SocketMessageComponent callback);
 }
 
 public class DiscordGodRollPaginationRoute(
     IServiceScopeFactory scopeFactory,
-    ILogger logger) : IDiscordGodRollPaginationRoute
+    ILogger logger) : DiscordComponentRouteBase, IDiscordGodRollPaginationRoute
 {
     public const int PageSize = 5;
 
-    private const string CustomIdPrefix = "d2-gr:";
     private const string CacheKeyPrefix = "discord:d2:gr:";
 
-    public async Task RouteAsync(SocketMessageComponent callback)
+    protected override string CustomIdPrefix =>
+        DiscordConstants.GodRollPaginationCustomIdPrefix;
+
+    public override async Task ExecuteAsync(SocketMessageComponent callback)
     {
         if (!TryParseCustomId(callback.Data.CustomId, out var paginationId, out var pageIndex))
             return;
@@ -31,12 +35,13 @@ public class DiscordGodRollPaginationRoute(
         try
         {
             using var scope = scopeFactory.CreateScope();
+            var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
             var cacheManager = scope.ServiceProvider.GetRequiredService<ICacheManager>();
             var state = await cacheManager.Get<DiscordGodRollPaginationState>(
                 GetCacheKey(paginationId)).ConfigureAwait(false);
             if (state == null)
             {
-                await callback.RespondAsync("分页结果已过期，请重新执行 `/d2 gr`。", ephemeral: true)
+                await callback.RespondAsync(localizationService.GetValue<DiscordComponentContextTemplate>(x => x.PaginationExpired, callback.UserLocale), ephemeral: true)
                     .ConfigureAwait(false);
                 return;
             }
@@ -65,7 +70,9 @@ public class DiscordGodRollPaginationRoute(
 
             if (!callback.HasResponded)
             {
-                await callback.RespondAsync("翻页失败，请稍后重试。", ephemeral: true).ConfigureAwait(false);
+                using var scope = scopeFactory.CreateScope();
+                var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
+                await callback.RespondAsync(localizationService.GetValue<DiscordComponentContextTemplate>(x => x.PaginationFailed, callback.UserLocale), ephemeral: true).ConfigureAwait(false);
             }
         }
     }
@@ -94,16 +101,18 @@ public class DiscordGodRollPaginationRoute(
     }
 
     private static string BuildCustomId(string paginationId, int pageIndex) =>
-        $"{CustomIdPrefix}{paginationId}:{pageIndex}";
+        $"{DiscordConstants.GodRollPaginationCustomIdPrefix}{paginationId}:{pageIndex}";
 
     private static bool TryParseCustomId(string customId, out string paginationId, out int pageIndex)
     {
         paginationId = string.Empty;
         pageIndex = 0;
-        if (!customId.StartsWith(CustomIdPrefix, StringComparison.Ordinal))
+        if (!customId.StartsWith(
+                DiscordConstants.GodRollPaginationCustomIdPrefix,
+                StringComparison.Ordinal))
             return false;
 
-        var values = customId[CustomIdPrefix.Length..].Split(':', 2);
+        var values = customId[DiscordConstants.GodRollPaginationCustomIdPrefix.Length..].Split(':', 2);
         if (values.Length != 2 ||
             !Guid.TryParseExact(values[0], "N", out _) ||
             !int.TryParse(values[1], out pageIndex))

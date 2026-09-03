@@ -18,6 +18,14 @@
 - [OAuth 前端对接总览](oauth/oauth-frontend-integration.md)
 - [OAuth 未绑定身份注册与登录绑定](oauth/oauth-registration-frontend-integration.md)
 
+## Discord
+
+Discord Guild 管理、语音频道配置和角色面板。
+
+- [Discord 管理后台前端对接](discord/discord-management-frontend-integration.md)
+- [Discord 角色面板功能说明](discord/discord-role-panel.md)
+- [Discord 角色面板前端对接](discord/discord-role-panel-frontend-integration.md)
+
 ## 邮件服务
 
 - [邮件服务配置与管理流程](email/email-service.md)
