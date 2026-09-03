@@ -5,7 +5,6 @@ using Discord.WebSocket;
 using Mediator.Net;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Extension;
-using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Resources.i18n.Destiny2;
 using Void.Bot.Core.Resources.i18n.Discord;
 using Void.Bot.Core.Services.Discord.Component.Routes;
@@ -14,7 +13,6 @@ using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Constants.Bungie;
 using Void.Bot.Message.Commands.Bungie.Destiny2;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
-using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Bungie;
 using Void.Bot.Message.Enum.Bungie.Destiny2;
 using Void.Bot.Message.Request.Bungie.Destiny2;
@@ -24,7 +22,7 @@ namespace Void.Bot.Core.Services.Discord.SlashCommand;
 public partial class Destiny2SlashCommand(
     IMediator mediator,
     IDiscordDataProvider dataProvider,
-    ILanguageService languageService,
+    ILocalizationService localizationService,
     ICacheManager cacheManager) : IGlobalSlashCommand
 {
     public bool Ephemeral => false;
@@ -192,11 +190,6 @@ public partial class Destiny2SlashCommand(
         };
         var languageEnum = LanguageExtension.MapI18nCodeToEnum(language);
 
-        string Localize(Expression<Func<Destiny2GodRollSlashCommandContextTemplate, object>> expression, params object[] args)
-        {
-            return string.Format(languageService.GetContext(expression, languageEnum), args);
-        }
-
         var perkInputGroups = subCommand.Options
             .Where(option => option.Name.StartsWith("perks", StringComparison.OrdinalIgnoreCase))
             .OrderBy(option => option.Name.Length)
@@ -210,7 +203,7 @@ public partial class Destiny2SlashCommand(
             .ToList();
         if (perkInputGroups.Count == 0)
         {
-            await ModifyResponseAsync(commandCallback, Localize(context => context.PerkInputRequiredResponse)).ConfigureAwait(false);
+            await ModifyResponseAsync(commandCallback, localizationService.GetValue<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkInputRequiredResponse, languageEnum)).ConfigureAwait(false);
             return;
         }
 
@@ -262,14 +255,14 @@ public partial class Destiny2SlashCommand(
                         .ToList();
                 if (matches.Count == 0)
                 {
-                    await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNotFoundResponse, input)).ConfigureAwait(false);
+                    await ModifyResponseAsync(commandCallback, localizationService.GetValue<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkNotFoundResponse, languageEnum, input)).ConfigureAwait(false);
                     return;
                 }
 
                 if (matches.Count > 1)
                 {
                     var candidates = string.Join(", ", matches.Select(perk => $"{perk.Name} ({perk.PerkHash})"));
-                    await ModifyResponseAsync(commandCallback, Localize(context => context.PerkNameAmbiguousResponse, input, candidates)).ConfigureAwait(false);
+                    await ModifyResponseAsync(commandCallback, localizationService.GetValue<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkNameAmbiguousResponse, languageEnum, input, candidates)).ConfigureAwait(false);
                     return;
                 }
 
@@ -294,7 +287,7 @@ public partial class Destiny2SlashCommand(
 
         if (!response.Data.Items.Any())
         {
-            await ModifyResponseAsync(commandCallback, Localize(context => context.NoMatchingWeaponsResponse)).ConfigureAwait(false);
+            await ModifyResponseAsync(commandCallback, localizationService.GetValue<Destiny2GodRollSlashCommandContextTemplate>(context => context.NoMatchingWeaponsResponse, languageEnum)).ConfigureAwait(false);
             return;
         }
 
@@ -303,7 +296,7 @@ public partial class Destiny2SlashCommand(
             pageSize: DiscordGodRollPaginationRoute.PageSize,
             cancellationToken: cancellationToken).ConfigureAwait(false);
         var pageCount = DiscordGodRollPaginationRoute.GetPageCount(response.Data.Items.Count());
-        var content = Localize(context => context.MatchingWeaponsResponse, response.Data.Items.Count());
+        var content = localizationService.GetValue<Destiny2GodRollSlashCommandContextTemplate>(context => context.MatchingWeaponsResponse, languageEnum, response.Data.Items.Count());
         string? paginationId = null;
         if (pageCount > 1)
         {
@@ -332,19 +325,8 @@ public partial class Destiny2SlashCommand(
 
     private SlashCommandOptionBuilder CreateGodRollSubCommand()
     {
-        Dictionary<string, string> Localize<TContext>(Expression<Func<TContext, object>> expression, params object[] args)
-            where TContext : IContextTemplate
-        {
-            return new Dictionary<string, string>
-            {
-                ["zh-CN"] = string.Format(languageService.GetContext(expression, LanguageEnum.ZhChs), args),
-                ["zh-TW"] = string.Format(languageService.GetContext(expression, LanguageEnum.ZhCht), args),
-                ["en-US"] = string.Format(languageService.GetContext(expression, LanguageEnum.En), args)
-            };
-        }
-
-        var commandDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.CommandDescription);
-        var weaponTypeDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.WeaponTypeOptionDescription);
+        var commandDescriptions = localizationService.GetValues<Destiny2GodRollSlashCommandContextTemplate>(context => context.CommandDescription);
+        var weaponTypeDescriptions = localizationService.GetValues<Destiny2GodRollSlashCommandContextTemplate>(context => context.WeaponTypeOptionDescription);
         var weaponType = new SlashCommandOptionBuilder()
             .WithName("weapon-type")
             .WithDescription(weaponTypeDescriptions["zh-CN"])
@@ -373,10 +355,10 @@ public partial class Destiny2SlashCommand(
         };
         foreach (var choice in weaponTypeNames)
         {
-            var localizations = Localize(choice.Value);
+            var localizations = localizationService.GetValues(choice.Value);
             weaponType.AddChoice(localizations["zh-CN"], (int)choice.Key, localizations);
         }
-        var firstPerkDescriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, 1);
+        var firstPerkDescriptions = localizationService.GetValues<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, 1);
         var command = new SlashCommandOptionBuilder()
             .WithName("gr")
             .WithDescription(commandDescriptions["zh-CN"])
@@ -391,7 +373,7 @@ public partial class Destiny2SlashCommand(
                 .WithRequired(true));
         for (var index = 2; index <= 3; index++)
         {
-            var descriptions = Localize<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, index);
+            var descriptions = localizationService.GetValues<Destiny2GodRollSlashCommandContextTemplate>(context => context.PerkOptionDescription, index);
             command.AddOption(new SlashCommandOptionBuilder()
                 .WithName($"perks{index}")
                 .WithDescription(descriptions["zh-CN"])

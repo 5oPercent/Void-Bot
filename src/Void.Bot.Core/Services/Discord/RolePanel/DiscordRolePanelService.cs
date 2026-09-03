@@ -3,7 +3,6 @@ using Discord;
 using Discord.Net;
 using Discord.WebSocket;
 using Void.Bot.Core.Domain.Discord;
-using Void.Bot.Core.Extension;
 using Void.Bot.Core.Resources.i18n.Discord;
 using Void.Bot.Core.Services.Discord.Context;
 using Void.Bot.Core.Services.Language;
@@ -74,10 +73,10 @@ public sealed class DiscordRolePanelService(
                 UnassignableReason = assignable
                     ? null
                     : role.IsEveryone
-                        ? localizationService.Get<DiscordRolePanelContextTemplate>(x => x.EveryoneRoleUnassignableReason)
+                        ? localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.EveryoneRoleUnassignableReason)
                         : role.IsManaged
-                            ? localizationService.Get<DiscordRolePanelContextTemplate>(x => x.ManagedRoleUnassignableReason)
-                            : localizationService.Get<DiscordRolePanelContextTemplate>(x => x.HigherRoleUnassignableReason)
+                            ? localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.ManagedRoleUnassignableReason)
+                            : localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.HigherRoleUnassignableReason)
             };
         }).ToList();
         return response;
@@ -100,7 +99,7 @@ public sealed class DiscordRolePanelService(
         if (!ulong.TryParse(command.ChannelId, out var channelId))
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.ChannelIdInvalid);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.ChannelIdInvalid);
             return response;
         }
         var guildId = guildContext.GuildId;
@@ -109,7 +108,7 @@ public sealed class DiscordRolePanelService(
         if (channel == null)
         {
             response.Code = HttpStatusCode.NotFound;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.TextChannelUnavailable);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.TextChannelUnavailable);
             return response;
         }
 
@@ -117,7 +116,7 @@ public sealed class DiscordRolePanelService(
             command.Items.Any(x => string.IsNullOrWhiteSpace(x.Label) || !ulong.TryParse(x.RoleId, out _)))
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.ItemsInvalid);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.ItemsInvalid);
             return response;
         }
 
@@ -125,14 +124,14 @@ public sealed class DiscordRolePanelService(
             command.Items.Any(x => !IsSupportedStyle(x.Style) || !IsSupportedMode(x.Mode)))
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.InvalidButtonSettings);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.InvalidButtonSettings);
             return response;
         }
         var roles = guild.Roles.ToDictionary(x => x.Id);
         if (command.Items.Any(x => !roles.TryGetValue(ulong.Parse(x.RoleId), out var role) || role.IsEveryone || role.IsManaged || guildContext.BotMember.Hierarchy <= role.Position))
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.UnassignableRoles);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.UnassignableRoles);
             return response;
         }
         var panel = await dataProvider.GetAsync(guildId, cancellationToken).ConfigureAwait(false) ?? new DiscordRolePanel { GuildId = guildId };
@@ -227,7 +226,7 @@ public sealed class DiscordRolePanelService(
             : null;
         if (item == null || !panel!.Enabled || panel.MessageId != callback.Message.Id || panel.ChannelId != callback.Channel.Id)
         {
-            await callback.RespondAsync(localizationService.Get<DiscordRolePanelContextTemplate>(x => x.PanelExpired, LanguageExtension.MapI18nCodeToEnum(callback.UserLocale)), ephemeral: true);
+            await callback.RespondAsync(localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PanelExpired, callback.UserLocale), ephemeral: true);
             return;
         }
 
@@ -241,7 +240,7 @@ public sealed class DiscordRolePanelService(
         var hasRole = user.Roles.Any(x => x.Id == role.Id);
         if (item.Mode.Equals("AddOnly", StringComparison.OrdinalIgnoreCase) && hasRole)
         {
-            await callback.RespondAsync(localizationService.Get<DiscordRolePanelContextTemplate>(x => x.AlreadyHasRole, LanguageExtension.MapI18nCodeToEnum(callback.UserLocale)), ephemeral: true);
+            await callback.RespondAsync(localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.AlreadyHasRole, callback.UserLocale), ephemeral: true);
             return;
         }
 
@@ -253,11 +252,10 @@ public sealed class DiscordRolePanelService(
         {
             await user.AddRoleAsync(role);
         }
-        var language = LanguageExtension.MapI18nCodeToEnum(callback.UserLocale);
         await callback.RespondAsync(
             hasRole
-                ? localizationService.Get<DiscordRolePanelContextTemplate>(x => x.RoleRemoved, language, role.Name)
-                : localizationService.Get<DiscordRolePanelContextTemplate>(x => x.RoleAdded, language, role.Name),
+                ? localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.RoleRemoved, callback.UserLocale, role.Name)
+                : localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.RoleAdded, callback.UserLocale, role.Name),
             ephemeral: true);
     }
 
@@ -269,14 +267,14 @@ public sealed class DiscordRolePanelService(
         if (panel == null || channel == null)
         {
             response.Code = HttpStatusCode.NotFound;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.PanelOrChannelNotFound);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PanelOrChannelNotFound);
             return response;
         }
 
         if (panel.MessageId.HasValue)
         {
             response.Code = HttpStatusCode.Conflict;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.PanelAlreadyPublished);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PanelAlreadyPublished);
             return response;
         }
 
@@ -297,7 +295,7 @@ public sealed class DiscordRolePanelService(
         if (panel?.MessageId is not { } messageId || channel == null)
         {
             response.Code = HttpStatusCode.NotFound;
-            response.Message = localizationService.Get<DiscordRolePanelContextTemplate>(x => x.PublishedPanelNotFound);
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PublishedPanelNotFound);
             return response;
         }
 

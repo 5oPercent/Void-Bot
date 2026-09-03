@@ -2,7 +2,7 @@ using Void.Bot.Message.Attributes;
 
 namespace Void.Bot.Core.Resources.i18n.Discord;
 
-[Language("Discord", "DiscordRolePanel")]
+[Language("Discord", "RolePanel")]
 public sealed class DiscordRolePanelContextTemplate : IContextTemplate
 {
     public string EveryoneRoleUnassignableReason { get; set; } = "@everyone 角色无法分配";

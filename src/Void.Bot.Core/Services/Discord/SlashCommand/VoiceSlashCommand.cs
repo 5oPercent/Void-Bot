@@ -1,9 +1,13 @@
 using Discord;
 using Discord.WebSocket;
+using Void.Bot.Core.Resources.i18n.Discord;
+using Void.Bot.Core.Services.Language;
 
 namespace Void.Bot.Core.Services.Discord.SlashCommand;
 
-public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) : IGlobalSlashCommand
+public class VoiceSlashCommand(
+    IDiscordVoiceChannelService voiceChannelService,
+    ILocalizationService localizationService) : IGlobalSlashCommand
 {
     public bool Ephemeral => true;
 
@@ -52,14 +56,14 @@ public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) 
     {
         if (commandCallback.User is not SocketGuildUser user)
         {
-            await ModifyResponseAsync(commandCallback, "该指令只能在服务器内使用.").ConfigureAwait(false);
+            await ModifyResponseAsync(commandCallback, localizationService.GetValue<DiscordContextTemplate>(x => x.GuildOnlyCommand, commandCallback.UserLocale)).ConfigureAwait(false);
             return;
         }
 
         var subCommand = commandCallback.Data.Options.FirstOrDefault();
         if (subCommand == null)
         {
-            await ModifyResponseAsync(commandCallback, "未知命令.").ConfigureAwait(false);
+            await ModifyResponseAsync(commandCallback, localizationService.GetValue<DiscordVoiceContextTemplate>(x => x.UnknownVoiceCommand, commandCallback.UserLocale)).ConfigureAwait(false);
             return;
         }
 
@@ -73,7 +77,7 @@ public class VoiceSlashCommand(IDiscordVoiceChannelService voiceChannelService) 
             "kick" => await ExecuteWithTargetUserAsync(user, subCommand, voiceChannelService.KickUserAsync, cancellationToken).ConfigureAwait(false),
             "delete" => await voiceChannelService.DeleteOwnChannelAsync(user, cancellationToken).ConfigureAwait(false),
             "info" => await voiceChannelService.GetInfoAsync(user, cancellationToken).ConfigureAwait(false),
-            _ => new DiscordVoiceCommandResult { Message = "未知命令." }
+            _ => new DiscordVoiceCommandResult { Message = localizationService.GetValue<DiscordVoiceContextTemplate>(x => x.UnknownVoiceCommand, commandCallback.UserLocale) }
         };
 
         await ModifyResponseAsync(commandCallback, result.Message).ConfigureAwait(false);

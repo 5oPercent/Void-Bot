@@ -3,9 +3,11 @@ using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Discord;
 using Void.Bot.Core.Services.Account;
 using Void.Bot.Core.Services.Discord.SlashCommand;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
 
@@ -82,7 +84,8 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
         var slashCommand = allSlashCommands.FirstOrDefault(x => x.Name == callback.CommandName);
         if (slashCommand == null)
         {
-            await callback.RespondAsync("未知命令!", ephemeral: true).ConfigureAwait(false);
+            var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
+            await callback.RespondAsync(localizationService.GetValue<DiscordContextTemplate>(x => x.UnknownCommand, callback.UserLocale), ephemeral: true).ConfigureAwait(false);
             return;
         }
 
@@ -185,16 +188,19 @@ public class DiscordSlashCommandRoute : IDiscordSlashCommandRoute
     {
         try
         {
+            using var scope = _scopeFactory.CreateScope();
+            var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
+            var message = localizationService.GetValue<DiscordContextTemplate>(x => x.CommandFailed, callback.UserLocale);
             if (callback.HasResponded)
             {
                 await callback.ModifyOriginalResponseAsync(properties =>
                 {
-                    properties.Content = "指令执行失败，请稍后重试.";
+                    properties.Content = message;
                 }).ConfigureAwait(false);
                 return;
             }
 
-            await callback.RespondAsync("指令执行失败，请稍后重试.", ephemeral: true).ConfigureAwait(false);
+            await callback.RespondAsync(message, ephemeral: true).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -7,6 +7,8 @@ using Void.Bot.Core.Services.Discord.DataProvider;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Bungie.Destiny2.Weapon;
 using Void.Bot.Message.Constants.Discord;
+using Void.Bot.Core.Resources.i18n.Discord;
+using Void.Bot.Core.Services.Language;
 
 namespace Void.Bot.Core.Services.Discord.Component.Routes;
 
@@ -33,12 +35,13 @@ public class DiscordGodRollPaginationRoute(
         try
         {
             using var scope = scopeFactory.CreateScope();
+            var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
             var cacheManager = scope.ServiceProvider.GetRequiredService<ICacheManager>();
             var state = await cacheManager.Get<DiscordGodRollPaginationState>(
                 GetCacheKey(paginationId)).ConfigureAwait(false);
             if (state == null)
             {
-                await callback.RespondAsync("分页结果已过期，请重新执行 `/d2 gr`。", ephemeral: true)
+                await callback.RespondAsync(localizationService.GetValue<DiscordComponentContextTemplate>(x => x.PaginationExpired, callback.UserLocale), ephemeral: true)
                     .ConfigureAwait(false);
                 return;
             }
@@ -67,7 +70,9 @@ public class DiscordGodRollPaginationRoute(
 
             if (!callback.HasResponded)
             {
-                await callback.RespondAsync("翻页失败，请稍后重试。", ephemeral: true).ConfigureAwait(false);
+                using var scope = scopeFactory.CreateScope();
+                var localizationService = scope.ServiceProvider.GetRequiredService<ILocalizationService>();
+                await callback.RespondAsync(localizationService.GetValue<DiscordComponentContextTemplate>(x => x.PaginationFailed, callback.UserLocale), ephemeral: true).ConfigureAwait(false);
             }
         }
     }
