@@ -134,7 +134,13 @@ public partial class DiscordService : IDiscordService
         if ((int)guildResponse.Code is < 200 or >= 300 || guildResponse.Data == null)
         {
             response.Code = (int)guildResponse.Code == 0 ? HttpStatusCode.BadGateway : guildResponse.Code;
-            response.Message = "Failed to read Discord guilds. Please authorize Discord again.";
+            response.Message = guildResponse.Code switch
+            {
+                HttpStatusCode.Unauthorized => "Discord authorization has expired. Please authorize Discord again.",
+                HttpStatusCode.Forbidden => "You do not have permission to access Discord guilds.",
+                HttpStatusCode.TooManyRequests => "Discord rate limit reached. Please try again later.",
+                _ => "Discord is temporarily unavailable. Please try again later."
+            };
             return response;
         }
 
