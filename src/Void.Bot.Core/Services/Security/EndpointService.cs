@@ -2,7 +2,6 @@ using Void.Bot.Message.Commands.Security;
 using Void.Bot.Message.Dto.Security;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Services.Identity;
-using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Security;
 
 namespace Void.Bot.Core.Services.Security;
@@ -16,13 +15,13 @@ public interface IEndpointService : ISingleton
 
 public class EndpointService : IEndpointService
 {
-    private readonly ILanguageService _languageService;
+    private readonly ILocalizationService _localizationService;
     private readonly ICurrentUser _currentUser;
     private List<EndpointDto> _endpoints = [];
 
-    public EndpointService(ILanguageService languageService, ICurrentUser currentUser)
+    public EndpointService(ILocalizationService localizationService, ICurrentUser currentUser)
     {
-        _languageService = languageService;
+        _localizationService = localizationService;
         _currentUser = currentUser;
     }
 
@@ -43,7 +42,7 @@ public class EndpointService : IEndpointService
 
     private string ResolveDescription(EndpointDto endpoint)
     {
-        var description = _languageService.GetEndpointDescription(
+        var description = _localizationService.GetEndpointDescription(
             endpoint.Controller,
             endpoint.DescriptionKey,
             _currentUser.Language);

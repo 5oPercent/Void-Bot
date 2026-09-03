@@ -8,6 +8,8 @@ using Serilog;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Discord;
 using Void.Bot.Core.Services.Discord.DataProvider;
+using Void.Bot.Core.Resources.i18n.Discord;
+using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Commands.Discord;
 using Void.Bot.Message.Dto.Discord;
 using Void.Bot.Message.Request.Discord;
@@ -66,19 +68,22 @@ public class DiscordVoiceChannelService : IDiscordVoiceChannelService
     private readonly IUnitOfWork _unitOfWork;
     private readonly DiscordSocketClient _client;
     private readonly IDiscordVoiceChannelDataProvider _dataProvider;
+    private readonly ILocalizationService _localizationService;
 
     public DiscordVoiceChannelService(
         IMapper mapper,
         ILogger logger,
         IUnitOfWork unitOfWork,
         DiscordSocketClient client,
-        IDiscordVoiceChannelDataProvider dataProvider)
+        IDiscordVoiceChannelDataProvider dataProvider,
+        ILocalizationService localizationService)
     {
         _mapper = mapper;
         _logger = logger;
         _unitOfWork = unitOfWork;
         _client = client;
         _dataProvider = dataProvider;
+        _localizationService = localizationService;
     }
 
     public async Task<GetDiscordVoiceChannelConfigResponse> GetConfigAsync(GetDiscordVoiceChannelConfigRequest request, CancellationToken cancellationToken)
@@ -129,7 +134,7 @@ public class DiscordVoiceChannelService : IDiscordVoiceChannelService
         if (config == null)
         {
             response.Code = HttpStatusCode.BadRequest;
-            response.Message = "Voice channel config not found.";
+            response.Message = _localizationService.GetValue<DiscordVoiceContextTemplate>(x => x.VoiceChannelConfigNotFound);
             return response;
         }
 
