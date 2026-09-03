@@ -307,7 +307,7 @@ public sealed class DiscordRolePanelService(
                 properties.Components = BuildComponents(panel);
             });
         }
-        catch (HttpException ex) when (ex.DiscordCode == 10008)
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
         {
             panel.MessageId = null;
             await dataProvider.UpdateAsync(panel, cancellationToken).ConfigureAwait(false);
