@@ -194,17 +194,20 @@ public sealed class DiscordRolePanelService(
     {
         var response = new UnpublishDiscordRolePanelResponse();
         var panel = await dataProvider.GetAsync(guildContext.GuildId, cancellationToken).ConfigureAwait(false);
-        if (panel?.MessageId is not { } messageId || guildContext.Guild.GetTextChannel(panel.ChannelId) is not { } channel)
+        if (panel?.MessageId is not { } messageId)
         {
             return response;
         }
 
-        try
+        if (guildContext.Guild.GetTextChannel(panel.ChannelId) is { } channel)
         {
-            await channel.DeleteMessageAsync(messageId);
-        }
-        catch (HttpException)
-        {
+            try
+            {
+                await channel.DeleteMessageAsync(messageId);
+            }
+            catch (HttpException)
+            {
+            }
         }
 
         panel.MessageId = null;
@@ -299,11 +302,26 @@ public sealed class DiscordRolePanelService(
             return response;
         }
 
-        await channel.ModifyMessageAsync(messageId, properties =>
+        try
         {
-            properties.Content = panel.Content;
-            properties.Components = BuildComponents(panel);
-        });
+            await channel.ModifyMessageAsync(messageId, properties =>
+            {
+                properties.Content = panel.Content;
+                properties.Components = BuildComponents(panel);
+            });
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
+        {
+            panel.MessageId = null;
+            var message = await channel.SendMessageAsync(
+                panel.Content,
+                components: BuildComponents(panel));
+            panel.MessageId = message.Id;
+            await dataProvider.UpdateAsync(panel, cancellationToken).ConfigureAwait(false);
+            response.Data = ToPublishDto(panel, true);
+            return response;
+        }
+
         response.Data = ToPublishDto(panel, false);
         return response;
     }
