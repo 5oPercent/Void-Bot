@@ -299,11 +299,23 @@ public sealed class DiscordRolePanelService(
             return response;
         }
 
-        await channel.ModifyMessageAsync(messageId, properties =>
+        try
         {
-            properties.Content = panel.Content;
-            properties.Components = BuildComponents(panel);
-        });
+            await channel.ModifyMessageAsync(messageId, properties =>
+            {
+                properties.Content = panel.Content;
+                properties.Components = BuildComponents(panel);
+            });
+        }
+        catch (HttpException ex) when (ex.DiscordCode == 10008)
+        {
+            panel.MessageId = null;
+            await dataProvider.UpdateAsync(panel, cancellationToken).ConfigureAwait(false);
+            response.Code = HttpStatusCode.NotFound;
+            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PublishedPanelNotFound);
+            return response;
+        }
+
         response.Data = ToPublishDto(panel, false);
         return response;
     }
