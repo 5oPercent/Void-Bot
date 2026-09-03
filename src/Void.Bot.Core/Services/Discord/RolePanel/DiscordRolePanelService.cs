@@ -194,17 +194,20 @@ public sealed class DiscordRolePanelService(
     {
         var response = new UnpublishDiscordRolePanelResponse();
         var panel = await dataProvider.GetAsync(guildContext.GuildId, cancellationToken).ConfigureAwait(false);
-        if (panel?.MessageId is not { } messageId || guildContext.Guild.GetTextChannel(panel.ChannelId) is not { } channel)
+        if (panel?.MessageId is not { } messageId)
         {
             return response;
         }
 
-        try
+        if (guildContext.Guild.GetTextChannel(panel.ChannelId) is { } channel)
         {
-            await channel.DeleteMessageAsync(messageId);
-        }
-        catch (HttpException)
-        {
+            try
+            {
+                await channel.DeleteMessageAsync(messageId);
+            }
+            catch (HttpException)
+            {
+            }
         }
 
         panel.MessageId = null;
