@@ -313,9 +313,12 @@ public sealed class DiscordRolePanelService(
         catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
         {
             panel.MessageId = null;
+            var message = await channel.SendMessageAsync(
+                panel.Content,
+                components: BuildComponents(panel));
+            panel.MessageId = message.Id;
             await dataProvider.UpdateAsync(panel, cancellationToken).ConfigureAwait(false);
-            response.Code = HttpStatusCode.NotFound;
-            response.Message = localizationService.GetValue<DiscordRolePanelContextTemplate>(x => x.PublishedPanelNotFound);
+            response.Data = ToPublishDto(panel, true);
             return response;
         }
 
