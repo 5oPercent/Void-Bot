@@ -142,10 +142,39 @@ Repository / DbContext
 - I/O 使用 async API，方法名以 `Async` 结尾，传递 `CancellationToken`；禁止阻塞式 `.Result`/`.Wait()`。
 - 遵循现有 C# 风格（文件范围 namespace、nullable、依赖注入、按领域分目录），避免无意义的小方法和格式改动。
 
-## 9. 测试与交付清单
+## 9. 分支与 GitHub 协作流程
+
+### 9.1 分支开发
+
+1. 开始工作前检查工作区、当前分支和远程状态，保护已有未提交修改。
+2. 从最新的 `master` 创建功能分支；分支名使用常见前缀和简短英文描述，例如 `feature/add-agent-guidelines`、`fix/discord-timeout`、`enhance/cache-read`。
+3. 分支名不得使用 `codex/` 前缀，也不得以 `all-in-one` 或 `mixture` 开头；这些名称只用于大杂烩分支，不能作为功能分支来源或 PR 目标。
+4. 一个分支聚焦一个功能或问题，避免混入无关重构、格式化或临时文件。
+5. Commit message 使用简短、准确的英文描述；除非明确要求，不添加 `Co-authored-by`。
+6. 推送前检查 diff 和测试状态，并使用 `git push -u origin <branch>` 建立远程跟踪。
+7. 合并到大杂烩分支前，先切换到目标分支并拉取最新代码（例如 `git pull --ff-only origin all-in-one-202501`），确认工作区干净后再合并和推送。
+8. 不直接把大杂烩分支作为 PR 源分支或目标分支；面向主线的 PR 应由功能分支指向 `master`。合并大杂烩仅用于集成验证，不能替代主线 PR。
+
+### 9.2 Issue 规范
+
+- 创建 Issue 前先检查 `.github/ISSUE_TEMPLATE/`，选择最匹配的模板（功能请求、错误报告或问题交流）。
+- 必须保留模板的 front matter、标题格式、问题标题和顺序；完整填写模板问题，不用自定义正文替代模板结构。
+- 功能请求至少说明使用场景和期望结果；错误报告补充版本、操作步骤、实际问题和期望结果；问题交流补充搜索记录、版本、预期/实际行为和复现步骤。
+- Issue 标题格式为“emoji + 单语言标题”，中文或英文二选一，不要求也不应同时写成“中文 | English”。例如：`✨ 整理项目开发设计规范` 或 `✨ Add development guidelines`；功能/错误类别通过模板的 `labels` 表达，不必在标题中重复添加 `[Feature]`/`[Bug]`，除非模板明确要求。按模板设置 labels 和 assignees。
+
+### 9.3 Pull Request 规范
+
+- 创建 PR 前先读取 `.github/PULL_REQUEST_TEMPLATE/`（以及根目录 PR 模板文件，如存在），严格保留模板分隔线、Issue 关联区和提交检查清单。
+- 用清晰的变更摘要替换模板占位文字；完整说明改动范围、验证方式和已知限制，不删除模板检查项。
+- PR 必须由功能分支指向 `master`，标题必须使用简短、准确的英文表达；关联 Issue 使用模板要求的格式。
+- 一个 PR 可以正常关联并关闭多个 Issue；在模板的“涉及 `ISSUES`”区域逐条列出，例如 `Close #123`、`Close #124`。只关联本次 PR 实际解决的问题，避免为了关联而添加无关 Issue。
+- 按实际情况勾选模板检查项：没有新增测试时明确保持未勾选并在正文说明原因；不要为了通过清单虚假勾选。
+- 创建前确认源分支、目标分支、变更 diff 和 Issue 编号正确；PR 创建后再次检查标题、正文、labels、reviewer 和关联关系。
+
+## 10. 测试与交付清单
 
 - Service 业务分支和边界条件优先写 Unit Test；数据库、Mediator 管道、认证和完整用例写 Integration Test。
 - 测试优先通过公开 Message 契约调用，不直接测试 Controller 内部实现。
 - 新功能完成前确认：Message 契约、Handler、Service、DataProvider、Validator、权限、本地化和测试均已接入。
 - 确认普通 Command/Event 未手动保存，直接执行的 Hangfire Job 已明确保存边界，Request 无写入副作用。
-- 除非用户明确要求，不主动编译项目、提交 Git commit、合并分支或创建 PR。
+- 除非用户明确要求，不主动编译项目、提交 Git commit、合并分支或创建 PR；一旦用户明确要求，仍必须遵循本节分支和模板流程。
