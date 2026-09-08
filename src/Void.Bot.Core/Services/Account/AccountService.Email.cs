@@ -1,10 +1,12 @@
 using System.Net;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Email;
 using Void.Bot.Core.Services.Email;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Dto.Email;
+using Void.Bot.Message.Enum;
 using Void.Bot.Message.Enum.Account;
 using Void.Bot.Message.Request.Account;
 
@@ -73,11 +75,18 @@ public partial class AccountService
         var url = $"{frontendUrl.GetLeftPart(UriPartial.Path)}#token={Uri.EscapeDataString(link.Token)}";
         try
         {
+            var subject = _localizationService.GetValue<EmailContentContextTemplate>(
+                x => x.PasswordResetLinkSubject);
+            var content = _localizationService.GetValue<EmailContentContextTemplate>(
+                x => x.PasswordResetLinkContent,
+                _currentUser.Language,
+                url,
+                link.ExpiresAt);
             await _emailService.SendAsync(new EmailMessageDto
             {
                 To = user.Email,
-                Subject = "Void Bot password reset",
-                TextContent = $"Open this link to reset your password: {url}\nThis link expires at {link.ExpiresAt:O}."
+                Subject = subject,
+                TextContent = content
             }, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -576,13 +585,26 @@ public partial class AccountService
 
         try
         {
+            var subject = GetVerificationEmailSubject(purpose);
+            var introduction = _localizationService.GetValue<EmailContentContextTemplate>(
+                x => x.VerificationIntroduction);
+            var expirationNotice = _localizationService.GetValue<EmailContentContextTemplate>(
+                x => x.VerificationExpirationNotice,
+                _currentUser.Language,
+                _accountEmailSetting.CodeTtlMinutes);
+            var textContent = $"{introduction} {created.Code}\n{expirationNotice}";
             await _emailService.SendAsync(
                 new EmailMessageDto
                 {
                     To = email,
-                    Subject = GetVerificationEmailSubject(purpose),
-                    TextContent = $"Your Void Bot verification code is {created.Code}. " +
-                                  $"It expires in {_accountEmailSetting.CodeTtlMinutes} minutes."
+                    Subject = subject,
+                    TextContent = textContent,
+                    HtmlContent = EmailHtmlTemplate.RenderVerificationCode(
+                        subject,
+                        introduction,
+                        created.Code,
+                        expirationNotice,
+                        GetEmailTemplateText())
                 },
                 cancellationToken).ConfigureAwait(false);
         }
@@ -663,14 +685,24 @@ public partial class AccountService
         return separator <= 0 ? "***" : $"{email[0]}***{email[separator..]}";
     }
 
-    private static string GetVerificationEmailSubject(EmailVerificationPurposeEnum purpose)
+    private string GetVerificationEmailSubject(EmailVerificationPurposeEnum purpose)
     {
         return purpose switch
         {
-            EmailVerificationPurposeEnum.PasswordReset => "Void Bot password reset code",
-            EmailVerificationPurposeEnum.Unbinding => "Void Bot email unbinding code",
-            _ => "Void Bot email verification code"
+            EmailVerificationPurposeEnum.PasswordReset =>
+                _localizationService.GetValue<EmailContentContextTemplate>(x => x.PasswordResetCodeSubject),
+            EmailVerificationPurposeEnum.Unbinding =>
+                _localizationService.GetValue<EmailContentContextTemplate>(x => x.EmailUnbindingCodeSubject),
+            _ => _localizationService.GetValue<EmailContentContextTemplate>(x => x.VerificationSubject)
         };
+    }
+
+    private EmailTemplateText GetEmailTemplateText()
+    {
+        return new EmailTemplateText(
+            _currentUser.Language.ToI18nCode(),
+            _localizationService.GetValue<EmailContentContextTemplate>(x => x.TeamSignature),
+            _localizationService.GetValue<EmailContentContextTemplate>(x => x.AutomatedNotice));
     }
 
     private static ResetUserAccountPasswordResponse InvalidPasswordResetResponse()
