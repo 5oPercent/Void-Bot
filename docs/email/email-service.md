@@ -9,9 +9,10 @@ in a browser to preview the standard card and verification-code presentation use
 outgoing email. The files are embedded into `Void.Bot.Core` at build time.
 For a side-by-side preview populated with all current business scenarios, open
 [`email-template-scenarios-preview.html`](email-template-scenarios-preview.html).
-System-generated email copy is provided by the `Email/Content` i18n context and uses
-the language resolved from the current request, falling back to the default language.
-Event-action subjects and content remain administrator-configured text.
+System-generated email copy is split across the `Email/Layout` and `Email/BuiltIn` i18n
+contexts. It uses the language resolved from the current request, falling back to the
+default language. Custom event-action subjects and content remain administrator-configured
+text.
 
 ## Configuration
 

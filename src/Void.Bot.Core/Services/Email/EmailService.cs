@@ -109,8 +109,8 @@ internal sealed class EmailService(
     {
         return new EmailTemplateText(
             currentUser.Language.ToI18nCode(),
-            localizationService.GetValue<EmailContentContextTemplate>(x => x.TeamSignature),
-            localizationService.GetValue<EmailContentContextTemplate>(x => x.AutomatedNotice));
+            localizationService.GetValue<EmailLayoutContextTemplate>(x => x.TeamSignature),
+            localizationService.GetValue<EmailLayoutContextTemplate>(x => x.AutomatedNotice));
     }
 
     public async Task<SendTestEmailResponse> SendTestAsync(

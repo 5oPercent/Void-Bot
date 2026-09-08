@@ -503,6 +503,24 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
         sendEmailDefinition.Arguments.ShouldContain(x => x.Name == "Subject" && x.Required);
         sendEmailDefinition.Arguments.ShouldContain(x => x.Name == "Content" && x.Required);
 
+        var accountRegisteredEmailDefinition = _definitions.Actions.Single(x =>
+            x.Type == SendAccountRegisteredEmailEventActionExecutor.ActionType);
+        accountRegisteredEmailDefinition.SupportedEvents.ShouldBe(
+            [BuiltInEventNames.AccountRegistered]);
+        accountRegisteredEmailDefinition.Arguments.ShouldBeEmpty();
+
+        var passwordResetEmailDefinition = _definitions.Actions.Single(x =>
+            x.Type == SendPasswordForceResetEmailEventActionExecutor.ActionType);
+        passwordResetEmailDefinition.SupportedEvents.ShouldBe(
+            [BuiltInEventNames.AccountPasswordForceReset]);
+        passwordResetEmailDefinition.Arguments.ShouldBeEmpty();
+
+        var thirdPartyUnlinkEmailDefinition = _definitions.Actions.Single(x =>
+            x.Type == SendThirdPartyForceUnlinkedEmailEventActionExecutor.ActionType);
+        thirdPartyUnlinkEmailDefinition.SupportedEvents.ShouldBe(
+            [BuiltInEventNames.AccountThirdPartyForceUnlinked]);
+        thirdPartyUnlinkEmailDefinition.Arguments.ShouldBeEmpty();
+
         _definitions.FailurePolicies.Select(x => x.Value)
             .ShouldContain(EventActionFailurePolicies.Continue);
         return Task.CompletedTask;
