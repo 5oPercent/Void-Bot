@@ -3,6 +3,16 @@
 Void Bot sends email through Microsoft Graph while exposing only the provider-neutral
 `IEmailService` to business services.
 
+Open the HTML files under
+[`src/Void.Bot.Core/Services/Email/Templates`](../../src/Void.Bot.Core/Services/Email/Templates)
+in a browser to preview the standard card and verification-code presentation used by
+outgoing email. The files are embedded into `Void.Bot.Core` at build time.
+For a side-by-side preview populated with all current business scenarios, open
+[`email-template-scenarios-preview.html`](email-template-scenarios-preview.html).
+System-generated email copy is provided by the `Email/Content` i18n context and uses
+the language resolved from the current request, falling back to the default language.
+Event-action subjects and content remain administrator-configured text.
+
 ## Configuration
 
 Register a Microsoft Entra application that supports personal Microsoft accounts and

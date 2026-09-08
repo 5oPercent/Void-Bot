@@ -5,6 +5,7 @@ using Void.Bot.Core.Caching;
 using Void.Bot.Core.Extension;
 using Void.Bot.Core.Services.Email;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Settings.Account;
 using Void.Bot.Message.Commands.Account;
 using Void.Bot.Message.Dto;
@@ -63,6 +64,7 @@ public partial class AccountService : IAccountService
     private readonly IAccountEmailVerificationStore _emailVerificationStore;
     private readonly IAccountPasswordResetLinkStore _passwordResetLinkStore;
     private readonly IEmailService _emailService;
+    private readonly ILocalizationService _localizationService;
     private readonly ICurrentUser _currentUser;
     private readonly ILogger _logger;
     private readonly AccountEmailSetting _accountEmailSetting;
@@ -73,6 +75,7 @@ public partial class AccountService : IAccountService
         IAccountEmailVerificationStore emailVerificationStore,
         IAccountPasswordResetLinkStore passwordResetLinkStore,
         IEmailService emailService,
+        ILocalizationService localizationService,
         ICurrentUser currentUser,
         ILogger logger,
         AccountEmailSetting accountEmailSetting)
@@ -82,6 +85,7 @@ public partial class AccountService : IAccountService
         _emailVerificationStore = emailVerificationStore;
         _passwordResetLinkStore = passwordResetLinkStore;
         _emailService = emailService;
+        _localizationService = localizationService;
         _currentUser = currentUser;
         _logger = logger;
         _accountEmailSetting = accountEmailSetting;
