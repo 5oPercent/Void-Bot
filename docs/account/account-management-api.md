@@ -169,7 +169,7 @@ Content-Type: application/json
 }
 ```
 
-直接重置成功后会触发 EventSystem 事件 `Account.PasswordForceReset`。如果后台为该事件配置了 `SendEmail` 动作，可以在邮件正文中使用 `{Password}` 占位符，把本次设置的密码发送到用户的已验证邮箱；邮件主题禁止使用该占位符。
+直接重置成功后会触发 EventSystem 事件 `Account.PasswordForceReset`。后台可为该事件配置无参数的 `SendPasswordForceResetEmail` 内置动作，使用统一 HTML 模板和 i18n 文案将本次设置的密码发送到用户的已验证邮箱。原有 `SendEmail` 自定义动作仍可使用 `{Password}` 正文占位符；邮件主题禁止使用该占位符。
 
 前端不得记录、回显或持久化密码。提交完成后应立即清空两个密码输入框。
 
@@ -260,13 +260,16 @@ Content-Type: application/json
 
 ## EventSystem 前端配合
 
-本次新增两个事件和一个邮件动作：
+EventSystem 定义接口会返回以下账号事件和邮件动作：
 
 | 类型 | 名称 | 说明 |
 | --- | --- | --- |
 | Event | `Account.PasswordForceReset` | 管理人员直接重置密码并成功提交事务后触发 |
 | Event | `Account.ThirdPartyForceUnlinked` | 管理人员强制解绑第三方平台并成功提交事务后触发 |
 | Action | `SendEmail`，版本 `1` | 向事件关联账号的已验证邮箱发送纯文本邮件 |
+| Action | `SendAccountRegisteredEmail`，版本 `1` | 无参数，发送内置账号注册成功通知 |
+| Action | `SendPasswordForceResetEmail`，版本 `1` | 无参数，发送内置密码强制重置通知 |
+| Action | `SendThirdPartyForceUnlinkedEmail`，版本 `1` | 无参数，发送内置第三方授权强制解绑通知 |
 
 `SendEmail` 参数：
 
@@ -277,7 +280,7 @@ Content-Type: application/json
 
 主题和正文都支持 `{UserId}`、`{DisplayName}` 和 `{Platform}`。只有正文支持 `{Password}`，且仅在 `Account.PasswordForceReset` 事件中有值；其他事件会替换为空字符串。前端应阻止在主题中选择或输入 `{Password}`。
 
-事件和动作定义会由 EventSystem 定义接口返回。前端应根据定义元数据动态渲染，不要硬编码事件、动作或参数列表。发送重置链接和用户通过链接完成重置都不会触发 EventSystem 事件。
+三个内置邮件动作不接受参数，且仅支持各自对应的事件。事件和动作定义会由 EventSystem 定义接口返回。前端应根据定义元数据动态渲染，不要硬编码事件、动作或参数列表。发送重置链接和用户通过链接完成重置都不会触发 EventSystem 事件。
 
 ## 前端验收清单
 
@@ -289,4 +292,4 @@ Content-Type: application/json
 - 第三方解绑只展示允许的平台枚举，并在成功后刷新绑定列表。
 - 邮箱解绑先发送验证码，再提交 `challengeId + code`，不再要求用户输入账号密码。
 - 所有敏感字段均不进入日志、埋点、浏览器持久化或错误上报。
-- EventSystem 页面能通过定义接口识别新增事件及 `SendEmail` 动作。
+- EventSystem 页面能通过定义接口识别新增事件、三个内置邮件动作及原有 `SendEmail` 动作。

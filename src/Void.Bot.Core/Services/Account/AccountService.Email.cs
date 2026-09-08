@@ -75,9 +75,9 @@ public partial class AccountService
         var url = $"{frontendUrl.GetLeftPart(UriPartial.Path)}#token={Uri.EscapeDataString(link.Token)}";
         try
         {
-            var subject = _localizationService.GetValue<EmailContentContextTemplate>(
+            var subject = _localizationService.GetValue<BuiltInEmailContextTemplate>(
                 x => x.PasswordResetLinkSubject);
-            var content = _localizationService.GetValue<EmailContentContextTemplate>(
+            var content = _localizationService.GetValue<BuiltInEmailContextTemplate>(
                 x => x.PasswordResetLinkContent,
                 _currentUser.Language,
                 url,
@@ -586,9 +586,9 @@ public partial class AccountService
         try
         {
             var subject = GetVerificationEmailSubject(purpose);
-            var introduction = _localizationService.GetValue<EmailContentContextTemplate>(
+            var introduction = _localizationService.GetValue<BuiltInEmailContextTemplate>(
                 x => x.VerificationIntroduction);
-            var expirationNotice = _localizationService.GetValue<EmailContentContextTemplate>(
+            var expirationNotice = _localizationService.GetValue<BuiltInEmailContextTemplate>(
                 x => x.VerificationExpirationNotice,
                 _currentUser.Language,
                 _accountEmailSetting.CodeTtlMinutes);
@@ -690,10 +690,10 @@ public partial class AccountService
         return purpose switch
         {
             EmailVerificationPurposeEnum.PasswordReset =>
-                _localizationService.GetValue<EmailContentContextTemplate>(x => x.PasswordResetCodeSubject),
+                _localizationService.GetValue<BuiltInEmailContextTemplate>(x => x.PasswordResetCodeSubject),
             EmailVerificationPurposeEnum.Unbinding =>
-                _localizationService.GetValue<EmailContentContextTemplate>(x => x.EmailUnbindingCodeSubject),
-            _ => _localizationService.GetValue<EmailContentContextTemplate>(x => x.VerificationSubject)
+                _localizationService.GetValue<BuiltInEmailContextTemplate>(x => x.EmailUnbindingCodeSubject),
+            _ => _localizationService.GetValue<BuiltInEmailContextTemplate>(x => x.VerificationSubject)
         };
     }
 
@@ -701,8 +701,8 @@ public partial class AccountService
     {
         return new EmailTemplateText(
             _currentUser.Language.ToI18nCode(),
-            _localizationService.GetValue<EmailContentContextTemplate>(x => x.TeamSignature),
-            _localizationService.GetValue<EmailContentContextTemplate>(x => x.AutomatedNotice));
+            _localizationService.GetValue<EmailLayoutContextTemplate>(x => x.TeamSignature),
+            _localizationService.GetValue<EmailLayoutContextTemplate>(x => x.AutomatedNotice));
     }
 
     private static ResetUserAccountPasswordResponse InvalidPasswordResetResponse()

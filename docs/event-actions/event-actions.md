@@ -64,13 +64,15 @@
 
 | 事件 | 触发时机 | 动作 | 参数 |
 | --- | --- | --- | --- |
-| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
-| `Account.PasswordForceReset` | 管理人员强制重置账号密码事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
-| `Account.ThirdPartyForceUnlinked` | 管理人员强制解绑第三方授权事务提交成功后 | `GrantRoles`、`SendEmail` | 角色参数或邮件主题与内容 |
+| `Account.Registered` | Void 账号事务提交成功后 | `GrantRoles`、`SendEmail`、`SendAccountRegisteredEmail` | 角色参数、邮件主题与内容，或无参数内置通知 |
+| `Account.PasswordForceReset` | 管理人员强制重置账号密码事务提交成功后 | `GrantRoles`、`SendEmail`、`SendPasswordForceResetEmail` | 角色参数、邮件主题与内容，或无参数内置通知 |
+| `Account.ThirdPartyForceUnlinked` | 管理人员强制解绑第三方授权事务提交成功后 | `GrantRoles`、`SendEmail`、`SendThirdPartyForceUnlinkedEmail` | 角色参数、邮件主题与内容，或无参数内置通知 |
 
 三个账号事件均提供 `UserId` 条件字段；`Account.ThirdPartyForceUnlinked` 额外提供 `Platform` 条件字段，可按第三方平台筛选规则。失败的密码重置或解绑操作不会发布事件。
 
 `SendEmail` 向事件关联用户的已验证邮箱发送纯文本邮件，不允许在规则中指定任意外部收件地址。动作参数为单值 `Subject` 和 `Content`，分别最多 200 和 10000 个字符。两者都支持 `{UserId}`、`{DisplayName}` 和 `{Platform}` 占位符；只有 `Content` 支持 `{Password}`，邮件标题禁止包含密码。非第三方解绑事件中的 `{Platform}` 会替换为空字符串；`{Password}` 仅在 `Account.PasswordForceReset` 事件正文中有值，其他事件会替换为空字符串。密码只在本次事件的内存执行链中传递，不会进入事件定义字段、规则、执行记录或结构化日志。
+
+`SendAccountRegisteredEmail`、`SendPasswordForceResetEmail` 和 `SendThirdPartyForceUnlinkedEmail` 是无参数内置邮件动作，只支持各自对应的账号事件。它们使用统一 HTML 邮件模板与 `Email/BuiltIn` i18n 文案，分别发送注册成功通知、临时密码或被解绑平台。自定义 `SendEmail` 动作保持不变，可与内置动作独立配置。
 
 规则中的动作按数组顺序执行；多条规则按 `Sequence`、`CreatedAt` 排序执行。禁用的规则或动作不会执行。
 
