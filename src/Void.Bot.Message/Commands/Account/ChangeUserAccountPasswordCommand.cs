@@ -1,10 +1,11 @@
 using System.Text.Json.Serialization;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto;
+using Void.Bot.Message.Request.Identity;
 
 namespace Void.Bot.Message.Commands.Account;
 
-public class ChangeUserAccountPasswordCommand : ICommand
+public class ChangeUserAccountPasswordCommand : ICommand, IRequireTwoFactorAuthentication
 {
     [JsonIgnore]
     public Guid? UserId { get; set; }

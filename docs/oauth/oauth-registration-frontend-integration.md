@@ -153,7 +153,8 @@ Content-Type: application/json
   "code": "{registrationCode}",
   "name": "VoidName",
   "suffix": "0001",
-  "password": "Password123"
+  "password": "Password123",
+  "twoFactorCode": "123456"
 }
 ```
 
@@ -165,8 +166,9 @@ Content-Type: application/json
 | `name` | 是 | 已有 Void 主账号名称 |
 | `suffix` | 是 | Void 主账号四位后缀 |
 | `password` | 是 | 已有 Void 主账号密码 |
+| `twoFactorCode` | 否 | 已启用 2FA 的账号必填；未启用时省略 |
 
-后端先验证 Void 账号密码，再检查第三方身份和目标账号是否存在绑定冲突。绑定成功后直接返回新的 Void JWT：
+后端先验证 Void 账号密码和已启用账号的动态码，再检查第三方身份和目标账号是否存在绑定冲突。缺少动态码时返回 `two_factor_code_required`，动态码错误时返回 `invalid_two_factor_code`，两者的 `requiresTwoFactor` 均为 `true`，并且不会消耗 registrationCode。绑定成功后直接返回新的 Void JWT：
 
 ```json
 {
@@ -266,6 +268,7 @@ type OAuthCallbackState =
 - [ ] register 或 bind 成功后保存 Void JWT。
 - [ ] 保存 JWT 后调用 `/api/Identity/me`。
 - [ ] 密码错误时允许用户修改后重新提交。
+- [ ] `requiresTwoFactor=true` 时展示动态码输入并重新提交。
 - [ ] code 失效或绑定冲突时引导用户重新发起第三方登录。
 - [ ] 页面刷新时不尝试从持久化存储恢复 registrationCode。
 - [ ] 不记录第三方 Token、Void Token、exchangeCode 或 registrationCode。

@@ -10,6 +10,7 @@
 - [账号管理 API](account/account-management-api.md)
 - [账号管理前端对接](account/account-management-frontend-integration.md)
 - [当前身份 `/api/Identity/me` 前端对接](identity/identity-me-frontend-integration.md)
+- [双因素认证前端对接](identity/two-factor-frontend-integration.md)
 
 ## OAuth
 

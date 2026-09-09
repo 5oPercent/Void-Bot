@@ -22,8 +22,13 @@ public sealed class OAuthBindCommand : ICommand
     [Required]
     [MinLength(6)]
     public required string Password { get; init; }
+
+    [MinLength(6)]
+    [MaxLength(6)]
+    public string? TwoFactorCode { get; init; }
 }
 
 public sealed class OAuthBindResponse : VoidBotResponse<JwtToken>
 {
+    public bool RequiresTwoFactor { get; init; }
 }
