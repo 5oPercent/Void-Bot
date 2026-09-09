@@ -8,6 +8,8 @@ public interface ICurrentUser
     
     string UserName { get; }
 
+    bool IsTwoFactorAuthenticated { get; }
+
     LanguageEnum Language { get; }
 }
 
@@ -16,6 +18,8 @@ public class CurrentUserProxy(ICurrentUserProvider provider) : ICurrentUser
     public Guid? Id => provider.CurrentUser?.Id;
 
     public string UserName => provider.CurrentUser?.UserName ?? string.Empty;
+
+    public bool IsTwoFactorAuthenticated => provider.CurrentUser?.IsTwoFactorAuthenticated ?? false;
 
     public LanguageEnum Language => provider.CurrentUser?.Language ?? LanguageEnum.Default;
 }

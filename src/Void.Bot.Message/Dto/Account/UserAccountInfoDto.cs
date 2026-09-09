@@ -14,6 +14,8 @@ public class UserAccountInfoDto
 
     [JsonIgnore]
     public int TokenVersion { get; set; }
+
+    public bool IsTwoFactorEnabled { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; }
 

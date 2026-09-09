@@ -45,6 +45,10 @@ public class HttpCurrentUser : ICurrentUser
         }
     }
 
+    public bool IsTwoFactorAuthenticated => _httpContextAccessor.HttpContext?.User.HasClaim(
+        TokenClaimService.TwoFactorAuthenticationClaim,
+        TokenClaimService.TwoFactorAuthenticationValue) == true;
+
     public LanguageEnum Language
     {
         get

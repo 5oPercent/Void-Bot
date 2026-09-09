@@ -17,6 +17,10 @@ public class UserAccountDto
     public DateTimeOffset? EmailVerifiedAt { get; set; }
 
     public int TokenVersion { get; set; }
+
+    public string? TwoFactorSecret { get; set; }
+
+    public DateTimeOffset? TwoFactorEnabledAt { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 

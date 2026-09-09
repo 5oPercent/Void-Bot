@@ -19,8 +19,13 @@ public class AuthenticateRequest : IRequest
     [Required]
     [MinLength(6)]
     public required string Password { get; set; }
+
+    [MinLength(6)]
+    [MaxLength(6)]
+    public string? TwoFactorCode { get; set; }
 }
 
 public class AuthenticateResponse : VoidBotResponse<JwtToken>
 {
+    public bool RequiresTwoFactor { get; set; }
 }

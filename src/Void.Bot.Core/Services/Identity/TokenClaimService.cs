@@ -20,6 +20,8 @@ public class TokenClaimService : ITokenClaimService
     public const string TokenUseClaim = "token_use";
     public const string AccessTokenUse = "access";
     public const string RefreshTokenUse = "refresh";
+    public const string TwoFactorAuthenticationClaim = "two_factor_authenticated";
+    public const string TwoFactorAuthenticationValue = "true";
 
     private readonly JwtSetting _jwtSetting;
 

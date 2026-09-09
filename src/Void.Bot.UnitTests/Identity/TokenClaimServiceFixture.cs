@@ -30,6 +30,22 @@ public class TokenClaimServiceFixture
     }
 
     [Fact]
+    public void ValidateRefreshToken_PreservesTwoFactorAuthenticationClaim()
+    {
+        var service = CreateService();
+        var claims = Claims.Append(new Claim(
+            TokenClaimService.TwoFactorAuthenticationClaim,
+            TokenClaimService.TwoFactorAuthenticationValue));
+
+        var refreshToken = service.GenerateRefreshToken(claims);
+        var principal = service.ValidateRefreshToken(refreshToken);
+
+        principal.HasClaim(
+            TokenClaimService.TwoFactorAuthenticationClaim,
+            TokenClaimService.TwoFactorAuthenticationValue).ShouldBeTrue();
+    }
+
+    [Fact]
     public void ValidateRefreshToken_WithAccessToken_ThrowsValidationException()
     {
         var service = CreateService();
