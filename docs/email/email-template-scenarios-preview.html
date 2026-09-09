@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Void Bot email template previews</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 20px; background: #e5e7eb; color: #111827; font-family: Arial, "Helvetica Neue", sans-serif; }
+    .preview-page { max-width: 1280px; margin: 0 auto; }
+    .preview-heading { margin: 0 0 8px; font-size: 28px; }
+    .preview-description { margin: 0 0 32px; color: #4b5563; line-height: 1.6; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 32px; align-items: start; }
+    .preview-item { min-width: 0; }
+    .scenario-name { margin: 0 0 12px; font-size: 16px; }
+    .scenario-note { margin: -6px 0 12px; color: #6b7280; font-size: 13px; }
+    .email-surface { padding: 24px 16px; background-color: #f3f4f6; }
+    .email-card { width: 100%; max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #fff; box-shadow: 0 4px 16px rgba(15, 23, 42, .08); }
+    .email-brand { padding: 28px 32px; border-bottom: 1px solid #e5e7eb; background-color: #111827; color: #fff; text-align: center; font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: 3px; }
+    .email-body { padding: 40px 40px 32px; }
+    .email-title { margin: 0 0 24px; color: #111827; font-size: 22px; font-weight: 700; line-height: 1.4; }
+    .email-content { color: #374151; font-size: 16px; line-height: 1.75; white-space: pre-line; word-break: break-word; }
+    .email-introduction { margin: 0; color: #374151; font-size: 16px; line-height: 1.75; }
+    .email-code-wrap { padding: 28px 0; text-align: center; }
+    .email-code { display: inline-block; padding: 14px 22px; border-radius: 10px; background-color: #f3f4f6; color: #111827; font-family: "Courier New", monospace; font-size: 30px; font-weight: 700; line-height: 1.2; letter-spacing: 8px; }
+    .email-notice { margin: 0; color: #6b7280; font-size: 14px; line-height: 1.7; }
+    .email-signature { margin: 32px 0 0; color: #374151; font-size: 15px; line-height: 1.6; }
+    .email-footer { padding: 22px 32px; border-top: 1px solid #e5e7eb; background-color: #f9fafb; color: #6b7280; text-align: center; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 600px) {
+      body { padding: 24px 12px; }
+      .email-surface { padding: 16px 8px; }
+      .email-body { padding: 32px 24px 28px; }
+      .email-code { font-size: 26px; letter-spacing: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-page">
+    <h1 class="preview-heading">Void Bot email scenarios</h1>
+    <p class="preview-description">Development preview of every email scenario using the default zh-chs resources. Event-action examples show representative configured content after placeholder replacement.</p>
+    <div id="preview-grid" class="preview-grid"></div>
+  </main>
+  <script>
+    const verificationScenarios = [
+      { name: "Registration verification code", subject: "Void Bot 邮箱验证码" },
+      { name: "Email binding verification code", subject: "Void Bot 邮箱验证码" },
+      { name: "Password reset verification code", subject: "Void Bot 密码重置验证码" },
+      { name: "Email unbinding verification code", subject: "Void Bot 邮箱解绑验证码" }
+    ];
+
+    const standardScenarios = [
+      {
+        name: "Password reset link",
+        subject: "Void Bot 密码重置",
+        content: "请打开以下链接重置密码：https://voidbot.example/password-reset#token=preview-token\n此链接将于 2026-09-08T12:30:00.0000000+08:00 失效。"
+      },
+      {
+        name: "Email service test",
+        subject: "Void Bot email test",
+        content: "Void Bot email service is configured correctly."
+      },
+      {
+        name: "Account.Registered built-in action",
+        note: "SendAccountRegisteredEmail",
+        subject: "欢迎使用 Void Bot",
+        content: "你好，VoidUser#0001：\n你的 Void Bot 账号已注册成功。"
+      },
+      {
+        name: "Account.PasswordForceReset built-in action",
+        note: "SendPasswordForceResetEmail",
+        subject: "Void Bot 密码已被重置",
+        content: "你好，VoidUser#0001：\n管理员已强制重置你的 Void Bot 密码。\n临时密码：NewPassword1\n请尽快登录并修改密码。"
+      },
+      {
+        name: "Account.ThirdPartyForceUnlinked built-in action",
+        note: "SendThirdPartyForceUnlinkedEmail",
+        subject: "Void Bot 第三方授权已被解绑",
+        content: "你好，VoidUser#0001：\n管理员已强制解绑你的 Discord 授权。\n如非预期，请联系管理员。"
+      }
+    ];
+
+    const escapeHtml = value => value.replace(/[&<>'"]/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;"
+    })[character]);
+
+    const frame = (scenario, body) => `
+      <section class="preview-item">
+        <h2 class="scenario-name">${escapeHtml(scenario.name)}</h2>
+        ${scenario.note ? `<p class="scenario-note">${escapeHtml(scenario.note)}</p>` : ""}
+        <div class="email-surface">
+          <article class="email-card">
+            <header class="email-brand">VOID BOT</header>
+            <div class="email-body">
+              <h3 class="email-title">${escapeHtml(scenario.subject)}</h3>
+              ${body}
+              <p class="email-signature">Void Bot 团队</p>
+            </div>
+            <footer class="email-footer">此邮件由 Void Bot 自动发送，请勿直接回复。</footer>
+          </article>
+        </div>
+      </section>`;
+
+    const verificationCard = scenario => frame(scenario, `
+      <p class="email-introduction">你的 Void Bot 验证码是：</p>
+      <div class="email-code-wrap"><span class="email-code">123456</span></div>
+      <p class="email-notice">验证码将在 10 分钟后失效。</p>`);
+
+    const standardCard = scenario => frame(
+      scenario,
+      `<div class="email-content">${escapeHtml(scenario.content)}</div>`);
+
+    document.getElementById("preview-grid").innerHTML = [
+      ...verificationScenarios.map(verificationCard),
+      ...standardScenarios.map(standardCard)
+    ].join("");
+  </script>
+</body>
+</html>

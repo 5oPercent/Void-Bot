@@ -1,5 +1,9 @@
 using System.Net;
 using Serilog;
+using Void.Bot.Core.Extension;
+using Void.Bot.Core.Resources.i18n.Email;
+using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Services.Language;
 using Void.Bot.Message.Commands.Email;
 using Void.Bot.Message.Dto.Email;
 using Void.Bot.Message.Request.Email;
@@ -34,6 +38,8 @@ public interface IEmailService : IScope
 internal sealed class EmailService(
     IEmailCredentialManager credentialManager,
     IMicrosoftGraphClient graphClient,
+    ILocalizationService localizationService,
+    ICurrentUser currentUser,
     ILogger logger) : IEmailService
 {
     public Task<AuthorizeEmailResponse> AuthorizeAsync(
@@ -66,18 +72,45 @@ internal sealed class EmailService(
 
     public async Task SendAsync(EmailMessageDto message, CancellationToken cancellationToken)
     {
+        var outgoingMessage = ApplyStandardHtmlLayout(message);
         var accessToken = await credentialManager.GetAccessTokenAsync(
             cancellationToken).ConfigureAwait(false);
         try
         {
-            await graphClient.SendAsync(accessToken, message, cancellationToken).ConfigureAwait(false);
+            await graphClient.SendAsync(accessToken, outgoingMessage, cancellationToken).ConfigureAwait(false);
         }
         catch (EmailServiceException exception) when (exception.ProviderStatusCode == HttpStatusCode.Unauthorized)
         {
             accessToken = await credentialManager.RefreshAccessTokenAsync(
                 cancellationToken).ConfigureAwait(false);
-            await graphClient.SendAsync(accessToken, message, cancellationToken).ConfigureAwait(false);
+            await graphClient.SendAsync(accessToken, outgoingMessage, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private EmailMessageDto ApplyStandardHtmlLayout(EmailMessageDto message)
+    {
+        if (!string.IsNullOrWhiteSpace(message.HtmlContent))
+            return message;
+
+        return new EmailMessageDto
+        {
+            To = message.To,
+            Subject = message.Subject,
+            TextContent = message.TextContent,
+            HtmlContent = EmailHtmlTemplate.Render(
+                message.Subject,
+                message.TextContent,
+                GetTemplateText()),
+            ReplyTo = message.ReplyTo
+        };
+    }
+
+    private EmailTemplateText GetTemplateText()
+    {
+        return new EmailTemplateText(
+            currentUser.Language.ToI18nCode(),
+            localizationService.GetValue<EmailLayoutContextTemplate>(x => x.TeamSignature),
+            localizationService.GetValue<EmailLayoutContextTemplate>(x => x.AutomatedNotice));
     }
 
     public async Task<SendTestEmailResponse> SendTestAsync(

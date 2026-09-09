@@ -50,6 +50,7 @@
     <ItemGroup>
       <EmbeddedResource Include="Assets\Fonts\SourceHanSansSC-VF.ttf" />
       <EmbeddedResource Include="Assets\Fonts\SourceHanSansTC-VF.ttf" />
+      <EmbeddedResource Include="Services\Email\Templates\*.html" />
     </ItemGroup>
 
 </Project>
