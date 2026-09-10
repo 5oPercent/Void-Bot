@@ -20,6 +20,8 @@ public class UserAccountDto
 
     public string? TwoFactorSecret { get; set; }
 
+    public DateTimeOffset? TwoFactorSetupAt { get; set; }
+
     public DateTimeOffset? TwoFactorEnabledAt { get; set; }
     
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

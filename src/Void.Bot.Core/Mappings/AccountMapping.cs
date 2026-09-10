@@ -17,6 +17,9 @@ public class AccountMapping : Profile
         CreateMap<UserAccountDto, UserAccountInfoDto>()
             .ForMember(x => x.IsTwoFactorEnabled, options =>
                 options.MapFrom(x => x.TwoFactorEnabledAt.HasValue));
+        CreateMap<UserAccountDto, UserAccountSecurityInfoDto>()
+            .ForMember(x => x.IsTwoFactorEnabled, options =>
+                options.MapFrom(x => x.TwoFactorEnabledAt.HasValue));
         
         CreateMap<UserThirdParty, UserThirdPartyDto>().ReverseMap();
         CreateMap<UserThirdParty, UserThirdPartyInfoDto>().ReverseMap();
@@ -24,5 +27,6 @@ public class AccountMapping : Profile
 
         CreateMap<PagedList<UserAccount>, PagedListDto<UserAccountDto>>().ReverseMap();
         CreateMap<PagedListDto<UserAccountDto>, PagedListDto<UserAccountInfoDto>>().ReverseMap();
+        CreateMap<PagedListDto<UserAccountDto>, PagedListDto<UserAccountSecurityInfoDto>>();
     }
 }

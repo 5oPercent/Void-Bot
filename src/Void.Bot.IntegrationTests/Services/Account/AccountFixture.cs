@@ -2,6 +2,7 @@ using Mediator.Net;
 using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
+using Void.Bot.Core.Services.Account;
 using Void.Bot.IntegrationTest.Utils;
 using Void.Bot.Message.Enum;
 using Void.Bot.Message.Request.Account;
@@ -17,7 +18,11 @@ public class AccountFixture(IntegrationTestBase testBase) : IntegrationFixture(t
     [Fact]
     public async Task GetUserAccountPageAsync()
     {
-        await _util.AddUserAccountAsync();
+        var emailVerifiedAt = new DateTimeOffset(2026, 9, 10, 1, 0, 0, TimeSpan.Zero);
+        await _util.AddUserAccountAsync(
+            email: "user@example.com",
+            emailVerifiedAt: emailVerifiedAt,
+            twoFactorEnabledAt: emailVerifiedAt);
         await _util.AddUserAccountAsync();
         await _util.AddUserAccountAsync();
         
@@ -35,6 +40,9 @@ public class AccountFixture(IntegrationTestBase testBase) : IntegrationFixture(t
             response.Data.Total.ShouldBe(3);
             response.Data.Items.ShouldNotBeNull();
             response.Data.Items.Count().ShouldBe(3);
+            var user = response.Data.Items.Single(x => x.Email == "user@example.com");
+            user.EmailVerifiedAt.ShouldBe(emailVerifiedAt);
+            user.IsTwoFactorEnabled.ShouldBeTrue();
         });
     }
 
@@ -66,6 +74,27 @@ public class AccountFixture(IntegrationTestBase testBase) : IntegrationFixture(t
             var thirdParty = user.ThirdParties.ShouldHaveSingleItem();
             thirdParty.Provider.ShouldBe(nameof(AppPlatformEnum.Discord));
             thirdParty.ThirdPartyUserId.ShouldBe("discord-user");
+        });
+    }
+
+    [Fact]
+    public async Task TwoFactorRecoveryCodeCanOnlyBeConsumedOnceAsync()
+    {
+        var userId = await _util.AddUserAccountAsync();
+        const string codeHash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+        await RunWithUnitOfWork<IAccountDataProvider>(provider =>
+            provider.ReplaceTwoFactorRecoveryCodesAsync(
+                userId, [codeHash], DateTimeOffset.UtcNow, CancellationToken.None));
+
+        await Run<IAccountDataProvider>(async provider =>
+        {
+            (await provider.TryConsumeTwoFactorRecoveryCodeAsync(
+                userId, codeHash, CancellationToken.None)).ShouldBeTrue();
+            (await provider.TryConsumeTwoFactorRecoveryCodeAsync(
+                userId, codeHash, CancellationToken.None)).ShouldBeFalse();
+            (await provider.GetTwoFactorRecoveryCodeCountAsync(
+                userId, CancellationToken.None)).ShouldBe(0);
         });
     }
     

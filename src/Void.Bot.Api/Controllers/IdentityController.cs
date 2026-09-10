@@ -261,6 +261,7 @@ public class IdentityController : ControllerBase
         [FromBody] EnableTwoFactorCommand command,
         CancellationToken cancellationToken)
     {
+        Response.Headers.CacheControl = "no-store";
         var response = await _mediator.SendAsync<EnableTwoFactorCommand, EnableTwoFactorResponse>(
             command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
@@ -279,6 +280,22 @@ public class IdentityController : ControllerBase
         Response.Headers.CacheControl = "no-store";
         var response = await _mediator.SendAsync<VerifyTwoFactorCommand, VerifyTwoFactorResponse>(
             command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/recovery-codes/regenerate")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(RegenerateTwoFactorRecoveryCodesResponse), 200)]
+    [DescriptionLocalization("RegenerateTwoFactorRecoveryCodes")]
+    public async Task<IActionResult> RegenerateTwoFactorRecoveryCodesAsync(
+        [FromBody] RegenerateTwoFactorRecoveryCodesCommand command,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.SendAsync<
+            RegenerateTwoFactorRecoveryCodesCommand,
+            RegenerateTwoFactorRecoveryCodesResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 

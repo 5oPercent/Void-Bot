@@ -17,4 +17,6 @@ public sealed class TwoFactorSetupDto
     public required string ManualEntryKey { get; init; }
 
     public required string OtpAuthUri { get; init; }
+
+    public DateTimeOffset ExpiresAt { get; init; }
 }

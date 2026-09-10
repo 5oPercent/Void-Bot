@@ -23,6 +23,7 @@ public sealed class IdentityEndpointContextTemplate : IContextTemplate
     public string BeginTwoFactorSetup { get; set; } = "开始配置双因素认证";
     public string EnableTwoFactor { get; set; } = "启用双因素认证";
     public string VerifyTwoFactor { get; set; } = "验证双因素认证";
+    public string RegenerateTwoFactorRecoveryCodes { get; set; } = "重新生成双因素认证恢复码";
     public string DisableTwoFactor { get; set; } = "关闭双因素认证";
     public string CanChangeName { get; set; } = "检查是否可以修改用户名";
     public string ChangeName { get; set; } = "修改用户名";

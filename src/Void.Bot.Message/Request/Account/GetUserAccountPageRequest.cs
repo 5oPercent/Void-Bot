@@ -9,6 +9,6 @@ public class GetUserAccountPageRequest : PageInputDto, IRequest
     public List<Guid> UserIds { get; set; } = [];
 }
 
-public class GetUserAccountPageResponse : VoidBotResponse<PagedListDto<UserAccountInfoDto>>
+public class GetUserAccountPageResponse : VoidBotResponse<PagedListDto<UserAccountSecurityInfoDto>>
 {
 }

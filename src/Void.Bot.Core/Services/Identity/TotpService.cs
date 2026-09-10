@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
+using Void.Bot.Core.Settings.Account;
 
 namespace Void.Bot.Core.Services.Identity;
 
@@ -13,11 +14,10 @@ public interface ITotpService : ISingleton
     string CreateOtpAuthUri(string issuer, string accountName, string secret);
 }
 
-public sealed class TotpService(TimeProvider timeProvider) : ITotpService
+public sealed class TotpService(TimeProvider timeProvider, TwoFactorSetting twoFactorSetting) : ITotpService
 {
     private const string Base32Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     private const int TimeStepSeconds = 30;
-    private const int AllowedTimeStepDrift = 1;
 
     public string GenerateSecret()
     {
@@ -40,7 +40,9 @@ public sealed class TotpService(TimeProvider timeProvider) : ITotpService
         }
 
         var currentTimeStep = timeProvider.GetUtcNow().ToUnixTimeSeconds() / TimeStepSeconds;
-        for (var offset = -AllowedTimeStepDrift; offset <= AllowedTimeStepDrift; offset++)
+        for (var offset = -twoFactorSetting.AllowedTimeStepDrift;
+             offset <= twoFactorSetting.AllowedTimeStepDrift;
+             offset++)
         {
             if (FixedTimeEquals(GenerateCode(secret, currentTimeStep + offset), code))
             {
