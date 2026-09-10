@@ -14,6 +14,7 @@ public sealed class DisableTwoFactorCommandValidator
 
         RuleFor(x => x.Code)
             .NotEmpty().WithMessage("Two-factor code is required")
-            .Matches("^[0-9]{6}$").WithMessage("Two-factor code must contain exactly 6 digits");
+            .Matches("^(?:[0-9]{6}|[A-HJ-NP-Za-hj-np-z2-9]{4}-?[A-HJ-NP-Za-hj-np-z2-9]{4}-?[A-HJ-NP-Za-hj-np-z2-9]{4})$")
+            .WithMessage("Two-factor code must be a 6-digit TOTP or a valid recovery code");
     }
 }

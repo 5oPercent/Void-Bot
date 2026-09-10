@@ -94,7 +94,7 @@ public class AccountValidatorFixture
     }
 
     [Fact]
-    public void TwoFactorCommandsRequirePasswordAndSixDigitCode()
+    public void TwoFactorCommandsValidateTotpAndRecoveryCodes()
     {
         new BeginTwoFactorSetupCommandValidator().Validate(new BeginTwoFactorSetupCommand
         {
@@ -109,7 +109,7 @@ public class AccountValidatorFixture
         new DisableTwoFactorCommandValidator().Validate(new DisableTwoFactorCommand
         {
             Password = "Password1",
-            Code = "123456"
+            Code = "ABCD-EFGH-JK23"
         }).IsValid.ShouldBeTrue();
 
         new EnableTwoFactorCommandValidator().Validate(new EnableTwoFactorCommand
@@ -121,6 +121,18 @@ public class AccountValidatorFixture
         {
             Code = "123456"
         }).IsValid.ShouldBeTrue();
+
+        new VerifyTwoFactorCommandValidator().Validate(new VerifyTwoFactorCommand
+        {
+            Code = "ABCD-EFGH-JK23"
+        }).IsValid.ShouldBeTrue();
+
+        new RegenerateTwoFactorRecoveryCodesCommandValidator().Validate(
+            new RegenerateTwoFactorRecoveryCodesCommand
+            {
+                Password = "Password1",
+                Code = "ABCD-EFGH-JK23"
+            }).IsValid.ShouldBeTrue();
     }
 
     [Fact]

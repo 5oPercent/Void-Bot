@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Settings.Account;
 
 namespace Void.Bot.UnitTest.Identity;
 
@@ -12,7 +14,7 @@ public sealed class TotpServiceFixture
     public void VerifyCodeAcceptsRfcVectorAndAdjacentTimeStep()
     {
         _timeProvider.GetUtcNow().Returns(DateTimeOffset.FromUnixTimeSeconds(59));
-        var service = new TotpService(_timeProvider);
+        var service = CreateService();
 
         service.VerifyCode("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", "287082").ShouldBeTrue();
 
@@ -29,7 +31,7 @@ public sealed class TotpServiceFixture
     public void VerifyCodeRejectsMalformedCodes(string? code)
     {
         _timeProvider.GetUtcNow().Returns(DateTimeOffset.FromUnixTimeSeconds(59));
-        var service = new TotpService(_timeProvider);
+        var service = CreateService();
 
         service.VerifyCode("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", code).ShouldBeFalse();
     }
@@ -37,7 +39,7 @@ public sealed class TotpServiceFixture
     [Fact]
     public void SetupUriContainsEncodedIssuerAccountAndSecret()
     {
-        var service = new TotpService(_timeProvider);
+        var service = CreateService();
 
         var uri = service.CreateOtpAuthUri("Void Bot", "测试 User#0001", "ABC234");
 
@@ -47,11 +49,32 @@ public sealed class TotpServiceFixture
     [Fact]
     public void GeneratedSecretHasExpectedBase32Format()
     {
-        var service = new TotpService(_timeProvider);
+        var service = CreateService();
 
         var secret = service.GenerateSecret();
 
         secret.Length.ShouldBe(32);
         secret.ShouldAllBe(character => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".Contains(character));
+    }
+
+    [Fact]
+    public void VerifyCodeUsesConfiguredTimeStepDrift()
+    {
+        _timeProvider.GetUtcNow().Returns(DateTimeOffset.FromUnixTimeSeconds(89));
+        var service = CreateService(0);
+
+        service.VerifyCode(
+            "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", "287082").ShouldBeFalse();
+    }
+
+    private TotpService CreateService(int allowedTimeStepDrift = 1)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["TwoFactor:AllowedTimeStepDrift"] = allowedTimeStepDrift.ToString()
+            })
+            .Build();
+        return new TotpService(_timeProvider, new TwoFactorSetting(configuration));
     }
 }

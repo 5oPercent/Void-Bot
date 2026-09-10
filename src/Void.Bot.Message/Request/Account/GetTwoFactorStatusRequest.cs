@@ -16,4 +16,6 @@ public sealed class TwoFactorStatusDto
     public bool IsEnabled { get; init; }
 
     public DateTimeOffset? EnabledAt { get; init; }
+
+    public int RecoveryCodesRemaining { get; init; }
 }

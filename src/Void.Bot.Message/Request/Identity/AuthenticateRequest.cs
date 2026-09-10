@@ -21,7 +21,7 @@ public class AuthenticateRequest : IRequest
     public required string Password { get; set; }
 
     [MinLength(6)]
-    [MaxLength(6)]
+    [MaxLength(14)]
     public string? TwoFactorCode { get; set; }
 }
 

@@ -24,7 +24,7 @@ public sealed class OAuthBindCommand : ICommand
     public required string Password { get; init; }
 
     [MinLength(6)]
-    [MaxLength(6)]
+    [MaxLength(14)]
     public string? TwoFactorCode { get; init; }
 }
 

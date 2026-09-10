@@ -42,6 +42,9 @@ public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
     [StringLength(255)]
     public string? TwoFactorSecret { get; set; }
 
+    [Column("two_factor_setup_at")]
+    public DateTimeOffset? TwoFactorSetupAt { get; set; }
+
     [Column("two_factor_enabled_at")]
     public DateTimeOffset? TwoFactorEnabledAt { get; set; }
     

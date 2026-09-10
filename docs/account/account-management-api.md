@@ -1,11 +1,12 @@
 # 账号安全管理接口前端对接
 
-本文档说明本次新增的管理员密码重置、密码重置链接、第三方授权解绑和邮箱验证码解绑能力，以及密码重置页面和 EventSystem 配置页面需要配合的内容。
+本文档说明账号列表安全状态、管理员密码重置、密码重置链接、第三方授权解绑和邮箱验证码解绑能力，以及密码重置页面和 EventSystem 配置页面需要配合的内容。
 
 ## 接口概览
 
 | 方法 | 地址 | 权限 | 用途 |
 | --- | --- | --- | --- |
+| `POST` | `/api/Security/user/list` | 登录并拥有接口权限 | 分页查询账号，并返回邮箱验证和双因素认证状态 |
 | `POST` | `/api/Account/password/reset-link` | 登录并拥有接口权限 | 向指定账号的已验证邮箱发送一次性密码重置链接 |
 | `POST` | `/api/Account/password/reset` | 登录并拥有接口权限 | 管理人员直接为指定账号设置新密码 |
 | `POST` | `/api/Account/oauth/force-unlink` | 登录并拥有接口权限 | 强制解绑指定账号的第三方授权平台 |
@@ -13,7 +14,7 @@
 | `POST` | `/api/Identity/email/unbind/send-code` | 登录 | 向当前账号的已验证邮箱发送解绑验证码 |
 | `POST` | `/api/Identity/email/unbind` | 登录 | 验证邮件验证码并解绑当前账号邮箱 |
 
-前三个管理接口位于 `AccountController`，受登录验证和现有接口权限体系控制。未登录时返回 `401`，没有对应接口权限时返回 `403`。两个邮箱解绑接口位于 `IdentityController`，需要登录但跳过接口权限检查。
+账号列表接口位于 `SecurityController`，三个账号管理接口位于 `AccountController`；它们都受登录验证和现有接口权限体系控制。未登录时返回 `401`，没有对应接口权限时返回 `403`。密码重置链接完成接口允许匿名访问，两个邮箱解绑接口需要登录但跳过接口权限检查。
 
 接口使用统一响应结构：
 
@@ -25,6 +26,35 @@
 ```
 
 管理接口的业务失败可能仍使用 HTTP `200` 返回，前端应以响应体中的 `code` 判断业务结果，不能只判断 HTTP 状态。
+
+## 账号列表安全状态
+
+`POST /api/Security/user/list` 的分页条目在原有账号字段基础上增加以下字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `email` | `string \| null` | 账号绑定的完整邮箱，仅管理端账号列表返回 |
+| `emailVerifiedAt` | `string \| null` | 邮箱验证时间；为空表示邮箱尚未验证或未绑定 |
+| `isTwoFactorEnabled` | `boolean` | 是否已启用 TOTP 双因素认证 |
+
+示例条目：
+
+```json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "name": "example",
+  "suffix": "1234",
+  "displayName": "example#1234",
+  "email": "user@example.com",
+  "emailVerifiedAt": "2026-09-09T10:00:00+08:00",
+  "isTwoFactorEnabled": true,
+  "createdAt": "2026-09-01T10:00:00+08:00",
+  "updatedAt": "2026-09-09T10:00:00+08:00",
+  "thirdParties": []
+}
+```
+
+该接口只返回是否启用 2FA，不返回 TOTP 密钥。普通用户身份接口的邮箱可见范围不受此次调整影响。
 
 ## 推荐交互流程
 
