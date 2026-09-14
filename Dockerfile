@@ -12,6 +12,9 @@ RUN dotnet publish Void.Bot.Api -c Release -o out
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
+ARG RELEASE_VERSION=unknown
+ENV ReleaseVersion=${RELEASE_VERSION}
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libfontconfig1 \
