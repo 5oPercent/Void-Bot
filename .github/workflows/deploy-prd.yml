@@ -20,7 +20,7 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
       - name: Build the docker prd image
-        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.event.release.tag_name }}
+        run: docker build . --file Dockerfile --build-arg RELEASE_VERSION=${{ github.event.release.tag_name }} --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ github.event.release.tag_name }}
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Push image to aliyun docker repository

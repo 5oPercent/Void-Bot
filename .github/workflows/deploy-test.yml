@@ -31,7 +31,7 @@ jobs:
           IMAGE_TAG="${SAFE_RELEASE_TAG}-all-in-one-${RUN_SEQUENCE}-${SHORT_SHA}-r${RUN_ATTEMPT}"
           echo "value=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
       - name: Build the docker test image
-        run: docker build . --file Dockerfile --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ steps.image-tag.outputs.value }}
+        run: docker build . --file Dockerfile --build-arg RELEASE_VERSION=${{ steps.image-tag.outputs.value }} --tag ${{ secrets.ALIYUN_DOCKER_REPO }}:${{ steps.image-tag.outputs.value }}
       - name: Login to aliyun docker repository
         run: docker login --username=${{ secrets.ALIYUN_USERNAME }} -p ${{ secrets.ALIYUN_PWD }} ${{ secrets.ALIYUN_DOCKER_REPO }}
       - name: Push image to aliyun docker repository
