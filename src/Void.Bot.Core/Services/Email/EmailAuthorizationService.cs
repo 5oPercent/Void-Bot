@@ -207,36 +207,17 @@ internal sealed class EmailCredentialManager(
         RefreshEmailCredentialCommand command,
         CancellationToken cancellationToken)
     {
-        try
+        var credential = await dataProvider.GetCredentialAsync(
+            false, cancellationToken).ConfigureAwait(false);
+        if (credential is null || credential.Status is EmailCredentialStatusEnum.Disabled or
+            EmailCredentialStatusEnum.ReauthorizationRequired ||
+            credential.NextRefreshAt > DateTimeOffset.UtcNow)
         {
-            var credential = await dataProvider.GetCredentialAsync(
-                false, cancellationToken).ConfigureAwait(false);
-            if (credential is null || credential.Status is EmailCredentialStatusEnum.Disabled or
-                EmailCredentialStatusEnum.ReauthorizationRequired ||
-                credential.NextRefreshAt > DateTimeOffset.UtcNow)
-            {
-                return new RefreshEmailCredentialResponse();
-            }
-
-            await RefreshCredentialInternalAsync(false, false, cancellationToken).ConfigureAwait(false);
             return new RefreshEmailCredentialResponse();
         }
-        catch (EmailReauthorizationRequiredException)
-        {
-            return new RefreshEmailCredentialResponse
-            {
-                Code = System.Net.HttpStatusCode.Unauthorized,
-                Message = "reauthorization_required"
-            };
-        }
-        catch (EmailServiceException exception)
-        {
-            return new RefreshEmailCredentialResponse
-            {
-                Code = System.Net.HttpStatusCode.BadGateway,
-                Message = exception.ProviderErrorCode ?? "credential_refresh_failed"
-            };
-        }
+
+        await RefreshCredentialInternalAsync(false, false, cancellationToken).ConfigureAwait(false);
+        return new RefreshEmailCredentialResponse();
     }
 
     public async Task<GetEmailServiceStatusResponse> GetStatusAsync(
@@ -282,6 +263,7 @@ internal sealed class EmailCredentialManager(
                 true, cancellationToken).ConfigureAwait(false);
             if (credential is null)
             {
+                logger.Error("Email credential is missing and requires reauthorization");
                 throw new EmailReauthorizationRequiredException();
             }
 
@@ -330,13 +312,24 @@ internal sealed class EmailCredentialManager(
                     : "Credential refresh failed.";
                 credential.LastErrorAt = now;
                 await dataProvider.SaveCredentialAsync(credential, cancellationToken).ConfigureAwait(false);
-                logger.Warning(
-                    exception,
-                    "Email credential refresh failed for {SenderEmail}: {ErrorCode}",
-                    MaskEmail(credential.SenderEmail),
-                    exception is EmailServiceException providerException
-                        ? providerException.ProviderErrorCode
-                        : exception.GetType().Name);
+                if (exception is EmailReauthorizationRequiredException reauthorizationException)
+                {
+                    logger.Error(
+                        exception,
+                        "Email credential requires reauthorization for {SenderEmail}: {ErrorCode}",
+                        MaskEmail(credential.SenderEmail),
+                        reauthorizationException.ProviderErrorCode);
+                }
+                else
+                {
+                    logger.Warning(
+                        exception,
+                        "Email credential refresh failed for {SenderEmail}: {ErrorCode}",
+                        MaskEmail(credential.SenderEmail),
+                        exception is EmailServiceException providerException
+                            ? providerException.ProviderErrorCode
+                            : exception.GetType().Name);
+                }
                 throw;
             }
         }
