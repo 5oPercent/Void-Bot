@@ -27,7 +27,8 @@ public static class TreeExtension
         return idSet.ToList();
     }
 
-    public static List<TEntity> ConvertTree<TKey, TEntity>(this IEnumerable<TEntity> sourceList, TKey? rootPid = default)
+    public static List<TEntity> ConvertTree<TKey, TEntity>(
+        this IEnumerable<TEntity> sourceList, TKey? rootPid = default)
         where TKey : notnull
         where TEntity : class, ITree<TKey, TEntity>
     {

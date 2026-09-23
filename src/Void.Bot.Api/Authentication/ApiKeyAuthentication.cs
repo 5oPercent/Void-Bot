@@ -21,16 +21,13 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
     private readonly IApiKeyService _service;
     private readonly IRepository<SystemLicenses> _licensesRep;
     
-#pragma warning disable CS0618 // Type or member is obsolete
     public ApiKeyAuthenticationHandler(
-        IOptionsMonitor<ApiKeyAuthenticationOptions> options, ILoggerFactory logger,
-        UrlEncoder encoder, ISystemClock clock,
-        IApiKeyService service, IRepository<SystemLicenses> licensesRep) : base(options, logger, encoder, clock)
+        IOptionsMonitor<ApiKeyAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder,
+        IApiKeyService service, IRepository<SystemLicenses> licensesRep) : base(options, logger, encoder)
     {
         _service = service;
         _licensesRep = licensesRep;
     }
-#pragma warning restore CS0618 // Type or member is obsolete
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -40,7 +37,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
         if (apiKey.Count == 0)
             return AuthenticateResult.Fail("No ApiKey provided.");
         
-        var decryptedApiKey = string.Empty;
+        string decryptedApiKey;
         
         try
         {

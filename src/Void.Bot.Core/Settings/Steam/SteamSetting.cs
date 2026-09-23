@@ -2,12 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Void.Bot.Core.Settings.Steam;
 
-public class SteamSetting : IConfigurationSetting
+public class SteamSetting(IConfiguration configuration) : IConfigurationSetting
 {
-    public string ApiKey { get; set; }
-    
-    public SteamSetting(IConfiguration configuration)
-    {
-        ApiKey = configuration["Steam:ApiKey"] ?? string.Empty;
-    }
+    public string ApiKey { get; set; } = configuration["Steam:ApiKey"] ?? string.Empty;
 }

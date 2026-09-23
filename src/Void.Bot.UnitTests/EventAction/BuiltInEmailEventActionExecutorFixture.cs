@@ -62,6 +62,7 @@ public sealed class BuiltInEmailEventActionExecutorFixture
             new Dictionary<string, string[]> { ["Content"] = ["Custom content"] },
             CancellationToken.None);
 
+        error.ShouldNotBeNull();
         error.ShouldContain("does not accept arguments");
     }
 

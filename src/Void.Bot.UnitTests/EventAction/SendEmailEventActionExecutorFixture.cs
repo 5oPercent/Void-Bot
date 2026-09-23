@@ -52,6 +52,7 @@ public sealed class SendEmailEventActionExecutorFixture
             CreateArguments("Temporary password: {Password}", "Your temporary password is {Password}."),
             CancellationToken.None);
 
+        error.ShouldNotBeNull();
         error.ShouldContain("Subject cannot contain the Password placeholder");
     }
 

@@ -38,6 +38,7 @@ public partial class DiscordService : IDiscordService
 {
     private const string ManagedGuildCacheKeyPrefix = "discord:managed-guilds:";
     private static readonly TimeSpan ManagedGuildCacheDuration = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ClientReadyTimeout = TimeSpan.FromSeconds(30);
 
     private readonly DiscordSetting _setting;
     private readonly IDiscordDataProvider _dataProvider;
@@ -77,10 +78,34 @@ public partial class DiscordService : IDiscordService
 
     public async Task<DiscordStartBotResponse> StartAsync(DiscordStartBotRequest request, CancellationToken cancellationToken)
     {
-        await _client.LoginAsync(TokenType.Bot, _setting.Token).ConfigureAwait(false);
-        await _client.StartAsync().ConfigureAwait(false);
+        if (_client.ConnectionState == ConnectionState.Connected)
+        {
+            return new DiscordStartBotResponse();
+        }
+
+        var readyCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _client.Ready += OnReady;
+        try
+        {
+            await _client.LoginAsync(TokenType.Bot, _setting.Token).ConfigureAwait(false);
+            await _client.StartAsync().ConfigureAwait(false);
+            await readyCompletionSource.Task
+                .WaitAsync(ClientReadyTimeout, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            _client.Ready -= OnReady;
+        }
 
         return new DiscordStartBotResponse();
+
+        Task OnReady()
+        {
+            readyCompletionSource.TrySetResult();
+            return Task.CompletedTask;
+        }
     }
 
     public async Task<DiscordStopBotResponse> StopAsync(DiscordStopBotRequest request, CancellationToken cancellationToken)

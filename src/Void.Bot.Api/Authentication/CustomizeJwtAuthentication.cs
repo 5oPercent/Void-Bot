@@ -20,11 +20,9 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
 {
     private readonly JwtSetting _jwtSetting;
     
-    [Obsolete("Obsolete")]
     public CustomizeJwtAuthenticationHandler(
-        IOptionsMonitor<CustomizeJwtAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock,
-        JwtSetting jwtSetting)
-            : base(options, logger, encoder, clock)
+        IOptionsMonitor<CustomizeJwtAuthenticationOptions> options, ILoggerFactory logger,
+        UrlEncoder encoder, JwtSetting jwtSetting) : base(options, logger, encoder)
     {
         _jwtSetting = jwtSetting;
     }

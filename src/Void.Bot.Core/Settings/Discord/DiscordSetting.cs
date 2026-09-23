@@ -2,24 +2,11 @@ using Microsoft.Extensions.Configuration;
 
 namespace Void.Bot.Core.Settings.Discord;
 
-public class DiscordSetting : IConfigurationSetting
+public class DiscordSetting(IConfiguration configuration) : IConfigurationSetting
 {
-    public bool EnableProxy { get; set; }
-    
-    public bool AutoStart { get; set; }
-    
-    public string Token { get; set; }
-
-    public string ClientId { get; set; }
-
-    public string ClientSecret { get; set; }
-    
-    public DiscordSetting(IConfiguration configuration)
-    {
-        EnableProxy = configuration.GetValue<bool>("Discord:EnableProxy");
-        AutoStart = configuration.GetValue<bool>("Discord:AutoStart");
-        Token = configuration["Discord:Token"] ?? string.Empty;
-        ClientId = configuration["Discord:ClientId"] ?? string.Empty;
-        ClientSecret = configuration["Discord:ClientSecret"] ?? string.Empty;
-    }
+    public bool EnableProxy { get; set; } = configuration.GetValue<bool>("Discord:EnableProxy");
+    public bool AutoStart { get; set; } = configuration.GetValue<bool>("Discord:AutoStart");
+    public string Token { get; set; } = configuration["Discord:Token"] ?? string.Empty;
+    public string ClientId { get; set; } = configuration["Discord:ClientId"] ?? string.Empty;
+    public string ClientSecret { get; set; } = configuration["Discord:ClientSecret"] ?? string.Empty;
 }
