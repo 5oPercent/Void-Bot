@@ -8,73 +8,76 @@ namespace Void.Bot.Core.Extension;
 
 public static class HttpClientExtension
 {
-    public static async Task<VoidBotResponse<T>> GetAsync<T>(this HttpClient client, string url, CancellationToken cancellationToken)
+    extension(HttpClient client)
     {
-        return await SafeProcessAsync(url, async () =>
+        public async Task<VoidBotResponse<T>> GetAsync<T>(string url, CancellationToken cancellationToken)
         {
-            var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            return await SafeProcessAsync(url, async () =>
+            {
+                var response = await client.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
-            var data = response.IsSuccessStatusCode
-                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
-                : default;
-            var message = response.IsSuccessStatusCode
-                ? string.Empty
-                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var data = response.IsSuccessStatusCode
+                    ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                    : default;
+                var message = response.IsSuccessStatusCode
+                    ? string.Empty
+                    : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
-            return new VoidBotResponse<T>
-            {
-                Code = response.StatusCode,
-                Data = data,
-                Message = message
-            };
-        }, cancellationToken).ConfigureAwait(false);
-    }
-    
-    public static async Task<VoidBotResponse<T>> PostAsync<T>(this HttpClient client, string url, HttpContent content, CancellationToken cancellationToken)
-    {
-        return await SafeProcessAsync(url, async () =>
-        {
-            var response = await client.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+                return new VoidBotResponse<T>
+                {
+                    Code = response.StatusCode,
+                    Data = data,
+                    Message = message
+                };
+            }, cancellationToken).ConfigureAwait(false);
+        }
 
-            var data = response.IsSuccessStatusCode
-                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
-                : default;
-            var message = response.IsSuccessStatusCode
-                ? string.Empty
-                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        public async Task<VoidBotResponse<T>> PostAsync<T>(string url, HttpContent content, CancellationToken cancellationToken)
+        {
+            return await SafeProcessAsync(url, async () =>
+            {
+                var response = await client.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+
+                var data = response.IsSuccessStatusCode
+                    ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                    : default;
+                var message = response.IsSuccessStatusCode
+                    ? string.Empty
+                    : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             
-            return new VoidBotResponse<T>
-            {
-                Code = response.StatusCode,
-                Data = data,
-                Message = message
-            };
-        }, cancellationToken).ConfigureAwait(false);
-    }
-    
-    
-    public static async Task<VoidBotResponse<T>> PostAsync<T>(this HttpClient client, string url, object content, CancellationToken cancellationToken)
-    {
-        return await SafeProcessAsync(url, async () =>
+                return new VoidBotResponse<T>
+                {
+                    Code = response.StatusCode,
+                    Data = data,
+                    Message = message
+                };
+            }, cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<VoidBotResponse<T>> PostAsync<T>(string url, object content, CancellationToken cancellationToken)
         {
-            var response = await client.PostAsJsonAsync(url, content, cancellationToken).ConfigureAwait(false);
-
-            var data = response.IsSuccessStatusCode
-                ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
-                : default;
-            var message = response.IsSuccessStatusCode
-                ? string.Empty
-                : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-            return new VoidBotResponse<T>
+            return await SafeProcessAsync(url, async () =>
             {
-                Code = response.StatusCode,
-                Data = data,
-                Message = message
-            };
-        }, cancellationToken).ConfigureAwait(false);
+                var response = await client.PostAsJsonAsync(url, content, cancellationToken).ConfigureAwait(false);
+
+                var data = response.IsSuccessStatusCode
+                    ? await ReadResponseContentAsAsync<T>(response, cancellationToken).ConfigureAwait(false)
+                    : default;
+                var message = response.IsSuccessStatusCode
+                    ? string.Empty
+                    : await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+                return new VoidBotResponse<T>
+                {
+                    Code = response.StatusCode,
+                    Data = data,
+                    Message = message
+                };
+            }, cancellationToken).ConfigureAwait(false);
+        }
     }
-    
+
+
     public static async Task<VoidBotResponse<T>> SafeProcessAsync<T>(string requestUrl, Func<Task<VoidBotResponse<T>>> func, CancellationToken cancellationToken, bool shouldLogError = true)
     {
         try

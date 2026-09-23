@@ -17,7 +17,8 @@ public static class DiscordBindingMiddleware
         IDiscordBindingContext? bindingContext = null)
         where TContext : IContext<IMessage>
     {
-        if (configurator.DependencyScope == null)
+        if ((currentUser == null || accountDataProvider == null || bindingContext == null) &&
+            configurator.DependencyScope == null)
         {
             throw new DependencyScopeNotConfiguredException(
                 "Discord binding middleware dependencies are not configured.");

@@ -13,10 +13,20 @@ namespace Void.Bot.Core.Middlewares.Preload;
 
 public static class LoadDestiny2PlayerMiddleware
 {
-    public static void UseLoadDestiny2Player<TContext>(this IPipeConfigurator<TContext> configurator, ILogger? logger = null, ICurrentUser? currentUser = null, Destiny2PlayerData? playerData = null, IBungieService? bungieService = null, IAccountDataProvider? accountDataProvider = null, ICacheManager? cacheManager = null, Destiny2Setting? destiny2Setting = null)
+    public static void UseLoadDestiny2Player<TContext>(
+        this IPipeConfigurator<TContext> configurator,
+        ILogger? logger = null,
+        ICurrentUser? currentUser = null,
+        Destiny2PlayerData? playerData = null,
+        IBungieService? bungieService = null,
+        IAccountDataProvider? accountDataProvider = null,
+        ICacheManager? cacheManager = null,
+        Destiny2Setting? destiny2Setting = null)
         where TContext : IContext<IMessage>
     {
-        if (configurator.DependencyScope == null)
+        if ((logger == null || currentUser == null || playerData == null || bungieService == null ||
+             accountDataProvider == null || cacheManager == null || destiny2Setting == null) &&
+            configurator.DependencyScope == null)
         {
             throw new DependencyScopeNotConfiguredException(
                 $"{nameof(playerData)} is not provided and IDependencyScope is not configured, Please ensure {nameof(playerData)} is registered properly if you are using IoC container, otherwise please pass {nameof(playerData)} as parameter");

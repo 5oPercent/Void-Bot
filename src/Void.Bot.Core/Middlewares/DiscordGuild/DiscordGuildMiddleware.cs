@@ -10,18 +10,23 @@ namespace Void.Bot.Core.Middlewares.DiscordGuild;
 public static class DiscordGuildMiddleware
 {
     public static void UseDiscordGuild<TContext>(
-        this IPipeConfigurator<TContext> configurator)
+        this IPipeConfigurator<TContext> configurator,
+        Discord.WebSocket.DiscordSocketClient? client = null,
+        IDiscordGuildContext? guildContext = null,
+        Func<IDiscordService>? discordService = null)
         where TContext : IContext<IMessage>
     {
-        if (configurator.DependencyScope == null)
+        if ((client == null || guildContext == null || discordService == null) &&
+            configurator.DependencyScope == null)
         {
             throw new DependencyScopeNotConfiguredException(
                 "Discord guild middleware dependencies are not configured.");
         }
 
-        var client = configurator.DependencyScope.Resolve<Discord.WebSocket.DiscordSocketClient>();
-        var guildContext = configurator.DependencyScope.Resolve<IDiscordGuildContext>();
-        var discordService = configurator.DependencyScope.Resolve<Func<IDiscordService>>();
+        client ??= configurator.DependencyScope.Resolve<Discord.WebSocket.DiscordSocketClient>();
+        guildContext ??= configurator.DependencyScope.Resolve<IDiscordGuildContext>();
+        discordService ??= configurator.DependencyScope.Resolve<Func<IDiscordService>>();
+
         configurator.AddPipeSpecification(new DiscordGuildSpecification<TContext>(client, guildContext, discordService));
     }
 }

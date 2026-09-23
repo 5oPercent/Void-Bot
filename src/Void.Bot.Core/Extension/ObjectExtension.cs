@@ -33,34 +33,37 @@ public static class ObjectExtension
         return typeName;
     }
     
-    public static string GetGenericTypeName(this object @object)
+    extension(object @object)
     {
-        return @object.GetType().GetGenericTypeName();
-    }
-    
-    public static Dictionary<string, string> ToDictionary(this object source)
-    {
-        var dictionary = new Dictionary<string, string>();
-        var properties = source.GetType().GetProperties();
-
-        foreach (var property in properties)
+        public string GetGenericTypeName()
         {
-            var value = property.GetValue(source);
-            if (value == null) continue;
-            
-            var jsonPropertyAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
-            var key = jsonPropertyAttribute != null ? jsonPropertyAttribute.Name : property.Name;
-            dictionary.Add(key, value.ToString()!);
+            return @object.GetType().GetGenericTypeName();
         }
 
-        return dictionary;
+        public Dictionary<string, string> ToDictionary()
+        {
+            var dictionary = new Dictionary<string, string>();
+            var properties = @object.GetType().GetProperties();
+
+            foreach (var property in properties)
+            {
+                var value = property.GetValue(@object);
+                if (value == null) continue;
+            
+                var jsonPropertyAttribute = property.GetCustomAttribute<JsonPropertyNameAttribute>();
+                var key = jsonPropertyAttribute != null ? jsonPropertyAttribute.Name : property.Name;
+                dictionary.Add(key, value.ToString()!);
+            }
+
+            return dictionary;
+        }
+
+        public T ToEnum<T>()
+        {
+            return (T)Enum.ToObject(typeof(T), @object);
+        }
     }
-    
-    public static T ToEnum<T>(this object value)
-    {
-        return (T)Enum.ToObject(typeof(T), value);
-    }
-    
+
     public static string GetPropertyName<T>(this Expression<Func<T, object>> expression)
     {
         return expression.Body switch

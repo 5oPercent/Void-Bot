@@ -2,15 +2,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace Void.Bot.Core.Settings.System;
 
-public class ScalarSetting : IConfigurationSetting
+public class ScalarSetting(IConfiguration configuration) : IConfigurationSetting
 {
-    public bool Enable { get; }
-
-    public bool ForceHttps { get; }
-
-    public ScalarSetting(IConfiguration configuration)
-    {
-        Enable = configuration.GetValue<bool>("Scalar:Enable");
-        ForceHttps = configuration.GetValue<bool>("Scalar:ForceHttps");
-    }
+    public bool Enable { get; } = configuration.GetValue<bool>("Scalar:Enable");
+    public bool ForceHttps { get; } = configuration.GetValue<bool>("Scalar:ForceHttps");
 }

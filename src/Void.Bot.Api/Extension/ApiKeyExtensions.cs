@@ -7,6 +7,9 @@ public static class ApiKeyExtensions
 {
     public static AuthenticationBuilder AddApiKeyScheme(this AuthenticationBuilder builder)
     {
-        return builder.AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationOptions.AuthenticationScheme, _ => { });
+        builder.AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+            ApiKeyAuthenticationOptions.AuthenticationScheme, _ => { });
+
+        return builder;
     }
 }

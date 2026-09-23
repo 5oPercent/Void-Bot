@@ -5,6 +5,11 @@ namespace Void.Bot.Core.Extension;
 
 public static class SerializationExtension
 {
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public static string SerializeJson(this object source)
     {
         return JsonSerializer.Serialize(source);
@@ -12,10 +17,7 @@ public static class SerializationExtension
     
     public static T DeserializeJson<T>(this string json)
     {
-        return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        })!;
+        return JsonSerializer.Deserialize<T>(json, JsonSerializerOptions)!;
     }
 
     private static readonly ISerializer YamlSerializer = new SerializerBuilder().Build();

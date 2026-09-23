@@ -21,7 +21,7 @@ public class IdentityFixture(IntegrationTestBase testBase) : IntegrationFixture(
                 new RegisterUserAccountCommand
                 {
                     Name = userName,
-                    Password = StringExtension.GenerateRandomPassword()
+                    Password = string.GenerateRandomPassword()
                 }).ConfigureAwait(false);
             
             response.ShouldNotBeNull();
@@ -39,13 +39,13 @@ public class IdentityFixture(IntegrationTestBase testBase) : IntegrationFixture(
                 new RegisterUserAccountCommand
                 {
                     Name = "firstuser",
-                    Password = StringExtension.GenerateRandomPassword()
+                    Password = string.GenerateRandomPassword()
                 }).ConfigureAwait(false);
             var second = await mediator.SendAsync<RegisterUserAccountCommand, RegisterUserAccountResponse>(
                 new RegisterUserAccountCommand
                 {
                     Name = "seconduser",
-                    Password = StringExtension.GenerateRandomPassword()
+                    Password = string.GenerateRandomPassword()
                 }).ConfigureAwait(false);
 
             first.Data.ShouldNotBeNull();

@@ -2,6 +2,7 @@ using System.Net;
 using System.Reflection;
 using Autofac;
 using Autofac.Core;
+using AutoMapper.Internal;
 using AutoMapper.Contrib.Autofac.DependencyInjection;
 using Discord;
 using Discord.Net.Rest;
@@ -30,8 +31,6 @@ using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Bungie;
 using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Discord.Component;
-using Void.Bot.Core.Services.Discord.Component.Routes;
-using Void.Bot.Core.Services.Discord.RolePanel;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.Discord;
@@ -46,6 +45,8 @@ namespace Void.Bot.Core;
 
 public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfiguration configuration, params Assembly[] assemblies) : Module
 {
+    private const int DefaultMaxDepth = 64;
+
     private readonly Assembly[] _assemblies = assemblies.Length == 0
         ? [typeof(VoidBotModule).Assembly]
         : assemblies.Concat([typeof(VoidBotModule).Assembly]).Distinct().ToArray();
@@ -145,7 +146,16 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
     // 注册 AutoMapper，用于对象映射
     private void RegisterAutoMapper(ContainerBuilder builder)
     {
-        builder.RegisterAutoMapper(false, _assemblies);
+        builder.RegisterAutoMapper(
+            cfg => cfg.Internal().ForAllMaps((typeMap, mapping) =>
+            {
+                if (typeMap.MaxDepth == 0)
+                {
+                    mapping.MaxDepth(DefaultMaxDepth);
+                }
+            }),
+            false,
+            _assemblies);
     }
     
     // 注册依赖注入
