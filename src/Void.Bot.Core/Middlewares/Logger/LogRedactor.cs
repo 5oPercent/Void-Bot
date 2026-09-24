@@ -124,12 +124,18 @@ internal static class LogRedactor
             return true;
         }
 
+        var normalized = Normalize(name);
+        if (normalized == "code" &&
+            ownerType.Name.Contains("TwoFactor", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         if (!IsOAuthContainer(ownerType))
         {
             return false;
         }
 
-        var normalized = Normalize(name);
         return normalized is "state" or "errordescription" or "authorizationurl" or "redirecturl" ||
                normalized == "code" && !typeof(VoidBotResponse).IsAssignableFrom(ownerType);
     }
@@ -138,7 +144,8 @@ internal static class LogRedactor
     {
         var normalized = Normalize(name);
         return normalized.Contains("password", StringComparison.Ordinal) ||
-               normalized is "accountsecret" or "jwt" ||
+               normalized.Contains("recoverycode", StringComparison.Ordinal) ||
+               normalized is "accountsecret" or "jwt" or "twofactorcode" ||
                normalized.EndsWith("token", StringComparison.Ordinal) ||
                normalized.Contains("secret", StringComparison.Ordinal);
     }

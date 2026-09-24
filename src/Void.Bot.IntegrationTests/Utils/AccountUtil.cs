@@ -6,7 +6,9 @@ namespace Void.Bot.IntegrationTest.Utils;
 
 public class AccountUtil(IntegrationTestBase testBase) : IntegrationUtilBase(testBase)
 {
-    public async Task<Guid> AddUserAccountAsync(string name = "", string suffix = "")
+    public async Task<Guid> AddUserAccountAsync(
+        string name = "", string suffix = "", string? email = null,
+        DateTimeOffset? emailVerifiedAt = null, DateTimeOffset? twoFactorEnabledAt = null)
     {
         if (name.IsNullOrEmpty())
             name = "".GenerateRandomString();
@@ -23,7 +25,10 @@ public class AccountUtil(IntegrationTestBase testBase) : IntegrationUtilBase(tes
                 Id = id,
                 Name = name,
                 Suffix = suffix,
-                Password = "pwd"
+                Password = "pwd",
+                Email = email,
+                EmailVerifiedAt = emailVerifiedAt,
+                TwoFactorEnabledAt = twoFactorEnabledAt
             }).ConfigureAwait(false);
         });
 

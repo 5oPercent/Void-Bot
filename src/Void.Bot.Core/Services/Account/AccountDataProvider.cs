@@ -57,6 +57,17 @@ public interface IAccountDataProvider : IScope
         Guid userId, string provider, CancellationToken cancellationToken);
 
     Task UpdateUserAccountAsync(UserAccountDto userAccountDto, CancellationToken cancellationToken);
+
+    Task ReplaceTwoFactorRecoveryCodesAsync(
+        Guid userId, IReadOnlyCollection<string> codeHashes, DateTimeOffset createdAt,
+        CancellationToken cancellationToken);
+
+    Task<bool> TryConsumeTwoFactorRecoveryCodeAsync(
+        Guid userId, string codeHash, CancellationToken cancellationToken);
+
+    Task<int> GetTwoFactorRecoveryCodeCountAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task DeleteTwoFactorRecoveryCodesAsync(Guid userId, CancellationToken cancellationToken);
 }
 
 public class AccountDataProvider : IAccountDataProvider
@@ -66,19 +77,22 @@ public class AccountDataProvider : IAccountDataProvider
     private readonly IRepository<UserAccount> _userAccountRep;
     private readonly IRepository<UserThirdParty> _userThirdPartyRep;
     private readonly IRepository<UserRole> _userRoleRep;
+    private readonly IRepository<UserAccountTwoFactorRecoveryCode> _twoFactorRecoveryCodeRep;
 
     public AccountDataProvider(
         IMapper mapper,
         VoidBotDbContext dbContext,
         IRepository<UserAccount> userAccountRep,
         IRepository<UserThirdParty> userThirdPartyRep,
-        IRepository<UserRole> userRoleRep)
+        IRepository<UserRole> userRoleRep,
+        IRepository<UserAccountTwoFactorRecoveryCode> twoFactorRecoveryCodeRep)
     {
         _mapper = mapper;
         _dbContext = dbContext;
         _userAccountRep = userAccountRep;
         _userThirdPartyRep = userThirdPartyRep;
         _userRoleRep = userRoleRep;
+        _twoFactorRecoveryCodeRep = twoFactorRecoveryCodeRep;
     }
     
     public async Task<UserAccountDto?> GetUserAccountAsync(
@@ -351,5 +365,43 @@ public class AccountDataProvider : IAccountDataProvider
         var item = _mapper.Map<UserAccount>(userAccountDto);
 
         await _userAccountRep.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ReplaceTwoFactorRecoveryCodesAsync(
+        Guid userId, IReadOnlyCollection<string> codeHashes, DateTimeOffset createdAt,
+        CancellationToken cancellationToken)
+    {
+        await _twoFactorRecoveryCodeRep.Query(x => x.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+
+        await _twoFactorRecoveryCodeRep.InsertManyAsync(
+            codeHashes.Select(codeHash => new UserAccountTwoFactorRecoveryCode
+            {
+                UserId = userId,
+                CodeHash = codeHash,
+                CreatedAt = createdAt
+            }), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> TryConsumeTwoFactorRecoveryCodeAsync(
+        Guid userId, string codeHash, CancellationToken cancellationToken)
+    {
+        return await _twoFactorRecoveryCodeRep.Query(
+                x => x.UserId == userId && x.CodeHash == codeHash)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false) == 1;
+    }
+
+    public Task<int> GetTwoFactorRecoveryCodeCountAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        return _twoFactorRecoveryCodeRep.CountAsync(
+            x => x.UserId == userId, cancellationToken);
+    }
+
+    public async Task DeleteTwoFactorRecoveryCodesAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        await _twoFactorRecoveryCodeRep.Query(x => x.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
     }
 }

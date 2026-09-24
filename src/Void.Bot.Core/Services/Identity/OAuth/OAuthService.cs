@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Services.Account;
@@ -8,6 +9,7 @@ using Void.Bot.Message.Dto;
 using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Enum.Account;
 using Void.Bot.Message.Enum.Identity;
 using Void.Bot.Message.Request.Account;
 
@@ -48,6 +50,7 @@ public sealed class OAuthService : IOAuthService
     private readonly IOAuthExchangeStore _exchangeStore;
     private readonly IOAuthRegistrationStore _registrationStore;
     private readonly IAccountService _accountService;
+    private readonly IAccountTwoFactorService _accountTwoFactorService;
     private readonly IAccountDataProvider _accountDataProvider;
     private readonly ITokenClaimService _tokenClaimService;
     private readonly OAuthSetting _oauthSetting;
@@ -58,6 +61,7 @@ public sealed class OAuthService : IOAuthService
         IOAuthExchangeStore exchangeStore,
         IOAuthRegistrationStore registrationStore,
         IAccountService accountService,
+        IAccountTwoFactorService accountTwoFactorService,
         IAccountDataProvider accountDataProvider,
         ITokenClaimService tokenClaimService,
         OAuthSetting oauthSetting)
@@ -67,6 +71,7 @@ public sealed class OAuthService : IOAuthService
         _exchangeStore = exchangeStore;
         _registrationStore = registrationStore;
         _accountService = accountService;
+        _accountTwoFactorService = accountTwoFactorService;
         _accountDataProvider = accountDataProvider;
         _tokenClaimService = tokenClaimService;
         _oauthSetting = oauthSetting;
@@ -230,6 +235,21 @@ public sealed class OAuthService : IOAuthService
             return Error<OAuthBindResponse>(OAuthError.InvalidCredentials);
         }
 
+        var twoFactorResult = await _accountTwoFactorService.VerifyLoginAsync(
+            account.Id, command.TwoFactorCode, cancellationToken).ConfigureAwait(false);
+        if (twoFactorResult is TwoFactorLoginVerificationResult.CodeRequired or
+            TwoFactorLoginVerificationResult.InvalidCode)
+        {
+            return new OAuthBindResponse
+            {
+                Code = HttpStatusCode.Unauthorized,
+                Message = twoFactorResult == TwoFactorLoginVerificationResult.CodeRequired
+                    ? "two_factor_code_required"
+                    : "invalid_two_factor_code",
+                RequiresTwoFactor = true
+            };
+        }
+
         var takeResult = await _registrationStore.TakeAsync(command.Code, cancellationToken).ConfigureAwait(false);
         if (takeResult is not TakeOAuthRegistrationResult.Found found)
         {
@@ -265,7 +285,11 @@ public sealed class OAuthService : IOAuthService
                 cancellationToken).ConfigureAwait(false);
             return new OAuthBindResponse
             {
-                Data = GenerateJwt(account.Id, account.DisplayName, account.TokenVersion)
+                Data = GenerateJwt(
+                    account.Id,
+                    account.DisplayName,
+                    account.TokenVersion,
+                    twoFactorResult == TwoFactorLoginVerificationResult.Valid)
             };
         }
         catch
@@ -309,7 +333,11 @@ public sealed class OAuthService : IOAuthService
         return response;
     }
 
-    private JwtToken GenerateJwt(Guid accountId, string displayName, int tokenVersion)
+    private JwtToken GenerateJwt(
+        Guid accountId,
+        string displayName,
+        int tokenVersion,
+        bool isTwoFactorAuthenticated = false)
     {
         var claims = new List<Claim>
         {
@@ -317,6 +345,12 @@ public sealed class OAuthService : IOAuthService
             new(ClaimTypes.NameIdentifier, accountId.ToString()),
             new("token_version", tokenVersion.ToString())
         };
+        if (isTwoFactorAuthenticated)
+        {
+            claims.Add(new Claim(
+                TokenClaimService.TwoFactorAuthenticationClaim,
+                TokenClaimService.TwoFactorAuthenticationValue));
+        }
         return new JwtToken
         {
             AccessToken = _tokenClaimService.GenerateAccessToken(claims),

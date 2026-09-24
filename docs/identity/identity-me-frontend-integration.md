@@ -39,6 +39,7 @@ Authorization: Bearer {accessToken}
     "name": "VoidName",
     "suffix": "0001",
     "displayName": "VoidName#0001",
+    "isTwoFactorEnabled": true,
     "createdAt": "2026-08-22T10:00:00+08:00",
     "updatedAt": "2026-08-22T10:00:00+08:00",
     "thirdParties": [
@@ -67,6 +68,7 @@ Authorization: Bearer {accessToken}
 | `data.name` | string | Void 主账号名称 |
 | `data.suffix` | string | Void 主账号四位后缀 |
 | `data.displayName` | string | 用于展示的完整名称，格式为 `name#suffix` |
+| `data.isTwoFactorEnabled` | boolean | 当前 Void 账号是否已启用 TOTP 双因素认证 |
 | `data.createdAt` | string | Void 主账号创建时间 |
 | `data.updatedAt` | string/null | Void 主账号最后更新时间 |
 | `data.thirdParties` | array | 当前账号的第三方绑定列表；没有绑定时为空数组 |
@@ -85,6 +87,7 @@ export interface CurrentAccount {
   name: string;
   suffix: string;
   displayName: string;
+  isTwoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string | null;
   thirdParties: ThirdPartyBinding[];
@@ -155,6 +158,7 @@ export async function getCurrentAccount(
   → POST /api/OAuth/exchange
   → 保存返回的 Void accessToken 和 refreshToken
   → GET /api/Identity/me
+  → 若 isTwoFactorEnabled=true，调用 POST /api/Identity/two-factor/verify 并替换 Token
   → 保存并展示 Void 主账号和第三方绑定状态
   → 进入已登录页面
 ```
@@ -177,7 +181,7 @@ export async function getCurrentAccount(
 ### 密码登录成功
 
 ```text
-GET /api/Identity/login
+POST /api/Identity/login
   → 保存 Void Token
   → GET /api/Identity/me
   → 初始化当前账号状态

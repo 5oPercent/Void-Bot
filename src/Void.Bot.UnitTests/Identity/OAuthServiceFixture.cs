@@ -11,6 +11,7 @@ using Void.Bot.Message.Commands.Identity;
 using Void.Bot.Message.Dto.Account;
 using Void.Bot.Message.Dto.Identity;
 using Void.Bot.Message.Enum;
+using Void.Bot.Message.Enum.Account;
 using Void.Bot.Message.Enum.Identity;
 using Void.Bot.Message.Request.Account;
 
@@ -24,6 +25,7 @@ public class OAuthServiceFixture
     private readonly IOAuthExchangeStore _exchangeStore = Substitute.For<IOAuthExchangeStore>();
     private readonly IOAuthRegistrationStore _registrationStore = Substitute.For<IOAuthRegistrationStore>();
     private readonly IAccountService _accountService = Substitute.For<IAccountService>();
+    private readonly IAccountTwoFactorService _accountTwoFactorService = Substitute.For<IAccountTwoFactorService>();
     private readonly IAccountDataProvider _accountDataProvider = Substitute.For<IAccountDataProvider>();
     private readonly ITokenClaimService _tokenClaimService = Substitute.For<ITokenClaimService>();
     private readonly OAuthService _service;
@@ -31,6 +33,9 @@ public class OAuthServiceFixture
     public OAuthServiceFixture()
     {
         _provider.Platform.Returns(AppPlatformEnum.Discord);
+        _accountTwoFactorService.VerifyLoginAsync(
+                Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(TwoFactorLoginVerificationResult.Disabled);
         var setting = new OAuthSetting(new ConfigurationBuilder().Build())
         {
             ExchangeTtlSeconds = OAuthSetting.DefaultExchangeTtlSeconds,
@@ -42,6 +47,7 @@ public class OAuthServiceFixture
             _exchangeStore,
             _registrationStore,
             _accountService,
+            _accountTwoFactorService,
             _accountDataProvider,
             _tokenClaimService,
             setting);
@@ -259,6 +265,46 @@ public class OAuthServiceFixture
                 binding.Provider == nameof(AppPlatformEnum.Discord) &&
                 binding.ThirdPartyUserId == "provider-user"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BindRequiresTwoFactorBeforeConsumingRegistrationCodeAsync()
+    {
+        var accountId = Guid.NewGuid();
+        _registrationStore.GetAsync(RegistrationCode, Arg.Any<CancellationToken>())
+            .Returns(new GetOAuthRegistrationResult.Found(CreateRegistrationRecord()));
+        _accountService.GetUserAccountAsync(
+                Arg.Any<GetUserAccountRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new GetUserAccountResponse
+            {
+                Data = new UserAccountInfoDto
+                {
+                    Id = accountId,
+                    Name = "VoidUser",
+                    Suffix = "0001"
+                }
+            });
+        _accountService.VerifyPassword(accountId, "Password123", Arg.Any<CancellationToken>())
+            .Returns(true);
+        _accountTwoFactorService.VerifyLoginAsync(
+                accountId, null, Arg.Any<CancellationToken>())
+            .Returns(TwoFactorLoginVerificationResult.CodeRequired);
+
+        var response = await _service.BindAsync(
+            new OAuthBindCommand
+            {
+                Code = RegistrationCode,
+                Name = "VoidUser",
+                Suffix = "0001",
+                Password = "Password123"
+            },
+            CancellationToken.None);
+
+        response.RequiresTwoFactor.ShouldBeTrue();
+        response.Message.ShouldBe("two_factor_code_required");
+        await _registrationStore.DidNotReceive().TakeAsync(
+            Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -9,5 +9,7 @@ public class IntegrationTestUser  : ICurrentUser
     
     public string UserName => "IntegrationTestUser";
 
+    public bool IsTwoFactorAuthenticated => false;
+
     public LanguageEnum Language => LanguageEnum.Default;
 }

@@ -111,7 +111,7 @@ public partial class AccountService : IAccountService
 
         return new GetUserAccountPageResponse
         {
-            Data = _mapper.Map<PagedListDto<UserAccountInfoDto>>(list)
+            Data = _mapper.Map<PagedListDto<UserAccountSecurityInfoDto>>(list)
         };
     }
 
