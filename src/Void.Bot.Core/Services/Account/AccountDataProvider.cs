@@ -366,7 +366,6 @@ public class AccountDataProvider : IAccountDataProvider
 
         await _userAccountRep.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
     }
-
     public async Task ReplaceTwoFactorRecoveryCodesAsync(
         Guid userId, IReadOnlyCollection<string> codeHashes, DateTimeOffset createdAt,
         CancellationToken cancellationToken)

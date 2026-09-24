@@ -225,7 +225,7 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                 new RegisterUserAccountCommand
                 {
                     Name = "EventActionUser",
-                    Password = StringExtension.GenerateRandomPassword()
+                    Password = string.GenerateRandomPassword()
                 }).ConfigureAwait(false);
 
             response.Data.ShouldNotBeNull();
@@ -241,7 +241,7 @@ public class AccountRegisteredEventActionScenario(IntegrationTestBase testBase) 
                 new RegisterUserAccountCommand
                 {
                     Name = "ManagedEventUser",
-                    Password = StringExtension.GenerateRandomPassword()
+                    Password = string.GenerateRandomPassword()
                 }).ConfigureAwait(false);
 
             response.Data.ShouldNotBeNull();

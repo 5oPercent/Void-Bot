@@ -3,19 +3,10 @@ using Void.Bot.Message.Enum;
 
 namespace Void.Bot.Core.Settings.System
 {
-    public class CacheSetting : IConfigurationSetting
+    public class CacheSetting(IConfiguration configuration) : IConfigurationSetting
     {
-        public CacheTypeEnum UseStorage {  get; }
-        
-        public string RedisConnection { get; }
-        
-        public int RedisDatabaseIndex { get; }
-
-        public CacheSetting(IConfiguration configuration)
-        {
-            UseStorage = configuration.GetValue<CacheTypeEnum>("Cache:UseStorage");
-            RedisConnection = configuration["ConnectionStrings:Redis"] ?? string.Empty;
-            RedisDatabaseIndex = configuration.GetValue<int?>("Cache:RedisDatabaseIndex") ?? 0;
-        }
+        public CacheTypeEnum UseStorage {  get; } = configuration.GetValue<CacheTypeEnum>("Cache:UseStorage");
+        public string RedisConnection { get; } = configuration["ConnectionStrings:Redis"] ?? string.Empty;
+        public int RedisDatabaseIndex { get; } = configuration.GetValue<int?>("Cache:RedisDatabaseIndex") ?? 0;
     }
 }

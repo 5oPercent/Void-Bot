@@ -2,12 +2,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Void.Bot.Core.Settings.System;
 
-public sealed class SecretProtectionSetting : IConfigurationSetting
+public sealed class SecretProtectionSetting(IConfiguration configuration) : IConfigurationSetting
 {
-    public string EncryptionKey { get; }
-
-    public SecretProtectionSetting(IConfiguration configuration)
-    {
-        EncryptionKey = configuration["SecretProtection:EncryptionKey"] ?? string.Empty;
-    }
+    public string EncryptionKey { get; } = configuration["SecretProtection:EncryptionKey"] ?? string.Empty;
 }
