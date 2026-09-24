@@ -23,6 +23,7 @@ using Void.Bot.Core.Middlewares.DiscordBinding;
 using Void.Bot.Core.Middlewares.DiscordGuild;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
 using Void.Bot.Core.Middlewares.Preload;
+using Void.Bot.Core.Middlewares.TwoFactorAuthentication;
 using Void.Bot.Core.Middlewares.UnifyResponse;
 using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Resources.i18n;
@@ -132,6 +133,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             p.UseLogger();              // 统一日志记录
             p.UseUnifyResponse();       // 统一响应
             p.UseMessageValidator();    // 消息验证
+            p.UseTwoFactorAuthentication(); // 双因素认证检查
             p.UseDiscordBinding();      // Discord 绑定检查
             p.UseDiscordGuild();        // Discord 公会可用性检查
             p.UseLoadDestiny2Player();  // 预加载Bungie Player Data

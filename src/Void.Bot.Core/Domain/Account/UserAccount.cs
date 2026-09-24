@@ -37,6 +37,16 @@ public class UserAccount : IEntity<Guid>, IEntityCreated, IEntityModified
 
     [Column("token_version")]
     public int TokenVersion { get; set; }
+
+    [Column("two_factor_secret")]
+    [StringLength(255)]
+    public string? TwoFactorSecret { get; set; }
+
+    [Column("two_factor_setup_at")]
+    public DateTimeOffset? TwoFactorSetupAt { get; set; }
+
+    [Column("two_factor_enabled_at")]
+    public DateTimeOffset? TwoFactorEnabledAt { get; set; }
     
     [Column("created_at")]
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;

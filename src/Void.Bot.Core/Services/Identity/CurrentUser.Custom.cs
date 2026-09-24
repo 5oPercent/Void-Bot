@@ -8,6 +8,8 @@ public class CustomCurrentUser : ICurrentUser
 
     public string UserName { get; } = string.Empty;
 
+    public bool IsTwoFactorAuthenticated { get; }
+
     public LanguageEnum Language { get; } = LanguageEnum.Default;
 
     public CustomCurrentUser()
@@ -17,10 +19,12 @@ public class CustomCurrentUser : ICurrentUser
     public CustomCurrentUser(
         Guid? id,
         string userName,
-        LanguageEnum language = LanguageEnum.Default)
+        LanguageEnum language = LanguageEnum.Default,
+        bool isTwoFactorAuthenticated = false)
     {
         Id = id;
         UserName = userName;
         Language = language;
+        IsTwoFactorAuthenticated = isTwoFactorAuthenticated;
     }
 }

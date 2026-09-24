@@ -147,7 +147,9 @@ window.location.assign(response.data.redirectUrl);
   → 后端暂存 JWT 并生成一次性 exchangeCode
   → 后端 302 跳转前端 OAuth 结果页
   → 前端使用 exchangeCode 调用 exchange
-  → 前端取得 Void JWT 并进入登录状态
+  → 前端取得 Void JWT 并调用 GET /api/Identity/me
+  → 若 isTwoFactorEnabled=true，调用 POST /api/Identity/two-factor/verify
+  → 前端替换为带 2FA 已认证声明的新 JWT 并进入登录状态
 ```
 
 登录成功回跳示例：
@@ -214,6 +216,8 @@ window.history.replaceState({}, "", "/oauth/callback");
 ```
 
 不要对 exchange 请求自动重试。网络状态不明确时，重复消费可能返回 `invalid_exchange_code`，此时应提示用户重新发起登录。
+
+如果随后调用 `/api/Identity/me` 得到 `isTwoFactorEnabled=true`，前端必须使用当前 OAuth access token 和身份验证器动态码调用 `POST /api/Identity/two-factor/verify`，并整体替换响应中的 access token 和 refresh token。否则当前 JWT 可以访问普通接口，但不能访问带有 `IRequireTwoFactorAuthentication` 标识的敏感接口。
 
 ### 查询当前 Void 账号
 

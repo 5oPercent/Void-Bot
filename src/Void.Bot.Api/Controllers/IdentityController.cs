@@ -1,6 +1,7 @@
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Void.Bot.Api.Authentication;
 using Void.Bot.Api.Filters;
 using Void.Bot.Api.OpenApi;
 using Void.Bot.Core.Services.Identity;
@@ -168,13 +169,17 @@ public class IdentityController : ControllerBase
     }
 
     [AllowAnonymous]
-    [HttpGet]
+    [HttpPost]
     [Route("login")]
     [ProducesResponseType(typeof(AuthenticateResponse), 200)]
     [DescriptionLocalization("Login")]
-    public async Task<IActionResult> LoginAsync([FromQuery]AuthenticateRequest command)
+    public async Task<IActionResult> LoginAsync(
+        [FromBody]AuthenticateRequest command,
+        CancellationToken cancellationToken)
     {
-        var response = await _mediator.RequestAsync<AuthenticateRequest, AuthenticateResponse>(command).ConfigureAwait(false);
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.RequestAsync<AuthenticateRequest, AuthenticateResponse>(
+            command, cancellationToken).ConfigureAwait(false);
 
         return Ok(response);
     }
@@ -217,6 +222,94 @@ public class IdentityController : ControllerBase
             .SendAsync<ChangeUserAccountPasswordCommand, ChangeUserAccountPasswordResponse>(command)
             .ConfigureAwait(false);
 
+        return Ok(response);
+    }
+
+    [HttpGet]
+    [Route("two-factor/status")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(GetTwoFactorStatusResponse), 200)]
+    [DescriptionLocalization("GetTwoFactorStatus")]
+    public async Task<IActionResult> GetTwoFactorStatusAsync(CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetTwoFactorStatusRequest, GetTwoFactorStatusResponse>(
+            new GetTwoFactorStatusRequest(), cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/setup")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(BeginTwoFactorSetupResponse), 200)]
+    [DescriptionLocalization("BeginTwoFactorSetup")]
+    public async Task<IActionResult> BeginTwoFactorSetupAsync(
+        [FromBody] BeginTwoFactorSetupCommand command,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.SendAsync<BeginTwoFactorSetupCommand, BeginTwoFactorSetupResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/enable")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(EnableTwoFactorResponse), 200)]
+    [DescriptionLocalization("EnableTwoFactor")]
+    public async Task<IActionResult> EnableTwoFactorAsync(
+        [FromBody] EnableTwoFactorCommand command,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.SendAsync<EnableTwoFactorCommand, EnableTwoFactorResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/verify")]
+    [Authorize(AuthenticationSchemes = CustomizeJwtAuthenticationOptions.AuthenticationScheme)]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(VerifyTwoFactorResponse), 200)]
+    [DescriptionLocalization("VerifyTwoFactor")]
+    public async Task<IActionResult> VerifyTwoFactorAsync(
+        [FromBody] VerifyTwoFactorCommand command,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.SendAsync<VerifyTwoFactorCommand, VerifyTwoFactorResponse>(
+            command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/recovery-codes/regenerate")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(RegenerateTwoFactorRecoveryCodesResponse), 200)]
+    [DescriptionLocalization("RegenerateTwoFactorRecoveryCodes")]
+    public async Task<IActionResult> RegenerateTwoFactorRecoveryCodesAsync(
+        [FromBody] RegenerateTwoFactorRecoveryCodesCommand command,
+        CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        var response = await _mediator.SendAsync<
+            RegenerateTwoFactorRecoveryCodesCommand,
+            RegenerateTwoFactorRecoveryCodesResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost]
+    [Route("two-factor/disable")]
+    [SkipPermissionCheck]
+    [ProducesResponseType(typeof(DisableTwoFactorResponse), 200)]
+    [DescriptionLocalization("DisableTwoFactor")]
+    public async Task<IActionResult> DisableTwoFactorAsync(
+        [FromBody] DisableTwoFactorCommand command,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<DisableTwoFactorCommand, DisableTwoFactorResponse>(
+            command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 

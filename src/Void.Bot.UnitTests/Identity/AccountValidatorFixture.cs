@@ -94,6 +94,48 @@ public class AccountValidatorFixture
     }
 
     [Fact]
+    public void TwoFactorCommandsValidateTotpAndRecoveryCodes()
+    {
+        new BeginTwoFactorSetupCommandValidator().Validate(new BeginTwoFactorSetupCommand
+        {
+            Password = "Password1"
+        }).IsValid.ShouldBeTrue();
+
+        new EnableTwoFactorCommandValidator().Validate(new EnableTwoFactorCommand
+        {
+            Code = "123456"
+        }).IsValid.ShouldBeTrue();
+
+        new DisableTwoFactorCommandValidator().Validate(new DisableTwoFactorCommand
+        {
+            Password = "Password1",
+            Code = "ABCD-EFGH-JK23"
+        }).IsValid.ShouldBeTrue();
+
+        new EnableTwoFactorCommandValidator().Validate(new EnableTwoFactorCommand
+        {
+            Code = "12345a"
+        }).IsValid.ShouldBeFalse();
+
+        new VerifyTwoFactorCommandValidator().Validate(new VerifyTwoFactorCommand
+        {
+            Code = "123456"
+        }).IsValid.ShouldBeTrue();
+
+        new VerifyTwoFactorCommandValidator().Validate(new VerifyTwoFactorCommand
+        {
+            Code = "ABCD-EFGH-JK23"
+        }).IsValid.ShouldBeTrue();
+
+        new RegenerateTwoFactorRecoveryCodesCommandValidator().Validate(
+            new RegenerateTwoFactorRecoveryCodesCommand
+            {
+                Password = "Password1",
+                Code = "ABCD-EFGH-JK23"
+            }).IsValid.ShouldBeTrue();
+    }
+
+    [Fact]
     public void ForceResetPasswordShouldRequireUserAndValidMatchingPassword()
     {
         var validator = new ForceResetUserAccountPasswordCommandValidator();
