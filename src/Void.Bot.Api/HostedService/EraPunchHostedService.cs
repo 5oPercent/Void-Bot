@@ -69,6 +69,16 @@ public class EraPunchHostedService : BackgroundService
         var packets = 0;
         var sources = new Dictionary<IPAddress, int>();
         var redisWarning = Stopwatch.StartNew();
+        var packetWarning = Stopwatch.StartNew();
+        void LogPacketRejected(string reason, IPEndPoint endpoint)
+        {
+            if (packetWarning.Elapsed.TotalSeconds < 5)
+            {
+                return;
+            }
+            packetWarning.Restart();
+            _logger.Warning("ERA UDP packet rejected: reason {Reason}, endpoint {Endpoint}", reason, endpoint);
+        }
         while (!cancellationToken.IsCancellationRequested)
         {
             var datagram = await _udp!.ReceiveAsync(cancellationToken).ConfigureAwait(false);
@@ -83,6 +93,7 @@ public class EraPunchHostedService : BackgroundService
             if (packets > _setting.PacketsPerSecond || datagram.Buffer.Length > EraNetworkingConstants.MaxDatagramBytes ||
                 datagram.Buffer.Length <= Prefix.Length || !datagram.Buffer.AsSpan(0, Prefix.Length).SequenceEqual(Prefix))
             {
+                LogPacketRejected("rate_limit_size_or_protocol_prefix", datagram.RemoteEndPoint);
                 continue;
             }
 
@@ -108,6 +119,7 @@ public class EraPunchHostedService : BackgroundService
                     !data.TryGetProperty("attemptId", out var attempt) || !attempt.TryGetGuid(out var attemptId) ||
                     !data.TryGetProperty("token", out var credential) || credential.ValueKind != JsonValueKind.String)
                 {
+                    LogPacketRejected("invalid_registration_fields", datagram.RemoteEndPoint);
                     continue;
                 }
 
@@ -127,10 +139,12 @@ public class EraPunchHostedService : BackgroundService
             }
             catch (JsonException)
             {
+                LogPacketRejected("invalid_json", datagram.RemoteEndPoint);
                 // 公网无效数据丢弃，不记录原始报文或凭证。
             }
             catch (InvalidOperationException)
             {
+                LogPacketRejected("invalid_field_type", datagram.RemoteEndPoint);
                 // JSON 字段类型不匹配，按无效登记处理。
             }
         }

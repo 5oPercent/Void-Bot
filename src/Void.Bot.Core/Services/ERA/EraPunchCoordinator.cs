@@ -1,6 +1,8 @@
 using System.Net;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
+using Serilog;
 using Void.Bot.Core.Settings.ERA;
 
 namespace Void.Bot.Core.Services.ERA;
@@ -15,11 +17,14 @@ public class EraPunchCoordinator : IEraPunchCoordinator
 {
     private readonly IEraTeamDataProvider _dataProvider;
     private readonly EraNetworkingSetting _setting;
+    private readonly ILogger _logger;
+    private readonly Stopwatch _rejectionWindow = Stopwatch.StartNew();
 
-    public EraPunchCoordinator(IEraTeamDataProvider dataProvider, EraNetworkingSetting setting)
+    public EraPunchCoordinator(IEraTeamDataProvider dataProvider, EraNetworkingSetting setting, Serilog.ILogger logger)
     {
         _dataProvider = dataProvider;
         _setting = setting;
+        _logger = logger;
     }
 
     public async Task RemoveExpiredAsync(CancellationToken cancellationToken)
@@ -68,18 +73,24 @@ public class EraPunchCoordinator : IEraPunchCoordinator
     {
         if (!_setting.Enabled || token.Length != 44)
         {
+            LogRejected(teamId, memberId, endpoint, "networking_disabled_or_invalid_token_length");
             return;
         }
 
         var tokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        var rejection = string.Empty;
+        var endpointChanged = false;
         try
         {
-            await _dataProvider.ChangeAsync(teamId, team =>
+            var registered = await _dataProvider.ChangeAsync(teamId, team =>
             {
                 var now = DateTimeOffset.UtcNow;
+                rejection = string.Empty;
+                endpointChanged = false;
                 if (team == null || team.ExpiresAt <= now ||
                     !team.Members.Any(item => item.ExpiresAt > now))
                 {
+                    rejection = "team_missing_or_expired";
                     return new EraTeamChange<bool>
                     {
                         Result = false
@@ -87,15 +98,39 @@ public class EraPunchCoordinator : IEraPunchCoordinator
                 }
 
                 var member = team.Members.SingleOrDefault(item => item.MemberId == memberId);
-                if (member == null || member.ExpiresAt <= now || member.TicketAuthorityEpoch != team.AuthorityEpoch || member.AttemptId != attemptId ||
-                    member.TicketExpiresAt <= now || member.TokenHash.Length != tokenHash.Length ||
-                    !CryptographicOperations.FixedTimeEquals(member.TokenHash, tokenHash))
+                if (member == null)
+                {
+                    rejection = "member_not_found";
+                }
+                else if (member.ExpiresAt <= now)
+                {
+                    rejection = "member_expired";
+                }
+                else if (member.TicketAuthorityEpoch != team.AuthorityEpoch)
+                {
+                    rejection = "authority_epoch_changed";
+                }
+                else if (member.AttemptId != attemptId)
+                {
+                    rejection = "attempt_changed";
+                }
+                else if (member.TicketExpiresAt <= now)
+                {
+                    rejection = "ticket_expired";
+                }
+                else if (member.TokenHash.Length != tokenHash.Length ||
+                         !CryptographicOperations.FixedTimeEquals(member.TokenHash, tokenHash))
+                {
+                    rejection = "token_mismatch";
+                }
+                if (!string.IsNullOrEmpty(rejection))
                 {
                     return new EraTeamChange<bool>
                     {
                         Result = false
                     };
                 }
+                endpointChanged = member!.Address != endpoint.Address.ToString() || member.Port != endpoint.Port;
 
                 member.Address = endpoint.Address.ToString();
                 member.Port = endpoint.Port;
@@ -113,10 +148,30 @@ public class EraPunchCoordinator : IEraPunchCoordinator
                     Result = true
                 };
             }, cancellationToken).ConfigureAwait(false);
+            if (!registered)
+            {
+                LogRejected(teamId, memberId, endpoint, rejection);
+            }
+            else if (endpointChanged)
+            {
+                _logger.Information("ERA UDP registration accepted: team {TeamId}, member {MemberId}, endpoint {Endpoint}", teamId, memberId, endpoint);
+            }
         }
-        catch (EraTeamWriteException)
+        catch (EraTeamWriteException exception)
         {
+            LogRejected(teamId, memberId, endpoint, "redis_commit_" + exception.Status);
             // 并发冲突或成员失效时丢弃本次登记，下次客户端登记重新校验，不能回写旧凭证。
         }
     }
+
+    private void LogRejected(Guid teamId, Guid memberId, IPEndPoint endpoint, string reason)
+    {
+        if (_rejectionWindow.Elapsed.TotalSeconds < 5)
+        {
+            return;
+        }
+        _rejectionWindow.Restart();
+        _logger.Warning("ERA UDP registration rejected: reason {Reason}, team {TeamId}, member {MemberId}, endpoint {Endpoint}", reason, teamId, memberId, endpoint);
+    }
+
 }
