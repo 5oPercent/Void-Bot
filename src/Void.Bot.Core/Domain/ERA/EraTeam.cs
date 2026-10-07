@@ -12,11 +12,11 @@ public class EraTeam
     public long AuthorityEpoch { get; set; } = 1;
     public bool IsMigrating { get; set; }
     public DateTimeOffset MigrationDeadline { get; set; }
-    public List<Guid> FailedHostMembers { get; set; } = new List<Guid>();
+    public List<Guid> FailedHostMembers { get; set; } = [];
     public Guid CreationRequestId { get; set; }
     public int MaxMembers { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
-    public List<EraTeamMember> Members { get; set; } = new List<EraTeamMember>();
+    public List<EraTeamMember> Members { get; set; } = [];
 }
 
 public class EraTeamMember
@@ -31,9 +31,13 @@ public class EraTeamMember
     public long TicketAuthorityEpoch { get; set; }
     public Guid AttemptId { get; set; }
     // 只保存随机凭证的 SHA256，不保留或记录明文。
-    public byte[] TokenHash { get; set; } = Array.Empty<byte>();
+    public byte[] TokenHash { get; set; } = [];
     public DateTimeOffset TicketExpiresAt { get; set; }
     public string? Address { get; set; }
     public int Port { get; set; }
+    /// <summary>实际游戏 UDP Socket 的局域网 IPv4 候选地址，不包含公网地址。</summary>
+    public List<string> LocalAddresses { get; set; } = [];
+    public int LocalPort { get; set; }
+
     public DateTimeOffset EndpointExpiresAt { get; set; }
 }
