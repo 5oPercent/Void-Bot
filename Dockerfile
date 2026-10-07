@@ -32,6 +32,7 @@ COPY entrypoint.sh ./
 RUN chmod +x ./entrypoint.sh
 
 ENV ASPNETCORE_URLS="http://*:3399"
-EXPOSE 3399
+EXPOSE 3399/tcp
+EXPOSE 3398/udp
 
 ENTRYPOINT ["./entrypoint.sh"]

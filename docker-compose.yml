@@ -6,6 +6,7 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "3399:3399"
+      - "3398:3398/udp"
     depends_on:
       - mysql
       - redis

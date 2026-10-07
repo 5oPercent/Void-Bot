@@ -53,8 +53,6 @@ Global
 		{AA6738A2-3F86-4800-B76E-B933F930A890}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AA6738A2-3F86-4800-B76E-B933F930A890}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8984E81A-E867-4CD7-9513-1DB8D1FBFDFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8984E81A-E867-4CD7-9513-1DB8D1FBFDFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8984E81A-E867-4CD7-9513-1DB8D1FBFDFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8984E81A-E867-4CD7-9513-1DB8D1FBFDFA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

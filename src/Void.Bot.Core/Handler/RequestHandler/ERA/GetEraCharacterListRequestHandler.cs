@@ -1,0 +1,25 @@
+using Mediator.Net.Context;
+using Mediator.Net.Contracts;
+using Void.Bot.Core.Services.ERA;
+using Void.Bot.Message.Request.ERA;
+
+namespace Void.Bot.Core.Handler.RequestHandler.ERA;
+
+public class GetEraCharacterListRequestHandler : IRequestHandler<GetEraCharacterListRequest, GetEraCharacterListResponse>
+{
+    private readonly IEraService _service;
+
+    public GetEraCharacterListRequestHandler(IEraService service)
+    {
+        _service = service;
+    }
+
+    public async Task<GetEraCharacterListResponse> Handle(
+        IReceiveContext<GetEraCharacterListRequest> context,
+        CancellationToken cancellationToken)
+    {
+        return await _service
+            .GetCharacterListAsync(context.Message, cancellationToken)
+            .ConfigureAwait(false);
+    }
+}
