@@ -127,6 +127,25 @@ public partial class EraTeamService : IEraTeamService
         return new string(characters);
     }
 
+    private EraTeamMember SetMemberAccount(EraTeamMember member)
+    {
+        // JWT 的 Name claim 保存主账号完整显示名，不接受客户端自行提交的名字。
+        var displayName = _currentUser.UserName;
+        var separator = displayName.LastIndexOf('#');
+        if (separator > 0 && displayName.Length - separator - 1 == 4 &&
+            displayName[(separator + 1)..].All(character => character >= '0' && character <= '9'))
+        {
+            member.UserName = displayName[..separator];
+            member.Suffix = displayName[(separator + 1)..];
+        }
+        else
+        {
+            member.UserName = displayName;
+            member.Suffix = string.Empty;
+        }
+        return member;
+    }
+
     private EraTeamDto MapTeam(EraTeam team, DateTimeOffset now)
     {
         var result = _mapper.Map<EraTeamDto>(team);
@@ -201,7 +220,7 @@ public partial class EraTeamService : IEraTeamService
                 MaxMembers = message.MaxMembers,
                 ExpiresAt = createdAt.AddSeconds(_setting.TeamLifetimeSeconds)
             };
-            team.Members.Add(new EraTeamMember
+            team.Members.Add(SetMemberAccount(new EraTeamMember
             {
                 MemberId = Guid.NewGuid(),
                 JoinedAt = createdAt,
@@ -209,7 +228,7 @@ public partial class EraTeamService : IEraTeamService
                 PlayerId = identity.PlayerId.Value,
                 CharacterId = message.CharacterId,
                 ExpiresAt = createdAt.AddSeconds(_setting.MemberLifetimeSeconds)
-            });
+            }));
             var status = await _teams.TryCreateAsync(team, cancellationToken).ConfigureAwait(false);
             if (status == EraTeamWriteStatus.Success)
             {
@@ -301,14 +320,14 @@ public partial class EraTeamService : IEraTeamService
             }
 
             team.Members.RemoveAll(item => item.ExpiresAt <= now);
-            team.Members.Add(new EraTeamMember
+            team.Members.Add(SetMemberAccount(new EraTeamMember
             {
                 MemberId = Guid.NewGuid(),
                 JoinedAt = now,
                 PlayerId = identity.PlayerId.Value,
                 CharacterId = message.CharacterId,
                 ExpiresAt = now.AddSeconds(_setting.MemberLifetimeSeconds)
-            });
+            }));
             // 玩家跨队伍占用检查与队伍提交由同一 Lua 脚本完成。
             return new EraTeamChange<JoinEraTeamResponse>
             {
@@ -413,6 +432,7 @@ public partial class EraTeamService : IEraTeamService
                 };
             }
 
+            SetMemberAccount(member);
             return new EraTeamChange<T>
             {
                 Changed = true,
