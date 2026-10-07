@@ -24,6 +24,10 @@ public class EraTeamMemberDto
     public Guid MemberId { get; set; }
     public Guid PlayerId { get; set; }
     public Guid CharacterId { get; set; }
+    /// <summary>来自已认证主账号的显示名称；后缀单独返回用于悬停提示。</summary>
+    public string UserName { get; set; } = string.Empty;
+    public string Suffix { get; set; } = string.Empty;
+
     public bool CanHost { get; set; }
     public DateTimeOffset JoinedAt { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }

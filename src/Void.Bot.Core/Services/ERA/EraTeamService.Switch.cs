@@ -71,14 +71,14 @@ public partial class EraTeamService
                 original.Members.RemoveAll(member => member.PlayerId == identity.PlayerId.Value);
                 var alive = EraTeamLifecycle.Advance(original, now, _setting.MigrationTimeoutSeconds);
                 target.Members.RemoveAll(member => member.ExpiresAt <= now);
-                target.Members.Add(new EraTeamMember
+                target.Members.Add(SetMemberAccount(new EraTeamMember
                 {
                     MemberId = Guid.NewGuid(),
                     PlayerId = identity.PlayerId.Value,
                     CharacterId = message.CharacterId,
                     JoinedAt = now,
                     ExpiresAt = now.AddSeconds(_setting.MemberLifetimeSeconds)
-                });
+                }));
                 var status = await _teams.TrySwitchAsync(original, expectedOriginal, alive ? original : null,
                     target, expectedTarget, identity.PlayerId.Value, cancellationToken).ConfigureAwait(false);
                 if (status == EraTeamWriteStatus.Success)
