@@ -16,7 +16,7 @@ public class EraTeamDto
     public int MemberLifetimeSeconds { get; set; }
     public int MaxMembers { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
-    public List<EraTeamMemberDto> Members { get; set; } = new List<EraTeamMemberDto>();
+    public List<EraTeamMemberDto> Members { get; set; } = [];
 }
 
 public class EraTeamMemberDto
@@ -50,7 +50,7 @@ public class EraPunchPeersDto
     public long AuthorityEpoch { get; set; }
     public EraPunchState State { get; set; }
     public DateTimeOffset TicketExpiresAt { get; set; }
-    public List<EraPunchPeerDto> Peers { get; set; } = new List<EraPunchPeerDto>();
+    public List<EraPunchPeerDto> Peers { get; set; } = [];
 }
 
 public class EraPunchPeerDto
@@ -60,6 +60,10 @@ public class EraPunchPeerDto
     public Guid AttemptId { get; set; }
     public long AuthorityEpoch { get; set; }
     public bool IsHost { get; set; }
+    /// <summary>实际游戏 UDP Socket 的局域网 IPv4 候选地址，不包含公网地址。</summary>
+    public List<string> LocalAddresses { get; set; } = [];
+    public int LocalPort { get; set; }
+
     public string Address { get; set; } = string.Empty;
     public int Port { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }

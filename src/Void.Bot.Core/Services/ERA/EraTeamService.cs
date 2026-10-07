@@ -587,6 +587,8 @@ public partial class EraTeamService : IEraTeamService
             member.TicketAuthorityEpoch = team.AuthorityEpoch;
             member.AttemptId = Guid.NewGuid();
             member.TokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+            member.LocalAddresses = message.LocalAddresses.Select(address => IPAddress.Parse(address).ToString()).Distinct().ToList();
+            member.LocalPort = message.LocalPort;
             member.TicketExpiresAt = now.AddSeconds(_setting.TicketLifetimeSeconds);
             member.Address = null;
             member.Port = 0;
@@ -635,6 +637,11 @@ public partial class EraTeamService : IEraTeamService
                     IsHost = item.PlayerId == team.HostPlayerId,
                     Address = item.Address!,
                     Port = item.Port,
+                    // 只有同公网出口且本机登记有效时才交换局域网候选，避免跨网络误连私网地址。
+                    LocalAddresses = member.Address == item.Address && member.EndpointExpiresAt > now
+                        ? [.. item.LocalAddresses]
+                        : [],
+                    LocalPort = member.Address == item.Address && member.EndpointExpiresAt > now ? item.LocalPort : 0,
                     ExpiresAt = item.EndpointExpiresAt
                 })
                 .ToList();

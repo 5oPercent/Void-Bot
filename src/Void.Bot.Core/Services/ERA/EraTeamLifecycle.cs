@@ -48,6 +48,8 @@ public static class EraTeamLifecycle
             member.TicketExpiresAt = default;
             member.Address = null;
             member.Port = 0;
+            member.LocalAddresses.Clear();
+            member.LocalPort = 0;
             member.EndpointExpiresAt = default;
         }
         return true;
