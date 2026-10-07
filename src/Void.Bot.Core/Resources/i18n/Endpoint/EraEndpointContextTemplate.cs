@@ -16,4 +16,15 @@ public sealed class EraEndpointContextTemplate : IContextTemplate
     public string UpdateEraConfig { get; set; } = "发布 ERA 官方配置";
     public string SetEraWarehouseCapacity { get; set; } = "设置指定玩家的仓库容量";
     public string AdjustEraWarehouseCapacity { get; set; } = "增减指定玩家的仓库容量";
+    public string CreateEraTeam { get; set; } = "创建 ERA 临时队伍";
+    public string JoinEraTeam { get; set; } = "加入 ERA 队伍";
+    public string HeartbeatEraTeam { get; set; } = "续期本人队伍成员状态";
+    public string LeaveEraTeam { get; set; } = "退出 ERA 队伍，主机离队自动交接";
+    public string PrepareEraPunch { get; set; } = "签发本人短期 UDP 登记凭证";
+    public string GetCurrentEraTeam { get; set; } = "查询本人当前有效 ERA 队伍";
+    public string GetEraTeam { get; set; } = "查询本人加入的 ERA 队伍";
+    public string GetEraPunchPeers { get; set; } = "查询同队伍已登记的对端地址";
+    public string SetEraHostReadiness { get; set; } = "更新成员接管资格";
+    public string CompleteEraHostMigration { get; set; } = "当前候补报告接管结果";
+    public string SwitchEraTeam { get; set; } = "按队伍码原子切换队伍";
 }

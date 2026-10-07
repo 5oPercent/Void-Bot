@@ -12,5 +12,6 @@ public static class EraConfigurationKeys
     public const string StrengthBonusPercent = "player.strength.full_bonus_percent";
     public const string ConstitutionBonusPercent = "player.constitution.full_bonus_percent";
     public const string AgilityBonusPercent = "player.agility.full_bonus_percent";
+    public const string CharacterLimit = "character.active_limit";
     public const string DefaultWarehouseCapacity = "warehouse.default_capacity";
 }

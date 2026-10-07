@@ -10,6 +10,8 @@ public class EraMapping : Profile
     {
         CreateMap<EraConfiguration, EraConfigurationItemDto>()
             .ForMember(item => item.Key, options => options.MapFrom(configuration => configuration.ConfigKey));
+        CreateMap<EraTeam, EraTeamDto>();
+        CreateMap<EraTeamMember, EraTeamMemberDto>();
         CreateMap<EraPlayer, EraPlayerDto>();
         CreateMap<EraCharacter, EraCharacterDto>();
         CreateMap<EraCapacityChange, EraCapacityReceiptDto>();

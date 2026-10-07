@@ -1,3 +1,8 @@
+using Microsoft.AspNetCore.RateLimiting;
+using Void.Bot.Message.Constants.ERA;
+using Void.Bot.Message.Dto.ERA;
+using Void.Bot.Core.Services.Language;
+using Void.Bot.Core.Resources.i18n.ERA;
 using System.Net;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -41,6 +46,7 @@ public static class HostExtension
         host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
         {
             containerBuilder.RegisterType<InitializationHostedService>().As<IHostedService>().SingleInstance();
+            containerBuilder.RegisterType<EraPunchHostedService>().As<IHostedService>().SingleInstance();
             containerBuilder.RegisterModule(new VoidBotModule(null, Log.Logger, configuration, typeof(VoidBotModule).Assembly));
         });
         
@@ -56,6 +62,26 @@ public static class HostExtension
         var hangfireSetting = new HangfireSetting(configuration);
         var connectionSetting = new ConnectionStringSetting(configuration);
         
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                var localization = context.HttpContext.RequestServices.GetRequiredService<ILocalizationService>();
+                await context.HttpContext.Response.WriteAsJsonAsync(new EraResponse<bool>
+                {
+                    Code = HttpStatusCode.TooManyRequests,
+                    ErrorCode = "era.rate_limited",
+                    Message = localization.GetValue<EraContextTemplate>(text => text.NetworkingRateLimited)
+                }, cancellationToken).ConfigureAwait(false);
+            };
+            options.AddFixedWindowLimiter(EraNetworkingConstants.TeamRateLimitPolicy, limiter =>
+            {
+                limiter.PermitLimit = EraNetworkingConstants.HttpRequestsPerSecond;
+                limiter.Window = TimeSpan.FromSeconds(1);
+                limiter.QueueLimit = 0;
+            });
+        });
         services.AddMemoryCache();
         services.AddCorrelate();
         services.AddHttpClient();
@@ -171,6 +197,7 @@ public static class HostExtension
         app.UseRouting();
         app.UseCors();
         app.UseAuthentication();
+        app.UseRateLimiter();
         app.UseAuthorization();
         app.MapControllers();
         

@@ -33,7 +33,8 @@ public class EraConfigDtoValidator : AbstractValidator<EraConfigDto>
         EraConfigurationKeys.StrengthBonusPercent,
         EraConfigurationKeys.ConstitutionBonusPercent,
         EraConfigurationKeys.AgilityBonusPercent,
-        EraConfigurationKeys.DefaultWarehouseCapacity
+        EraConfigurationKeys.DefaultWarehouseCapacity,
+        EraConfigurationKeys.CharacterLimit
     };
 
     public EraConfigDtoValidator()
@@ -115,6 +116,10 @@ public class EraConfigDtoValidator : AbstractValidator<EraConfigDto>
                                     strengthBonusPercent >= 0 &&
                                     constitutionBonusPercent >= 0 &&
                                     agilityBonusPercent >= 0;
+        if (!TryGetInteger(configuration, EraConfigurationKeys.CharacterLimit, out var characterLimit) || characterLimit < 1)
+        {
+            return false;
+        }
         return attributesAreValid && derivedValuesAreValid && warehouseCapacity >= 0;
     }
 

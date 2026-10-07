@@ -268,13 +268,23 @@ public partial class EraService : IEraService
                 context => context.PlayerNotFound);
         }
 
+        var configurations = await _dataProvider.GetConfigurationsAsync(false, cancellationToken).ConfigureAwait(false);
+        if (!TryGetIntegerConfiguration(configurations, EraConfigurationKeys.CharacterLimit, out var characterLimit) || characterLimit < 1)
+        {
+            return Error<GetEraCharacterListResponse>(
+                HttpStatusCode.ServiceUnavailable,
+                "era.config_unavailable",
+                context => context.ConfigUnavailable);
+        }
+
         var characters = await _dataProvider
             .GetCharactersByPlayerIdAsync(player.Id, cancellationToken)
             .ConfigureAwait(false);
         return new GetEraCharacterListResponse
         {
             Code = HttpStatusCode.OK,
-            Data = _mapper.Map<List<EraCharacterDto>>(characters)
+            Data = _mapper.Map<List<EraCharacterDto>>(characters),
+            CharacterLimit = characterLimit
         };
     }
 
@@ -360,6 +370,24 @@ public partial class EraService : IEraService
                 Code = HttpStatusCode.OK,
                 Data = _mapper.Map<EraCharacterDto>(existingCharacter)
             };
+        }
+
+        // 玩家行锁由当前命令事务持有，串行化同账号的创建和禁用操作。
+        var configurations = await _dataProvider.GetConfigurationsAsync(false, cancellationToken).ConfigureAwait(false);
+        if (!TryGetIntegerConfiguration(configurations, EraConfigurationKeys.CharacterLimit, out var characterLimit) || characterLimit < 1)
+        {
+            return Error<CreateEraCharacterResponse>(
+                HttpStatusCode.ServiceUnavailable,
+                "era.config_unavailable",
+                context => context.ConfigUnavailable);
+        }
+        var characters = await _dataProvider.GetCharactersByPlayerIdAsync(player.Id, cancellationToken).ConfigureAwait(false);
+        if (characters.Count(character => !character.IsDisabled) >= characterLimit)
+        {
+            return Error<CreateEraCharacterResponse>(
+                HttpStatusCode.Conflict,
+                "era.character_limit_reached",
+                context => context.CharacterLimitReached);
         }
 
         var character = new EraCharacter
