@@ -27,4 +27,6 @@ public sealed class EraEndpointContextTemplate : IContextTemplate
     public string SetEraHostReadiness { get; set; } = "更新成员接管资格";
     public string CompleteEraHostMigration { get; set; } = "当前候补报告接管结果";
     public string SwitchEraTeam { get; set; } = "按队伍码原子切换队伍";
+    public string HeartbeatEraClientSession { get; set; } = "续期账号独占游戏会话";
+    public string CloseEraClientSession { get; set; } = "释放本人客户端游戏会话";
 }

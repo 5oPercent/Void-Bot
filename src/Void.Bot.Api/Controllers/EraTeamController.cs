@@ -11,6 +11,7 @@ using Void.Bot.Message.Request.ERA;
 namespace Void.Bot.Api.Controllers;
 
 [Authorize]
+[EraClientSession]
 [ApiController]
 [Security]
 [Route("api/era/teams")]
