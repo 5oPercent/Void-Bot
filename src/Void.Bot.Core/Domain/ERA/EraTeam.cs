@@ -1,3 +1,5 @@
+using Void.Bot.Message.Enum.ERA;
+
 namespace Void.Bot.Core.Domain.ERA;
 
 /// <summary>Redis 临时会话，不作为数据库实体；通过版本比较原子提交。</summary>
@@ -14,6 +16,10 @@ public class EraTeam
     public DateTimeOffset MigrationDeadline { get; set; }
     public List<Guid> FailedHostMembers { get; set; } = [];
     public Guid CreationRequestId { get; set; }
+    public EraTeamJoinMode JoinMode { get; set; } = EraTeamJoinMode.Public;
+    public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.HostOnly;
+    public long SocialVersion { get; set; }
+    public List<EraTeamInvitation> Invitations { get; set; } = new List<EraTeamInvitation>();
     public int MaxMembers { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
     public List<EraTeamMember> Members { get; set; } = [];

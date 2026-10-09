@@ -1,3 +1,4 @@
+using Void.Bot.Core.Services.Social;
 using StackExchange.Redis;
 using Void.Bot.Message.Constants.ERA;
 using System.Linq.Expressions;
@@ -61,7 +62,9 @@ public partial class EraTeamService : IEraTeamService
         ICurrentUser currentUser,
         ILocalizationService localization,
         IMapper mapper,
-        EraNetworkingSetting setting)
+        EraNetworkingSetting setting,
+        IFriendDataProvider friends,
+        IEraSocialDataProvider socialData)
     {
         _players = players;
         _teams = teams;
@@ -69,6 +72,8 @@ public partial class EraTeamService : IEraTeamService
         _localization = localization;
         _mapper = mapper;
         _setting = setting;
+        _friends = friends;
+        _socialData = socialData;
     }
 
     private T Error<T>(HttpStatusCode status, string code, Expression<Func<EraContextTemplate, object>> text)
@@ -198,6 +203,7 @@ public partial class EraTeamService : IEraTeamService
                         member.PlayerId == identity.PlayerId.Value && member.ExpiresAt > now);
                     if (existing.HostPlayerId == identity.PlayerId.Value &&
                         existing.CreationRequestId == message.RequestId && existing.MaxMembers == message.MaxMembers &&
+                        existing.JoinMode == message.JoinMode && existing.InvitationPermission == message.InvitationPermission &&
                         host != null && host.CharacterId == message.CharacterId)
                     {
                         return new CreateEraTeamResponse
@@ -217,6 +223,8 @@ public partial class EraTeamService : IEraTeamService
                 TeamCode = GenerateTeamCode(),
                 HostPlayerId = identity.PlayerId.Value,
                 CreationRequestId = message.RequestId,
+                JoinMode = message.JoinMode,
+                InvitationPermission = message.InvitationPermission,
                 MaxMembers = message.MaxMembers,
                 ExpiresAt = createdAt.AddSeconds(_setting.TeamLifetimeSeconds)
             };
@@ -254,7 +262,8 @@ public partial class EraTeamService : IEraTeamService
         }
     }
 
-    private async Task<JoinEraTeamResponse> JoinCoreAsync(JoinEraTeamCommand message, CancellationToken cancellationToken)
+    private async Task<JoinEraTeamResponse> JoinCoreAsync(JoinEraTeamCommand message, CancellationToken cancellationToken,
+        Guid? invitationId = null, Guid? expectedTeamId = null, Guid? requiredFriendPlayerId = null)
     {
         var identity = await IdentifyAsync<JoinEraTeamResponse>(cancellationToken).ConfigureAwait(false);
         if (identity.Error != null)
@@ -273,10 +282,22 @@ public partial class EraTeamService : IEraTeamService
         {
             return Error<JoinEraTeamResponse>(HttpStatusCode.NotFound, "era.team_not_found", text => text.TeamNotFound);
         }
+        if (expectedTeamId.HasValue && teamId.Value != expectedTeamId.Value)
+        {
+            return Error<JoinEraTeamResponse>(HttpStatusCode.Conflict, "era.team_changed", text => text.TeamJoinDenied);
+        }
+        var authorizedTeam = await _teams.GetTeamAsync(teamId.Value, cancellationToken).ConfigureAwait(false);
+        if (authorizedTeam == null)
+        {
+            return Error<JoinEraTeamResponse>(HttpStatusCode.NotFound, "era.team_not_found", text => text.TeamNotFound);
+        }
+        var canJoin = await CanJoinSocialAsync(authorizedTeam, invitationId, true, cancellationToken).ConfigureAwait(false);
         return await ChangeTeamAsync(teamId.Value, team =>
         {
             var now = DateTimeOffset.UtcNow;
-            if (team == null || team.TeamCode != teamCode || !IsActive(team, now))
+            if (team == null || team.TeamCode != teamCode || !IsActive(team, now) ||
+                (requiredFriendPlayerId.HasValue && !team.Members.Any(value =>
+                    value.PlayerId == requiredFriendPlayerId.Value && value.ExpiresAt > now)))
             {
                 return new EraTeamChange<JoinEraTeamResponse>
                 {
@@ -294,6 +315,18 @@ public partial class EraTeamService : IEraTeamService
             var member = team.Members.SingleOrDefault(item => item.PlayerId == identity.PlayerId.Value && item.ExpiresAt > now);
             if (member != null)
             {
+                var invitationReceipt = invitationId.HasValue
+                    ? team.Invitations.SingleOrDefault(value => value.Id == invitationId.Value &&
+                        value.RecipientAccountId == _currentUser.Id && value.Status == Void.Bot.Message.Enum.ERA.EraTeamInvitationStatus.Accepted &&
+                        value.AcceptedMemberId == member.MemberId && value.AcceptedCharacterId == message.CharacterId)
+                    : null;
+                if (invitationId.HasValue && invitationReceipt == null)
+                {
+                    return new EraTeamChange<JoinEraTeamResponse>
+                    {
+                        Result = Error<JoinEraTeamResponse>(HttpStatusCode.Conflict, "era.invitation_consumed", text => text.TeamJoinDenied)
+                    };
+                }
                 if (member.CharacterId != message.CharacterId)
                 {
                     return new EraTeamChange<JoinEraTeamResponse>
@@ -311,6 +344,13 @@ public partial class EraTeamService : IEraTeamService
                 };
             }
 
+            if (!canJoin || !SameJoinPolicy(team, authorizedTeam))
+            {
+                return new EraTeamChange<JoinEraTeamResponse>
+                {
+                    Result = Error<JoinEraTeamResponse>(HttpStatusCode.Forbidden, "era.team_join_denied", text => text.TeamJoinDenied)
+                };
+            }
             if (team.Members.Count(item => item.ExpiresAt > now) >= team.MaxMembers)
             {
                 return new EraTeamChange<JoinEraTeamResponse>
@@ -328,6 +368,14 @@ public partial class EraTeamService : IEraTeamService
                 CharacterId = message.CharacterId,
                 ExpiresAt = now.AddSeconds(_setting.MemberLifetimeSeconds)
             }));
+            var joinedMember = team.Members.Single(item => item.PlayerId == identity.PlayerId.Value);
+            if (!ConsumeInvitation(team, invitationId, _currentUser.Id!.Value, joinedMember, now))
+            {
+                return new EraTeamChange<JoinEraTeamResponse>
+                {
+                    Result = Error<JoinEraTeamResponse>(HttpStatusCode.Forbidden, "era.invitation_invalid", text => text.TeamJoinDenied)
+                };
+            }
             // 玩家跨队伍占用检查与队伍提交由同一 Lua 脚本完成。
             return new EraTeamChange<JoinEraTeamResponse>
             {

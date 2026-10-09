@@ -4,6 +4,8 @@ using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
+using System.Reflection;
+using Void.Bot.Message.Attributes;
 
 namespace Void.Bot.Core.Middlewares.UnitofWork;
 
@@ -33,7 +35,17 @@ public class UnitOfWorkSpecification<TContext>(
             {
                 try
                 {
-                    await dbContext.Database.BeginTransactionAsync(cancellationToken);
+                    var transactionIsolation = context.Message.GetType()
+                        .GetCustomAttribute<TransactionIsolationAttribute>();
+                    if (transactionIsolation != null)
+                    {
+                        await dbContext.Database.BeginTransactionAsync(transactionIsolation.IsolationLevel,
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await dbContext.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch
                 {

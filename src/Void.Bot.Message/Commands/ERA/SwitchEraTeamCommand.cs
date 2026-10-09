@@ -1,8 +1,11 @@
+using System.Data;
+using Void.Bot.Message.Attributes;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
+[TransactionIsolation(IsolationLevel.ReadCommitted)]
 public class SwitchEraTeamCommand : ICommand
 {
     public Guid TeamId { get; set; }

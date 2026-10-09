@@ -1,3 +1,4 @@
+using Void.Bot.Core.Resources.i18n.Social;
 using Microsoft.AspNetCore.RateLimiting;
 using Void.Bot.Message.Constants.ERA;
 using Void.Bot.Message.Dto.ERA;
@@ -26,7 +27,6 @@ using Void.Bot.Api.HostedService;
 using Void.Bot.Api.OpenApi;
 using Void.Bot.Core;
 using Void.Bot.Core.Extension;
-using Void.Bot.Core.Settings;
 using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Dto;
 using Void.Bot.Message.Enum;
@@ -68,6 +68,20 @@ public static class HostExtension
             options.OnRejected = async (context, cancellationToken) =>
             {
                 var localization = context.HttpContext.RequestServices.GetRequiredService<ILocalizationService>();
+                var requestPath = context.HttpContext.Request.Path;
+                if (requestPath.StartsWithSegments("/api/social") ||
+                    requestPath.StartsWithSegments("/api/era/social") ||
+                    requestPath.StartsWithSegments("/hubs/web/social") ||
+                    requestPath.StartsWithSegments("/hubs/era/social"))
+                {
+                    await context.HttpContext.Response.WriteAsJsonAsync(new VoidBotResponse<bool>
+                    {
+                        Code = HttpStatusCode.TooManyRequests,
+                        ErrorCode = "social.rate_limited",
+                        Message = localization.GetValue<SocialContextTemplate>(text => text.RateLimited)
+                    }, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
                 await context.HttpContext.Response.WriteAsJsonAsync(new EraResponse<bool>
                 {
                     Code = HttpStatusCode.TooManyRequests,
@@ -82,6 +96,7 @@ public static class HostExtension
                 limiter.QueueLimit = 0;
             });
         });
+        services.AddSocialNotifications(configuration);
         services.AddMemoryCache();
         services.AddCorrelate();
         services.AddHttpClient();
@@ -200,6 +215,7 @@ public static class HostExtension
         app.UseRateLimiter();
         app.UseAuthorization();
         app.MapControllers();
+        app.MapSocialNotifications();
         
         if (hangfireSetting.EnableDashboard)
         {

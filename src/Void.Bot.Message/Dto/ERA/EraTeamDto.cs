@@ -14,6 +14,9 @@ public class EraTeamDto
     public DateTimeOffset MigrationDeadline { get; set; }
     public int HeartbeatIntervalSeconds { get; set; }
     public int MemberLifetimeSeconds { get; set; }
+    public EraTeamJoinMode JoinMode { get; set; }
+    public EraTeamInvitationPermission InvitationPermission { get; set; }
+    public long SocialVersion { get; set; }
     public int MaxMembers { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }
     public List<EraTeamMemberDto> Members { get; set; } = [];

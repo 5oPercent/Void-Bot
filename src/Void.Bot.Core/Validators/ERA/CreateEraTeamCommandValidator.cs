@@ -8,6 +8,8 @@ public class CreateEraTeamCommandValidator : FluentMessageValidator<CreateEraTea
 {
     public CreateEraTeamCommandValidator()
     {
+        RuleFor(message => message.JoinMode).IsInEnum();
+        RuleFor(message => message.InvitationPermission).IsInEnum();
         RuleFor(message => message.RequestId)
             .NotEmpty();
         RuleFor(message => message.CharacterId)
