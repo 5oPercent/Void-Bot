@@ -28,6 +28,10 @@ public partial class EraTeamService
             {
                 return Error<LookupEraTeamResponse>(HttpStatusCode.NotFound, "era.team_not_found", text => text.TeamNotFound);
             }
+            if (!await CanJoinSocialAsync(team, null, false, cancellationToken).ConfigureAwait(false))
+            {
+                return Error<LookupEraTeamResponse>(HttpStatusCode.Forbidden, "era.team_join_denied", text => text.TeamJoinDenied);
+            }
             if (team.IsMigrating)
             {
                 return Error<LookupEraTeamResponse>(HttpStatusCode.Conflict, "era.team_migrating", text => text.TeamMigrating);

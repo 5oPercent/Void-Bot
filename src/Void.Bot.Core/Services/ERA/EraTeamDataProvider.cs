@@ -53,7 +53,7 @@ public partial interface IEraTeamDataProvider : ISingleton
 /// </summary>
 public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IAsyncDisposable
 {
-    private const string CommitScript = """
+    private const string CommitScript = SocialCommitFunctions + "\n" + """
         local stored = redis.call('GET', KEYS[2])
         if ARGV[1] == '' then
             if stored then
@@ -81,7 +81,14 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
                     redis.call('DEL', KEYS[i])
                 end
             end
+            local previous = stored and cjson.decode(stored) or nil
+            publishInvitations(previous, nil, ARGV[3], now)
             return 1
+        end
+        local nextTeam = cjson.decode(ARGV[2])
+        local previousTeam = stored and cjson.decode(stored) or nil
+        if not validSocialTransition(previousTeam, nextTeam, now) then
+            return -3
         end
         local teamExpiry = tonumber(ARGV[4])
         if teamExpiry <= now then
@@ -118,6 +125,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
                 redis.call('SET', KEYS[lease.KeyIndex], ARGV[3], 'PXAT', expiry)
             end
         end
+        publishInvitations(previousTeam, nextTeam, ARGV[3], now)
         return 1
         """;
 
@@ -304,6 +312,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             }
 
             teamExpiration = expiration.ToUnixTimeMilliseconds();
+            PrepareInvitations(team);
             json = JsonSerializer.Serialize(team);
             foreach (var member in team.Members)
             {
@@ -327,7 +336,9 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             json,
             teamId.ToString("D"),
             teamExpiration,
-            JsonSerializer.Serialize(leases)
+            JsonSerializer.Serialize(leases),
+            DateTimeOffset.UtcNow.ToString("O"),
+            Guid.NewGuid().ToString("D")
         };
         var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();

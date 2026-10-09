@@ -42,5 +42,4 @@ public interface IEraErrorResponse
 
 public class EraResponse<T> : VoidBotResponse<T>, IEraErrorResponse
 {
-    public string? ErrorCode { get; set; }
 }

@@ -30,7 +30,16 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(CustomizeJwtAuthenticationOptions.SchemeHeader, out var authHeader))
-            return Task.FromResult(AuthenticateResult.NoResult());
+        {
+            var socialHub = Request.Path.StartsWithSegments("/hubs/web/social") ||
+                Request.Path.StartsWithSegments("/hubs/era/social");
+            var queryToken = Request.Query["access_token"].ToString();
+            if (!socialHub || string.IsNullOrEmpty(queryToken))
+            {
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+            authHeader = "Bearer " + queryToken;
+        }
         
         var authHeaderValue = authHeader.ToString();
         if (!authHeaderValue.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -62,12 +71,16 @@ public class CustomizeJwtAuthenticationHandler : AuthenticationHandler<Customize
                 ClockSkew = TimeSpan.Zero
             };
             
-            var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
 
             if (principal.FindFirst(TokenClaimService.TokenUseClaim)?.Value == TokenClaimService.RefreshTokenUse)
                 return Task.FromResult(AuthenticateResult.Fail("Invalid access token"));
             
-            var ticket = new AuthenticationTicket(principal, Scheme.Name);
+            var properties = new AuthenticationProperties
+            {
+                ExpiresUtc = new DateTimeOffset(validatedToken.ValidTo, TimeSpan.Zero)
+            };
+            var ticket = new AuthenticationTicket(principal, properties, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
         catch (SecurityTokenExpiredException)

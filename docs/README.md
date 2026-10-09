@@ -12,6 +12,10 @@
 - [当前身份 `/api/Identity/me` 前端对接](identity/identity-me-frontend-integration.md)
 - [双因素认证前端对接](identity/two-factor-frontend-integration.md)
 
+## 好友与 ERA 社交通知
+
+- [好友、组队权限与 SignalR 对接](social/social-backend.md)
+
 ## OAuth
 
 第三方 OAuth 登录、绑定、注册、兑换和解绑流程。完整流程建议先阅读总览，再阅读未绑定身份流程。

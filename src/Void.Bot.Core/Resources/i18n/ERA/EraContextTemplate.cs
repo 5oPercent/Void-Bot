@@ -16,6 +16,7 @@ public sealed class EraContextTemplate : IContextTemplate
     public string NetworkingRateLimited { get; set; } = "请求过于频繁，请稍后重试";
     public string NetworkingUnavailable { get; set; } = "ERA 协调存储暂不可用，请稍后重试";
     public string NetworkingDisabled { get; set; } = "ERA 队伍与打洞服务尚未启用";
+    public string TeamJoinDenied { get; set; } = "当前队伍权限不允许加入或邀请已失效";
     public string TeamNotFound { get; set; } = "队伍已过期、不存在或当前玩家不是成员";
     public string TeamMembershipChanged { get; set; } = "队伍成员会话已变化，请使用重新加入后返回的成员 ID";
     public string TeamAlreadyJoined { get; set; } = "玩家已加入队伍，请先退出";
