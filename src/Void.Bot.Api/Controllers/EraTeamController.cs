@@ -151,6 +151,41 @@ public class EraTeamController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{teamId:guid}/transfer-host")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("TransferEraTeamMember")]
+    [ProducesResponseType(typeof(TransferEraTeamMemberResponse), 200)]
+    public async Task<IActionResult> TransferHostAsync(Guid teamId, [FromBody] TransferEraTeamMemberCommand message, CancellationToken cancellationToken)
+    {
+        message.TeamId = teamId;
+        var response = await _mediator.SendAsync<TransferEraTeamMemberCommand, TransferEraTeamMemberResponse>(message, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("{teamId:guid}/remove-member")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("RemoveEraTeamMember")]
+    [ProducesResponseType(typeof(RemoveEraTeamMemberResponse), 200)]
+    public async Task<IActionResult> RemoveMemberAsync(Guid teamId, [FromBody] RemoveEraTeamMemberCommand message, CancellationToken cancellationToken)
+    {
+        message.TeamId = teamId;
+        var response = await _mediator.SendAsync<RemoveEraTeamMemberCommand, RemoveEraTeamMemberResponse>(message, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("lookup/{teamCode}")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("LookupEraTeam")]
+    [ProducesResponseType(typeof(LookupEraTeamResponse), 200)]
+    public async Task<IActionResult> LookupAsync(string teamCode, CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<LookupEraTeamRequest, LookupEraTeamResponse>(
+                new LookupEraTeamRequest { TeamCode = teamCode }, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpGet("me")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetCurrentEraTeam")]

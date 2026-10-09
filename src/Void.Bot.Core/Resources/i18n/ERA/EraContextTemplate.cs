@@ -22,5 +22,8 @@ public sealed class EraContextTemplate : IContextTemplate
     public string TeamCapacity { get; set; } = "队伍人数超出限制或已经满员";
     public string TeamMigrating { get; set; } = "队伍正在迁移主机，请稍后加入";
     public string AuthorityChanged { get; set; } = "队伍权威版本已变化，请重新读取队伍";
+    public string TeamHostRequired { get; set; } = "只有当前队长可以管理队伍成员";
+    public string TeamMemberNotFound { get; set; } = "目标队员不存在、已离队或不能操作自己";
+    public string TeamHostNotReady { get; set; } = "目标队员尚未完成世界同步，暂时不能接任队长";
     public string MigrationHostRequired { get; set; } = "只有当前候补主机可以确认接管";
 }
