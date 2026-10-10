@@ -705,11 +705,9 @@ public partial class EraTeamService : IEraTeamService
                     IsHost = item.PlayerId == team.HostPlayerId,
                     Address = item.Address!,
                     Port = item.Port,
-                    // 只有同公网出口且本机登记有效时才交换局域网候选，避免跨网络误连私网地址。
-                    LocalAddresses = member.Address == item.Address && member.EndpointExpiresAt > now
-                        ? [.. item.LocalAddresses]
-                        : [],
-                    LocalPort = member.Address == item.Address && member.EndpointExpiresAt > now ? item.LocalPort : 0,
+                    // 有效队伍成员交换网卡候选，允许不同公网出口通过同一 VPN 组网连接。
+                    LocalAddresses = [.. item.LocalAddresses],
+                    LocalPort = item.LocalPort,
                     ExpiresAt = item.EndpointExpiresAt
                 })
                 .ToList();
