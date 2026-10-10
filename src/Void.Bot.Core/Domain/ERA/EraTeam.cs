@@ -45,7 +45,7 @@ public class EraTeamMember
     public DateTimeOffset TicketExpiresAt { get; set; }
     public string? Address { get; set; }
     public int Port { get; set; }
-    /// <summary>实际游戏 UDP Socket 的局域网 IPv4 候选地址，不包含公网地址。</summary>
+    /// <summary>实际游戏 UDP Socket 的有效网卡 IPv4 候选（含 VPN），最多 32 个。</summary>
     public List<string> LocalAddresses { get; set; } = [];
     public int LocalPort { get; set; }
 

@@ -17,21 +17,21 @@ public class PrepareEraPunchCommandValidator : FluentMessageValidator<PrepareEra
         RuleFor(message => message.MemberId)
             .NotEmpty();
         RuleFor(message => message.LocalAddresses)
-            .Must(addresses => addresses != null && addresses.Count <= 8 && addresses.All(IsPrivateIpv4));
+            .Must(addresses => addresses != null && addresses.Count <= 32 && addresses.All(IsUsableIpv4));
         RuleFor(message => message.LocalPort)
             .Must((message, port) => message.LocalAddresses != null &&
                 (message.LocalAddresses.Count == 0 ? port == 0 : port is >= 1 and <= 65535));
     }
 
-    private static bool IsPrivateIpv4(string value)
+    private static bool IsUsableIpv4(string value)
     {
         if (!IPAddress.TryParse(value, out var address) || address.AddressFamily != AddressFamily.InterNetwork)
         {
             return false;
         }
         var bytes = address.GetAddressBytes();
-        return bytes[0] == 10 ||
-            (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
-            (bytes[0] == 192 && bytes[1] == 168);
+        // 接受有效网卡 IPv4（包含 VPN），排除未指定、回环、链路本地、组播和保留地址。
+        return bytes[0] != 0 && bytes[0] != 127 && bytes[0] < 224 &&
+            !(bytes[0] == 169 && bytes[1] == 254);
     }
 }
