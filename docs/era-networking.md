@@ -47,7 +47,7 @@ PublicHost 填客户端可访问的 DNS 域名或 IPv4（例如 punch.example.co
 
 | 方法 | 路径 | 参数 | 结果 |
 | --- | --- | --- | --- |
-| POST | /api/era/teams | RequestId、CharacterId、MaxMembers | 队伍及成员 |
+| POST | /api/era/teams | RequestId、CharacterId | 队伍及成员 |
 | POST | /api/era/teams/join | TeamCode、CharacterId | 队伍及成员 |
 | GET | /api/era/teams/me | GetCurrentEraTeamRequest（空） | 本人当前队伍，无队伍时 Data 为 null |
 | GET | /api/era/teams/{teamId} | GetEraTeamRequest | 本人所在队伍 |
@@ -56,7 +56,7 @@ PublicHost 填客户端可访问的 DNS 域名或 IPv4（例如 punch.example.co
 | POST | /api/era/teams/{teamId}/punch | MemberId | 本人短期凭证 |
 | GET | /api/era/teams/{teamId}/peers | GetEraPunchPeersRequest | 本人协调状态及已登记有效对端 |
 
-每玩家只能加入一个有效队伍，角色必须属于本人且未禁用。原队伍有效时，创建使用相同 RequestId、CharacterId、MaxMembers 返回原队伍；同成员同角色重复加入返回原结果。过期后的创建是新会话，无持久创建回执。
+新队伍容量固定使用后端 Era:Networking:MaxMembers 配置，客户端不提交人数容量；响应中的 MaxMembers 表示实际队伍容量。现有队伍保留创建时的容量，任务/游玩模式人数限制由对应开始入口单独判断。每玩家只能加入一个有效队伍，角色必须属于本人且未禁用。原队伍有效时，创建使用相同 RequestId、CharacterId 和加入/邀请设置返回原队伍；同成员同角色重复加入返回原结果。过期后的创建是新会话，无持久创建回执。
 
 成员建议每 5 秒 HTTP 心跳，默认 30 秒无心跳过期；任一有效成员的心跳续期队伍。角色在入房后禁用，会拒绝后续心跳及凭证申请。主机退出或超时自动选举下一位已同步候补；没有有效成员或全部候补接管失败时解散。查询只允许有效成员，不能列出他人队伍。不存在关闭整个队伍的接口。
 

@@ -14,7 +14,5 @@ public class CreateEraTeamCommandValidator : FluentMessageValidator<CreateEraTea
             .NotEmpty();
         RuleFor(message => message.CharacterId)
             .NotEmpty();
-        RuleFor(message => message.MaxMembers)
-            .InclusiveBetween(2, 16);
     }
 }

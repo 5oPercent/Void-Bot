@@ -34,12 +34,6 @@ public class EraCapacityReceiptDto
     public long PlayerVersion { get; set; }
 }
 
-/// <summary>稳定业务错误码；客户端根据此字段处理，不解析本地化文案。</summary>
-public interface IEraErrorResponse
-{
-    string? ErrorCode { get; set; }
-}
-
-public class EraResponse<T> : VoidBotResponse<T>, IEraErrorResponse
+public class EraResponse<T> : VoidBotResponse<T>
 {
 }

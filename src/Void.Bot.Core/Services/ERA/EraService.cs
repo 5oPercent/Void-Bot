@@ -61,7 +61,7 @@ public partial class EraService : IEraService
         HttpStatusCode status,
         string code,
         Expression<Func<EraContextTemplate, object>> text)
-        where T : VoidBotResponse, IEraErrorResponse, new()
+        where T : VoidBotResponse, new()
     {
         var result = new T
         {

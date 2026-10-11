@@ -10,7 +10,6 @@ public class CreateEraTeamCommand : ICommand
     public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.HostOnly;
     public Guid RequestId { get; set; }
     public Guid CharacterId { get; set; }
-    public int MaxMembers { get; set; } = 4;
 }
 
 public class CreateEraTeamResponse : EraResponse<EraTeamDto>
