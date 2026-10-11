@@ -77,7 +77,7 @@ public partial class EraTeamService : IEraTeamService
     }
 
     private T Error<T>(HttpStatusCode status, string code, Expression<Func<EraContextTemplate, object>> text)
-        where T : VoidBotResponse, IEraErrorResponse, new()
+        where T : VoidBotResponse, new()
     {
         return new T
         {
@@ -88,7 +88,7 @@ public partial class EraTeamService : IEraTeamService
     }
 
     private async Task<(Guid? PlayerId, T? Error)> IdentifyAsync<T>(CancellationToken cancellationToken)
-        where T : VoidBotResponse, IEraErrorResponse, new()
+        where T : VoidBotResponse, new()
     {
         if (!_currentUser.Id.HasValue || _currentUser.Id.Value == Guid.Empty)
         {
@@ -185,11 +185,6 @@ public partial class EraTeamService : IEraTeamService
             return Error<CreateEraTeamResponse>(HttpStatusCode.NotFound, "era.character_not_found", text => text.CharacterNotFound);
         }
 
-        if (message.MaxMembers > _setting.MaxMembers)
-        {
-            return Error<CreateEraTeamResponse>(HttpStatusCode.Conflict, "era.team_capacity", text => text.TeamCapacity);
-        }
-
         for (var attempt = 0; attempt < 8; attempt++)
         {
             var existingId = await _teams.GetPlayerTeamIdAsync(identity.PlayerId.Value, cancellationToken).ConfigureAwait(false);
@@ -202,7 +197,7 @@ public partial class EraTeamService : IEraTeamService
                     var host = existing.Members.SingleOrDefault(member =>
                         member.PlayerId == identity.PlayerId.Value && member.ExpiresAt > now);
                     if (existing.HostPlayerId == identity.PlayerId.Value &&
-                        existing.CreationRequestId == message.RequestId && existing.MaxMembers == message.MaxMembers &&
+                        existing.CreationRequestId == message.RequestId &&
                         existing.JoinMode == message.JoinMode && existing.InvitationPermission == message.InvitationPermission &&
                         host != null && host.CharacterId == message.CharacterId)
                     {
@@ -225,7 +220,7 @@ public partial class EraTeamService : IEraTeamService
                 CreationRequestId = message.RequestId,
                 JoinMode = message.JoinMode,
                 InvitationPermission = message.InvitationPermission,
-                MaxMembers = message.MaxMembers,
+                MaxMembers = _setting.MaxMembers,
                 ExpiresAt = createdAt.AddSeconds(_setting.TeamLifetimeSeconds)
             };
             team.Members.Add(SetMemberAccount(new EraTeamMember
@@ -393,7 +388,7 @@ public partial class EraTeamService : IEraTeamService
         Guid teamId,
         Func<EraTeam?, EraTeamChange<T>> operation,
         CancellationToken cancellationToken)
-        where T : VoidBotResponse, IEraErrorResponse, new()
+        where T : VoidBotResponse, new()
     {
         try
         {
@@ -422,7 +417,7 @@ public partial class EraTeamService : IEraTeamService
         bool validateCharacter,
         Func<EraTeam, EraTeamMember, DateTimeOffset, T> operation,
         CancellationToken cancellationToken)
-        where T : VoidBotResponse, IEraErrorResponse, new()
+        where T : VoidBotResponse, new()
     {
         var identity = await IdentifyAsync<T>(cancellationToken).ConfigureAwait(false);
         if (identity.Error != null)
