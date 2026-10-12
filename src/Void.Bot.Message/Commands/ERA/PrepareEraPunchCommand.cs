@@ -1,9 +1,10 @@
+using Void.Bot.Message.Request.ERA;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-public class PrepareEraPunchCommand : ICommand
+public class PrepareEraPunchCommand : ICommand, IRequireEraPlayer
 {
     public Guid TeamId { get; set; }
     public long AuthorityEpoch { get; set; }

@@ -18,6 +18,7 @@ using StackExchange.Redis;
 using Void.Bot.Core.Caching;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Jobs;
+using Void.Bot.Core.Middlewares.ERA;
 using Void.Bot.Core.Middlewares.Logger;
 using Void.Bot.Core.Middlewares.DiscordBinding;
 using Void.Bot.Core.Middlewares.DiscordGuild;
@@ -29,6 +30,7 @@ using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Bungie;
+using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Discord.Component;
 using Void.Bot.Core.Services.Identity;
@@ -76,6 +78,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
         RegisterValidator(builder);
 
         RegisterBungieData(builder);
+        RegisterEraData(builder);
         
         RegisterDiscordBotClient(builder);
 
@@ -138,6 +141,7 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             p.UseDiscordGuild();        // Discord 公会可用性检查
             p.UseLoadDestiny2Player();  // 预加载Bungie Player Data
             p.UseUnitOfWork();          // 事务处理
+            p.UseEraPlayer();           // 在命令事务内预加载并验证 ERA 玩家
         });
 
         builder.RegisterMediator(mediatorBuilder);
@@ -242,6 +246,11 @@ public class VoidBotModule(ICurrentUser? currentUser, ILogger logger, IConfigura
             .AsSelf().AsImplementedInterfaces();
     }
     
+    private void RegisterEraData(ContainerBuilder builder)
+    {
+        builder.RegisterType<EraPlayerData>().AsSelf().InstancePerLifetimeScope();
+    }
+
     private void RegisterBungieData(ContainerBuilder builder)
     {
         builder.RegisterType<Destiny2PlayerData>().AsSelf().InstancePerLifetimeScope();

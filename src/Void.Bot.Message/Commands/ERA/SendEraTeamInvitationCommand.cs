@@ -1,3 +1,4 @@
+using Void.Bot.Message.Request.ERA;
 using System.Data;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto;
@@ -7,7 +8,7 @@ using Void.Bot.Message.Dto.ERA;
 namespace Void.Bot.Message.Commands.ERA;
 
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
-public class SendEraTeamInvitationCommand : ICommand
+public class SendEraTeamInvitationCommand : ICommand, IRequireEraPlayer
 {
     public Guid TeamId { get; set; }
     public Guid MemberId { get; set; }

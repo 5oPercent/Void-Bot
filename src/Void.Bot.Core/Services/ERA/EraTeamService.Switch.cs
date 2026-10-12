@@ -7,16 +7,16 @@ namespace Void.Bot.Core.Services.ERA;
 
 public partial interface IEraTeamService
 {
-    Task<SwitchEraTeamResponse> SwitchAsync(SwitchEraTeamCommand message, CancellationToken cancellationToken);
+    Task<SwitchEraTeamResponse> SwitchAsync(SwitchEraTeamCommand command, CancellationToken cancellationToken);
 }
 
 public partial class EraTeamService
 {
-    public async Task<SwitchEraTeamResponse> SwitchAsync(SwitchEraTeamCommand message, CancellationToken cancellationToken)
+    public async Task<SwitchEraTeamResponse> SwitchAsync(SwitchEraTeamCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await SwitchCoreAsync(message, null, null, cancellationToken).ConfigureAwait(false);
+            return await SwitchCoreAsync(command, null, null, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {

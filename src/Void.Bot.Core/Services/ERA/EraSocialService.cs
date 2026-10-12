@@ -25,11 +25,13 @@ public class EraSocialService : IEraSocialService
     private readonly IEraSocialDataProvider _data;
     private readonly IFriendDataProvider _friends;
     private readonly IEraTeamService _teamService;
+    private readonly IEraPlayerContext _playerContext;
     private readonly ICurrentUser _currentUser;
     private readonly ILocalizationService _localization;
 
     public EraSocialService(IEraTeamDataProvider teams, IEraDataProvider players,
         IEraSocialDataProvider data, IFriendDataProvider friends, IEraTeamService teamService,
+        IEraPlayerContext playerContext,
         ICurrentUser currentUser, ILocalizationService localization, IMapper mapper, EraNetworkingSetting setting)
     {
         _mapper = mapper;
@@ -39,6 +41,7 @@ public class EraSocialService : IEraSocialService
         _data = data;
         _friends = friends;
         _teamService = teamService;
+        _playerContext = playerContext;
         _currentUser = currentUser;
         _localization = localization;
     }
@@ -223,54 +226,54 @@ public class EraSocialService : IEraSocialService
         return result;
     }
 
-    public async Task<GetEraFriendStatusesResponse> GetEraFriendStatusesAsync(GetEraFriendStatusesRequest message,
+    public async Task<GetEraFriendStatusesResponse> GetEraFriendStatusesAsync(GetEraFriendStatusesRequest request,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
             return new GetEraFriendStatusesResponse
             {
-                Data = await ReadFriendStatusesBatchAsync(message.AccountIds, cancellationToken).ConfigureAwait(false)
+                Data = await ReadFriendStatusesBatchAsync(request.AccountIds, cancellationToken).ConfigureAwait(false)
             };
         }).ConfigureAwait(false);
     }
 
-    public async Task<GetEraFriendTargetResponse> GetEraFriendTargetAsync(GetEraFriendTargetRequest message,
+    public async Task<GetEraFriendTargetResponse> GetEraFriendTargetAsync(GetEraFriendTargetRequest request,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            if (!await _friends.AreFriendsAsync(AccountId, message.FriendAccountId, cancellationToken).ConfigureAwait(false))
+            if (!await _friends.AreFriendsAsync(AccountId, request.FriendAccountId, cancellationToken).ConfigureAwait(false))
             {
                 return Error<GetEraFriendTargetResponse>(HttpStatusCode.NotFound, "social.account_not_found", text => text.AccountNotFound);
             }
             return new GetEraFriendTargetResponse
             {
-                Data = await ReadFriendStatusAsync(message.FriendAccountId, cancellationToken).ConfigureAwait(false)
+                Data = await ReadFriendStatusAsync(request.FriendAccountId, cancellationToken).ConfigureAwait(false)
             };
         }).ConfigureAwait(false);
     }
 
-    public async Task<JoinEraFriendTeamResponse> JoinEraFriendTeamAsync(JoinEraFriendTeamCommand message,
+    public async Task<JoinEraFriendTeamResponse> JoinEraFriendTeamAsync(JoinEraFriendTeamCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var target = await _teams.GetTeamAsync(message.ExpectedTeamId, cancellationToken).ConfigureAwait(false);
+            var target = await _teams.GetTeamAsync(command.ExpectedTeamId, cancellationToken).ConfigureAwait(false);
             var host = target == null ? null : await _data.GetAccountIdAsync(target.HostPlayerId, cancellationToken).ConfigureAwait(false);
-            if (!host.HasValue || !await _friends.LockAccountSetAsync(new[] { AccountId, message.FriendAccountId, host.Value },
+            if (!host.HasValue || !await _friends.LockAccountSetAsync(new[] { AccountId, command.FriendAccountId, host.Value },
                 cancellationToken).ConfigureAwait(false) ||
-                !await _friends.AreFriendsAsync(AccountId, message.FriendAccountId, cancellationToken).ConfigureAwait(false))
+                !await _friends.AreFriendsAsync(AccountId, command.FriendAccountId, cancellationToken).ConfigureAwait(false))
             {
                 return Error<JoinEraFriendTeamResponse>(HttpStatusCode.Forbidden, "social.friend_required", text => text.Blocked);
             }
-            var status = await ReadFriendStatusAsync(message.FriendAccountId, cancellationToken).ConfigureAwait(false);
-            if (status.Team == null || status.Team.TeamId != message.ExpectedTeamId)
+            var status = await ReadFriendStatusAsync(command.FriendAccountId, cancellationToken).ConfigureAwait(false);
+            if (status.Team == null || status.Team.TeamId != command.ExpectedTeamId)
             {
                 return Error<JoinEraFriendTeamResponse>(HttpStatusCode.Conflict, "era.team_changed", text => text.TeamUnavailable);
             }
-            var result = await _teamService.JoinSocialAsync(message.ExpectedTeamId, message.CharacterId,
-                message.SourceTeamId, message.SourceMemberId, null, message.FriendAccountId, cancellationToken).ConfigureAwait(false);
+            var result = await _teamService.JoinSocialAsync(command.ExpectedTeamId, command.CharacterId,
+                command.SourceTeamId, command.SourceMemberId, null, command.FriendAccountId, cancellationToken).ConfigureAwait(false);
             return new JoinEraFriendTeamResponse
             {
                 Code = result.Code, ErrorCode = result.ErrorCode, Message = result.Message, Data = result.Data
@@ -278,25 +281,25 @@ public class EraSocialService : IEraSocialService
         }).ConfigureAwait(false);
     }
 
-    public async Task<UpdateEraTeamSettingsResponse> UpdateEraTeamSettingsAsync(UpdateEraTeamSettingsCommand message,
+    public async Task<UpdateEraTeamSettingsResponse> UpdateEraTeamSettingsAsync(UpdateEraTeamSettingsCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var player = await _players.GetPlayerByAccountIdAsync(AccountId, cancellationToken).ConfigureAwait(false);
-            return await _teams.ChangeAsync(message.TeamId, team =>
+            var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
+            return await _teams.ChangeAsync(command.TeamId, team =>
             {
                 var now = DateTimeOffset.UtcNow;
-                if (!IsActive(team) || player == null || team!.HostPlayerId != player.Id ||
-                    !team.Members.Any(value => value.PlayerId == player.Id && value.MemberId == message.MemberId && value.ExpiresAt > now))
+                if (!IsActive(team) || team!.HostPlayerId != player.Id ||
+                    !team.Members.Any(value => value.PlayerId == player.Id && value.MemberId == command.MemberId && value.ExpiresAt > now))
                 {
                     return new EraTeamChange<UpdateEraTeamSettingsResponse>
                     {
                         Result = Error<UpdateEraTeamSettingsResponse>(HttpStatusCode.Forbidden, "era.team_host_required", text => text.TeamHostRequired)
                     };
                 }
-                if (!team.IsMigrating && team.SocialVersion == message.ExpectedVersion + 1 &&
-                    team.JoinMode == message.JoinMode && team.InvitationPermission == message.InvitationPermission)
+                if (!team.IsMigrating && team.SocialVersion == command.ExpectedVersion + 1 &&
+                    team.JoinMode == command.JoinMode && team.InvitationPermission == command.InvitationPermission)
                 {
                     return new EraTeamChange<UpdateEraTeamSettingsResponse>
                     {
@@ -306,22 +309,22 @@ public class EraSocialService : IEraSocialService
                         }
                     };
                 }
-                if (team.IsMigrating || team.SocialVersion != message.ExpectedVersion)
+                if (team.IsMigrating || team.SocialVersion != command.ExpectedVersion)
                 {
                     return new EraTeamChange<UpdateEraTeamSettingsResponse>
                     {
                         Result = Error<UpdateEraTeamSettingsResponse>(HttpStatusCode.Conflict, "era.version_conflict", text => text.TeamUnavailable)
                     };
                 }
-                if (message.JoinMode == EraTeamJoinMode.Solo && team.Members.Count(value => value.ExpiresAt > now) != 1)
+                if (command.JoinMode == EraTeamJoinMode.Solo && team.Members.Count(value => value.ExpiresAt > now) != 1)
                 {
                     return new EraTeamChange<UpdateEraTeamSettingsResponse>
                     {
                         Result = Error<UpdateEraTeamSettingsResponse>(HttpStatusCode.Conflict, "era.solo_requires_one_member", text => text.SoloRequiresOneMember)
                     };
                 }
-                team.JoinMode = message.JoinMode;
-                team.InvitationPermission = message.InvitationPermission;
+                team.JoinMode = command.JoinMode;
+                team.InvitationPermission = command.InvitationPermission;
                 team.SocialVersion++;
                 return new EraTeamChange<UpdateEraTeamSettingsResponse>
                 {
@@ -345,32 +348,28 @@ public class EraSocialService : IEraSocialService
         return result;
     }
 
-    public async Task<SendEraTeamInvitationResponse> SendEraTeamInvitationAsync(SendEraTeamInvitationCommand message,
+    public async Task<SendEraTeamInvitationResponse> SendEraTeamInvitationAsync(SendEraTeamInvitationCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var authorizedTeam = await _teams.GetTeamAsync(message.TeamId, cancellationToken).ConfigureAwait(false);
+            var authorizedTeam = await _teams.GetTeamAsync(command.TeamId, cancellationToken).ConfigureAwait(false);
             var hostAccount = authorizedTeam == null ? null : await _data.GetAccountIdAsync(authorizedTeam.HostPlayerId,
                 cancellationToken).ConfigureAwait(false);
-            if (message.TargetAccountId == AccountId || !hostAccount.HasValue ||
-                !await _friends.LockAccountSetAsync(new[] { AccountId, message.TargetAccountId, hostAccount.Value }, cancellationToken).ConfigureAwait(false) ||
-                await _friends.IsBlockedAsync(hostAccount.Value, message.TargetAccountId, cancellationToken).ConfigureAwait(false) ||
-                !await _friends.AreFriendsAsync(AccountId, message.TargetAccountId, cancellationToken).ConfigureAwait(false))
+            if (command.TargetAccountId == AccountId || !hostAccount.HasValue ||
+                !await _friends.LockAccountSetAsync(new[] { AccountId, command.TargetAccountId, hostAccount.Value }, cancellationToken).ConfigureAwait(false) ||
+                await _friends.IsBlockedAsync(hostAccount.Value, command.TargetAccountId, cancellationToken).ConfigureAwait(false) ||
+                !await _friends.AreFriendsAsync(AccountId, command.TargetAccountId, cancellationToken).ConfigureAwait(false))
             {
                 return Error<SendEraTeamInvitationResponse>(HttpStatusCode.Forbidden, "social.friend_required", text => text.Blocked);
             }
-            var player = await _players.GetPlayerByAccountIdAsync(AccountId, cancellationToken).ConfigureAwait(false);
-            if (player == null)
-            {
-                return Error<SendEraTeamInvitationResponse>(HttpStatusCode.NotFound, "era.player_not_found", text => text.AccountNotFound);
-            }
-            var friendship = await _friends.GetFriendshipAsync(AccountId, message.TargetAccountId, cancellationToken).ConfigureAwait(false);
-            return await _teams.ChangeAsync(message.TeamId, team =>
+            var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
+            var friendship = await _friends.GetFriendshipAsync(AccountId, command.TargetAccountId, cancellationToken).ConfigureAwait(false);
+            return await _teams.ChangeAsync(command.TeamId, team =>
             {
                 var now = DateTimeOffset.UtcNow;
                 var sender = team?.Members.SingleOrDefault(value => value.PlayerId == player.Id &&
-                    value.MemberId == message.MemberId && value.ExpiresAt > now);
+                    value.MemberId == command.MemberId && value.ExpiresAt > now);
                 if (!IsActive(team) || sender == null || team!.HostPlayerId != authorizedTeam!.HostPlayerId || team.IsMigrating || team.JoinMode == EraTeamJoinMode.Solo ||
                     (team.InvitationPermission == EraTeamInvitationPermission.HostOnly && team.HostPlayerId != player.Id))
                 {
@@ -379,12 +378,12 @@ public class EraSocialService : IEraSocialService
                         Result = Error<SendEraTeamInvitationResponse>(HttpStatusCode.Forbidden, "era.invitation_denied", text => text.TeamUnavailable)
                     };
                 }
-                var receipt = team.Invitations.SingleOrDefault(value => value.SenderAccountId == AccountId && value.RequestId == message.RequestId);
+                var receipt = team.Invitations.SingleOrDefault(value => value.SenderAccountId == AccountId && value.RequestId == command.RequestId);
                 if (receipt != null)
                 {
                     return new EraTeamChange<SendEraTeamInvitationResponse>
                     {
-                        Result = receipt.RecipientAccountId == message.TargetAccountId
+                        Result = receipt.RecipientAccountId == command.TargetAccountId
                             ? new SendEraTeamInvitationResponse
                             {
                                 Data = MapInvitation(team, receipt)
@@ -393,7 +392,7 @@ public class EraSocialService : IEraSocialService
                     };
                 }
                 var existing = team.Invitations.SingleOrDefault(value => value.SenderAccountId == AccountId &&
-                    value.RecipientAccountId == message.TargetAccountId && value.Status == EraTeamInvitationStatus.Pending && value.ExpiresAt > now);
+                    value.RecipientAccountId == command.TargetAccountId && value.Status == EraTeamInvitationStatus.Pending && value.ExpiresAt > now);
                 if (existing != null)
                 {
                     return new EraTeamChange<SendEraTeamInvitationResponse>
@@ -417,9 +416,9 @@ public class EraSocialService : IEraSocialService
                 {
                     Id = Guid.NewGuid(),
                     FriendshipId = friendship!.Id,
-                    RequestId = message.RequestId,
+                    RequestId = command.RequestId,
                     SenderAccountId = AccountId,
-                    RecipientAccountId = message.TargetAccountId,
+                    RecipientAccountId = command.TargetAccountId,
                     SenderMemberId = sender.MemberId,
                     Status = EraTeamInvitationStatus.Pending,
                     CreatedAt = now,
@@ -439,7 +438,7 @@ public class EraSocialService : IEraSocialService
         }).ConfigureAwait(false);
     }
 
-    public async Task<GetEraTeamInvitationsResponse> GetEraTeamInvitationsAsync(GetEraTeamInvitationsRequest message,
+    public async Task<GetEraTeamInvitationsResponse> GetEraTeamInvitationsAsync(GetEraTeamInvitationsRequest request,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
@@ -454,7 +453,7 @@ public class EraSocialService : IEraSocialService
                     continue;
                 }
                 foreach (var invitation in team.Invitations.Where(value =>
-                    message.Outgoing ? value.SenderAccountId == AccountId : value.RecipientAccountId == AccountId))
+                    request.Outgoing ? value.SenderAccountId == AccountId : value.RecipientAccountId == AccountId))
                 {
                     var status = await EffectiveStatusAsync(team, invitation, cancellationToken).ConfigureAwait(false);
                     if (status == EraTeamInvitationStatus.Pending)
@@ -470,13 +469,13 @@ public class EraSocialService : IEraSocialService
         }).ConfigureAwait(false);
     }
 
-    public async Task<GetEraTeamInvitationResponse> GetEraTeamInvitationAsync(GetEraTeamInvitationRequest message,
+    public async Task<GetEraTeamInvitationResponse> GetEraTeamInvitationAsync(GetEraTeamInvitationRequest request,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var team = await _teams.GetTeamAsync(message.TeamId, cancellationToken).ConfigureAwait(false);
-            var invitation = team?.Invitations.SingleOrDefault(value => value.Id == message.InvitationId &&
+            var team = await _teams.GetTeamAsync(request.TeamId, cancellationToken).ConfigureAwait(false);
+            var invitation = team?.Invitations.SingleOrDefault(value => value.Id == request.InvitationId &&
                 (value.SenderAccountId == AccountId || value.RecipientAccountId == AccountId));
             if (team == null || invitation == null)
             {
@@ -536,12 +535,12 @@ public class EraSocialService : IEraSocialService
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<WithdrawEraTeamInvitationResponse> WithdrawEraTeamInvitationAsync(WithdrawEraTeamInvitationCommand message,
+    public async Task<WithdrawEraTeamInvitationResponse> WithdrawEraTeamInvitationAsync(WithdrawEraTeamInvitationCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var result = await ProcessInvitationAsync(message.TeamId, message.InvitationId, true, cancellationToken).ConfigureAwait(false);
+            var result = await ProcessInvitationAsync(command.TeamId, command.InvitationId, true, cancellationToken).ConfigureAwait(false);
             return new WithdrawEraTeamInvitationResponse
             {
                 Code = result.Code,
@@ -552,12 +551,12 @@ public class EraSocialService : IEraSocialService
         }).ConfigureAwait(false);
     }
 
-    public async Task<RejectEraTeamInvitationResponse> RejectEraTeamInvitationAsync(RejectEraTeamInvitationCommand message,
+    public async Task<RejectEraTeamInvitationResponse> RejectEraTeamInvitationAsync(RejectEraTeamInvitationCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var result = await ProcessInvitationAsync(message.TeamId, message.InvitationId, false, cancellationToken).ConfigureAwait(false);
+            var result = await ProcessInvitationAsync(command.TeamId, command.InvitationId, false, cancellationToken).ConfigureAwait(false);
             return new RejectEraTeamInvitationResponse
             {
                 Code = result.Code,
@@ -568,23 +567,23 @@ public class EraSocialService : IEraSocialService
         }).ConfigureAwait(false);
     }
 
-    public async Task<AcceptEraTeamInvitationResponse> AcceptEraTeamInvitationAsync(AcceptEraTeamInvitationCommand message,
+    public async Task<AcceptEraTeamInvitationResponse> AcceptEraTeamInvitationAsync(AcceptEraTeamInvitationCommand command,
         CancellationToken cancellationToken)
     {
         return await GuardAsync(async () =>
         {
-            var team = await _teams.GetTeamAsync(message.TeamId, cancellationToken).ConfigureAwait(false);
-            var invitation = team?.Invitations.SingleOrDefault(value => value.Id == message.InvitationId && value.RecipientAccountId == AccountId);
+            var team = await _teams.GetTeamAsync(command.TeamId, cancellationToken).ConfigureAwait(false);
+            var invitation = team?.Invitations.SingleOrDefault(value => value.Id == command.InvitationId && value.RecipientAccountId == AccountId);
             if (team == null || invitation == null)
             {
                 return Error<AcceptEraTeamInvitationResponse>(HttpStatusCode.NotFound, "era.invitation_not_found", text => text.TeamUnavailable);
             }
             if (invitation.Status == EraTeamInvitationStatus.Accepted)
             {
-                var player = await _players.GetPlayerByAccountIdAsync(AccountId, cancellationToken).ConfigureAwait(false);
+                var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
                 var member = team.Members.SingleOrDefault(value => value.MemberId == invitation.AcceptedMemberId &&
-                    value.PlayerId == player?.Id && value.ExpiresAt > DateTimeOffset.UtcNow);
-                if (member != null && invitation.AcceptedCharacterId == message.CharacterId)
+                    value.PlayerId == player.Id && value.ExpiresAt > DateTimeOffset.UtcNow);
+                if (member != null && invitation.AcceptedCharacterId == command.CharacterId)
                 {
                     return new AcceptEraTeamInvitationResponse
                     {
@@ -597,8 +596,8 @@ public class EraSocialService : IEraSocialService
             {
                 return Error<AcceptEraTeamInvitationResponse>(HttpStatusCode.Conflict, "era.invitation_invalid", text => text.TeamUnavailable);
             }
-            var result = await _teamService.JoinSocialAsync(message.TeamId, message.CharacterId,
-                message.SourceTeamId, message.SourceMemberId, message.InvitationId, null, cancellationToken).ConfigureAwait(false);
+            var result = await _teamService.JoinSocialAsync(command.TeamId, command.CharacterId,
+                command.SourceTeamId, command.SourceMemberId, command.InvitationId, null, cancellationToken).ConfigureAwait(false);
             return new AcceptEraTeamInvitationResponse
             {
                 Code = result.Code, ErrorCode = result.ErrorCode, Message = result.Message, Data = result.Data

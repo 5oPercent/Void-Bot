@@ -1,0 +1,324 @@
+{
+  "Configuration": {
+    "Version": 1,
+    "Systems": [
+      {
+        "SecondarySkills": [
+          "restoration.support",
+          "restoration.reserve"
+        ],
+        "SpecialSkills": [
+          "restoration.special"
+        ],
+        "TacticalSkills": [
+          "restoration.tactical"
+        ],
+        "Name": "恢复 体系",
+        "Id": "restoration",
+        "PrimarySkills": [
+          "restoration.support",
+          "restoration.reserve"
+        ]
+      },
+      {
+        "SecondarySkills": [
+          "electromagnetic.support",
+          "electromagnetic.reserve"
+        ],
+        "SpecialSkills": [
+          "electromagnetic.special"
+        ],
+        "TacticalSkills": [
+          "electromagnetic.tactical"
+        ],
+        "Name": "电磁 体系",
+        "Id": "electromagnetic",
+        "PrimarySkills": [
+          "electromagnetic.support",
+          "electromagnetic.reserve"
+        ]
+      }
+    ],
+    "SchemaVersion": 1,
+    "Buffs": [
+      {
+        "Id": "test.damage",
+        "Name": "测试掉血",
+        "Description": "施加时立即造成 10 点伤害，防护优先吸收伤害。",
+        "Kind": 0,
+        "Effects": [
+          {
+            "Kind": 1,
+            "Amount": 10
+          }
+        ]
+      },
+      {
+        "Id": "test.heal",
+        "Name": "测试回血",
+        "Description": "施加时立即恢复 10 点生命，不超过最大生命值，不复活死亡角色。",
+        "Kind": 0,
+        "Effects": [
+          {
+            "Kind": 2,
+            "Amount": 10
+          }
+        ]
+      },
+      {
+        "Id": "restore.health",
+        "Effects": [
+          {
+            "Kind": 2,
+            "Amount": 20
+          }
+        ],
+        "Name": "生命恢复",
+        "Kind": 0
+      },
+      {
+        "Id": "restore.protection",
+        "Effects": [
+          {
+            "Kind": 3,
+            "Amount": 25
+          }
+        ],
+        "Name": "防护恢复",
+        "Kind": 0
+      },
+      {
+        "Effects": [
+          {
+            "Amount": 0.15,
+            "Operation": 1,
+            "Stat": 5,
+            "Kind": 0
+          }
+        ],
+        "SourceScope": 2,
+        "DurationSeconds": 5,
+        "Kind": 1,
+        "StackRule": 1,
+        "MaxStacks": 1,
+        "Name": "机动强化",
+        "Id": "mobility"
+      }
+    ],
+    "DisabledSkills": [],
+    "Skills": [
+      {
+        "Id": "restoration.special",
+        "Variants": [
+          {
+            "Slot": 0,
+            "Parameters": {
+              "interval": 1,
+              "radius": 10,
+              "distance": 20,
+              "duration": 8
+            },
+            "CarrierId": "area",
+            "CooldownSeconds": 60,
+            "BuffIds": [
+              "restore.health",
+              "restore.protection"
+            ]
+          }
+        ],
+        "Name": "恢复 爆发"
+      },
+      {
+        "Id": "restoration.support",
+        "Variants": [
+          {
+            "Slot": 1,
+            "CooldownSeconds": 10,
+            "CarrierId": "area",
+            "MaximumCharges": 2,
+            "Parameters": {
+              "interval": 1,
+              "radius": 5,
+              "distance": 20,
+              "duration": 8
+            },
+            "BuffIds": [
+              "restore.health"
+            ],
+            "RecoveryStart": 1
+          },
+          {
+            "Slot": 2,
+            "BuffIds": [
+              "restore.health"
+            ],
+            "CarrierId": "self",
+            "CooldownSeconds": 8,
+            "MaximumCharges": 2
+          }
+        ],
+        "Name": "恢复 support"
+      },
+      {
+        "Id": "restoration.reserve",
+        "Variants": [
+          {
+            "Slot": 1,
+            "CooldownSeconds": 10,
+            "CarrierId": "area",
+            "MaximumCharges": 2,
+            "Parameters": {
+              "interval": 1,
+              "radius": 5,
+              "distance": 20,
+              "duration": 8
+            },
+            "BuffIds": [
+              "restore.health"
+            ],
+            "RecoveryStart": 1
+          },
+          {
+            "Slot": 2,
+            "BuffIds": [
+              "restore.health"
+            ],
+            "CarrierId": "self",
+            "CooldownSeconds": 8,
+            "MaximumCharges": 2
+          }
+        ],
+        "Name": "恢复 reserve"
+      },
+      {
+        "Id": "restoration.tactical",
+        "Variants": [
+          {
+            "Slot": 3,
+            "CarrierId": "self",
+            "CooldownSeconds": 15,
+            "BuffIds": [
+              "restore.protection"
+            ]
+          }
+        ],
+        "Name": "恢复 防护"
+      },
+      {
+        "Id": "electromagnetic.special",
+        "Variants": [
+          {
+            "Slot": 0,
+            "Parameters": {
+              "interval": 1,
+              "radius": 10,
+              "distance": 20,
+              "duration": 8
+            },
+            "CarrierId": "area",
+            "CooldownSeconds": 60,
+            "BuffIds": [
+              "restore.health",
+              "restore.protection"
+            ]
+          }
+        ],
+        "Name": "电磁 爆发"
+      },
+      {
+        "Id": "electromagnetic.support",
+        "Variants": [
+          {
+            "Slot": 1,
+            "CooldownSeconds": 10,
+            "CarrierId": "area",
+            "MaximumCharges": 2,
+            "Parameters": {
+              "interval": 1,
+              "radius": 5,
+              "distance": 20,
+              "duration": 8
+            },
+            "BuffIds": [
+              "restore.protection"
+            ],
+            "RecoveryStart": 1
+          },
+          {
+            "Slot": 2,
+            "BuffIds": [
+              "restore.protection"
+            ],
+            "CarrierId": "self",
+            "CooldownSeconds": 8,
+            "MaximumCharges": 2
+          }
+        ],
+        "Name": "电磁 support"
+      },
+      {
+        "Id": "electromagnetic.reserve",
+        "Variants": [
+          {
+            "Slot": 1,
+            "CooldownSeconds": 10,
+            "CarrierId": "area",
+            "MaximumCharges": 2,
+            "Parameters": {
+              "interval": 1,
+              "radius": 5,
+              "distance": 20,
+              "duration": 8
+            },
+            "BuffIds": [
+              "restore.protection"
+            ],
+            "RecoveryStart": 1
+          },
+          {
+            "Slot": 2,
+            "BuffIds": [
+              "restore.protection"
+            ],
+            "CarrierId": "self",
+            "CooldownSeconds": 8,
+            "MaximumCharges": 2
+          }
+        ],
+        "Name": "电磁 reserve"
+      },
+      {
+        "Id": "electromagnetic.tactical",
+        "Variants": [
+          {
+            "Slot": 3,
+            "CarrierId": "self",
+            "CooldownSeconds": 15,
+            "BuffIds": [
+              "restore.protection"
+            ]
+          }
+        ],
+        "Name": "电磁 防护"
+      },
+      {
+        "Id": "common.mobility",
+        "Variants": [
+          {
+            "Slot": 3,
+            "CarrierId": "self",
+            "CooldownSeconds": 12,
+            "BuffIds": [
+              "mobility"
+            ]
+          }
+        ],
+        "Name": "机动强化"
+      }
+    ],
+    "CommonTacticalSkills": [
+      "common.mobility"
+    ]
+  },
+  "ExpectedVersion": 0
+}

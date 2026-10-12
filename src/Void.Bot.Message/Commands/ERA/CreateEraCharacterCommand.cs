@@ -1,9 +1,10 @@
+using Void.Bot.Message.Request.ERA;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-public class CreateEraCharacterCommand : ICommand
+public class CreateEraCharacterCommand : ICommand, IRequireEraPlayer
 {
     /// <summary>同一创建操作重试必须复用此 ID。</summary>
     public Guid RequestId { get; set; }

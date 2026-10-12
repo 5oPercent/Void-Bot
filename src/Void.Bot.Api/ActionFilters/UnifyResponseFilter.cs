@@ -51,6 +51,7 @@ public class UnifyResponseExceptionFilter : IExceptionFilter
             var response = new VoidBotResponse
             {
                 Code = businessException.Code,
+                ErrorCode = businessException.ErrorCode,
                 Message = businessException.Message
             };
             context.Result = new JsonResult(response);

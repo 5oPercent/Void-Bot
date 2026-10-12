@@ -1,3 +1,4 @@
+using Void.Bot.Message.Request.ERA;
 using Void.Bot.Message.Dto;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto.ERA;
@@ -5,7 +6,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-public class UpdateEraTeamSettingsCommand : ICommand
+public class UpdateEraTeamSettingsCommand : ICommand, IRequireEraPlayer
 {
     public Guid TeamId { get; set; }
     public Guid MemberId { get; set; }

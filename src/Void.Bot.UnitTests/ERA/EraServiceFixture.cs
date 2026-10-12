@@ -36,6 +36,7 @@ public class EraServiceFixture
         });
         return new EraService(
             _dataProvider,
+            new EraPlayerContext(_dataProvider, _currentUser, Substitute.For<ILocalizationService>(), new EraPlayerData()),
             _currentUser,
             _mapper,
             Substitute.For<ILocalizationService>());
