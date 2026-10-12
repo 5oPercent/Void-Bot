@@ -7,29 +7,29 @@ namespace Void.Bot.Core.Services.ERA;
 public partial interface IEraTeamService
 {
     Task<SetEraHostReadinessResponse> SetHostReadinessAsync(
-        SetEraHostReadinessCommand message,
+        SetEraHostReadinessCommand command,
         CancellationToken cancellationToken);
     Task<CompleteEraHostMigrationResponse> CompleteHostMigrationAsync(
-        CompleteEraHostMigrationCommand message,
+        CompleteEraHostMigrationCommand command,
         CancellationToken cancellationToken);
 }
 
 public partial class EraTeamService
 {
     public async Task<SetEraHostReadinessResponse> SetHostReadinessAsync(
-        SetEraHostReadinessCommand message,
+        SetEraHostReadinessCommand command,
         CancellationToken cancellationToken)
     {
         try
         {
-            return await InTeamAsync(message.TeamId, message.MemberId, true, (team, member, now) =>
+            return await InTeamAsync(command.TeamId, command.MemberId, true, (team, member, now) =>
             {
-                if (message.AuthorityEpoch != team.AuthorityEpoch || team.IsMigrating)
+                if (command.AuthorityEpoch != team.AuthorityEpoch || team.IsMigrating)
                 {
                     return Error<SetEraHostReadinessResponse>(HttpStatusCode.Conflict,
                         "era.authority_changed", text => text.AuthorityChanged);
                 }
-                member.CanHost = message.CanHost;
+                member.CanHost = command.CanHost;
                 return new SetEraHostReadinessResponse
                 {
                     Data = MapTeam(team, now)
@@ -44,7 +44,7 @@ public partial class EraTeamService
     }
 
     public async Task<CompleteEraHostMigrationResponse> CompleteHostMigrationAsync(
-        CompleteEraHostMigrationCommand message,
+        CompleteEraHostMigrationCommand command,
         CancellationToken cancellationToken)
     {
         try
@@ -54,14 +54,14 @@ public partial class EraTeamService
             {
                 return identity.Error;
             }
-            var initial = await _teams.GetTeamAsync(message.TeamId, cancellationToken).ConfigureAwait(false);
-            var initialMember = initial?.Members.SingleOrDefault(member => member.MemberId == message.MemberId && member.PlayerId == identity.PlayerId!.Value);
+            var initial = await _teams.GetTeamAsync(command.TeamId, cancellationToken).ConfigureAwait(false);
+            var initialMember = initial?.Members.SingleOrDefault(member => member.MemberId == command.MemberId && member.PlayerId == identity.PlayerId!.Value);
             if (initialMember == null || !await OwnsCharacterAsync(identity.PlayerId!.Value, initialMember.CharacterId, cancellationToken).ConfigureAwait(false))
             {
                 return Error<CompleteEraHostMigrationResponse>(HttpStatusCode.NotFound,
                     "era.character_not_found", text => text.CharacterNotFound);
             }
-            return await ChangeTeamAsync(message.TeamId, team =>
+            return await ChangeTeamAsync(command.TeamId, team =>
             {
                 var now = DateTimeOffset.UtcNow;
                 if (team == null || !IsActive(team, now))
@@ -72,7 +72,7 @@ public partial class EraTeamService
                             "era.team_not_found", text => text.TeamNotFound)
                     };
                 }
-                var member = team.Members.SingleOrDefault(item => item.MemberId == message.MemberId &&
+                var member = team.Members.SingleOrDefault(item => item.MemberId == command.MemberId &&
                     item.PlayerId == identity.PlayerId!.Value && item.ExpiresAt > now);
                 if (member == null || team.HostPlayerId != identity.PlayerId!.Value)
                 {
@@ -82,9 +82,9 @@ public partial class EraTeamService
                             "era.migration_host_required", text => text.MigrationHostRequired)
                     };
                 }
-                if (message.AuthorityEpoch != team.AuthorityEpoch ||
+                if (command.AuthorityEpoch != team.AuthorityEpoch ||
                     (team.IsMigrating && team.MigrationDeadline <= now) ||
-                    (!team.IsMigrating && !message.Success))
+                    (!team.IsMigrating && !command.Success))
                 {
                     return new EraTeamChange<CompleteEraHostMigrationResponse>
                     {
@@ -93,7 +93,7 @@ public partial class EraTeamService
                     };
                 }
                 var alive = true;
-                if (message.Success)
+                if (command.Success)
                 {
                     team.IsMigrating = false;
                     team.MigrationDeadline = default;

@@ -1,9 +1,10 @@
+using Void.Bot.Message.Request.ERA;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-public class AdjustEraWarehouseCapacityCommand : ICommand
+public class AdjustEraWarehouseCapacityCommand : ICommand, IRequireEraTargetPlayer
 {
     /// <summary>由 API 路由写入，客户端请求体不能改变目标玩家。</summary>
     public Guid PlayerId { get; set; }

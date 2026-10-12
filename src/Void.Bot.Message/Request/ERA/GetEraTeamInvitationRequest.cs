@@ -4,7 +4,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-public class GetEraTeamInvitationRequest : IRequest
+public class GetEraTeamInvitationRequest : IRequest, IRequireEraPlayer
 {
     public Guid TeamId { get; set; }
     public Guid InvitationId { get; set; }

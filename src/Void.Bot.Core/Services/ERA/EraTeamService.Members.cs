@@ -8,22 +8,22 @@ namespace Void.Bot.Core.Services.ERA;
 
 public partial interface IEraTeamService
 {
-    Task<TransferEraTeamMemberResponse> TransferHostAsync(TransferEraTeamMemberCommand message, CancellationToken cancellationToken);
-    Task<RemoveEraTeamMemberResponse> RemoveMemberAsync(RemoveEraTeamMemberCommand message, CancellationToken cancellationToken);
+    Task<TransferEraTeamMemberResponse> TransferHostAsync(TransferEraTeamMemberCommand command, CancellationToken cancellationToken);
+    Task<RemoveEraTeamMemberResponse> RemoveMemberAsync(RemoveEraTeamMemberCommand command, CancellationToken cancellationToken);
 }
 
 public partial class EraTeamService
 {
-    public Task<TransferEraTeamMemberResponse> TransferHostAsync(TransferEraTeamMemberCommand message, CancellationToken cancellationToken)
+    public Task<TransferEraTeamMemberResponse> TransferHostAsync(TransferEraTeamMemberCommand command, CancellationToken cancellationToken)
     {
-        return ManageMemberAsync<TransferEraTeamMemberResponse>(message.TeamId, message.MemberId,
-            message.TargetMemberId, message.AuthorityEpoch, true, cancellationToken);
+        return ManageMemberAsync<TransferEraTeamMemberResponse>(command.TeamId, command.MemberId,
+            command.TargetMemberId, command.AuthorityEpoch, true, cancellationToken);
     }
 
-    public Task<RemoveEraTeamMemberResponse> RemoveMemberAsync(RemoveEraTeamMemberCommand message, CancellationToken cancellationToken)
+    public Task<RemoveEraTeamMemberResponse> RemoveMemberAsync(RemoveEraTeamMemberCommand command, CancellationToken cancellationToken)
     {
-        return ManageMemberAsync<RemoveEraTeamMemberResponse>(message.TeamId, message.MemberId,
-            message.TargetMemberId, message.AuthorityEpoch, false, cancellationToken);
+        return ManageMemberAsync<RemoveEraTeamMemberResponse>(command.TeamId, command.MemberId,
+            command.TargetMemberId, command.AuthorityEpoch, false, cancellationToken);
     }
 
     private async Task<T> ManageMemberAsync<T>(Guid teamId, Guid memberId, Guid targetMemberId,

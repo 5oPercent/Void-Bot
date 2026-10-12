@@ -41,17 +41,20 @@ public partial interface IEraService : IScope
 public partial class EraService : IEraService
 {
     private readonly IEraDataProvider _dataProvider;
+    private readonly IEraPlayerContext _playerContext;
     private readonly ICurrentUser _currentUser;
     private readonly IMapper _mapper;
     private readonly ILocalizationService _localizationService;
 
     public EraService(
         IEraDataProvider dataProvider,
+        IEraPlayerContext playerContext,
         ICurrentUser currentUser,
         IMapper mapper,
         ILocalizationService localizationService)
     {
         _dataProvider = dataProvider;
+        _playerContext = playerContext;
         _currentUser = currentUser;
         _mapper = mapper;
         _localizationService = localizationService;
@@ -162,16 +165,9 @@ public partial class EraService : IEraService
                 context => context.Unauthorized);
         }
 
-        var player = await _dataProvider
-            .GetPlayerByAccountIdAsync(_currentUser.Id.Value, cancellationToken)
+        var player = await _playerContext
+            .RequireCurrentAsync(false, cancellationToken)
             .ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<GetEraPlayerResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
 
         return new GetEraPlayerResponse
         {
@@ -259,14 +255,7 @@ public partial class EraService : IEraService
                 context => context.Unauthorized);
         }
 
-        var player = await GetCurrentPlayerAsync(cancellationToken).ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<GetEraCharacterListResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
+        var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
 
         var configurations = await _dataProvider.GetConfigurationsAsync(false, cancellationToken).ConfigureAwait(false);
         if (!TryGetIntegerConfiguration(configurations, EraConfigurationKeys.CharacterLimit, out var characterLimit) || characterLimit < 1)
@@ -300,14 +289,7 @@ public partial class EraService : IEraService
                 context => context.Unauthorized);
         }
 
-        var player = await GetCurrentPlayerAsync(cancellationToken).ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<GetEraCharacterResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
+        var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
 
         var character = await _dataProvider
             .GetCharacterByIdAsync(request.CharacterId, cancellationToken)
@@ -339,16 +321,9 @@ public partial class EraService : IEraService
                 context => context.Unauthorized);
         }
 
-        var player = await _dataProvider
-            .LockPlayerByAccountIdAsync(_currentUser.Id.Value, cancellationToken)
+        var player = await _playerContext
+            .RequireCurrentAsync(true, cancellationToken)
             .ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<CreateEraCharacterResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
 
         var existingCharacter = await _dataProvider
             .GetCharacterByCreationRequestIdAsync(player.Id, command.RequestId, cancellationToken)
@@ -420,16 +395,9 @@ public partial class EraService : IEraService
                 context => context.Unauthorized);
         }
 
-        var player = await _dataProvider
-            .LockPlayerByAccountIdAsync(_currentUser.Id.Value, cancellationToken)
+        var player = await _playerContext
+            .RequireCurrentAsync(true, cancellationToken)
             .ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<DeleteEraCharacterResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
 
         var character = await _dataProvider
             .LockCharacterAsync(command.CharacterId, cancellationToken)
@@ -458,17 +426,6 @@ public partial class EraService : IEraService
             Code = HttpStatusCode.OK,
             Data = character.Id
         };
-    }
-    private async Task<EraPlayer?> GetCurrentPlayerAsync(CancellationToken cancellationToken)
-    {
-        if (!_currentUser.Id.HasValue || _currentUser.Id.Value == Guid.Empty)
-        {
-            return null;
-        }
-
-        return await _dataProvider
-            .GetPlayerByAccountIdAsync(_currentUser.Id.Value, cancellationToken)
-            .ConfigureAwait(false);
     }
 
 }

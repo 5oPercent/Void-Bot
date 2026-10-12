@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-public class GetEraPlayerRequest : IRequest
+public class GetEraPlayerRequest : IRequest, IRequireEraPlayer
 {
 }
 

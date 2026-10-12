@@ -28,16 +28,9 @@ public partial class EraService
         GetEraAdminPlayerRequest request,
         CancellationToken cancellationToken)
     {
-        var player = await _dataProvider
-            .GetPlayerByIdAsync(request.PlayerId, cancellationToken)
+        var player = await _playerContext
+            .RequireTargetAsync(request.PlayerId, false, cancellationToken)
             .ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<GetEraAdminPlayerResponse>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
 
         return new GetEraAdminPlayerResponse
         {
@@ -183,14 +176,7 @@ public partial class EraService
                 context => context.Unauthorized);
         }
 
-        var player = await _dataProvider.LockPlayerAsync(playerId, cancellationToken).ConfigureAwait(false);
-        if (player == null)
-        {
-            return Error<T>(
-                HttpStatusCode.NotFound,
-                "era.player_not_found",
-                context => context.PlayerNotFound);
-        }
+        var player = await _playerContext.RequireTargetAsync(playerId, true, cancellationToken).ConfigureAwait(false);
 
         var receipt = await _dataProvider.GetReceiptAsync(playerId, requestId, cancellationToken).ConfigureAwait(false);
         if (receipt != null)

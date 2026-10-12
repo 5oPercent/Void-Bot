@@ -22,28 +22,28 @@ namespace Void.Bot.Core.Services.ERA;
 public partial interface IEraTeamService : IScope
 {
     Task<CreateEraTeamResponse> CreateAsync(
-        CreateEraTeamCommand message,
+        CreateEraTeamCommand command,
         CancellationToken cancellationToken);
     Task<JoinEraTeamResponse> JoinAsync(
-        JoinEraTeamCommand message,
+        JoinEraTeamCommand command,
         CancellationToken cancellationToken);
     Task<HeartbeatEraTeamResponse> HeartbeatAsync(
-        HeartbeatEraTeamCommand message,
+        HeartbeatEraTeamCommand command,
         CancellationToken cancellationToken);
     Task<LeaveEraTeamResponse> LeaveAsync(
-        LeaveEraTeamCommand message,
+        LeaveEraTeamCommand command,
         CancellationToken cancellationToken);
     Task<PrepareEraPunchResponse> PreparePunchAsync(
-        PrepareEraPunchCommand message,
+        PrepareEraPunchCommand command,
         CancellationToken cancellationToken);
     Task<GetCurrentEraTeamResponse> GetCurrentAsync(
-        GetCurrentEraTeamRequest message,
+        GetCurrentEraTeamRequest request,
         CancellationToken cancellationToken);
     Task<GetEraTeamResponse> GetAsync(
-        GetEraTeamRequest message,
+        GetEraTeamRequest request,
         CancellationToken cancellationToken);
     Task<GetEraPunchPeersResponse> GetPeersAsync(
-        GetEraPunchPeersRequest message,
+        GetEraPunchPeersRequest request,
         CancellationToken cancellationToken);
 }
 
@@ -51,6 +51,7 @@ public partial class EraTeamService : IEraTeamService
 {
     private readonly IEraDataProvider _players;
     private readonly IEraTeamDataProvider _teams;
+    private readonly IEraPlayerContext _playerContext;
     private readonly ICurrentUser _currentUser;
     private readonly ILocalizationService _localization;
     private readonly IMapper _mapper;
@@ -59,6 +60,7 @@ public partial class EraTeamService : IEraTeamService
     public EraTeamService(
         IEraDataProvider players,
         IEraTeamDataProvider teams,
+        IEraPlayerContext playerContext,
         ICurrentUser currentUser,
         ILocalizationService localization,
         IMapper mapper,
@@ -68,6 +70,7 @@ public partial class EraTeamService : IEraTeamService
     {
         _players = players;
         _teams = teams;
+        _playerContext = playerContext;
         _currentUser = currentUser;
         _localization = localization;
         _mapper = mapper;
@@ -100,11 +103,7 @@ public partial class EraTeamService : IEraTeamService
             return (null, Error<T>(HttpStatusCode.ServiceUnavailable, "era.networking_disabled", text => text.NetworkingDisabled));
         }
 
-        var player = await _players.GetPlayerByAccountIdAsync(_currentUser.Id.Value, cancellationToken).ConfigureAwait(false);
-        if (player == null)
-        {
-            return (null, Error<T>(HttpStatusCode.NotFound, "era.player_not_found", text => text.PlayerNotFound));
-        }
+        var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
 
         return (player.Id, null);
     }
@@ -160,11 +159,11 @@ public partial class EraTeamService : IEraTeamService
         return result;
     }
 
-    public async Task<CreateEraTeamResponse> CreateAsync(CreateEraTeamCommand message, CancellationToken cancellationToken)
+    public async Task<CreateEraTeamResponse> CreateAsync(CreateEraTeamCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await CreateCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await CreateCoreAsync(command, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -245,11 +244,11 @@ public partial class EraTeamService : IEraTeamService
         return Error<CreateEraTeamResponse>(HttpStatusCode.ServiceUnavailable, "era.networking_unavailable", text => text.NetworkingUnavailable);
     }
 
-    public async Task<JoinEraTeamResponse> JoinAsync(JoinEraTeamCommand message, CancellationToken cancellationToken)
+    public async Task<JoinEraTeamResponse> JoinAsync(JoinEraTeamCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await JoinCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await JoinCoreAsync(command, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -486,7 +485,7 @@ public partial class EraTeamService : IEraTeamService
     }
 
     public async Task<GetCurrentEraTeamResponse> GetCurrentAsync(
-        GetCurrentEraTeamRequest message,
+        GetCurrentEraTeamRequest request,
         CancellationToken cancellationToken)
     {
         try
@@ -523,11 +522,11 @@ public partial class EraTeamService : IEraTeamService
         }
     }
 
-    public async Task<GetEraTeamResponse> GetAsync(GetEraTeamRequest message, CancellationToken cancellationToken)
+    public async Task<GetEraTeamResponse> GetAsync(GetEraTeamRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return await GetCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await GetCoreAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -546,11 +545,11 @@ public partial class EraTeamService : IEraTeamService
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<HeartbeatEraTeamResponse> HeartbeatAsync(HeartbeatEraTeamCommand message, CancellationToken cancellationToken)
+    public async Task<HeartbeatEraTeamResponse> HeartbeatAsync(HeartbeatEraTeamCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await HeartbeatCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await HeartbeatCoreAsync(command, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -572,11 +571,11 @@ public partial class EraTeamService : IEraTeamService
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<LeaveEraTeamResponse> LeaveAsync(LeaveEraTeamCommand message, CancellationToken cancellationToken)
+    public async Task<LeaveEraTeamResponse> LeaveAsync(LeaveEraTeamCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await LeaveCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await LeaveCoreAsync(command, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -626,11 +625,11 @@ public partial class EraTeamService : IEraTeamService
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<PrepareEraPunchResponse> PreparePunchAsync(PrepareEraPunchCommand message, CancellationToken cancellationToken)
+    public async Task<PrepareEraPunchResponse> PreparePunchAsync(PrepareEraPunchCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            return await PreparePunchCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await PreparePunchCoreAsync(command, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {
@@ -673,11 +672,11 @@ public partial class EraTeamService : IEraTeamService
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<GetEraPunchPeersResponse> GetPeersAsync(GetEraPunchPeersRequest message, CancellationToken cancellationToken)
+    public async Task<GetEraPunchPeersResponse> GetPeersAsync(GetEraPunchPeersRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return await GetPeersCoreAsync(message, cancellationToken).ConfigureAwait(false);
+            return await GetPeersCoreAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (RedisException)
         {

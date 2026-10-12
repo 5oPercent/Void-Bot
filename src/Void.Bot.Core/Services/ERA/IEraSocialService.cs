@@ -5,14 +5,14 @@ namespace Void.Bot.Core.Services.ERA;
 
 public interface IEraSocialService : IScope
 {
-    Task<GetEraFriendStatusesResponse> GetEraFriendStatusesAsync(GetEraFriendStatusesRequest message, CancellationToken cancellationToken);
-    Task<GetEraFriendTargetResponse> GetEraFriendTargetAsync(GetEraFriendTargetRequest message, CancellationToken cancellationToken);
-    Task<JoinEraFriendTeamResponse> JoinEraFriendTeamAsync(JoinEraFriendTeamCommand message, CancellationToken cancellationToken);
-    Task<UpdateEraTeamSettingsResponse> UpdateEraTeamSettingsAsync(UpdateEraTeamSettingsCommand message, CancellationToken cancellationToken);
-    Task<SendEraTeamInvitationResponse> SendEraTeamInvitationAsync(SendEraTeamInvitationCommand message, CancellationToken cancellationToken);
-    Task<GetEraTeamInvitationsResponse> GetEraTeamInvitationsAsync(GetEraTeamInvitationsRequest message, CancellationToken cancellationToken);
-    Task<GetEraTeamInvitationResponse> GetEraTeamInvitationAsync(GetEraTeamInvitationRequest message, CancellationToken cancellationToken);
-    Task<WithdrawEraTeamInvitationResponse> WithdrawEraTeamInvitationAsync(WithdrawEraTeamInvitationCommand message, CancellationToken cancellationToken);
-    Task<RejectEraTeamInvitationResponse> RejectEraTeamInvitationAsync(RejectEraTeamInvitationCommand message, CancellationToken cancellationToken);
-    Task<AcceptEraTeamInvitationResponse> AcceptEraTeamInvitationAsync(AcceptEraTeamInvitationCommand message, CancellationToken cancellationToken);
+    Task<GetEraFriendStatusesResponse> GetEraFriendStatusesAsync(GetEraFriendStatusesRequest request, CancellationToken cancellationToken);
+    Task<GetEraFriendTargetResponse> GetEraFriendTargetAsync(GetEraFriendTargetRequest request, CancellationToken cancellationToken);
+    Task<JoinEraFriendTeamResponse> JoinEraFriendTeamAsync(JoinEraFriendTeamCommand command, CancellationToken cancellationToken);
+    Task<UpdateEraTeamSettingsResponse> UpdateEraTeamSettingsAsync(UpdateEraTeamSettingsCommand command, CancellationToken cancellationToken);
+    Task<SendEraTeamInvitationResponse> SendEraTeamInvitationAsync(SendEraTeamInvitationCommand command, CancellationToken cancellationToken);
+    Task<GetEraTeamInvitationsResponse> GetEraTeamInvitationsAsync(GetEraTeamInvitationsRequest request, CancellationToken cancellationToken);
+    Task<GetEraTeamInvitationResponse> GetEraTeamInvitationAsync(GetEraTeamInvitationRequest request, CancellationToken cancellationToken);
+    Task<WithdrawEraTeamInvitationResponse> WithdrawEraTeamInvitationAsync(WithdrawEraTeamInvitationCommand command, CancellationToken cancellationToken);
+    Task<RejectEraTeamInvitationResponse> RejectEraTeamInvitationAsync(RejectEraTeamInvitationCommand command, CancellationToken cancellationToken);
+    Task<AcceptEraTeamInvitationResponse> AcceptEraTeamInvitationAsync(AcceptEraTeamInvitationCommand command, CancellationToken cancellationToken);
 }

@@ -152,7 +152,7 @@ public class EraController : ControllerBase
     [DescriptionLocalization("SetEraWarehouseCapacity")]
     [ProducesResponseType(typeof(SetEraWarehouseCapacityResponse), 200)]
     public async Task<IActionResult> SetCapacityAsync(
-        Guid playerId,
+        [FromRoute] Guid playerId,
         [FromBody] SetEraWarehouseCapacityCommand command,
         CancellationToken cancellationToken)
     {
@@ -167,7 +167,7 @@ public class EraController : ControllerBase
     [DescriptionLocalization("AdjustEraWarehouseCapacity")]
     [ProducesResponseType(typeof(AdjustEraWarehouseCapacityResponse), 200)]
     public async Task<IActionResult> AdjustCapacityAsync(
-        Guid playerId,
+        [FromRoute] Guid playerId,
         [FromBody] AdjustEraWarehouseCapacityCommand command,
         CancellationToken cancellationToken)
     {

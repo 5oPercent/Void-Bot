@@ -4,7 +4,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-public class GetEraFriendStatusesRequest : IRequest
+public class GetEraFriendStatusesRequest : IRequest, IRequireEraPlayer
 {
     public List<Guid> AccountIds { get; set; } = new List<Guid>();
 }
