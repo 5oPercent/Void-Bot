@@ -730,6 +730,7 @@ public partial class EraTeamService : IEraTeamService
             {
                 Data = new EraPunchPeersDto
                 {
+                    PeersVersion = team.PeersVersion,
                     TeamId = team.TeamId,
                     MemberId = member.MemberId,
                     AttemptId = member.AttemptId,

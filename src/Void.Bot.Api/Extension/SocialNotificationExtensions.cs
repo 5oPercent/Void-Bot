@@ -24,6 +24,7 @@ public static class SocialNotificationExtensions
         services.AddHostedService<SocialConnectionHostedService>();
         services.AddHostedService<SocialNotificationHostedService>();
         services.AddHostedService<EraSocialNotificationHostedService>();
+        services.AddHostedService<EraPeersNotificationHostedService>();
         services.AddRateLimiter(options =>
         {
             options.AddPolicy("social", context =>

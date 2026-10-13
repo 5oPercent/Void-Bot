@@ -51,6 +51,8 @@ public class EraPunchTicketDto
 
 public class EraPunchPeersDto
 {
+    /// <summary>当前队伍对端状态版本；与 TeamId、AuthorityEpoch 联合使用。</summary>
+    public long PeersVersion { get; set; }
     public Guid TeamId { get; set; }
     public Guid MemberId { get; set; }
     public Guid AttemptId { get; set; }
