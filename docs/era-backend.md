@@ -20,10 +20,10 @@
 | GET | /api/era/me/characters | 读取本人档案下的全部角色 |
 | GET | /api/era/me/characters/{characterId} | 读取本人指定角色 |
 | POST | /api/era/me/characters | 幂等创建角色 |
-| DELETE | /api/era/me/characters/{characterId} | 禁用角色 |
+| POST | /api/era/me/characters/{characterId}/delete | 禁用角色 |
 | GET | /api/era/admin/players/{playerId} | 官方查询玩家容量和版本 |
-| PUT | /api/era/admin/config | 以 ExpectedVersion 校验并发布配置 |
-| PUT | /api/era/admin/players/{playerId}/warehouse-capacity | 设置容量 |
+| POST | /api/era/admin/config | 以 ExpectedVersion 校验并发布配置 |
+| POST | /api/era/admin/players/{playerId}/warehouse-capacity | 设置容量 |
 | POST | /api/era/admin/players/{playerId}/warehouse-capacity-adjustments | 增减容量 |
 
 沿用 VoidBotResponse 响应包装与统一过滤器；客户端应检查 Code，不能只判断 HTTP 状态。ERA 业务失败同时带 ErrorCode，例如 era.version_conflict、era.player_not_found、era.idempotency_conflict。权限过滤器和通用参数校验仍采用既有错误包装。

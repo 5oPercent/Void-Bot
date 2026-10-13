@@ -1,10 +1,10 @@
 # ERA 技能配置与配装接口
 
-本模块沿用 Controller → Mediator → Handler → Service → DataProvider 分层。Command 由现有工作单元提交，Request 不创建数据。数据库结构由 `Script0026_init_era_skills.sql` 建立，本次未执行迁移或启动服务。
+本模块沿用 Controller → Mediator → Handler → Service → DataProvider 分层。Command 由现有工作单元提交，Request 不创建数据。数据库结构由 `Script0026_init_era_skills.sql` 建立，本次未执行迁移或启动服务。新增草稿编辑和统一发布见 [技能草稿管理接口](ERA技能草稿管理接口.md)及[实施清单](ERA技能编辑与发布TODO.md)。
 
 ## 数据
 
-- `era_skill_configuration`：固定单行发布完整技能、体系、BUFF 与禁用列表，初始版本 0，为空配置。更新锁种子行并检查预期版本。
+- `era_skill_configuration`：固定单行保存游戏已发布快照，初始版本 0；编辑数据位于独立共享草稿，显式发布冻结草稿后原子替换快照。
 - `era_player_skill_profile`：每玩家一份版本化配装，JSON 内保存当前体系与各体系四槽记忆；锁玩家行后保存，初始读取版本 0。
 - `era_player_learned_skill`：玩家与稳定技能 ID 唯一。授予操作锁玩家行，重复授予不增加记录。
 
@@ -16,9 +16,10 @@ JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层
 | --- | --- |
 | GET `api/era/skills/config` | 完整体系技能池、方案、BUFF、通用战术池、禁用列表与版本 |
 | GET `api/era/me/skill-loadout` | 当前体系与全部保存的体系配装 |
-| PUT `api/era/me/skill-loadout` | 使用 `ExpectedVersion` 与完整 `Profile` 保存配装／当前体系 |
+| POST `api/era/me/skill-loadout` | 使用 `ExpectedVersion` 与完整 `Profile` 保存配装／当前体系 |
 | GET `api/era/me/learned-skills` | 本人已学习技能 ID 列表 |
-| PUT `api/era/admin/skills/config` | 管理员整批发布，携带 `ExpectedVersion` 与 `Configuration` |
+| POST `api/era/admin/skills/draft/publish` | 管理员发布已保存草稿，携带两个预期版本与请求 ID |
+| `/api/era/admin/skills/draft/*` | 单体系／技能／BUFF 编辑、设置、导入、预览、历史与恢复，见专用文档 |
 | POST `api/era/admin/players/{playerId}/learned-skills` | 管理员授予一个技能，正文含 `SkillId` |
 
 沿用登录认证、ERA 客户端会话和现有权限检查。管理接口不标记跳过权限检查。
@@ -30,11 +31,11 @@ JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层
 ## 联调准备
 
 1. 由正常发布流程应用 DbUp 迁移。
-2. 用有权限的管理员发布 `examples/era-skills-publish.json`，初始预期版本为 0；后续发布使用实际读取版本。
+2. 应用新的草稿迁移后显式初始化草稿，将 `examples/era-skills-draft-import.json` 导入草稿，再预览并按 `examples/era-skills-draft-publish.json` 结构发布；填写实际版本和新的非空请求 ID。
 3. 为测试玩家授予拟保存的技能。游戏端当前没有学习 UI，也不进行学习筛选；后端保存校验仍保留。
 4. 游戏菜单打开技能配装，加载并保存；本局禁用判定来自主机快照。
 
-示例配置仅用于联调，不会自动发布或自动授予。配置类型与游戏端 `scripts/skills/SkillContracts.cs` 对应，枚举使用显式数值。
+示例配置仅用于联调，不会自动发布或自动授予。配置类型与游戏端 `scripts/abilities/contracts` 对应，枚举使用显式数值。
 
 技能 ID 不应随数值或表现调整改变。禁用通过 `DisabledSkills` 表达，避免删除定义破坏学习与历史配装引用。整套配置限制为 256 KiB，当前结构版本为 1。
 
@@ -61,7 +62,7 @@ BUFF 定义使用 `BuffDefinitionDto`、`BuffEffectDto`，生命周期与效果�
 
 `Core/Validators/ERA/BuffDefinitionValidator.cs` 独立校验 BUFF，不依赖技能配置。技能发布校验器调用该通用校验，再检查技能方案的 BUFF ID 引用；装备、物品、环境配置也可复用。当前发布接口仍整批提供技能与相关 BUFF，以保持本局快照一致。
 
-游戏端将通用定义与执行器移至 `scripts/buffs`，载体通过装配层连接 `IBuffEffectReceiver`。新增未执行的 `BuffDefinitionValidatorFixture`，覆盖物品治疗可独立校验、周期间隔无效和即时效果不接受持续属性修正。
+游戏端统一入口为 `scripts/abilities/buffs/BuffRuntime`，载体通过角色装配层调用。新增未执行的 `BuffDefinitionValidatorFixture`，覆盖物品治疗可独立校验、周期间隔无效和即时效果不接受持续属性修正。
 
 ## ERA 接口与玩家预加载规范
 
@@ -72,3 +73,7 @@ BUFF 定义使用 `BuffDefinitionDto`、`BuffEffectDto`，生命周期与效果�
 - `EraPlayerData` 保存当前请求已加载的玩家；`IEraPlayerContext` 统一加载和缓存，同一请求复用结果，读操作升级写操作时重新取得行锁。
 - 初始化玩家、公共配置读取和发布、客户端会话关闭与心跳不要求玩家档案已存在。管理员目标玩家操作不要求管理员自身先初始化玩家。
 - 技能本地化模板只包含技能错误，玩家不存在使用通用 `EraContextTemplate.PlayerNotFound`。
+
+## 编辑与删除补充规则
+
+体系、技能与 BUFF 保存到共享草稿，不需要手工提交完整配置。显式发布才生成新的完整版本；新请求即使内容未变化也增加版本，相同请求重试返回原结果。删除不改玩家配装、保留学习记录，客户端同步后清空失效槽位并取消无效体系选择。没有默认替换技能或自动选中另一个体系。旧整包直发管理接口与消息已移除。

@@ -20,47 +20,12 @@ public static class SkillConfigurationValidator
 
         foreach (var skill in skills.Values)
         {
-            Text(skill.Name);
-            Text(skill.Description, 2048);
-            if (skill.Variants == null ||
-                skill.Variants.Count == 0 ||
-                skill.Variants.Count > 4 ||
-                skill.Variants.Any(v => v == null) || skill.Variants.Select(v => v.Slot).Distinct().Count() != skill.Variants.Count)
-            {
-                throw new ArgumentException("技能方案为空或槽位重复。");
-            }
-
-            foreach (var variant in skill.Variants)
-            {
-                if (!Enum.IsDefined(typeof(SkillSlotKind), variant.Slot) ||
-                    !Enum.IsDefined(typeof(SkillRecoveryStart), variant.RecoveryStart) ||
-                    !Enum.IsDefined(typeof(SkillTargetRelation), variant.TargetRelation) ||
-                    variant.MaximumCharges < 1 ||
-                    variant.MaximumCharges > 100 || !Finite(variant.CooldownSeconds, 0, 86400))
-                {
-                    throw new ArgumentException("技能次数或冷却配置无效。");
-                }
-
-                Id(variant.CarrierId);
-                if (variant.Parameters == null ||
-                    variant.Parameters.Count > 64 || variant.Parameters.Any(p => !ValidId(p.Key) ||
-                    !double.IsFinite(p.Value)))
-                {
-                    throw new ArgumentException("载体参数无效。");
-                }
-
-                References(variant.BuffIds, buffs);
-                if (variant.BuffIds.Count > 64)
-                {
-                    throw new ArgumentException("单方案 BUFF 引用超过限制。");
-                }
-            }
+            SkillDraftDefinitionValidator.Skill(skill);
+            foreach (var variant in skill.Variants) References(variant.BuffIds,buffs);
         }
-
         foreach (var system in systems.Values)
         {
-            Text(system.Name);
-            Text(system.Description, 2048);
+            SkillDraftDefinitionValidator.System(system);
             Pool(system.SpecialSkills, SkillSlotKind.Special, skills);
             Pool(system.PrimarySkills, SkillSlotKind.Primary, skills);
             Pool(system.SecondarySkills, SkillSlotKind.Secondary, skills);
@@ -182,11 +147,6 @@ public static class SkillConfigurationValidator
         }
     }
 
-    private static bool Finite(double value, double min, double max)
-    {
-        return double.IsFinite(value) && value >= min && value <= max;
-    }
-
     private static bool ValidId(string? id)
     {
         return !string.IsNullOrWhiteSpace(id) && id.Length <= 128 && id == id.Trim();
@@ -200,11 +160,5 @@ public static class SkillConfigurationValidator
         }
     }
 
-    private static void Text(string text, int max = 256)
-    {
-        if (text == null || text.Length > max)
-        {
-            throw new ArgumentException("文字长度无效。");
-        }
-    }
+
 }

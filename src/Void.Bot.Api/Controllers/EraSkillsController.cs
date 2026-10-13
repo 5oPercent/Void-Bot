@@ -15,7 +15,7 @@ namespace Void.Bot.Api.Controllers;
 [Security]
 [Route("api/era")]
 [RequestSizeLimit(1048576)]
-[OpenApiTagOrder(201)]
+[OpenApiTagOrder(404)]
 public class EraSkillsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -70,21 +70,7 @@ public class EraSkillsController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("admin/skills/config")]
-    [DescriptionLocalization("PublishEraSkillConfiguration")]
-    [ProducesResponseType(typeof(PublishEraSkillConfigurationResponse), 200)]
-    public async Task<IActionResult> PublishAsync(
-        [FromBody] PublishEraSkillConfigurationCommand command,
-        CancellationToken cancellationToken)
-    {
-        var response = await _mediator
-            .SendAsync<PublishEraSkillConfigurationCommand, PublishEraSkillConfigurationResponse>(command, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [HttpPut("me/skill-loadout")]
+    [HttpPost("me/skill-loadout")]
     [SkipPermissionCheck]
     [DescriptionLocalization("SaveEraSkillProfile")]
     [ProducesResponseType(typeof(SaveEraSkillProfileResponse), 200)]

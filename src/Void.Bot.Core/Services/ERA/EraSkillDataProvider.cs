@@ -4,7 +4,7 @@ using Void.Bot.Core.Domain.ERA;
 
 namespace Void.Bot.Core.Services.ERA;
 
-public interface IEraSkillDataProvider : IScope
+public partial interface IEraSkillDataProvider : IScope
 {
     Task<EraSkillConfiguration?> GetConfigurationAsync(bool forUpdate, CancellationToken cancellationToken);
 
@@ -22,7 +22,7 @@ public interface IEraSkillDataProvider : IScope
 /// <summary>
 /// 技能发布、配装档案和学习记录的数据访问，不提交事务或实施装配业务规则。
 /// </summary>
-public class EraSkillDataProvider : IEraSkillDataProvider
+public partial class EraSkillDataProvider : IEraSkillDataProvider
 {
     // 对应 DbUp 的固定种子行，防止空表锁无法保护首次发布。
     private static readonly Guid ConfigurationId = Guid.Parse("20000000-0000-0000-0000-000000000001");
