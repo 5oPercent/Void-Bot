@@ -22,10 +22,10 @@ public partial class EraSkillService
         GetEraLearnedSkillsRequest request,
         CancellationToken cancellationToken)
     {
-        var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
+        var character = await _characterContext.RequireOwnedAsync(request.CharacterId, false, cancellationToken).ConfigureAwait(false);
 
         var learnedSkills = await _dataProvider
-            .GetLearnedSkillsAsync(player.Id, cancellationToken)
+            .GetLearnedSkillsAsync(character.Id, cancellationToken)
             .ConfigureAwait(false);
 
         return new GetEraLearnedSkillsResponse()
@@ -39,8 +39,8 @@ public partial class EraSkillService
         GrantEraLearnedSkillCommand command,
         CancellationToken cancellationToken)
     {
-        var player = await _playerContext
-            .RequireTargetAsync(command.PlayerId, true, cancellationToken)
+        var character = await _characterContext
+            .RequireTargetAsync(command.CharacterId, true, cancellationToken)
             .ConfigureAwait(false);
 
         var configurationRecord = await _dataProvider
@@ -55,14 +55,14 @@ public partial class EraSkillService
         }
 
         var learnedSkills = await _dataProvider
-            .GetLearnedSkillsAsync(player.Id, cancellationToken)
+            .GetLearnedSkillsAsync(character.Id, cancellationToken)
             .ConfigureAwait(false);
         if (!learnedSkills.Contains(command.SkillId, StringComparer.Ordinal))
         {
-            var learnedSkill = new EraPlayerLearnedSkill()
+            var learnedSkill = new EraCharacterLearnedSkill()
             {
                 Id = Guid.NewGuid(),
-                PlayerId = player.Id,
+                CharacterId = character.Id,
                 SkillId = command.SkillId
             };
 

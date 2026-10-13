@@ -36,7 +36,7 @@ public sealed class EraSkillDraftFixture
         _data.AddPublicationAsync(Arg.Any<EraSkillPublication>(),Arg.Any<CancellationToken>()).Returns(c=>{var p=c.ArgAt<EraSkillPublication>(0);_history.Add(p.Version,p);return Task.CompletedTask;});
         _data.AddPublishReceiptAsync(Arg.Any<EraSkillPublishReceipt>(),Arg.Any<CancellationToken>()).Returns(c=>{var r=c.ArgAt<EraSkillPublishReceipt>(0);_receipts.Add(r.Id,r);return Task.CompletedTask;});
         var mapper=new Mapper(new MapperConfiguration(c=>c.AddProfile<EraSkillMapping>()));
-        return new(_data,Substitute.For<IEraPlayerContext>(),_user,Substitute.For<ILocalizationService>(),mapper);
+        return new(_data,Substitute.For<IEraCharacterContext>(),_user,Substitute.For<ILocalizationService>(),mapper);
     }
     private static SkillDefinition Skill()=>new(){Id="test.skill",Name="原技能",Variants=new(){new(){Slot=SkillSlotKind.Tactical,MaximumCharges=3,CooldownSeconds=2,CarrierId="self"}}};
     private EraSkillDraftRecord AddSkill(bool deleted=false)
@@ -86,8 +86,8 @@ public sealed class EraSkillDraftFixture
         deleted.Code.ShouldBe(HttpStatusCode.OK);record.IsDeleted.ShouldBeTrue();
         var result=await service.SaveDraftSkillAsync(new(){Id="test.skill",ExpectedVersion=2,Definition=Skill()},CancellationToken.None);
         result.ErrorCode.ShouldBe("era.draft_item_deleted");
-        _data.DidNotReceive().UpdateProfile(Arg.Any<EraPlayerSkillProfile>());
-        await _data.DidNotReceive().GrantSkillAsync(Arg.Any<EraPlayerLearnedSkill>(),Arg.Any<CancellationToken>());
+        _data.DidNotReceive().UpdateProfile(Arg.Any<EraCharacterSkillProfile>());
+        await _data.DidNotReceive().GrantSkillAsync(Arg.Any<EraCharacterLearnedSkill>(),Arg.Any<CancellationToken>());
     }
     [Fact]
     public async Task ImportReplace_MarksOmittedObjectsDeletedWithoutPublishing()

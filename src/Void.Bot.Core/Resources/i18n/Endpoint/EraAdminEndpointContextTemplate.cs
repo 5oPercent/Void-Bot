@@ -2,9 +2,14 @@ using Void.Bot.Message.Attributes;
 
 namespace Void.Bot.Core.Resources.i18n.Endpoint;
 
-[Language("Endpoint","EraSkillDraft")]
-public sealed class EraSkillDraftEndpointContextTemplate : IContextTemplate
+[Language("Endpoint", "EraAdmin")]
+public sealed class EraAdminEndpointContextTemplate : IContextTemplate
 {
+    public string GetEraAdminPlayer { get; set; } = "官方查询指定 ERA 玩家的容量与版本";
+    public string UpdateEraConfig { get; set; } = "发布 ERA 官方配置";
+    public string SetEraWarehouseCapacity { get; set; } = "设置指定玩家的仓库容量";
+    public string AdjustEraWarehouseCapacity { get; set; } = "增减指定玩家的仓库容量";
+    public string GrantEraLearnedSkill { get; set; } = "管理员授予指定角色学习记录";
     public string GetEraSkillDraft { get; set; } = "读取草稿版本与待发布状态";
     public string InitializeEraSkillDraft { get; set; } = "从当前发布配置幂等初始化共享草稿";
     public string ExportEraSkillDraft { get; set; } = "导出已保存草稿，不发布";

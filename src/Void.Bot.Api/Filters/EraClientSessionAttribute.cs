@@ -43,7 +43,7 @@ public class EraClientSessionFilter : IAsyncActionFilter
             });
             return;
         }
-        var acquire = path.Equals(new Microsoft.AspNetCore.Http.PathString("/api/era/me/initialize")) && HttpMethods.IsPost(context.HttpContext.Request.Method);
+        var acquire = path.Equals(new Microsoft.AspNetCore.Http.PathString("/api/era/players/me/initialize")) && HttpMethods.IsPost(context.HttpContext.Request.Method);
         var status = await _sessions.CheckClientSessionAsync(_currentUser.Id.Value, clientId, acquire, context.HttpContext.RequestAborted).ConfigureAwait(false);
         if (status != 1)
         {

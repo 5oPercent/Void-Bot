@@ -25,10 +25,10 @@ public partial class EraSkillService
         GetEraSkillProfileRequest request,
         CancellationToken cancellationToken)
     {
-        var player = await _playerContext.RequireCurrentAsync(false, cancellationToken).ConfigureAwait(false);
+        var character = await _characterContext.RequireOwnedAsync(request.CharacterId, false, cancellationToken).ConfigureAwait(false);
 
         var profileRecord = await _dataProvider
-            .GetProfileAsync(player.Id, cancellationToken)
+            .GetProfileAsync(character.Id, cancellationToken)
             .ConfigureAwait(false);
 
         return new GetEraSkillProfileResponse()
@@ -42,10 +42,10 @@ public partial class EraSkillService
         SaveEraSkillProfileCommand command,
         CancellationToken cancellationToken)
     {
-        var player = await _playerContext.RequireCurrentAsync(true, cancellationToken).ConfigureAwait(false);
+        var character = await _characterContext.RequireOwnedAsync(command.CharacterId, true, cancellationToken).ConfigureAwait(false);
 
         var profileRecord = await _dataProvider
-            .GetProfileAsync(player.Id, cancellationToken)
+            .GetProfileAsync(character.Id, cancellationToken)
             .ConfigureAwait(false);
         var currentVersion = profileRecord?.Version ?? 0;
         if (currentVersion != command.ExpectedVersion)
@@ -68,7 +68,7 @@ public partial class EraSkillService
         }
 
         var learnedSkillIds = await _dataProvider
-            .GetLearnedSkillsAsync(player.Id, cancellationToken)
+            .GetLearnedSkillsAsync(character.Id, cancellationToken)
             .ConfigureAwait(false);
         var learnedSkills = learnedSkillIds.ToHashSet(StringComparer.Ordinal);
 
@@ -88,7 +88,7 @@ public partial class EraSkillService
         }
 
         var payload = JsonSerializer.Serialize(command.Profile);
-        var profile = JsonSerializer.Deserialize<PlayerSkillProfile>(payload);
+        var profile = JsonSerializer.Deserialize<CharacterSkillProfile>(payload);
         if (profile == null)
         {
             throw new InvalidOperationException("Skill profile payload is empty.");
@@ -97,10 +97,10 @@ public partial class EraSkillService
         profile.Version = checked(command.ExpectedVersion + 1);
         if (profileRecord == null)
         {
-            profileRecord = new EraPlayerSkillProfile()
+            profileRecord = new EraCharacterSkillProfile()
             {
                 Id = Guid.NewGuid(),
-                PlayerId = player.Id,
+                CharacterId = character.Id,
                 Version = profile.Version,
                 Payload = JsonSerializer.Serialize(profile)
             };
@@ -123,13 +123,13 @@ public partial class EraSkillService
         };
     }
 
-    private PlayerSkillProfile DecodeProfile(EraPlayerSkillProfile? profileRecord)
+    private CharacterSkillProfile DecodeProfile(EraCharacterSkillProfile? profileRecord)
     {
         if (profileRecord == null)
         {
-            return new PlayerSkillProfile();
+            return new CharacterSkillProfile();
         }
 
-        return _mapper.Map<PlayerSkillProfile>(profileRecord);
+        return _mapper.Map<CharacterSkillProfile>(profileRecord);
     }
 }

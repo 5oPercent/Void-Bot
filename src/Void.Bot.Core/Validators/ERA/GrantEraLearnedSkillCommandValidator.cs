@@ -8,7 +8,7 @@ public class GrantEraLearnedSkillCommandValidator : FluentMessageValidator<Grant
 {
     public GrantEraLearnedSkillCommandValidator()
     {
-        RuleFor(command => command.PlayerId)
+        RuleFor(command => command.CharacterId)
             .NotEmpty();
         RuleFor(command => command.SkillId)
             .NotEmpty()

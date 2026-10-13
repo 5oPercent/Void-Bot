@@ -19,7 +19,7 @@ namespace Void.Bot.Api.Controllers;
 [RequestSizeLimit(4096)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [EnableRateLimiting(EraNetworkingConstants.TeamRateLimitPolicy)]
-[OpenApiTagOrder(402)]
+[OpenApiTagOrder(405)]
 public class EraTeamController : ControllerBase
 {
     private readonly IMediator _mediator;

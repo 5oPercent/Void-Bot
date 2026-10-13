@@ -12,11 +12,11 @@
 
 已只读核对：
 
-- `EraSkillsController`：目前只有完整配置读取、整批发布、玩家配装及学习授予接口，没有单项草稿编辑。
+- `EraSkillsController`：目前只有完整配置读取、整批发布、角色配装及学习授予接口，没有单项草稿编辑。
 - `EraSkillConfiguration`／`EraSkillDataProvider`：固定单行 `era_skill_configuration` 保存已发布版本与完整 Payload，发布锁种子行。
 - `PublishEraSkillConfigurationCommand`：接收客户端提交的完整 `Configuration` 与 `ExpectedVersion`。
 - `EraSkillService.Configuration`：发布校验版本，完整替换 Payload，版本加一；没有发布历史或草稿。
-- `EraSkillService.Profile`／`.Learning`：玩家配装和学习记录独立存储，发布不会自动处理失效引用；用户已确认继续保留，由客户端同步清理。
+- `EraSkillService.Profile`／`.Learning`：角色配装和学习记录独立存储，发布不会自动处理失效引用；用户已确认继续保留，由客户端同步清理。
 - `SkillConfigurationValidator`：已有引用、池与槽位、数值、BUFF 分组及 256 KiB 配置预算校验，可复用。
 - Command 沿用现有 UnitOfWork 事务提交；DataProvider 不自行提交事务。
 
@@ -30,7 +30,7 @@
 - [x] 首版采用一个共享编辑工作区，统一汇总发布全部体系、技能、BUFF、通用池与禁用列表；不实现私人分支或按体系局部发布。
 - [x] 稳定 ID 创建后固定；删除只留标记，不允许新对象复用旧 ID，明确恢复原对象后可以继续编辑。
 - [x] 草稿允许未完成跨对象引用，单项自身结构必须有效；发布前必须修复全部引用。
-- [x] 用户明确：后端删除技能、移出池或删除体系时不修改玩家配装，客户端同步后自行清为空槽位；无效体系选择取消，不自动替换或切到另一体系。
+- [x] 用户明确：后端删除技能、移出池或删除体系时不修改角色配装，客户端同步后自行清为空槽位；无效体系选择取消，不自动替换或切到另一体系。
 - [x] 用户最后明确：保留学习记录，不撤销或重新授予。
 - [x] 每次新的显式发布都增加版本，即使内容未变化；同一请求重试保持幂等，不重复发布。
 - [x] 未发布删除可恢复，历史恢复到草稿后仍需重新发布，不倒退发布版本。
@@ -56,17 +56,17 @@
 
 | 接口 | 职责 |
 | --- | --- |
-| `GET /api/era/admin/skills/draft` | 草稿修订号、基础发布版本、编辑与待发布摘要 |
-| `GET /api/era/admin/skills/draft/systems` | 体系列表，分页／筛选 |
-| `GET /api/era/admin/skills/draft/systems/{id}` | 单体系详情与单项版本 |
-| `POST /api/era/admin/skills/draft/systems/{id}` | 创建或保存单体系，包括四槽技能池 |
-| `POST /api/era/admin/skills/draft/systems/{id}/delete` | 对单体系作草稿删除标记 |
-| `GET /api/era/admin/skills/draft/skills`、`.../skills/{id}` | 技能列表与详情 |
-| `POST /api/era/admin/skills/draft/skills/{id}`、`POST .../skills/{id}/delete` | 单技能创建／修改／草稿删除 |
-| `GET /api/era/admin/skills/draft/buffs`、`.../buffs/{id}` | BUFF 列表与详情 |
-| `POST /api/era/admin/skills/draft/buffs/{id}`、`POST .../buffs/{id}/delete` | 单 BUFF 创建／修改／草稿删除 |
-| `GET /api/era/admin/skills/draft/settings`、`POST .../settings` | 通用战术池与禁用列表编辑 |
-| `GET /api/era/admin/skills/draft/references` | 按类型和 ID 查询反向引用 |
+| `GET /api/era/admin/configuration` | 草稿修订号、基础发布版本、编辑与待发布摘要 |
+| `GET /api/era/admin/ability-systems` | 体系列表，分页／筛选 |
+| `GET /api/era/admin/ability-systems/{id}` | 单体系详情与单项版本 |
+| `POST /api/era/admin/ability-systems/{id}` | 创建或保存单体系，包括四槽技能池 |
+| `POST /api/era/admin/ability-systems/{id}/delete` | 对单体系作草稿删除标记 |
+| `GET /api/era/admin/skills`、`.../skills/{id}` | 技能列表与详情 |
+| `POST /api/era/admin/skills/{id}`、`POST .../skills/{id}/delete` | 单技能创建／修改／草稿删除 |
+| `GET /api/era/admin/buffs`、`.../buffs/{id}` | BUFF 列表与详情 |
+| `POST /api/era/admin/buffs/{id}`、`POST .../buffs/{id}/delete` | 单 BUFF 创建／修改／草稿删除 |
+| `GET /api/era/admin/configuration/settings`、`POST .../settings` | 通用战术池与禁用列表编辑 |
+| `GET /api/era/admin/configuration/references` | 按类型和 ID 查询反向引用 |
 
 - [x] Request／Command、Response、DTO、Handler、Validator 按类型拆文件，补齐 XML 注释，沿用 Controller → Mediator → Handler → Service → DataProvider 分层。
 - [x] 明确单项创建和更新的预期版本语义，不允许同 ID 静默覆盖；路由 ID 与正文 ID 必须一致。
@@ -75,8 +75,8 @@
 - [x] 统一编辑事务的工作区锁与单项锁顺序，使不同对象编辑不会丢失整体修订号，发布也不会读到一半编辑内容。
 - [x] 实现分页、搜索、删除标记筛选和载体／BUFF 引用展示所需的列表字段。
 - [x] 单项保存进行结构／数值验证；跨对象未完成引用作为草稿诊断，发布时作为阻断错误。
-- [x] 反向引用区分体系技能池、通用池、禁用列表、技能方案 BUFF 引用，结果指出具体位置；按用户确认不扫描或更改玩家配装／学习记录。
-- [x] 删除仅修改草稿，不改变当前发布配置，也不立即修改玩家配装或学习数据。
+- [x] 反向引用区分体系技能池、通用池、禁用列表、技能方案 BUFF 引用，结果指出具体位置；按用户确认不扫描或更改角色配装／学习记录。
+- [x] 删除仅修改草稿，不改变当前发布配置，也不立即修改角色配装或学习数据。
 - [x] 加入撤销未发布删除标记的操作，版本检查与其他编辑操作一致。
 
 ## 五、汇总、校验与发布预览
@@ -85,26 +85,26 @@
 - [x] 保持技能池、效果数组等有业务含义的顺序；定义集合使用稳定排序，便于差异与摘要比较。
 - [x] 增加管理员草稿导出接口，导出完整 JSON 作为备份／外部编辑工具产物，而非主要编辑入口。
 - [x] 增加草稿导入接口：完整 JSON 先校验并进入草稿，检查预期草稿修订号，不能直接改变发布版本；合并与替换模式必须显式选择。
-- [x] 新增 `POST /api/era/admin/skills/draft/validate`，返回带对象类型、ID、方案槽位及字段位置的结构化错误。
-- [x] 新增 `POST /api/era/admin/skills/draft/publish-preview`，返回冻结的草稿修订号、当前发布版本、增删改差异与配置引用诊断，不迁移玩家数据。
+- [x] 新增 `POST /api/era/admin/configuration/validate`，返回带对象类型、ID、方案槽位及字段位置的结构化错误。
+- [x] 新增 `POST /api/era/admin/configuration/publish-preview`，返回冻结的草稿修订号、当前发布版本、增删改差异与配置引用诊断，不迁移玩家数据。
 - [x] 复用完整配置校验；覆盖重复 ID、失效引用、池与槽位不匹配、重复方案、BUFF 分组冲突、范围、数量及 256 KiB 预算。
 - [x] 载体只记录客户端契约支持的参数；后端参数约束与客户端工厂保持一致的契约来源，不能只凭载体字符串格式判定可运行。
 - [x] 汇总校验、预览和发布共用同一套逻辑，避免预览通过而发布采用另一种规则。
-- [x] 预览不发布、不增加版本、不迁移玩家配装；草稿反向引用分页返回完整总数。
+- [x] 预览不发布、不增加版本、不迁移角色配装；草稿反向引用分页返回完整总数。
 - [x] 按确认规则允许后端保留旧玩家引用；预览版本用于审阅，发布提交时重查草稿与发布版本。
 
 ## 六、原子发布与并发
 
-建议新增 `POST /api/era/admin/skills/draft/publish`，正文包含预期草稿修订号、预期发布版本和稳定发布请求 ID；不携带整份 `Configuration`。
+建议新增 `POST /api/era/admin/configuration/publish`，正文包含预期草稿修订号、预期发布版本和稳定发布请求 ID；不携带整份 `Configuration`。
 
 - [x] 发布检查编辑／发布权限及两个预期版本：预览后草稿变化或他人先发布均拒绝，不静默改用最新草稿。
 - [x] 在现有 UnitOfWork 中锁定工作区与当前发布种子行，读取一致草稿，重做完整配置校验，不查询或迁移玩家记录。
 - [x] 发布请求 ID 做持久化幂等：相同请求重试返回同一发布结果，不重复加版本；同 ID 不同请求内容明确拒绝。
-- [x] 按已确认规则保留玩家配装与学习记录；补齐客户端固定目录下的失效槽位清理，不修改后台玩家档案。
+- [x] 按已确认规则保留角色配装与学习记录；补齐客户端固定目录下的失效槽位清理，不修改后台玩家档案。
 - [x] 编辑／发布按工作区→发布种子行固定顺序锁定；玩家记录不加入该锁链，旧配装引用按用户规则允许保留，由客户端同步清理。
 - [x] 当前配置替换、发布版本加一、历史快照、发布审计与幂等记录一起提交；失败不留下半个新版本；玩家数据没有参与变更。
 - [x] 完成后记录已发布草稿修订号；未发布变化状态由实际修订／内容差异计算，不因后续编辑误判已全部发布。
-- [x] 游戏 `GET /api/era/skills/config` 继续只返回已发布完整配置和版本，保持 `SchemaVersion`、DTO 与枚举兼容；编辑模型不下发游戏。
+- [x] 游戏 `GET /api/era/manifest/catalog` 继续只返回已发布完整配置和版本，保持 `SchemaVersion`、DTO 与枚举兼容；编辑模型不下发游戏。
 - [x] 工作区 JSON 含删除记录总量限制 1 MiB，发布配置继续限制 256 KiB；不执行全玩家扫描或批量变更。
 
 ## 七、历史、回滚与旧入口清理
@@ -144,9 +144,9 @@
 
 ## 本轮实现与静态记录
 
-新增草稿工作区／独立对象／发布历史／请求收据、未执行的 Script0027 迁移、单项消息与校验器、28 个管理接口、统一汇总器与发布预览；旧整包直发消息及接口已删除。ERA 文档标签已连续排序 400～405。接口和示例见 [草稿管理文档](ERA技能草稿管理接口.md)。
+新增草稿工作区／独立对象／发布历史／请求收据、未执行的 Script0027 迁移、单项消息与校验器、28 个管理接口、统一汇总器与发布预览；旧整包直发消息及接口已删除。ERA 文档标签排序为普通接口 400～407、管理接口 499。接口和示例见 [草稿管理文档](ERA技能草稿管理接口.md)。
 
-客户端配装载入与本局同步接入 PlayerSkillProfileSync，失效技能清为空槽位，删除体系的记忆在客户端移除并取消失效选择；后端配装和学习记录保留。补充测试源码但未运行；事务提交／锁、真实权限和多人并发需实际验收。管理页面实现尚未开展。本轮不编译、不运行测试、不执行迁移、不发布配置、不提交 Git。
+客户端配装载入与本局同步接入 CharacterSkillProfileSync，失效技能清为空槽位，删除体系的记忆在客户端移除并取消失效选择；后端配装和学习记录保留。补充测试源码但未运行；事务提交／锁、真实权限和多人并发需实际验收。管理页面实现尚未开展。本轮不编译、不运行测试、不执行迁移、不发布配置、不提交 Git。
 
 ### 代码格式与接口约定
 
@@ -155,3 +155,12 @@
 - [x] ERA 控制器仅保留 GET／POST，删除操作使用 POST 的 `/delete` 路径；同步客户端调用与接口文档。
 
 静态复查：后端 1,241 个 C# 文件、客户端 scripts 下 232 个 C# 文件均无语法诊断错误；只解析语法，没有执行编译或测试。69 个 ERA 接口只使用 GET／POST，无重复路由；新增 Handler／Service 无表达式方法体或主构造函数；空类换行、旧发布消息清理、JSON 示例与 Git diff --check 检查通过。
+
+## 角色归属与路由调整
+
+- [x] 按 Manifest／玩家／角色／能力体系／技能／队伍／社交／会话／管理九类整理 Controller，排序为普通接口 400～407、管理接口 499。
+- [x] 管理员三类编辑集中到 EraAdminController；共同草稿／预览／发布／历史归 configuration。
+- [x] 体系选择、配装与学习按角色保存，角色 ID 来自路由，校验所属账号，迁移全部客户端调用及模型。
+- [x] 新增 Script0028 角色归属结构迁移及角色隔离／越权测试源码；数据库迁移与测试未执行。
+
+详细路径见 [角色归属与路由迁移](ERA路由与角色归属调整.md)。

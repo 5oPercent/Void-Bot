@@ -4,6 +4,7 @@ using AutoMapper;
 using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Mappings;
 using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Services.Identity;
@@ -26,6 +27,8 @@ public class EraSkillServiceFixture
     {
         Id = Guid.NewGuid()
     };
+    private readonly Guid _characterId = Guid.NewGuid();
+
     public EraSkillServiceFixture()
     {
         var configuration = new MapperConfiguration(ConfigureMappings);
@@ -42,10 +45,12 @@ public class EraSkillServiceFixture
         _user.Id.Returns(_accountId);
         _players.LockPlayerByAccountIdAsync(_accountId, Arg.Any<CancellationToken>()).Returns(_player);
         _players.GetPlayerByAccountIdAsync(_accountId, Arg.Any<CancellationToken>()).Returns(_player);
-        _data.GetLearnedSkillsAsync(_player.Id, Arg.Any<CancellationToken>()).Returns(new List<string>());
+        _players.GetCharacterByIdAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new EraCharacter { Id = _characterId, PlayerId = _player.Id });
+        _players.LockCharacterAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new EraCharacter { Id = _characterId, PlayerId = _player.Id });
+        _data.GetLearnedSkillsAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new List<string>());
         return new EraSkillService(
             _data,
-            new EraPlayerContext(_players, _user, Substitute.For<ILocalizationService>(), new EraPlayerData()),
+            new EraCharacterContext(_players, new EraPlayerContext(_players, _user, Substitute.For<ILocalizationService>(), new EraPlayerData()), Substitute.For<ILocalizationService>()),
             _user,
             Substitute.For<ILocalizationService>(),
             _mapper);
@@ -89,9 +94,9 @@ public class EraSkillServiceFixture
         };
     }
 
-    private static PlayerSkillProfile Profile()
+    private static CharacterSkillProfile Profile()
     {
-        return new PlayerSkillProfile()
+        return new CharacterSkillProfile()
         {
             SelectedSystemId = "support",
             Loadouts = new List<AbilityLoadout>()
@@ -125,18 +130,19 @@ public class EraSkillServiceFixture
     {
         var service = Service();
         ConfigureRead();
-        _data.GetLearnedSkillsAsync(_player.Id, Arg.Any<CancellationToken>()).Returns(new List<string>()
+        _data.GetLearnedSkillsAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new List<string>()
         {
             "heal"
         });
         var result = await service.SaveProfileAsync(new SaveEraSkillProfileCommand()
         {
+            CharacterId = _characterId,
             Profile = Profile()
         }, CancellationToken.None);
         result.Code.ShouldBe(HttpStatusCode.OK);
         result.Data!.Version.ShouldBe(1);
         result.Data.Loadouts[0].Slots[1].ShouldBe("heal");
-        await _data.Received(1).CreateProfileAsync(Arg.Is<EraPlayerSkillProfile>(p => p.PlayerId == _player.Id), Arg.Any<CancellationToken>());
+        await _data.Received(1).CreateProfileAsync(Arg.Is<EraCharacterSkillProfile>(p => p.CharacterId == _characterId), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -146,38 +152,40 @@ public class EraSkillServiceFixture
         ConfigureRead();
         var result = await service.SaveProfileAsync(new SaveEraSkillProfileCommand()
         {
+            CharacterId = _characterId,
             Profile = Profile()
         }, CancellationToken.None);
         result.ErrorCode.ShouldBe("era.skills_invalid_loadout");
-        await _data.DidNotReceive().CreateProfileAsync(Arg.Any<EraPlayerSkillProfile>(), Arg.Any<CancellationToken>());
-        _data.DidNotReceive().UpdateProfile(Arg.Any<EraPlayerSkillProfile>());
+        await _data.DidNotReceive().CreateProfileAsync(Arg.Any<EraCharacterSkillProfile>(), Arg.Any<CancellationToken>());
+        _data.DidNotReceive().UpdateProfile(Arg.Any<EraCharacterSkillProfile>());
     }
 
     [Fact]
     public async Task Save_StaleVersionDoesNotOverwriteProfile()
     {
         var service = Service();
-        _data.GetProfileAsync(_player.Id, Arg.Any<CancellationToken>()).Returns(new EraPlayerSkillProfile()
+        _data.GetProfileAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new EraCharacterSkillProfile()
         {
             Version = 2
         });
         var result = await service.SaveProfileAsync(new SaveEraSkillProfileCommand()
         {
+            CharacterId = _characterId,
             ExpectedVersion = 1,
             Profile = Profile()
         }, CancellationToken.None);
         result.ErrorCode.ShouldBe("era.skills_version_conflict");
-        _data.DidNotReceive().UpdateProfile(Arg.Any<EraPlayerSkillProfile>());
+        _data.DidNotReceive().UpdateProfile(Arg.Any<EraCharacterSkillProfile>());
     }
 
     [Fact]
     public async Task GetProfile_DoesNotCreateDataOnRead()
     {
         var service = Service();
-        var result = await service.GetProfileAsync(new GetEraSkillProfileRequest(), CancellationToken.None);
+        var result = await service.GetProfileAsync(new GetEraSkillProfileRequest { CharacterId = _characterId }, CancellationToken.None);
         result.Data!.Version.ShouldBe(0);
         result.Data.Loadouts.ShouldBeEmpty();
-        await _data.DidNotReceive().CreateProfileAsync(Arg.Any<EraPlayerSkillProfile>(), Arg.Any<CancellationToken>());
+        await _data.DidNotReceive().CreateProfileAsync(Arg.Any<EraCharacterSkillProfile>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -204,5 +212,54 @@ public class EraSkillServiceFixture
         result.ErrorCode.ShouldBe("era.draft_version_conflict");
         row.Version.ShouldBe(2);
         row.Payload.ShouldBe(original);
+    }
+
+    [Fact]
+    public async Task GetProfile_AnotherAccountsCharacterDoesNotReadSkillData()
+    {
+        var service = Service();
+        _players.GetCharacterByIdAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new EraCharacter
+        {
+            Id = _characterId,
+            PlayerId = Guid.NewGuid()
+        });
+
+        var exception = await Should.ThrowAsync<EraPlayerAccessException>(() => service.GetProfileAsync(
+            new GetEraSkillProfileRequest { CharacterId = _characterId }, CancellationToken.None));
+
+        exception.ErrorCode.ShouldBe("era.character_not_found");
+        await _data.DidNotReceive().GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetProfile_TwoCharactersUseIndependentProfiles()
+    {
+        var service = Service();
+        var secondCharacterId = Guid.NewGuid();
+        _players.GetCharacterByIdAsync(secondCharacterId, Arg.Any<CancellationToken>()).Returns(new EraCharacter
+        {
+            Id = secondCharacterId,
+            PlayerId = _player.Id
+        });
+        _data.GetProfileAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new EraCharacterSkillProfile
+        {
+            CharacterId = _characterId,
+            Version = 2,
+            Payload = JsonSerializer.Serialize(Profile())
+        });
+        _data.GetProfileAsync(secondCharacterId, Arg.Any<CancellationToken>()).Returns(new EraCharacterSkillProfile
+        {
+            CharacterId = secondCharacterId,
+            Version = 7,
+            Payload = JsonSerializer.Serialize(new CharacterSkillProfile())
+        });
+
+        var first = await service.GetProfileAsync(new GetEraSkillProfileRequest { CharacterId = _characterId }, CancellationToken.None);
+        var second = await service.GetProfileAsync(new GetEraSkillProfileRequest { CharacterId = secondCharacterId }, CancellationToken.None);
+
+        first.Data!.Version.ShouldBe(2);
+        first.Data.Loadouts.ShouldHaveSingleItem();
+        second.Data!.Version.ShouldBe(7);
+        second.Data.Loadouts.ShouldBeEmpty();
     }
 }
