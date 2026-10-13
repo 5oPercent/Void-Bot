@@ -1,5 +1,4 @@
 using System.Text.Json;
-using AutoMapper;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Message.Dto.ERA;
 
@@ -8,7 +7,7 @@ namespace Void.Bot.Core.Mappings;
 /// <summary>
 /// 将版本化 JSON 存储实体转换为纯消息 DTO；存储版本覆盖载荷中的版本字段。
 /// </summary>
-public class EraSkillMapping : Profile
+public class EraSkillMapping : VoidBotMappingProfile
 {
     public EraSkillMapping()
     {

@@ -1,10 +1,9 @@
-using AutoMapper;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Core.Mappings;
 
-public class EraMapping : Profile
+public class EraMapping : VoidBotMappingProfile
 {
     public EraMapping()
     {
