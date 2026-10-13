@@ -41,7 +41,7 @@ public static class SkillConfigurationValidator
         }
     }
 
-    public static void ValidateProfile(SkillConfiguration configuration, PlayerSkillProfile profile, ISet<string>? learnedSkills = null)
+    public static void ValidateProfile(SkillConfiguration configuration, CharacterSkillProfile profile, ISet<string>? learnedSkills = null)
     {
         if (profile == null ||
             profile.Version < 0 ||

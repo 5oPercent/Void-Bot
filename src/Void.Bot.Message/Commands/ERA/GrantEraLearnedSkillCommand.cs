@@ -5,14 +5,14 @@ using Void.Bot.Message.Dto.ERA;
 namespace Void.Bot.Message.Commands.ERA;
 
 /// <summary>
-/// 管理员授予指定玩家一个技能的学习状态。
+/// 管理员授予指定角色一个技能的学习状态。
 /// </summary>
-public class GrantEraLearnedSkillCommand : ICommand, IRequireEraTargetPlayer
+public class GrantEraLearnedSkillCommand : ICommand
 {
     /// <summary>
-    /// 目标玩家 ID，由管理接口路由写入。
+    /// 目标角色 ID，由管理接口路由写入。
     /// </summary>
-    public Guid PlayerId { get; set; }
+    public Guid CharacterId { get; set; }
 
     /// <summary>
     /// 待授予学习状态的稳定技能 ID。
@@ -21,7 +21,7 @@ public class GrantEraLearnedSkillCommand : ICommand, IRequireEraTargetPlayer
 }
 
 /// <summary>
-/// 管理员授予指定玩家一个技能的学习状态。响应，返回 List<string>。
+/// 管理员授予指定角色一个技能的学习状态。响应，返回 List<string>。
 /// </summary>
 public class GrantEraLearnedSkillResponse : EraResponse<List<string>>
 {

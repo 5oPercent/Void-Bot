@@ -13,7 +13,7 @@ namespace Void.Bot.Api.Controllers;
 [Security]
 [EraClientSession]
 [Route("api/era/session")]
-[OpenApiTagOrder(401)]
+[OpenApiTagOrder(407)]
 public class EraClientSessionController : ControllerBase
 {
     private readonly IMediator _mediator;

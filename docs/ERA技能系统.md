@@ -1,12 +1,12 @@
 # ERA 技能配置与配装接口
 
-本模块沿用 Controller → Mediator → Handler → Service → DataProvider 分层。Command 由现有工作单元提交，Request 不创建数据。数据库结构由 `Script0026_init_era_skills.sql` 建立，本次未执行迁移或启动服务。新增草稿编辑和统一发布见 [技能草稿管理接口](ERA技能草稿管理接口.md)及[实施清单](ERA技能编辑与发布TODO.md)。
+本模块沿用 Controller → Mediator → Handler → Service → DataProvider 分层。Command 由现有工作单元提交，Request 不创建数据。数据库结构由 `Script0026_init_era_skills.sql` 建立，`Script0028_scope_era_skills_to_characters.sql` 将配装和学习记录改为角色归属，本次未执行迁移或启动服务。新增草稿编辑和统一发布见 [技能草稿管理接口](ERA技能草稿管理接口.md)及[实施清单](ERA技能编辑与发布TODO.md)。
 
 ## 数据
 
 - `era_skill_configuration`：固定单行保存游戏已发布快照，初始版本 0；编辑数据位于独立共享草稿，显式发布冻结草稿后原子替换快照。
-- `era_player_skill_profile`：每玩家一份版本化配装，JSON 内保存当前体系与各体系四槽记忆；锁玩家行后保存，初始读取版本 0。
-- `era_player_learned_skill`：玩家与稳定技能 ID 唯一。授予操作锁玩家行，重复授予不增加记录。
+- `era_character_skill_profile`：每角色一份版本化配装，JSON 内保存当前体系与各体系四槽记忆；锁玩家行、角色行后保存，初始读取版本 0。
+- `era_character_learned_skill`：角色与稳定技能 ID 唯一。授予操作锁玩家行、角色行，重复授予不增加记录。
 
 JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层完整校验每条体系记录。将来增加独立查询需求时再迁移为分行记录。
 
@@ -14,13 +14,14 @@ JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层
 
 | 方法与路径 | 用途 |
 | --- | --- |
-| GET `api/era/skills/config` | 完整体系技能池、方案、BUFF、通用战术池、禁用列表与版本 |
-| GET `api/era/me/skill-loadout` | 当前体系与全部保存的体系配装 |
-| POST `api/era/me/skill-loadout` | 使用 `ExpectedVersion` 与完整 `Profile` 保存配装／当前体系 |
-| GET `api/era/me/learned-skills` | 本人已学习技能 ID 列表 |
-| POST `api/era/admin/skills/draft/publish` | 管理员发布已保存草稿，携带两个预期版本与请求 ID |
-| `/api/era/admin/skills/draft/*` | 单体系／技能／BUFF 编辑、设置、导入、预览、历史与恢复，见专用文档 |
-| POST `api/era/admin/players/{playerId}/learned-skills` | 管理员授予一个技能，正文含 `SkillId` |
+| GET `api/era/manifest/catalog` | 完整体系技能池、方案、BUFF、通用战术池、禁用列表与版本 |
+| GET `api/era/characters/{characterId}/ability-systems/loadouts` | 当前体系与全部保存的体系配装 |
+| POST `api/era/characters/{characterId}/ability-systems/loadouts` | 使用 `ExpectedVersion` 与完整 `Profile` 保存配装／当前体系 |
+| GET `api/era/characters/{characterId}/skills/learned` | 本人已学习技能 ID 列表 |
+| POST `api/era/admin/configuration/publish` | 管理员发布已保存草稿，携带两个预期版本与请求 ID |
+| `/api/era/admin/ability-systems/*`、`/skills/*`、`/buffs/*` | 三类独立草稿编辑，见专用文档 |
+| `/api/era/admin/configuration/*` | 共同设置、导入、预览、发布、历史与恢复 |
+| POST `api/era/admin/characters/{characterId}/learned-skills` | 管理员授予一个技能，正文含 `SkillId` |
 
 沿用登录认证、ERA 客户端会话和现有权限检查。管理接口不标记跳过权限检查。
 
@@ -32,7 +33,7 @@ JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层
 
 1. 由正常发布流程应用 DbUp 迁移。
 2. 应用新的草稿迁移后显式初始化草稿，将 `examples/era-skills-draft-import.json` 导入草稿，再预览并按 `examples/era-skills-draft-publish.json` 结构发布；填写实际版本和新的非空请求 ID。
-3. 为测试玩家授予拟保存的技能。游戏端当前没有学习 UI，也不进行学习筛选；后端保存校验仍保留。
+3. 为测试角色授予拟保存的技能。游戏端当前没有学习 UI，也不进行学习筛选；后端保存校验仍保留。
 4. 游戏菜单打开技能配装，加载并保存；本局禁用判定来自主机快照。
 
 示例配置仅用于联调，不会自动发布或自动授予。配置类型与游戏端 `scripts/abilities/contracts` 对应，枚举使用显式数值。
@@ -76,4 +77,4 @@ BUFF 定义使用 `BuffDefinitionDto`、`BuffEffectDto`，生命周期与效果�
 
 ## 编辑与删除补充规则
 
-体系、技能与 BUFF 保存到共享草稿，不需要手工提交完整配置。显式发布才生成新的完整版本；新请求即使内容未变化也增加版本，相同请求重试返回原结果。删除不改玩家配装、保留学习记录，客户端同步后清空失效槽位并取消无效体系选择。没有默认替换技能或自动选中另一个体系。旧整包直发管理接口与消息已移除。
+体系、技能与 BUFF 保存到共享草稿，不需要手工提交完整配置。显式发布才生成新的完整版本；新请求即使内容未变化也增加版本，相同请求重试返回原结果。删除不改角色配装、保留学习记录，客户端同步后清空失效槽位并取消无效体系选择。没有默认替换技能或自动选中另一个体系。旧整包直发管理接口与消息已移除。

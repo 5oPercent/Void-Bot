@@ -13,10 +13,10 @@ namespace Void.Bot.Api.Controllers;
 [EraClientSession]
 [ApiController]
 [Security]
-[Route("api/era")]
+[Route("api/era/characters/{characterId:guid}/skills")]
 [RequestSizeLimit(1048576)]
 [OpenApiTagOrder(404)]
-public class EraSkillsController : ControllerBase
+public sealed class EraSkillsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -25,80 +25,19 @@ public class EraSkillsController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet("skills/config")]
-    [SkipPermissionCheck]
-    [DescriptionLocalization("GetEraSkillConfiguration")]
-    [ProducesResponseType(typeof(GetEraSkillConfigurationResponse), 200)]
-    public async Task<IActionResult> GetConfigurationAsync(
-        [FromQuery] GetEraSkillConfigurationRequest request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _mediator
-            .RequestAsync<GetEraSkillConfigurationRequest, GetEraSkillConfigurationResponse>(request, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [HttpGet("me/skill-loadout")]
-    [SkipPermissionCheck]
-    [DescriptionLocalization("GetEraSkillProfile")]
-    [ProducesResponseType(typeof(GetEraSkillProfileResponse), 200)]
-    public async Task<IActionResult> GetProfileAsync(
-        [FromQuery] GetEraSkillProfileRequest request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _mediator
-            .RequestAsync<GetEraSkillProfileRequest, GetEraSkillProfileResponse>(request, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [HttpGet("me/learned-skills")]
+    [HttpGet("learned")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetEraLearnedSkills")]
     [ProducesResponseType(typeof(GetEraLearnedSkillsResponse), 200)]
     public async Task<IActionResult> GetLearnedSkillsAsync(
-        [FromQuery] GetEraLearnedSkillsRequest request,
+        [FromRoute] Guid characterId, [FromQuery] GetEraLearnedSkillsRequest request,
         CancellationToken cancellationToken)
     {
+        request.CharacterId = characterId;
         var response = await _mediator
             .RequestAsync<GetEraLearnedSkillsRequest, GetEraLearnedSkillsResponse>(request, cancellationToken)
             .ConfigureAwait(false);
 
         return Ok(response);
     }
-
-    [HttpPost("me/skill-loadout")]
-    [SkipPermissionCheck]
-    [DescriptionLocalization("SaveEraSkillProfile")]
-    [ProducesResponseType(typeof(SaveEraSkillProfileResponse), 200)]
-    public async Task<IActionResult> SaveProfileAsync(
-        [FromBody] SaveEraSkillProfileCommand command,
-        CancellationToken cancellationToken)
-    {
-        var response = await _mediator
-            .SendAsync<SaveEraSkillProfileCommand, SaveEraSkillProfileResponse>(command, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
-    [HttpPost("admin/players/{playerId:guid}/learned-skills")]
-    [DescriptionLocalization("GrantEraLearnedSkill")]
-    [ProducesResponseType(typeof(GrantEraLearnedSkillResponse), 200)]
-    public async Task<IActionResult> GrantAsync(
-        [FromRoute] Guid playerId,
-        [FromBody] GrantEraLearnedSkillCommand command,
-        CancellationToken cancellationToken)
-    {
-        command.PlayerId = playerId;
-        var response = await _mediator
-            .SendAsync<GrantEraLearnedSkillCommand, GrantEraLearnedSkillResponse>(command, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Ok(response);
-    }
-
 }

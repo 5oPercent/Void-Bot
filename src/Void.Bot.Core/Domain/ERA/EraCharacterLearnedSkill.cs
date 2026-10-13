@@ -5,13 +5,13 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.ERA;
 
-[Table("era_player_learned_skill")]
-[Index(nameof(PlayerId), nameof(SkillId), IsUnique = true)]
-public class EraPlayerLearnedSkill : IEntity<Guid>, IEntityCreated
+[Table("era_character_learned_skill")]
+[Index(nameof(CharacterId), nameof(SkillId), IsUnique = true)]
+public class EraCharacterLearnedSkill : IEntity<Guid>, IEntityCreated
 {
     [Key]
     public Guid Id { get; set; }
-    public Guid PlayerId { get; set; }
+    public Guid CharacterId { get; set; }
 
     [StringLength(128)]
     public string SkillId { get; set; } = "";

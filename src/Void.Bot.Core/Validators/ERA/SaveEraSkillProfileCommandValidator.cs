@@ -9,6 +9,8 @@ public class SaveEraSkillProfileCommandValidator : FluentMessageValidator<SaveEr
 {
     public SaveEraSkillProfileCommandValidator()
     {
+        RuleFor(command => command.CharacterId)
+            .NotEmpty();
         RuleFor(command => command.ExpectedVersion)
             .InclusiveBetween(0, long.MaxValue - 1);
         RuleFor(command => command.Profile)
@@ -16,7 +18,7 @@ public class SaveEraSkillProfileCommandValidator : FluentMessageValidator<SaveEr
             .Must(HaveValidProfile);
     }
 
-    private static bool HaveValidProfile(PlayerSkillProfile? profile)
+    private static bool HaveValidProfile(CharacterSkillProfile? profile)
     {
         if (profile == null || profile.Loadouts == null || profile.Loadouts.Count > 256)
         {

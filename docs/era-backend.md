@@ -14,13 +14,13 @@
 
 | 方法 | 路径 | 功能 |
 | --- | --- | --- |
-| GET | /api/era/config | 读取当前已发布配置 |
-| GET | /api/era/me | 读取本人玩家记录，未初始化返回 player_not_found |
-| POST | /api/era/me/initialize | 幂等初始化本人记录 |
-| GET | /api/era/me/characters | 读取本人档案下的全部角色 |
-| GET | /api/era/me/characters/{characterId} | 读取本人指定角色 |
-| POST | /api/era/me/characters | 幂等创建角色 |
-| POST | /api/era/me/characters/{characterId}/delete | 禁用角色 |
+| GET | /api/era/manifest | 读取当前已发布配置 |
+| GET | /api/era/players/me | 读取本人玩家记录，未初始化返回 player_not_found |
+| POST | /api/era/players/me/initialize | 幂等初始化本人记录 |
+| GET | /api/era/characters | 读取本人档案下的全部角色 |
+| GET | /api/era/characters/{characterId} | 读取本人指定角色 |
+| POST | /api/era/characters | 幂等创建角色 |
+| POST | /api/era/characters/{characterId}/delete | 禁用角色 |
 | GET | /api/era/admin/players/{playerId} | 官方查询玩家容量和版本 |
 | POST | /api/era/admin/config | 以 ExpectedVersion 校验并发布配置 |
 | POST | /api/era/admin/players/{playerId}/warehouse-capacity | 设置容量 |

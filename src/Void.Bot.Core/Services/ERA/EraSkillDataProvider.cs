@@ -8,15 +8,15 @@ public partial interface IEraSkillDataProvider : IScope
 {
     Task<EraSkillConfiguration?> GetConfigurationAsync(bool forUpdate, CancellationToken cancellationToken);
 
-    Task<EraPlayerSkillProfile?> GetProfileAsync(Guid playerId, CancellationToken cancellationToken);
+    Task<EraCharacterSkillProfile?> GetProfileAsync(Guid characterId, CancellationToken cancellationToken);
 
-    Task<List<string>> GetLearnedSkillsAsync(Guid playerId, CancellationToken cancellationToken);
+    Task<List<string>> GetLearnedSkillsAsync(Guid characterId, CancellationToken cancellationToken);
 
-    Task CreateProfileAsync(EraPlayerSkillProfile profile, CancellationToken cancellationToken);
+    Task CreateProfileAsync(EraCharacterSkillProfile profile, CancellationToken cancellationToken);
 
-    Task GrantSkillAsync(EraPlayerLearnedSkill skill, CancellationToken cancellationToken);
+    Task GrantSkillAsync(EraCharacterLearnedSkill skill, CancellationToken cancellationToken);
 
-    void UpdateProfile(EraPlayerSkillProfile profile);
+    void UpdateProfile(EraCharacterSkillProfile profile);
 }
 
 /// <summary>
@@ -54,23 +54,23 @@ public partial class EraSkillDataProvider : IEraSkillDataProvider
         return configurations.SingleOrDefault();
     }
 
-    public async Task<EraPlayerSkillProfile?> GetProfileAsync(
-        Guid playerId,
+    public async Task<EraCharacterSkillProfile?> GetProfileAsync(
+        Guid characterId,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.Set<EraPlayerSkillProfile>()
+        return await _dbContext.Set<EraCharacterSkillProfile>()
             .AsNoTracking()
-            .SingleOrDefaultAsync(profile => profile.PlayerId == playerId, cancellationToken)
+            .SingleOrDefaultAsync(profile => profile.CharacterId == characterId, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public async Task<List<string>> GetLearnedSkillsAsync(
-        Guid playerId,
+        Guid characterId,
         CancellationToken cancellationToken)
     {
-        return await _dbContext.Set<EraPlayerLearnedSkill>()
+        return await _dbContext.Set<EraCharacterLearnedSkill>()
             .AsNoTracking()
-            .Where(skill => skill.PlayerId == playerId)
+            .Where(skill => skill.CharacterId == characterId)
             .OrderBy(skill => skill.SkillId)
             .Select(skill => skill.SkillId)
             .ToListAsync(cancellationToken)
@@ -78,25 +78,25 @@ public partial class EraSkillDataProvider : IEraSkillDataProvider
     }
 
     public async Task CreateProfileAsync(
-        EraPlayerSkillProfile profile,
+        EraCharacterSkillProfile profile,
         CancellationToken cancellationToken)
     {
-        await _dbContext.Set<EraPlayerSkillProfile>()
+        await _dbContext.Set<EraCharacterSkillProfile>()
             .AddAsync(profile, cancellationToken)
             .ConfigureAwait(false);
     }
 
     public async Task GrantSkillAsync(
-        EraPlayerLearnedSkill skill,
+        EraCharacterLearnedSkill skill,
         CancellationToken cancellationToken)
     {
-        await _dbContext.Set<EraPlayerLearnedSkill>()
+        await _dbContext.Set<EraCharacterLearnedSkill>()
             .AddAsync(skill, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public void UpdateProfile(EraPlayerSkillProfile profile)
+    public void UpdateProfile(EraCharacterSkillProfile profile)
     {
-        _dbContext.Set<EraPlayerSkillProfile>().Update(profile);
+        _dbContext.Set<EraCharacterSkillProfile>().Update(profile);
     }
 }

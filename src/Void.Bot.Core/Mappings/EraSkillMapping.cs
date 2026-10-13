@@ -13,7 +13,7 @@ public class EraSkillMapping : VoidBotMappingProfile
     {
         CreateMap<EraSkillConfiguration, SkillConfiguration>()
             .ConvertUsing(source => ConvertConfiguration(source));
-        CreateMap<EraPlayerSkillProfile, PlayerSkillProfile>()
+        CreateMap<EraCharacterSkillProfile, CharacterSkillProfile>()
             .ConvertUsing(source => ConvertProfile(source));
     }
 
@@ -29,9 +29,9 @@ public class EraSkillMapping : VoidBotMappingProfile
         return configuration;
     }
 
-    private static PlayerSkillProfile ConvertProfile(EraPlayerSkillProfile source)
+    private static CharacterSkillProfile ConvertProfile(EraCharacterSkillProfile source)
     {
-        var profile = JsonSerializer.Deserialize<PlayerSkillProfile>(source.Payload);
+        var profile = JsonSerializer.Deserialize<CharacterSkillProfile>(source.Payload);
         if (profile == null)
         {
             throw new InvalidOperationException("Skill profile payload is empty.");

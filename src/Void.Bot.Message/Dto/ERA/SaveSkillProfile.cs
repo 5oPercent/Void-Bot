@@ -13,5 +13,5 @@ public sealed class SaveSkillProfile
     /// <summary>
     /// 待保存的完整配装档案，包含当前体系选择与各体系记录。
     /// </summary>
-    public PlayerSkillProfile Profile { get; set; } = new PlayerSkillProfile();
+    public CharacterSkillProfile Profile { get; set; } = new CharacterSkillProfile();
 }
