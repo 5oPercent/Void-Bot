@@ -23,7 +23,7 @@ public sealed class SkillVariant
     public double CooldownSeconds { get; set; }
 
     /// <summary>
-    /// 释放、载体结束或载体回收后开始恢复次数的时机。
+    /// 释放成功后或载体结束后开始恢复次数的时机；载体销毁规则独立配置。
     /// </summary>
     public SkillRecoveryStart RecoveryStart { get; set; }
 
