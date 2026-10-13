@@ -118,7 +118,24 @@ public class EraServiceFixture
     public async Task GetPlayer_UsesAuthenticatedAccount()
     {
         var service = CreateService();
-        await service.GetPlayerAsync(new GetEraPlayerRequest(), CancellationToken.None);
+        var player = new EraPlayer
+        {
+            Id = Guid.NewGuid(),
+            WarehouseCapacity = 300,
+            Version = 1
+        };
+        _dataProvider.GetPlayerByAccountIdAsync(_accountId, Arg.Any<CancellationToken>()).Returns(player);
+        _mapper.Map<EraPlayerDto>(player).Returns(new EraPlayerDto
+        {
+            Id = player.Id,
+            WarehouseCapacity = player.WarehouseCapacity,
+            Version = player.Version
+        });
+
+        var result = await service.GetPlayerAsync(new GetEraPlayerRequest(), CancellationToken.None);
+
+        result.Code.ShouldBe(HttpStatusCode.OK);
+        result.Data!.Id.ShouldBe(player.Id);
         await _dataProvider
             .Received(1)
             .GetPlayerByAccountIdAsync(_accountId, Arg.Any<CancellationToken>());
