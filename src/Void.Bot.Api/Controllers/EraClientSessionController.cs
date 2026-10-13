@@ -1,3 +1,4 @@
+using Void.Bot.Api.OpenApi;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace Void.Bot.Api.Controllers;
 [Security]
 [EraClientSession]
 [Route("api/era/session")]
+[OpenApiTagOrder(201)]
 public class EraClientSessionController : ControllerBase
 {
     private readonly IMediator _mediator;

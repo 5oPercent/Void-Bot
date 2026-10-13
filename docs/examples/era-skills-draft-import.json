@@ -1,4 +1,6 @@
 {
+  "ExpectedDraftRevision": 1,
+  "Mode": 0,
   "Configuration": {
     "Version": 1,
     "Systems": [
@@ -319,6 +321,5 @@
     "CommonTacticalSkills": [
       "common.mobility"
     ]
-  },
-  "ExpectedVersion": 0
+  }
 }

@@ -60,7 +60,7 @@ InvitationPermission：AnyMember=0、HostOnly=1，AnyMember 仅指本队有效�
 | GET | /friends/statuses | accountIds，可重复 query 参数，最多 100 个；仅返回当前好友 |
 | GET | /friends/{friendAccountId}/team | 好友在线和队伍摘要 |
 | POST | /friends/join | friendAccountId、expectedTeamId、characterId，可选 sourceTeamId/sourceMemberId |
-| PUT | /teams/{teamId}/settings | memberId、expectedVersion、joinMode、invitationPermission |
+| POST | /teams/{teamId}/settings | memberId、expectedVersion、joinMode、invitationPermission |
 | POST | /invitations | teamId、memberId、targetAccountId、requestId |
 | GET | /invitations | outgoing，默认接收到的有效邀请；上限 100 |
 | GET | /invitations/{invitationId} | query teamId，查询本人发送/接收的指定邀请 |

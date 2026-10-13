@@ -109,7 +109,7 @@ public class EraController : ControllerBase
         return Ok(response);
     }
 
-    [HttpDelete("me/characters/{characterId:guid}")]
+    [HttpPost("me/characters/{characterId:guid}/delete")]
     [SkipPermissionCheck]
     [DescriptionLocalization("DeleteEraCharacter")]
     [ProducesResponseType(typeof(DeleteEraCharacterResponse), 200)]
@@ -135,7 +135,7 @@ public class EraController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("admin/config")]
+    [HttpPost("admin/config")]
     [DescriptionLocalization("UpdateEraConfig")]
     [ProducesResponseType(typeof(UpdateEraConfigResponse), 200)]
     public async Task<IActionResult> UpdateConfigAsync(
@@ -148,7 +148,7 @@ public class EraController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("admin/players/{playerId:guid}/warehouse-capacity")]
+    [HttpPost("admin/players/{playerId:guid}/warehouse-capacity")]
     [DescriptionLocalization("SetEraWarehouseCapacity")]
     [ProducesResponseType(typeof(SetEraWarehouseCapacityResponse), 200)]
     public async Task<IActionResult> SetCapacityAsync(

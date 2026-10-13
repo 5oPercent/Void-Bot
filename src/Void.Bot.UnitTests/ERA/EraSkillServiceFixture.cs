@@ -191,12 +191,17 @@ public class EraSkillServiceFixture
         };
         _data.GetConfigurationAsync(true, Arg.Any<CancellationToken>()).Returns(row);
         string original = row.Payload;
-        var result = await service.PublishAsync(new PublishEraSkillConfigurationCommand()
+        _data.GetDraftWorkspaceAsync(true,Arg.Any<CancellationToken>()).Returns(new EraSkillDraftWorkspace
         {
-            ExpectedVersion = 1,
-            Configuration = Config()
+            Id=EraSkillDataProvider.DraftWorkspaceId,Initialized=true,Revision=1,
+            SettingsPayload=JsonSerializer.Serialize(new EraSkillDraftSettings())
+        });
+        _data.GetDraftRecordsAsync(true,Arg.Any<CancellationToken>()).Returns(new List<EraSkillDraftRecord>());
+        var result = await service.PublishDraftAsync(new PublishEraSkillDraftCommand
+        {
+            ExpectedDraftRevision=1,ExpectedPublishedVersion=1,RequestId=Guid.NewGuid()
         }, CancellationToken.None);
-        result.ErrorCode.ShouldBe("era.skills_version_conflict");
+        result.ErrorCode.ShouldBe("era.draft_version_conflict");
         row.Version.ShouldBe(2);
         row.Payload.ShouldBe(original);
     }

@@ -1,3 +1,4 @@
+using Void.Bot.Api.OpenApi;
 using Mediator.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,7 @@ namespace Void.Bot.Api.Controllers;
 [RequestSizeLimit(8192)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [EnableRateLimiting("social")]
+[OpenApiTagOrder(203)]
 public class EraSocialController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -64,7 +66,7 @@ public class EraSocialController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("teams/{teamId:guid}/settings")]
+    [HttpPost("teams/{teamId:guid}/settings")]
     [SkipPermissionCheck]
     [DescriptionLocalization("UpdateEraTeamSettings")]
     [ProducesResponseType(typeof(UpdateEraTeamSettingsResponse), 200)]
