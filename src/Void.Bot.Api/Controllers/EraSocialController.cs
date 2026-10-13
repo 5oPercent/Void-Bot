@@ -19,7 +19,7 @@ namespace Void.Bot.Api.Controllers;
 [RequestSizeLimit(8192)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [EnableRateLimiting("social")]
-[OpenApiTagOrder(203)]
+[OpenApiTagOrder(403)]
 public class EraSocialController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -15,7 +15,7 @@ namespace Void.Bot.Api.Controllers;
 [EraClientSession]
 [Route("api/era/admin/skills/draft")]
 [RequestSizeLimit(1048576)]
-[OpenApiTagOrder(205)]
+[OpenApiTagOrder(405)]
 public sealed class EraSkillDraftController : ControllerBase
 {
     private readonly IMediator _mediator;

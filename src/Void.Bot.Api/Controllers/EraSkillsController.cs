@@ -15,7 +15,7 @@ namespace Void.Bot.Api.Controllers;
 [Security]
 [Route("api/era")]
 [RequestSizeLimit(1048576)]
-[OpenApiTagOrder(204)]
+[OpenApiTagOrder(404)]
 public class EraSkillsController : ControllerBase
 {
     private readonly IMediator _mediator;
