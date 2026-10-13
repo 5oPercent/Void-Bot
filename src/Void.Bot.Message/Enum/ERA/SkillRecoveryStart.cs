@@ -11,12 +11,7 @@ public enum SkillRecoveryStart
     Released = 0,
 
     /// <summary>
-    /// 载体结束后开始恢复。
+    /// 载体结束后开始恢复；主动回收和意外销毁均属于结束原因。
     /// </summary>
     CarrierEnded = 1,
-
-    /// <summary>
-    /// 载体回收后开始恢复；未回收就被销毁时也开始恢复。
-    /// </summary>
-    CarrierRecalled = 2,
 }
