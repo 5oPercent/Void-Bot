@@ -53,7 +53,7 @@ public partial interface IEraTeamDataProvider : ISingleton
 /// </summary>
 public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IAsyncDisposable
 {
-    private const string CommitScript = SocialCommitFunctions + "\n" + """
+    private const string CommitScript = SocialCommitFunctions + "\n" + PeersCommitFunctions + "\n" + """
         local stored = redis.call('GET', KEYS[2])
         if ARGV[1] == '' then
             if stored then
@@ -83,6 +83,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             end
             local previous = stored and cjson.decode(stored) or nil
             publishInvitations(previous, nil, ARGV[3], now)
+            publishPeers(now)
             return 1
         end
         local nextTeam = cjson.decode(ARGV[2])
@@ -126,6 +127,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             end
         end
         publishInvitations(previousTeam, nextTeam, ARGV[3], now)
+        publishPeers(now)
         return 1
         """;
 
@@ -222,8 +224,10 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
 
     public async Task<EraTeamWriteStatus> TryCreateAsync(EraTeam team, CancellationToken cancellationToken)
     {
+        EraPeersState.Refresh(team, DateTimeOffset.UtcNow);
         team.StorageVersion = Guid.NewGuid();
-        return await CommitAsync(team.TeamId, team.TeamCode, Guid.Empty, team, Array.Empty<Guid>(), cancellationToken).ConfigureAwait(false);
+        return await CommitAsync(team.TeamId, team.TeamCode, Guid.Empty, team, Array.Empty<Guid>(),
+            CreatePeersNotification(team), cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<T> ChangeAsync<T>(
@@ -243,6 +247,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             }
 
             var teamCode = team?.TeamCode ?? string.Empty;
+            var previousPeersVersion = team?.PeersVersion ?? 0;
             var change = operation(team);
             if (!change.Changed)
             {
@@ -256,10 +261,14 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
 
             if (change.Team != null)
             {
+                EraPeersState.Refresh(change.Team, DateTimeOffset.UtcNow);
                 change.Team.StorageVersion = Guid.NewGuid();
             }
 
-            var status = await CommitAsync(teamId, teamCode, version, change.Team, previousPlayers, cancellationToken).ConfigureAwait(false);
+            var peersNotification = change.Team != null && change.Team.PeersVersion != previousPeersVersion
+                ? CreatePeersNotification(change.Team) : string.Empty;
+            var status = await CommitAsync(teamId, teamCode, version, change.Team, previousPlayers,
+                peersNotification, cancellationToken).ConfigureAwait(false);
             if (status == EraTeamWriteStatus.Success)
             {
                 return change.Result;
@@ -282,6 +291,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         Guid expectedVersion,
         EraTeam? team,
         IReadOnlyCollection<Guid> previousPlayers,
+        string peersNotification,
         CancellationToken cancellationToken)
     {
         var allPlayers = previousPlayers.ToList();
@@ -337,6 +347,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             teamId.ToString("D"),
             teamExpiration,
             JsonSerializer.Serialize(leases),
+            peersNotification,
             DateTimeOffset.UtcNow.ToString("O"),
             Guid.NewGuid().ToString("D")
         };

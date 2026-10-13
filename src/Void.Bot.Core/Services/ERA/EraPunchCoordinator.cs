@@ -47,6 +47,8 @@ public class EraPunchCoordinator : IEraPunchCoordinator
                     var now = DateTimeOffset.UtcNow;
                     var previousVersion = System.Text.Json.JsonSerializer.Serialize(team);
                     var alive = team.ExpiresAt > now && EraTeamLifecycle.Advance(team, now, _setting.MigrationTimeoutSeconds);
+                    // 端点/票据失效可能不修改成员字段，仍需提交对端有效性变化。
+                    if (alive) EraPeersState.Refresh(team, now);
                     var changed = !alive || previousVersion != System.Text.Json.JsonSerializer.Serialize(team);
                     return new EraTeamChange<bool>
                     {

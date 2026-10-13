@@ -19,6 +19,10 @@ public class EraTeam
     public EraTeamJoinMode JoinMode { get; set; } = EraTeamJoinMode.Public;
     public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.HostOnly;
     public long SocialVersion { get; set; }
+    /// <summary>对端业务变化版本；心跳及端点续期不增加版本。</summary>
+    public long PeersVersion { get; set; }
+    /// <summary>上次提交的对端状态摘要，包含有效性转换，不包含凭证或续期时间。</summary>
+    public string PeersFingerprint { get; set; } = string.Empty;
     public List<EraTeamInvitation> Invitations { get; set; } = new List<EraTeamInvitation>();
     public int MaxMembers { get; set; }
     public DateTimeOffset ExpiresAt { get; set; }

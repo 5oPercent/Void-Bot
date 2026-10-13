@@ -14,7 +14,7 @@ public partial interface IEraTeamDataProvider
 
 public partial class EraTeamDataProvider
 {
-    private const string SwitchScript = SocialCommitFunctions + "\n" + """
+    private const string SwitchScript = SocialCommitFunctions + "\n" + PeersCommitFunctions + "\n" + """
         local original = redis.call('GET', KEYS[2])
         local target = redis.call('GET', KEYS[4])
         if not original or not target then
@@ -82,6 +82,7 @@ public partial class EraTeamDataProvider
             local before = team.TeamKey == 2 and cjson.decode(original) or cjson.decode(target)
             local after = team.Json ~= '' and cjson.decode(team.Json) or nil
             publishInvitations(before, after, team.Id, now)
+            queuePeers(team.Id, team.PeersNotification, now)
         end
         return 1
         """;
@@ -146,6 +147,7 @@ public partial class EraTeamDataProvider
             return result;
         }
         result.Expiry = Math.Min(team.ExpiresAt.ToUnixTimeMilliseconds(), team.Members.Max(member => member.ExpiresAt.ToUnixTimeMilliseconds()));
+        if (EraPeersState.Refresh(team, DateTimeOffset.UtcNow)) result.PeersNotification = CreatePeersNotification(team);
         PrepareInvitations(team);
         result.Json = JsonSerializer.Serialize(team);
         foreach (var member in team.Members)
@@ -163,6 +165,7 @@ public partial class EraTeamDataProvider
     {
         public string Id { get; set; } = string.Empty;
         public string Json { get; set; } = string.Empty;
+        public string PeersNotification { get; set; } = string.Empty;
         public int TeamKey { get; set; }
         public int CodeKey { get; set; }
         public long Expiry { get; set; }
