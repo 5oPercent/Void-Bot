@@ -33,11 +33,6 @@ public sealed class SkillVariant
     public string CarrierId { get; set; } = string.Empty;
 
     /// <summary>
-    /// 目标关系过滤；友方包含施法者自身，全体不限制阵营关系。
-    /// </summary>
-    public SkillTargetRelation TargetRelation { get; set; } = SkillTargetRelation.Friendly;
-
-    /// <summary>
     /// 具体载体显式开放的数值参数；形状、碰撞和视线行为由游戏端实现。
     /// </summary>
     public Dictionary<string, double> Parameters { get; set; } = new Dictionary<string, double>();
