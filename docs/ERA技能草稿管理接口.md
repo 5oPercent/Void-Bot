@@ -51,7 +51,7 @@ Content-Type: application/json
   "Definition": {
     "Id": "test.sprint", "Name": "机动加速", "Description": "自身速度增加20%，持续6秒。",
     "Variants": [{ "Slot": 3, "MaximumCharges": 3, "CooldownSeconds": 3, "RecoveryStart": 0,
-      "CarrierId": "self", "TargetRelation": 0, "Parameters": {}, "BuffIds": ["test.speed_refresh"] }]
+      "CarrierId": "self", "Parameters": {}, "BuffIds": ["test.speed_refresh"] }]
   }
 }
 ```
@@ -132,3 +132,7 @@ HTTP 200 不代表业务成功，检查响应业务 Code。常见错误：
 - era.character_not_found：角色不存在或不属于当前账号，不泄露他人角色数据。
 
 仅静态检查；本次未编译、未运行测试或数据库迁移。
+
+## 实体条件配置边界
+
+技能槽方案已移除 TargetRelation 字段及对应枚举校验。自身、敌我关系和复合实体筛选由游戏客户端的条件模块定义，并在主机实际生效时判断；后端仍提供技能、BUFF、次数、冷却、载体和参数配置，不保存客户端条件树。JSON 发布数据再次读取及序列化时不再输出旧字段；本次源码调整不自动修改已发布数据或触发发布。客户端和后端应使用配套版本，正式接入目录时需由客户端绑定对应的实体条件。

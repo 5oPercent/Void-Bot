@@ -30,7 +30,7 @@ public static class SkillDraftDefinitionValidator
             value.Variants.Select(v => v.Slot).Distinct().Count() != value.Variants.Count) throw new ArgumentException("方案为空或槽位重复。");
         foreach (var v in value.Variants)
         {
-            if (!Enum.IsDefined(v.Slot) || !Enum.IsDefined(v.RecoveryStart) || !Enum.IsDefined(v.TargetRelation) ||
+            if (!Enum.IsDefined(v.Slot) || !Enum.IsDefined(v.RecoveryStart) ||
                 v.MaximumCharges is < 1 or > 100 || !double.IsFinite(v.CooldownSeconds) || v.CooldownSeconds < 0 || v.CooldownSeconds > 86400)
                 throw new ArgumentException("技能次数、冷却或枚举无效。");
             Id(v.CarrierId); Ids(v.BuffIds);
