@@ -9,8 +9,13 @@ public sealed class RegisterEraWorldCommandHandler : ICommandHandler<RegisterEra
 {
     private readonly IEraWorldService _service;
 
-    public RegisterEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public RegisterEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<RegisterEraWorldResponse> Handle(IReceiveContext<RegisterEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.RegisterAsync(context.Message, cancellationToken);
+    public Task<RegisterEraWorldResponse> Handle(IReceiveContext<RegisterEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.RegisterAsync(context.Message, cancellationToken);
+    }
 }

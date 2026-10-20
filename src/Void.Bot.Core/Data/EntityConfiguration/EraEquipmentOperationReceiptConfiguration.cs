@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Void.Bot.Core.Domain.ERA;
 
-namespace Void.Bot.Core.Data;
+namespace Void.Bot.Core.Data.EntityConfiguration;
 
 public sealed class EraEquipmentOperationReceiptConfiguration : IEntityTypeConfiguration<EraEquipmentOperationReceipt>
 {

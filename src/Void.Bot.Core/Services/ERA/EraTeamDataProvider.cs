@@ -194,7 +194,10 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         return EraNetworkingConstants.RedisPlayerPrefix + playerId.ToString("D");
     }
 
-    private static RedisKey AuthorityFenceKey(Guid teamId) => "era:world:{era-teams}:authority-fence:v1:" + teamId.ToString("D");
+    private static RedisKey AuthorityFenceKey(Guid teamId)
+    {
+        return "era:world:{era-teams}:authority-fence:v1:" + teamId.ToString("D");
+    }
 
     public async Task FenceAuthorityAsync(Guid teamId, CancellationToken cancellationToken)
     {

@@ -4,6 +4,7 @@ using System.Text.Json;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Validators.ERA;
 using Void.Bot.Message.Dto;
@@ -98,7 +99,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
         return new T { Code = HttpStatusCode.OK, Data = state };
     }
 
-    private static EraCharacterEquipmentStateDto? CreateState(
+    internal static EraCharacterEquipmentStateDto? CreateState(
         EraEquipmentReadSnapshot snapshot, EraEquipmentManifestDto? manifest, EraArmorSlot? slot)
     {
         var slots = System.Enum.GetValues<EraArmorSlot>();
@@ -194,7 +195,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
         };
     }
 
-    private static EraEquipmentManifestDto? DecodeConfiguration(EraEquipmentConfiguration? record)
+    internal static EraEquipmentManifestDto? DecodeConfiguration(EraEquipmentConfiguration? record)
     {
         if (record == null)
         {

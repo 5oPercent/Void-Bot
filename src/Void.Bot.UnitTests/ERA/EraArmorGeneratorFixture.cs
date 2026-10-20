@@ -158,17 +158,26 @@ public class EraArmorGeneratorFixture
 
     private sealed class MaximumRandom : Random
     {
-        public override int Next(int maxValue) => maxValue - 1;
+        public override int Next(int maxValue)
+        {
+            return maxValue - 1;
+        }
     }
 
     private sealed class SwappedTieRandom : Random
     {
-        public override int Next(int maxValue) => maxValue == 5 ? 3 : maxValue - 1;
+        public override int Next(int maxValue)
+        {
+            return maxValue == 5 ? 3 : maxValue - 1;
+        }
     }
 
     private sealed class ZeroRandom : Random
     {
-        public override int Next(int maxValue) => 0;
+        public override int Next(int maxValue)
+        {
+            return 0;
+        }
     }
 
     private sealed class PrimaryAttributeRandom(int target) : Random

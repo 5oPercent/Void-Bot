@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 
@@ -85,16 +86,3 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         };
     }
 }
-
-/// <summary>单条查询产生的内部快照，不直接暴露持久化实体给 API。</summary>
-public sealed class EraEquipmentReadSnapshot
-{
-    public Guid CharacterId { get; set; }
-    public Guid PlayerId { get; set; }
-    public bool IsCharacterDisabled { get; set; }
-    public long EquipmentVersion { get; set; }
-    public EraEquippedOperationRestrictionDto? EquippedOperationRestriction { get; set; }
-    public List<EraEquipmentReadEntry> Entries { get; set; } = new List<EraEquipmentReadEntry>();
-}
-
-public sealed record EraEquipmentReadEntry(EraEquipmentInstance Equipment, EraArmorInstanceData? Armor);

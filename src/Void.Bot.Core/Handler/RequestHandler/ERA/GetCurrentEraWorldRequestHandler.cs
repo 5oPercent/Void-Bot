@@ -10,8 +10,13 @@ public sealed class GetCurrentEraWorldRequestHandler : IRequestHandler<GetCurren
 {
     private readonly IEraWorldService _service;
 
-    public GetCurrentEraWorldRequestHandler(IEraWorldService service) { _service = service; }
+    public GetCurrentEraWorldRequestHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public async Task<GetCurrentEraWorldResponse> Handle(IReceiveContext<GetCurrentEraWorldRequest> context, CancellationToken cancellationToken) =>
-        new GetCurrentEraWorldResponse { Code = HttpStatusCode.OK, Data = await _service.GetAsync(null, cancellationToken).ConfigureAwait(false) };
+    public async Task<GetCurrentEraWorldResponse> Handle(IReceiveContext<GetCurrentEraWorldRequest> context, CancellationToken cancellationToken)
+    {
+        return new GetCurrentEraWorldResponse { Code = HttpStatusCode.OK, Data = await _service.GetAsync(null, cancellationToken).ConfigureAwait(false) };
+    }
 }

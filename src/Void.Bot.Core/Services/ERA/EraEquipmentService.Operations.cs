@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;

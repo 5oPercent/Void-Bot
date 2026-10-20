@@ -15,10 +15,29 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     public bool FailReceiptInsert { get; init; }
     public bool PauseWorldSave { get; init; }
     public bool FailWorldSave { get; init; }
+    public bool FailRewardLinkInsert { get; init; }
+    public bool PauseRewardSave { get; init; }
+    public bool PauseRewardGrantSave { get; init; }
+    public bool PauseDropSave { get; init; }
+    public bool RewardFailureInjected { get; private set; }
     public bool WorldFailureInjected { get; private set; }
     public bool ReceiptFailureInjected { get; private set; }
-    public int CompletedUpdates => Volatile.Read(ref _completedUpdates);
-    public int AffectedRows => Volatile.Read(ref _affectedRows);
+    public int CompletedUpdates
+    {
+        get
+        {
+            return Volatile.Read(ref _completedUpdates);
+        }
+    }
+
+    public int AffectedRows
+    {
+        get
+        {
+            return Volatile.Read(ref _affectedRows);
+        }
+    }
+
     public TaskCompletionSource UpdateReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource ResumeUpdate { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource PlayerLockReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -27,12 +46,18 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     public TaskCompletionSource ResumeWorldSave { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource TeamLockReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource WorldRestrictionReadReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource RewardSaveReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ResumeRewardSave { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource RewardScopeReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource DropSaveReached { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ResumeDropSave { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
         DbCommand command, CommandEventData eventData, InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
         if (command.CommandText.Contains("INSERT INTO era_world_team_state", StringComparison.OrdinalIgnoreCase)) TeamLockReached.TrySetResult();
+        if (command.CommandText.Contains("INSERT INTO era_reward_scope", StringComparison.OrdinalIgnoreCase)) RewardScopeReached.TrySetResult();
         if (command.CommandText.Contains("UPDATE ", StringComparison.OrdinalIgnoreCase) &&
             command.CommandText.Contains("era_equipment_instance", StringComparison.OrdinalIgnoreCase))
         {
@@ -71,6 +96,27 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
+        if (PauseDropSave && command.CommandText.Contains("UPDATE `era_equipment_drop`", StringComparison.OrdinalIgnoreCase))
+        {
+            DropSaveReached.TrySetResult();
+            await ResumeDropSave.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        if (PauseRewardSave && command.CommandText.Contains("INSERT INTO `era_reward_event`", StringComparison.OrdinalIgnoreCase))
+        {
+            RewardSaveReached.TrySetResult();
+            await ResumeRewardSave.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        if (PauseRewardGrantSave && command.CommandText.Contains("INSERT INTO `era_reward_grant`", StringComparison.OrdinalIgnoreCase))
+        {
+            RewardSaveReached.TrySetResult();
+            await ResumeRewardSave.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        if (FailRewardLinkInsert && command.CommandText.Contains("INSERT INTO `era_reward_grant_equipment`", StringComparison.OrdinalIgnoreCase))
+        {
+            RewardFailureInjected = true;
+            var failureAt = command.CommandText.IndexOf("INSERT INTO `era_reward_grant_equipment`", StringComparison.OrdinalIgnoreCase);
+            command.CommandText = command.CommandText[..failureAt] + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA reward integration failure';";
+        }
         if (command.CommandText.Contains("FROM era_world AS world", StringComparison.OrdinalIgnoreCase) &&
             command.CommandText.Contains("FOR SHARE", StringComparison.OrdinalIgnoreCase)) WorldRestrictionReadReached.TrySetResult();
         if (command.CommandText.Contains("FROM era_world WHERE", StringComparison.OrdinalIgnoreCase) &&
@@ -83,8 +129,8 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         if (FailWorldSave && command.CommandText.Contains("UPDATE `era_world`", StringComparison.OrdinalIgnoreCase))
         {
             WorldFailureInjected = true;
-            command.Parameters.Clear();
-            command.CommandText = "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA world lifetime integration failure'";
+            var failureAt = command.CommandText.IndexOf("UPDATE `era_world`", StringComparison.OrdinalIgnoreCase);
+            command.CommandText = command.CommandText[..failureAt] + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA world lifetime integration failure';";
         }
         if (command.CommandText.Contains("FROM era_player ", StringComparison.OrdinalIgnoreCase) &&
             command.CommandText.Contains("FOR UPDATE", StringComparison.OrdinalIgnoreCase))
@@ -95,10 +141,14 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         if (FailReceiptInsert && command.CommandText.Contains("INSERT INTO", StringComparison.OrdinalIgnoreCase) &&
             command.CommandText.Contains("era_equipment_operation_receipt", StringComparison.OrdinalIgnoreCase))
         {
-            // SaveChanges 的 MySQL 批处理通过 reader 执行；让真实服务器拒绝最后的保存批次。
+            // 保留同批次中失败点之前的真实写入与参数，让 MySQL 在回执处失败，再核对整笔回滚。
             ReceiptFailureInjected = true;
-            command.Parameters.Clear();
-            command.CommandText = "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA equipment integration failure'";
+            var failureAt = command.CommandText.IndexOf("INSERT INTO `era_equipment_operation_receipt`", StringComparison.OrdinalIgnoreCase);
+            if (failureAt < 0)
+            {
+                throw new InvalidOperationException("Equipment receipt failure point was not found.");
+            }
+            command.CommandText = command.CommandText[..failureAt] + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA equipment integration failure';";
         }
 
         return result;

@@ -9,10 +9,12 @@ public sealed class EraEquipmentOperationReceiptDto
     public Guid RequestId { get; set; }
     /// <summary>操作所属角色。</summary>
     public Guid CharacterId { get; set; }
-    /// <summary>装配／替换或卸下。</summary>
+    /// <summary>装配／替换、卸下或拾取。</summary>
     public EraEquipmentOperation Operation { get; set; }
     /// <summary>操作前的角色装备版本。</summary>
     public long PreviousEquipmentVersion { get; set; }
     /// <summary>操作完成时的资产快照，重试返回原值，不重新加载或恢复资产。</summary>
     public EraCharacterEquipmentStateDto State { get; set; } = new EraCharacterEquipmentStateDto();
+    /// <summary>仅拾取回执填写，旧回执保持为空。</summary>
+    public EraEquipmentDropPickupDto? Pickup { get; set; }
 }

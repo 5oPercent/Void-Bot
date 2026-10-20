@@ -20,7 +20,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.IntegrationTest.Services.ERA;
 
-/// <summary>ERA 装备与世界集成测试，共用 MySQL、Redis、DbUp、Respawn 和真实 Mediator 工作单元。</summary>
+/// <summary>ERA 装备、世界与奖励集成测试，共用 MySQL、Redis、DbUp、Respawn 和真实 Mediator 工作单元。</summary>
 [Trait("Category", "ERAIntegration")]
 public partial class EraIntegrationFixture : IntegrationFixture
 {

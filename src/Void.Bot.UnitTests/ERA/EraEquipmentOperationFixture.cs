@@ -6,6 +6,7 @@ using NSubstitute.Extensions;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Language;

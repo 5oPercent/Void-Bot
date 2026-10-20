@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Void.Bot.Core.Domain.ERA;
 
-namespace Void.Bot.Core.Data;
+namespace Void.Bot.Core.Data.EntityConfiguration;
 
 /// <summary>由现有 DbContext 的程序集扫描加载；历史资产不随关联记录级联删除。</summary>
 public sealed class EraEquipmentEntityConfiguration : IEntityTypeConfiguration<EraEquipmentInstance>

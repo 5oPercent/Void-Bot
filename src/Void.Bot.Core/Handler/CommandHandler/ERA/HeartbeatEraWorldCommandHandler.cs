@@ -9,8 +9,13 @@ public sealed class HeartbeatEraWorldCommandHandler : ICommandHandler<HeartbeatE
 {
     private readonly IEraWorldService _service;
 
-    public HeartbeatEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public HeartbeatEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<HeartbeatEraWorldResponse> Handle(IReceiveContext<HeartbeatEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.HeartbeatAsync(context.Message, cancellationToken);
+    public Task<HeartbeatEraWorldResponse> Handle(IReceiveContext<HeartbeatEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.HeartbeatAsync(context.Message, cancellationToken);
+    }
 }

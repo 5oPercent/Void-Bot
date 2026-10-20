@@ -4,6 +4,7 @@ using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Settings.System;
@@ -18,6 +19,24 @@ public class EraEquipmentPersistenceFixture
         var configuration = Substitute.For<IConfiguration>();
         configuration["ConnectionStrings:Mysql"].Returns("Server=localhost;Database=equipment_model_only;User=model_only;Password=unused");
         return new VoidBotDbContext(new ConnectionStringSetting(configuration), Substitute.For<ICurrentUser>());
+    }
+
+    [Fact]
+    public void Should_map_private_drop_ownership_active_uniqueness_and_world_reward_without_cascade_deletes()
+    {
+        using var context = Context();
+        var drop = context.Model.FindEntityType(typeof(EraEquipmentDrop))!;
+        drop.GetForeignKeys().Count(key => key.PrincipalEntityType.ClrType == typeof(EraPlayer)).ShouldBe(2);
+        drop.GetForeignKeys().All(key => key.DeleteBehavior == DeleteBehavior.Restrict).ShouldBeTrue();
+        drop.GetIndexes().Any(index => index.IsUnique && index.Properties.Select(property => property.Name)
+            .SequenceEqual(new[] { nameof(EraEquipmentDrop.ActiveEquipmentId) })).ShouldBeTrue();
+        drop.FindProperty(nameof(EraEquipmentDrop.ActiveEquipmentId))!.IsNullable.ShouldBeTrue();
+        var share = context.Model.FindEntityType(typeof(EraEquipmentShare))!;
+        share.FindPrimaryKey()!.Properties.Single().Name.ShouldBe(nameof(EraEquipmentShare.EquipmentId));
+        share.GetForeignKeys().Single().DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
+        var reward = context.Model.FindEntityType(typeof(EraRewardEvent))!;
+        reward.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(EraWorld)).DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
+        reward.FindProperty(nameof(EraRewardEvent.WorldInstanceId))!.IsNullable.ShouldBeTrue();
     }
 
     [Fact]

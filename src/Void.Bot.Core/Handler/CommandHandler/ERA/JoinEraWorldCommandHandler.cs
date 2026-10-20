@@ -9,8 +9,13 @@ public sealed class JoinEraWorldCommandHandler : ICommandHandler<JoinEraWorldCom
 {
     private readonly IEraWorldService _service;
 
-    public JoinEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public JoinEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<JoinEraWorldResponse> Handle(IReceiveContext<JoinEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.ExecuteAsync<JoinEraWorldResponse>(context.Message, cancellationToken);
+    public Task<JoinEraWorldResponse> Handle(IReceiveContext<JoinEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.ExecuteAsync<JoinEraWorldResponse>(context.Message, cancellationToken);
+    }
 }

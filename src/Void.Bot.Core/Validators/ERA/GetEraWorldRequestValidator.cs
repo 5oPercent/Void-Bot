@@ -6,5 +6,8 @@ namespace Void.Bot.Core.Validators.ERA;
 
 public sealed class GetEraWorldRequestValidator : FluentMessageValidator<GetEraWorldRequest>
 {
-    public GetEraWorldRequestValidator() { RuleFor(request => request.WorldInstanceId).NotEmpty(); }
+    public GetEraWorldRequestValidator()
+    {
+        RuleFor(request => request.WorldInstanceId).NotEmpty();
+    }
 }

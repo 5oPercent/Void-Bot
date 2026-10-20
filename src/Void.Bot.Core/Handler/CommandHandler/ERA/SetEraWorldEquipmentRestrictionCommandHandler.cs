@@ -9,8 +9,13 @@ public sealed class SetEraWorldEquipmentRestrictionCommandHandler : ICommandHand
 {
     private readonly IEraWorldService _service;
 
-    public SetEraWorldEquipmentRestrictionCommandHandler(IEraWorldService service) { _service = service; }
+    public SetEraWorldEquipmentRestrictionCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<SetEraWorldEquipmentRestrictionResponse> Handle(IReceiveContext<SetEraWorldEquipmentRestrictionCommand> context, CancellationToken cancellationToken) =>
-        _service.ExecuteAsync<SetEraWorldEquipmentRestrictionResponse>(context.Message, cancellationToken);
+    public Task<SetEraWorldEquipmentRestrictionResponse> Handle(IReceiveContext<SetEraWorldEquipmentRestrictionCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.ExecuteAsync<SetEraWorldEquipmentRestrictionResponse>(context.Message, cancellationToken);
+    }
 }

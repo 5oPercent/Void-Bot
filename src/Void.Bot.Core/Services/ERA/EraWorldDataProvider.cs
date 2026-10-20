@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Services.ERA.Models;
 using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Core.Services.ERA;
@@ -23,7 +24,10 @@ public sealed class EraWorldDataProvider : IEraWorldDataProvider
 {
     private readonly VoidBotDbContext _context;
 
-    public EraWorldDataProvider(VoidBotDbContext context) { _context = context; }
+    public EraWorldDataProvider(VoidBotDbContext context)
+    {
+        _context = context;
+    }
 
     public async Task<EraWorldTeamState> LockTeamAsync(Guid teamId, CancellationToken cancellationToken)
     {
@@ -45,11 +49,15 @@ public sealed class EraWorldDataProvider : IEraWorldDataProvider
         return rows.SingleOrDefault();
     }
 
-    public Task<EraWorld?> GetWorldAsync(Guid worldId, CancellationToken cancellationToken) =>
-        _context.Set<EraWorld>().AsNoTracking().SingleOrDefaultAsync(world => world.Id == worldId, cancellationToken);
+    public Task<EraWorld?> GetWorldAsync(Guid worldId, CancellationToken cancellationToken)
+    {
+        return _context.Set<EraWorld>().AsNoTracking().SingleOrDefaultAsync(world => world.Id == worldId, cancellationToken);
+    }
 
-    public Task<EraWorld?> GetCreationAsync(Guid teamId, Guid requestId, CancellationToken cancellationToken) =>
-        _context.Set<EraWorld>().AsNoTracking().SingleOrDefaultAsync(world => world.TeamId == teamId && world.CreationRequestId == requestId, cancellationToken);
+    public Task<EraWorld?> GetCreationAsync(Guid teamId, Guid requestId, CancellationToken cancellationToken)
+    {
+        return _context.Set<EraWorld>().AsNoTracking().SingleOrDefaultAsync(world => world.TeamId == teamId && world.CreationRequestId == requestId, cancellationToken);
+    }
 
     public async Task<EraWorldReadSnapshot?> ReadSnapshotAsync(Guid? worldId, Guid playerId, CancellationToken cancellationToken)
     {
@@ -89,12 +97,17 @@ public sealed class EraWorldDataProvider : IEraWorldDataProvider
         _context.Set<EraWorldMember>().AddRange(members);
     }
 
-    public void AddMember(EraWorldMember member) => _context.Set<EraWorldMember>().Add(member);
+    public void AddMember(EraWorldMember member)
+    {
+        _context.Set<EraWorldMember>().Add(member);
+    }
 
-    public Task<List<Guid>> GetTimeoutCandidatesAsync(DateTimeOffset activityCutoff, DateTimeOffset checkCutoff, int take, CancellationToken cancellationToken) =>
-        _context.Set<EraWorld>().AsNoTracking()
+    public Task<List<Guid>> GetTimeoutCandidatesAsync(DateTimeOffset activityCutoff, DateTimeOffset checkCutoff, int take, CancellationToken cancellationToken)
+    {
+        return _context.Set<EraWorld>().AsNoTracking()
             .Where(world => (world.State == EraWorldState.Building || world.State == EraWorldState.Ready) &&
                 world.LastActiveAt <= activityCutoff && (world.LastLifetimeCheckAt == null || world.LastLifetimeCheckAt <= checkCutoff))
             .OrderBy(world => world.LastLifetimeCheckAt).ThenBy(world => world.Id)
             .Take(take).Select(world => world.Id).ToListAsync(cancellationToken);
+    }
 }

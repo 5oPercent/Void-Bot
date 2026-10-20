@@ -6,5 +6,7 @@ public enum EraEquipmentOperation
     /// <summary>空槽装配或原子替换。</summary>
     Equip = 1,
     /// <summary>卸下到原背包分区。</summary>
-    Unequip = 2
+    Unequip = 2,
+    /// <summary>领取世界中的私人地面掉落。</summary>
+    Pickup = 3
 }

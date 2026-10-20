@@ -9,8 +9,13 @@ public sealed class EndEraWorldCommandHandler : ICommandHandler<EndEraWorldComma
 {
     private readonly IEraWorldService _service;
 
-    public EndEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public EndEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<EndEraWorldResponse> Handle(IReceiveContext<EndEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.ExecuteAsync<EndEraWorldResponse>(context.Message, cancellationToken);
+    public Task<EndEraWorldResponse> Handle(IReceiveContext<EndEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.ExecuteAsync<EndEraWorldResponse>(context.Message, cancellationToken);
+    }
 }

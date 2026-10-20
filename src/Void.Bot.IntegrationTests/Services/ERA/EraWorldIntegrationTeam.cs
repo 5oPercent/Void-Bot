@@ -9,7 +9,11 @@ internal sealed class EraWorldIntegrationTeam : IAsyncDisposable
     public EraTeam Team { get; }
     public IEraTeamDataProvider Provider { get; }
 
-    public EraWorldIntegrationTeam(EraTeam team, IEraTeamDataProvider provider) { Team = team; Provider = provider; }
+    public EraWorldIntegrationTeam(EraTeam team, IEraTeamDataProvider provider)
+    {
+        Team = team;
+        Provider = provider;
+    }
 
     public async ValueTask DisposeAsync()
     {

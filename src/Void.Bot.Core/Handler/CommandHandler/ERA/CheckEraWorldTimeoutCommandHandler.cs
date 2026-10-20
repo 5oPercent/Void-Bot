@@ -9,8 +9,13 @@ public sealed class CheckEraWorldTimeoutCommandHandler : ICommandHandler<CheckEr
 {
     private readonly IEraWorldService _service;
 
-    public CheckEraWorldTimeoutCommandHandler(IEraWorldService service) { _service = service; }
+    public CheckEraWorldTimeoutCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<CheckEraWorldTimeoutResponse> Handle(IReceiveContext<CheckEraWorldTimeoutCommand> context, CancellationToken cancellationToken) =>
-        _service.CheckTimeoutAsync(context.Message, cancellationToken);
+    public Task<CheckEraWorldTimeoutResponse> Handle(IReceiveContext<CheckEraWorldTimeoutCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.CheckTimeoutAsync(context.Message, cancellationToken);
+    }
 }

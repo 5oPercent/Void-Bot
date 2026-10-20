@@ -24,28 +24,37 @@ public sealed class EraWorldsController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public EraWorldsController(IMediator mediator) { _mediator = mediator; }
+    public EraWorldsController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
 
     [HttpPost]
     [SkipPermissionCheck]
     [DescriptionLocalization("RegisterEraWorld")]
     [ProducesResponseType(typeof(RegisterEraWorldResponse), 200)]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterEraWorldCommand command, CancellationToken cancellationToken) =>
-        Ok(await _mediator.SendAsync<RegisterEraWorldCommand, RegisterEraWorldResponse>(command, cancellationToken).ConfigureAwait(false));
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterEraWorldCommand command, CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.SendAsync<RegisterEraWorldCommand, RegisterEraWorldResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
 
     [HttpGet("current")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetCurrentEraWorld")]
     [ProducesResponseType(typeof(GetCurrentEraWorldResponse), 200)]
-    public async Task<IActionResult> GetCurrentAsync(CancellationToken cancellationToken) =>
-        Ok(await _mediator.RequestAsync<GetCurrentEraWorldRequest, GetCurrentEraWorldResponse>(new GetCurrentEraWorldRequest(), cancellationToken).ConfigureAwait(false));
+    public async Task<IActionResult> GetCurrentAsync(CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.RequestAsync<GetCurrentEraWorldRequest, GetCurrentEraWorldResponse>(new GetCurrentEraWorldRequest(), cancellationToken).ConfigureAwait(false));
+    }
 
     [HttpGet("{worldInstanceId:guid}")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetEraWorld")]
     [ProducesResponseType(typeof(GetEraWorldResponse), 200)]
-    public async Task<IActionResult> GetAsync([FromRoute] Guid worldInstanceId, CancellationToken cancellationToken) =>
-        Ok(await _mediator.RequestAsync<GetEraWorldRequest, GetEraWorldResponse>(new GetEraWorldRequest { WorldInstanceId = worldInstanceId }, cancellationToken).ConfigureAwait(false));
+    public async Task<IActionResult> GetAsync([FromRoute] Guid worldInstanceId, CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.RequestAsync<GetEraWorldRequest, GetEraWorldResponse>(new GetEraWorldRequest { WorldInstanceId = worldInstanceId }, cancellationToken).ConfigureAwait(false));
+    }
 
     [HttpPost("{worldInstanceId:guid}/ready")]
     [SkipPermissionCheck]
@@ -122,5 +131,38 @@ public sealed class EraWorldsController : ControllerBase
     {
         command.WorldInstanceId = worldInstanceId;
         return Ok(await _mediator.SendAsync<SetEraWorldEquipmentRestrictionCommand, SetEraWorldEquipmentRestrictionResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpPost("{worldInstanceId:guid}/rewards/ground")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("SubmitEraGroundReward")]
+    [ProducesResponseType(typeof(SubmitEraGroundRewardResponse), 200)]
+    public async Task<IActionResult> SubmitGroundRewardAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] SubmitEraGroundRewardCommand command, CancellationToken cancellationToken)
+    {
+        command.WorldInstanceId = worldInstanceId;
+        return Ok(await _mediator.SendAsync<SubmitEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpGet("{worldInstanceId:guid}/equipment-drops")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraEquipmentDrops")]
+    [ProducesResponseType(typeof(GetEraEquipmentDropsResponse), 200)]
+    public async Task<IActionResult> GetEquipmentDropsAsync([FromRoute] Guid worldInstanceId, CancellationToken cancellationToken)
+    {
+        return Ok(await _mediator.RequestAsync<GetEraEquipmentDropsRequest, GetEraEquipmentDropsResponse>(
+            new GetEraEquipmentDropsRequest { WorldInstanceId = worldInstanceId }, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpPost("{worldInstanceId:guid}/equipment-drops/{dropId:guid}/pickup")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("PickupEraEquipmentDrop")]
+    [ProducesResponseType(typeof(PickupEraEquipmentDropResponse), 200)]
+    public async Task<IActionResult> PickupEquipmentDropAsync([FromRoute] Guid worldInstanceId, [FromRoute] Guid dropId,
+        [FromBody] PickupEraEquipmentDropCommand command, CancellationToken cancellationToken)
+    {
+        command.WorldInstanceId = worldInstanceId;
+        command.DropId = dropId;
+        return Ok(await _mediator.SendAsync<PickupEraEquipmentDropCommand, PickupEraEquipmentDropResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 }

@@ -101,7 +101,7 @@ public sealed partial class EraWorldService
         }
         if (world.TimeoutObservedAt > now.AddSeconds(-_lifetime.MissingConfirmationSeconds))
             return new CheckEraWorldTimeoutResponse { Status = EraWorldTimeoutStatus.Missing };
-        EraWorldLifecycle.Finish(world, teamState, members, EraWorldEndReason.InactivityTimeout, now);
+        await FinishWorldAsync(world, teamState, members, EraWorldEndReason.InactivityTimeout, now, cancellationToken).ConfigureAwait(false);
         return new CheckEraWorldTimeoutResponse { Status = EraWorldTimeoutStatus.Ended };
     }
 }

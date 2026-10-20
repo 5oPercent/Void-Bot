@@ -30,10 +30,11 @@ public sealed partial class EraWorldService : IEraWorldService
     private readonly ILocalizationService _localization;
     private readonly TimeProvider _clock;
     private readonly EraWorldLifetimeSetting _lifetime;
+    private readonly IEraEquipmentDropDataProvider _drops;
 
     public EraWorldService(IEraWorldDataProvider worlds, IEraTeamDataProvider teams, IEraPlayerContext players,
         EraNetworkingSetting setting, ILocalizationService localization, TimeProvider clock, IEraDataProvider characters,
-        EraWorldLifetimeSetting lifetime)
+        EraWorldLifetimeSetting lifetime, IEraEquipmentDropDataProvider drops)
     {
         _worlds = worlds;
         _teams = teams;
@@ -43,10 +44,13 @@ public sealed partial class EraWorldService : IEraWorldService
         _localization = localization;
         _clock = clock;
         _lifetime = lifetime;
+        _drops = drops;
     }
 
-    private EraWorldAccessException Error(HttpStatusCode status, string code, Expression<Func<EraWorldContextTemplate, object>> text) =>
-        new EraWorldAccessException(status, code, _localization.GetValue(text));
+    private EraWorldAccessException Error(HttpStatusCode status, string code, Expression<Func<EraWorldContextTemplate, object>> text)
+    {
+        return new EraWorldAccessException(status, code, _localization.GetValue(text));
+    }
 
     private async Task<(EraTeam Team, EraTeamMember Member)> RequireTeamAsync(Guid teamId, Guid playerId,
         Guid memberId, long epoch, bool hostRequired, CancellationToken cancellationToken)
@@ -203,15 +207,15 @@ public sealed partial class EraWorldService : IEraWorldService
                 member.ActiveCharacterId = null;
                 if (!members.Any(item => item.IsContinuing))
                 {
-                    EraWorldLifecycle.Finish(world, teamState, members, EraWorldEndReason.LastMemberLeft, _clock.GetUtcNow());
+                    await FinishWorldAsync(world, teamState, members, EraWorldEndReason.LastMemberLeft, _clock.GetUtcNow(), cancellationToken).ConfigureAwait(false);
                     return new T { Code = HttpStatusCode.OK, Data = Map(world, members) };
                 }
                 break;
             case EndEraWorldCommand end:
                 if (end.ConstructionFailed && world.State != EraWorldState.Building)
                     throw Error(HttpStatusCode.Conflict, "era.world_invalid_operation", text => text.InvalidOperation);
-                EraWorldLifecycle.Finish(world, teamState, members,
-                    end.ConstructionFailed ? EraWorldEndReason.ConstructionFailed : EraWorldEndReason.Abandoned, _clock.GetUtcNow());
+                await FinishWorldAsync(world, teamState, members,
+                    end.ConstructionFailed ? EraWorldEndReason.ConstructionFailed : EraWorldEndReason.Abandoned, _clock.GetUtcNow(), cancellationToken).ConfigureAwait(false);
                 return new T { Code = HttpStatusCode.OK, Data = Map(world, members) };
             default:
                 throw Error(HttpStatusCode.BadRequest, "era.world_invalid_operation", text => text.InvalidOperation);
@@ -229,18 +233,21 @@ public sealed partial class EraWorldService : IEraWorldService
         return Map(snapshot.World, snapshot.Members);
     }
 
-    private EraWorldDto Map(EraWorld world, IEnumerable<EraWorldMember> members) => new EraWorldDto
+    private EraWorldDto Map(EraWorld world, IEnumerable<EraWorldMember> members)
     {
-        WorldInstanceId = world.Id, TeamId = world.TeamId, WorldDefinitionId = world.WorldDefinitionId,
-        State = world.State, HostPlayerId = world.HostPlayerId, AuthorityEpoch = world.AuthorityEpoch, Version = world.Version,
-        IsEquippedOperationsRestricted = world.IsEquippedOperationsRestricted, RestrictionVersion = world.RestrictionVersion,
-        CreatedAt = world.CreatedAt, EndedAt = world.EndedAt,
-        EndReason = world.EndReason, LastActiveAt = world.LastActiveAt,
-        HeartbeatIntervalSeconds = _lifetime.HeartbeatIntervalSeconds,
-        InactivityTimeoutSeconds = _lifetime.InactivityTimeoutSeconds,
-        Members = members.Select(member => new EraWorldMemberDto
+        return new EraWorldDto
         {
-            PlayerId = member.PlayerId, CharacterId = member.CharacterId, MemberId = member.MemberId, IsContinuing = member.IsContinuing
-        }).ToList()
-    };
+            WorldInstanceId = world.Id, TeamId = world.TeamId, WorldDefinitionId = world.WorldDefinitionId,
+            State = world.State, HostPlayerId = world.HostPlayerId, AuthorityEpoch = world.AuthorityEpoch, Version = world.Version,
+            IsEquippedOperationsRestricted = world.IsEquippedOperationsRestricted, RestrictionVersion = world.RestrictionVersion,
+            CreatedAt = world.CreatedAt, EndedAt = world.EndedAt,
+            EndReason = world.EndReason, LastActiveAt = world.LastActiveAt,
+            HeartbeatIntervalSeconds = _lifetime.HeartbeatIntervalSeconds,
+            InactivityTimeoutSeconds = _lifetime.InactivityTimeoutSeconds,
+            Members = members.Select(member => new EraWorldMemberDto
+            {
+                PlayerId = member.PlayerId, CharacterId = member.CharacterId, MemberId = member.MemberId, IsContinuing = member.IsContinuing
+            }).ToList()
+        };
+    }
 }

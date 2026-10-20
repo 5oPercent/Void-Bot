@@ -122,18 +122,25 @@ public partial class EraIntegrationFixture
     }
 
     private Task<CheckEraWorldTimeoutResponse> CheckTimeoutAsync(EraWorldDto world,
-        EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default) =>
-        RequestAsync((mediator, token) => mediator.SendAsync<CheckEraWorldTimeoutCommand, CheckEraWorldTimeoutResponse>(
+        EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default)
+    {
+        return RequestAsync((mediator, token) => mediator.SendAsync<CheckEraWorldTimeoutCommand, CheckEraWorldTimeoutResponse>(
             new CheckEraWorldTimeoutCommand { WorldInstanceId = world.WorldInstanceId }, token), interceptor, cancellationToken);
+    }
 
     private Task<HeartbeatEraWorldResponse> HeartbeatWorldAsync(EraWorldDto world, Guid memberId,
-        Guid? accountId = null, EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default) =>
-        RequestAsync((mediator, token) => mediator.SendAsync<HeartbeatEraWorldCommand, HeartbeatEraWorldResponse>(
+        Guid? accountId = null, EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default)
+    {
+        return RequestAsync((mediator, token) => mediator.SendAsync<HeartbeatEraWorldCommand, HeartbeatEraWorldResponse>(
             new HeartbeatEraWorldCommand { WorldInstanceId = world.WorldInstanceId, MemberId = memberId }, token),
             interceptor, cancellationToken, accountId);
+    }
 
-    private static Task RemoveTestTeamAsync(EraWorldIntegrationTeam team) => team.Provider.ChangeAsync(team.Team.TeamId,
-        current => new EraTeamChange<bool> { Changed = current != null, Team = null, Result = true }, CancellationToken.None);
+    private static Task RemoveTestTeamAsync(EraWorldIntegrationTeam team)
+    {
+        return team.Provider.ChangeAsync(team.Team.TeamId,
+            current => new EraTeamChange<bool> { Changed = current != null, Team = null, Result = true }, CancellationToken.None);
+    }
 
     [Fact]
     [Trait("Category", "ERAWorldLifetimeIntegration")]

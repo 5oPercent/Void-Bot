@@ -9,8 +9,13 @@ public sealed class LeaveEraWorldCommandHandler : ICommandHandler<LeaveEraWorldC
 {
     private readonly IEraWorldService _service;
 
-    public LeaveEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public LeaveEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<LeaveEraWorldResponse> Handle(IReceiveContext<LeaveEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.ExecuteAsync<LeaveEraWorldResponse>(context.Message, cancellationToken);
+    public Task<LeaveEraWorldResponse> Handle(IReceiveContext<LeaveEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.ExecuteAsync<LeaveEraWorldResponse>(context.Message, cancellationToken);
+    }
 }

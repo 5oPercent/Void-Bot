@@ -5,6 +5,7 @@ namespace Void.Bot.Core.Resources.i18n.ERA;
 [Language("ERA", "EraWorld")]
 public sealed class EraWorldContextTemplate : IContextTemplate
 {
+    public string ReadyRequired { get; set; } = "世界尚未构建就绪，不能生成奖励";
     public string InvalidOperation { get; set; } = "世界操作参数无效";
     public string NotFound { get; set; } = "世界不存在或当前玩家不是该世界成员";
     public string TeamUnavailable { get; set; } = "当前队伍不可用，请刷新队伍状态";

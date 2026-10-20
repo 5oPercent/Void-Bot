@@ -9,8 +9,13 @@ public sealed class RecoverEraWorldCommandHandler : ICommandHandler<RecoverEraWo
 {
     private readonly IEraWorldService _service;
 
-    public RecoverEraWorldCommandHandler(IEraWorldService service) { _service = service; }
+    public RecoverEraWorldCommandHandler(IEraWorldService service)
+    {
+        _service = service;
+    }
 
-    public Task<RecoverEraWorldResponse> Handle(IReceiveContext<RecoverEraWorldCommand> context, CancellationToken cancellationToken) =>
-        _service.ExecuteAsync<RecoverEraWorldResponse>(context.Message, cancellationToken);
+    public Task<RecoverEraWorldResponse> Handle(IReceiveContext<RecoverEraWorldCommand> context, CancellationToken cancellationToken)
+    {
+        return _service.ExecuteAsync<RecoverEraWorldResponse>(context.Message, cancellationToken);
+    }
 }
