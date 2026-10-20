@@ -19,6 +19,8 @@ public partial class EraIntegrationFixture
         var command = RewardCommand(includeOther: true);
         await ReadDatabaseAsync(async context =>
         {
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            var characters = new List<EraCharacter>();
             for (var index = 2; index < count; index++)
             {
                 var player = new EraPlayer { Id = Guid.NewGuid(), WarehouseCapacity = 300, Version = 1 };
@@ -28,10 +30,14 @@ public partial class EraIntegrationFixture
                     DisplayName = "Reward member " + index, Version = 12, EquipmentVersion = 3
                 };
                 context.Set<EraPlayer>().Add(player);
-                context.Set<EraCharacter>().Add(character);
+                characters.Add(character);
                 command.Recipients.Add(new EraRewardRecipient { PlayerId = player.Id, CharacterId = character.Id });
             }
+            // 数据库有角色到玩家的外键，当前 EF 模型未映射该关系，需显式先保存所有玩家。
             await context.SaveChangesAsync();
+            context.Set<EraCharacter>().AddRange(characters);
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
         });
         // 内部能力不绑定队伍，可信业务提供的名单不应被当前网络配置重复限制。
         _worldTestMaxMembers = 2;
