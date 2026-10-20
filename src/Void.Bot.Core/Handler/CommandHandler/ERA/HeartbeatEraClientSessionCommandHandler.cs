@@ -1,7 +1,7 @@
 using System.Net;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Session;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Commands.ERA;
 

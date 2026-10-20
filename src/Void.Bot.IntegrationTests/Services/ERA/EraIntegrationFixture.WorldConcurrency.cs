@@ -8,7 +8,7 @@ using Shouldly;
 using StackExchange.Redis;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Constants.ERA;

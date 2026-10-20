@@ -5,7 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Settings.ERA;
 
 namespace Void.Bot.Api.HostedService;

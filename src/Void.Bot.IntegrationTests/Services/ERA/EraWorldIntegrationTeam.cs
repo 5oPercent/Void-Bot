@@ -1,5 +1,5 @@
 using Void.Bot.Core.Domain.ERA;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 
 namespace Void.Bot.IntegrationTest.Services.ERA;
 

@@ -5,7 +5,7 @@ using MySqlConnector;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;

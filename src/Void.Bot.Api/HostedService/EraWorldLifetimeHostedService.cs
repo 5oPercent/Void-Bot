@@ -1,5 +1,5 @@
 using Mediator.Net;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.World;
 using Void.Bot.Core.Settings.ERA;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Enum.ERA;

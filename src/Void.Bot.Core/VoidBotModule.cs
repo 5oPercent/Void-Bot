@@ -30,7 +30,7 @@ using Void.Bot.Core.Middlewares.UnitofWork;
 using Void.Bot.Core.Resources.i18n;
 using Void.Bot.Core.Services;
 using Void.Bot.Core.Services.Bungie;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Player.Models;
 using Void.Bot.Core.Services.Discord;
 using Void.Bot.Core.Services.Discord.Component;
 using Void.Bot.Core.Services.Identity;

@@ -1,5 +1,5 @@
 using Shouldly;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Equipment;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 

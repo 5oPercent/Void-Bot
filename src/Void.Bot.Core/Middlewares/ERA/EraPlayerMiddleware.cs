@@ -2,7 +2,7 @@ using Mediator.Net;
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
 using Mediator.Net.Pipeline;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Player;
 
 namespace Void.Bot.Core.Middlewares.ERA;
 

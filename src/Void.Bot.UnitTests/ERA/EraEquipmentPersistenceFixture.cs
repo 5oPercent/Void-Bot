@@ -4,9 +4,9 @@ using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
-using Void.Bot.Core.Services.ERA.Models;
+using Void.Bot.Core.Services.ERA.Equipment;
+using Void.Bot.Core.Services.ERA.Equipment.Models;
 using Void.Bot.Core.Services.Identity;
-using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Settings.System;
 
 namespace Void.Bot.UnitTest.ERA;

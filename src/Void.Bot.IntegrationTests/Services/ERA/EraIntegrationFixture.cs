@@ -11,7 +11,7 @@ using Void.Bot.Core.Domain.Account;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Language;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Settings.System;
 using Void.Bot.Core.Settings.ERA;
 using Void.Bot.Message.Commands.ERA;

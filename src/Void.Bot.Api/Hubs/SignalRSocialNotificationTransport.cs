@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Void.Bot.Core.Services.Social;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Social;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Message.Dto.Social;
 
 namespace Void.Bot.Api.Hubs;
