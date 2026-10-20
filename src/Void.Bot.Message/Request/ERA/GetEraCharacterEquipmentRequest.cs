@@ -10,7 +10,7 @@ public sealed class GetEraCharacterEquipmentRequest : IRequest, IRequireEraPlaye
     public Guid CharacterId { get; set; }
 }
 
-/// <summary>一致的角色装备状态，不包含尚未接入的世界操作限制。</summary>
+/// <summary>一致的角色装备及适用世界限制状态，世界与装备版本分别维护。</summary>
 public sealed class GetEraCharacterEquipmentResponse : EraResponse<EraCharacterEquipmentStateDto>
 {
 }

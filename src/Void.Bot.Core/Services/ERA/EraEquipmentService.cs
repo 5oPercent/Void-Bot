@@ -13,7 +13,7 @@ using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Core.Services.ERA;
 
-public interface IEraEquipmentService : IScope
+public partial interface IEraEquipmentService : IScope
 {
     Task<GetEraEquipmentManifestResponse> GetManifestAsync(
         GetEraEquipmentManifestRequest request, CancellationToken cancellationToken);
@@ -23,8 +23,8 @@ public interface IEraEquipmentService : IScope
         GetEraCharacterInventoryRequest request, CancellationToken cancellationToken);
 }
 
-/// <summary>只读装备业务；资产查询不调用生成器，不初始化配置、背包或装备。</summary>
-public sealed class EraEquipmentService : IEraEquipmentService
+/// <summary>装备查询与装配业务；不生成资产，写事务由 Mediator 工作单元统一提交。</summary>
+public sealed partial class EraEquipmentService : IEraEquipmentService
 {
     private const int InventoryCapacityPerSlot = 12;
     private readonly IEraEquipmentDataProvider _dataProvider;
@@ -87,21 +87,33 @@ public sealed class EraEquipmentService : IEraEquipmentService
                 _localizationService.GetValue<EraContextTemplate>(text => text.CharacterNotFound));
         }
 
-        var slots = System.Enum.GetValues<EraArmorSlot>();
-        if (snapshot.EquipmentVersion < 0 || snapshot.Entries.Select(entry => entry.Equipment.Id).Distinct().Count() != snapshot.Entries.Count)
+        var configuration = await _dataProvider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
+        var manifest = DecodeConfiguration(configuration);
+        var state = CreateState(snapshot, manifest, slot);
+        if (state == null)
         {
             return Error<T>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
         }
 
-        var configuration = await _dataProvider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
-        var manifest = DecodeConfiguration(configuration);
+        return new T { Code = HttpStatusCode.OK, Data = state };
+    }
+
+    private static EraCharacterEquipmentStateDto? CreateState(
+        EraEquipmentReadSnapshot snapshot, EraEquipmentManifestDto? manifest, EraArmorSlot? slot)
+    {
+        var slots = System.Enum.GetValues<EraArmorSlot>();
+        if (snapshot.EquipmentVersion < 0 || snapshot.Entries.Select(entry => entry.Equipment.Id).Distinct().Count() != snapshot.Entries.Count)
+        {
+            return null;
+        }
+
         var definitions = manifest?.Definitions.ToDictionary(definition => definition.Id, StringComparer.Ordinal);
         var items = new List<EraEquipmentInstanceDto>();
         foreach (var entry in snapshot.Entries)
         {
             var equipment = entry.Equipment;
             var armor = entry.Armor;
-            if (equipment.Id == Guid.Empty || equipment.CharacterId != character.Id || equipment.OwnerPlayerId != character.PlayerId ||
+            if (equipment.Id == Guid.Empty || equipment.CharacterId != snapshot.CharacterId || equipment.OwnerPlayerId != snapshot.PlayerId ||
                 equipment.EquipmentType != EraEquipmentType.Armor || !System.Enum.IsDefined(equipment.Grade) ||
                 !System.Enum.IsDefined(equipment.InventorySlot) || equipment.Version < 1 || equipment.DefinitionVersion < 1 ||
                 string.IsNullOrWhiteSpace(equipment.DefinitionId) || equipment.CreatedAt == default ||
@@ -112,7 +124,7 @@ public sealed class EraEquipmentService : IEraEquipmentService
                 armor.Strength < 0 || armor.Survival < 0 || armor.Mobility < 0 ||
                 armor.Focus < 0 || armor.Efficiency < 0 || armor.Resistance < 0)
             {
-                return Error<T>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
+                return null;
             }
 
             EraArmorDefinitionDto? definition = null;
@@ -125,8 +137,8 @@ public sealed class EraEquipmentService : IEraEquipmentService
                 Definition = definition,
                 EquipmentType = equipment.EquipmentType,
                 Grade = equipment.Grade,
-                OwnerPlayerId = character.PlayerId,
-                CharacterId = character.Id,
+                OwnerPlayerId = snapshot.PlayerId,
+                CharacterId = snapshot.CharacterId,
                 Location = equipment.Location,
                 InventorySlot = equipment.InventorySlot,
                 EquippedSlot = equipment.EquippedSlot,
@@ -151,37 +163,34 @@ public sealed class EraEquipmentService : IEraEquipmentService
         if (slots.Any(partition => inventory.Count(item => item.InventorySlot == partition) > InventoryCapacityPerSlot) ||
             equipped.GroupBy(item => item.EquippedSlot).Any(group => group.Count() > 1))
         {
-            return Error<T>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
+            return null;
         }
 
-        return new T
+        return new EraCharacterEquipmentStateDto
         {
-            Code = HttpStatusCode.OK,
-            Data = new EraCharacterEquipmentStateDto
+            CharacterId = snapshot.CharacterId,
+            IsCharacterDisabled = snapshot.IsCharacterDisabled,
+            EquipmentVersion = snapshot.EquipmentVersion,
+            EquippedOperationRestriction = snapshot.EquippedOperationRestriction,
+            ManifestVersion = manifest?.Version,
+            FilterSlot = slot,
+            TotalInventoryCapacity = slots.Length * InventoryCapacityPerSlot,
+            TotalInventoryCount = inventory.Count,
+            InventoryPartitions = slots.Select(partition => new EraArmorInventoryPartitionDto
             {
-                CharacterId = snapshot.CharacterId,
-                IsCharacterDisabled = snapshot.IsCharacterDisabled,
-                EquipmentVersion = snapshot.EquipmentVersion,
-                ManifestVersion = manifest?.Version,
-                FilterSlot = slot,
-                TotalInventoryCapacity = slots.Length * InventoryCapacityPerSlot,
-                TotalInventoryCount = inventory.Count,
-                InventoryPartitions = slots.Select(partition => new EraArmorInventoryPartitionDto
-                {
-                    Slot = partition,
-                    Count = inventory.Count(item => item.InventorySlot == partition),
-                    Capacity = InventoryCapacityPerSlot
-                }).ToList(),
-                InventoryItems = slot.HasValue
-                    ? inventory.Where(item => item.InventorySlot == slot.Value &&
-                        (item.Definition == null || item.Definition.CompatibleSlots.Contains(slot.Value))).ToList()
-                    : inventory,
-                EquippedSlots = slots.Select(equippedSlot => new EraEquippedArmorSlotDto
-                {
-                    Slot = equippedSlot,
-                    Equipment = equipped.SingleOrDefault(item => item.EquippedSlot == equippedSlot)
-                }).ToList()
-            }
+                Slot = partition,
+                Count = inventory.Count(item => item.InventorySlot == partition),
+                Capacity = InventoryCapacityPerSlot
+            }).ToList(),
+            InventoryItems = slot.HasValue
+                ? inventory.Where(item => item.InventorySlot == slot.Value &&
+                    (item.Definition == null || item.Definition.CompatibleSlots.Contains(slot.Value))).ToList()
+                : inventory,
+            EquippedSlots = slots.Select(equippedSlot => new EraEquippedArmorSlotDto
+            {
+                Slot = equippedSlot,
+                Equipment = equipped.SingleOrDefault(item => item.EquippedSlot == equippedSlot)
+            }).ToList()
         };
     }
 

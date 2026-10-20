@@ -27,7 +27,7 @@ public partial class EraTeamDataProvider
     // 与既有队伍写入脚本组合，邀请、索引和通知在同一次 Lua 提交中变更。
     // 当前部署为单 Redis 实例，不支持 Redis Cluster 的跨槽脚本。
     private const string SocialCommitFunctions = """
-        local socialEventId = ARGV[#ARGV]
+        local socialEventId = ARGV[8]
         local function validSocialTransition(before, after, now)
             local previous = {}
             if before and before.Invitations then
@@ -65,7 +65,7 @@ public partial class EraTeamDataProvider
                 ParentResourceId = teamId,
                 ResourceVersion = version,
                 CorrelationId = invitation.RequestId,
-                OccurredAt = ARGV[#ARGV - 1]
+                OccurredAt = ARGV[7]
             }
             local envelope = {
                 QueueId = id,

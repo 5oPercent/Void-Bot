@@ -7,10 +7,12 @@ public sealed class EraCharacterEquipmentStateDto
 {
     /// <summary>快照所属角色。</summary>
     public Guid CharacterId { get; set; }
-    /// <summary>角色是否禁用；本轮只读查询允许查看，不能据此推断写操作已开放。</summary>
+    /// <summary>角色是否禁用；禁用角色仍允许本人读取，不能执行新增装备写操作。</summary>
     public bool IsCharacterDisabled { get; set; }
     /// <summary>背包与已穿装备共享的状态版本，初始为 0；不等于角色资料版本。</summary>
     public long EquipmentVersion { get; set; }
+    /// <summary>同一快照内读取的世界限制；为空表示当前角色没有仍在继续的世界。</summary>
+    public EraEquippedOperationRestrictionDto? EquippedOperationRestriction { get; set; }
     /// <summary>用于本次展示的当前目录版本；不可用时为空，不影响保存属性读取。</summary>
     public long? ManifestVersion { get; set; }
     /// <summary>仅背包接口可指定的目标槽位筛选；限定对应实例分区并检查当前定义兼容关系，定义缺失时按分区降级展示。</summary>

@@ -5,6 +5,7 @@ using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Services.ERA;
 using Void.Bot.Core.Settings.System;
 
 namespace Void.Bot.UnitTest.ERA;
@@ -64,5 +65,51 @@ public class EraEquipmentPersistenceFixture
         equipment.FindProperty(nameof(EraEquipmentInstance.Version))!.IsConcurrencyToken.ShouldBeTrue();
         context.Model.FindEntityType(typeof(EraCharacter))!
             .FindProperty(nameof(EraCharacter.EquipmentVersion))!.IsConcurrencyToken.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Should_keep_success_receipt_unique_per_player_request_and_restrict_character_deletion()
+    {
+        using var context = Context();
+        var receipt = context.Model.FindEntityType(typeof(EraEquipmentOperationReceipt))!;
+
+        receipt.GetIndexes().Any(index => index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(new[]
+        {
+            nameof(EraEquipmentOperationReceipt.PlayerId), nameof(EraEquipmentOperationReceipt.RequestId)
+        })).ShouldBeTrue();
+        var ownership = receipt.GetForeignKeys().Single();
+        ownership.Properties.Select(property => property.Name).ShouldBe(new[]
+        {
+            nameof(EraEquipmentOperationReceipt.CharacterId), nameof(EraEquipmentOperationReceipt.PlayerId)
+        });
+        ownership.PrincipalEntityType.ClrType.ShouldBe(typeof(EraCharacter));
+        ownership.DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
+    }
+
+    [Fact]
+    public async Task Should_reject_position_updates_without_outer_command_transaction()
+    {
+        using var context = Context();
+        var data = new EraEquipmentDataProvider(context);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => data.ApplyPositionChangesAsync(
+            Guid.NewGuid(), Guid.NewGuid(), Array.Empty<EraEquipmentPositionChange>(), CancellationToken.None));
+    }
+
+    [Fact]
+    public void Should_keep_one_active_world_per_player_and_character_and_preserve_member_history()
+    {
+        using var context = Context();
+        var member = context.Model.FindEntityType(typeof(EraWorldMember))!;
+        member.FindPrimaryKey()!.Properties.Select(property => property.Name)
+            .ShouldBe(new[] { nameof(EraWorldMember.WorldId), nameof(EraWorldMember.PlayerId) });
+        foreach (var name in new[] { nameof(EraWorldMember.ActivePlayerId), nameof(EraWorldMember.ActiveCharacterId) })
+        {
+            member.FindProperty(name)!.IsNullable.ShouldBeTrue();
+            member.GetIndexes().Any(index => index.IsUnique && index.Properties.Count == 1 && index.Properties[0].Name == name).ShouldBeTrue();
+        }
+        member.GetForeignKeys().All(key => key.DeleteBehavior == DeleteBehavior.Restrict).ShouldBeTrue();
+        context.Model.FindEntityType(typeof(EraWorldTeamState)).ShouldNotBeNull();
+        context.Model.FindEntityType(typeof(EraWorld))!.FindProperty(nameof(EraWorld.Version))!.IsConcurrencyToken.ShouldBeTrue();
     }
 }

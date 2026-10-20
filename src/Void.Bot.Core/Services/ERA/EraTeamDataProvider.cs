@@ -39,6 +39,8 @@ public class EraTeamChange<T>
 public partial interface IEraTeamDataProvider : ISingleton
 {
     Task<EraTeam?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken);
+    /// <summary>调用方已持有队伍 SQL 协调锁时推进栅栏，拒绝先前超时后晚到的 Redis 提交。</summary>
+    Task FenceAuthorityAsync(Guid teamId, CancellationToken cancellationToken);
     Task<Guid?> GetTeamIdByCodeAsync(string teamCode, CancellationToken cancellationToken);
     Task<Guid?> GetPlayerTeamIdAsync(Guid playerId, CancellationToken cancellationToken);
     Task<EraTeamWriteStatus> TryCreateAsync(EraTeam team, CancellationToken cancellationToken);
@@ -54,6 +56,9 @@ public partial interface IEraTeamDataProvider : ISingleton
 public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IAsyncDisposable
 {
     private const string CommitScript = SocialCommitFunctions + "\n" + PeersCommitFunctions + "\n" + """
+        if redis.call('GET', KEYS[#KEYS]) ~= ARGV[9] then
+            return 0
+        end
         local stored = redis.call('GET', KEYS[2])
         if ARGV[1] == '' then
             if stored then
@@ -76,7 +81,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             if redis.call('GET', KEYS[3]) == ARGV[3] then
                 redis.call('DEL', KEYS[3])
             end
-            for i = 4, #KEYS do
+            for i = 4, #KEYS - 1 do
                 if redis.call('GET', KEYS[i]) == ARGV[3] then
                     redis.call('DEL', KEYS[i])
                 end
@@ -115,7 +120,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         redis.call('SET', KEYS[2], ARGV[2], 'PXAT', teamExpiry)
         redis.call('SET', KEYS[3], ARGV[3], 'PXAT', teamExpiry)
         redis.call('ZADD', KEYS[1], teamExpiry, ARGV[3])
-        for i = 4, #KEYS do
+        for i = 4, #KEYS - 1 do
             if redis.call('GET', KEYS[i]) == ARGV[3] then
                 redis.call('DEL', KEYS[i])
             end
@@ -138,13 +143,16 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         """;
 
     private readonly CacheSetting _cacheSetting;
+    private readonly ConnectionStringSetting _connectionString;
     private readonly Lazy<Task<ConnectionMultiplexer>> _connection;
     private ConnectionMultiplexer? _multiplexer;
     private int _disposed;
 
-    public EraTeamDataProvider(CacheSetting cacheSetting, EraNetworkingSetting networkingSetting)
+    public EraTeamDataProvider(CacheSetting cacheSetting, EraNetworkingSetting networkingSetting,
+        ConnectionStringSetting connectionString)
     {
         _cacheSetting = cacheSetting;
+        _connectionString = connectionString;
         if (networkingSetting.Enabled && string.IsNullOrWhiteSpace(cacheSetting.RedisConnection))
         {
             throw new InvalidOperationException("ERA networking requires ConnectionStrings:Redis.");
@@ -186,6 +194,16 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         return EraNetworkingConstants.RedisPlayerPrefix + playerId.ToString("D");
     }
 
+    private static RedisKey AuthorityFenceKey(Guid teamId) => "era:world:{era-teams}:authority-fence:v1:" + teamId.ToString("D");
+
+    public async Task FenceAuthorityAsync(Guid teamId, CancellationToken cancellationToken)
+    {
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        // INCR 不过期、不重置，超时后晚到的 INCR 只能使旧令牌失效，不能回退栅栏。
+        await database.StringIncrementAsync(AuthorityFenceKey(teamId)).ConfigureAwait(false);
+    }
+
     public async Task<EraTeam?> GetTeamAsync(Guid teamId, CancellationToken cancellationToken)
     {
         var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
@@ -195,7 +213,10 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             return null;
         }
 
-        return JsonSerializer.Deserialize<EraTeam>(value.ToString());
+        var team = JsonSerializer.Deserialize<EraTeam>(value.ToString());
+        if (team == null || team.TeamId != teamId || team.Members == null)
+            throw new JsonException("ERA team payload is invalid.");
+        return team;
     }
 
     public async Task<Guid?> GetTeamIdByCodeAsync(string teamCode, CancellationToken cancellationToken)
@@ -308,6 +329,7 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             EraNetworkingConstants.RedisTeamCodePrefix + teamCode
         };
         keys.AddRange(allPlayers.Select(PlayerKey));
+        keys.Add(AuthorityFenceKey(teamId));
         var leases = new List<PlayerLease>();
         var teamExpiration = 0L;
         var json = string.Empty;
@@ -340,6 +362,11 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             expected = expectedVersion.ToString("D");
         }
 
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var authority = await EraTeamAuthorityLock.AcquireAsync(_connectionString,
+            new[] { teamId }, cancellationToken).ConfigureAwait(false);
+        var fence = await database.StringIncrementAsync(AuthorityFenceKey(teamId)).ConfigureAwait(false);
         var values = new RedisValue[]
         {
             expected,
@@ -349,12 +376,12 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
             JsonSerializer.Serialize(leases),
             peersNotification,
             DateTimeOffset.UtcNow.ToString("O"),
-            Guid.NewGuid().ToString("D")
+            Guid.NewGuid().ToString("D"),
+            fence
         };
-        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
         // 发送后等待提交结果，不用取消等待把已执行的写入误判为未提交。
         var result = await database.ScriptEvaluateAsync(CommitScript, keys.ToArray(), values).ConfigureAwait(false);
+        await authority.CommitAsync().ConfigureAwait(false);
         return (EraTeamWriteStatus)(int)result;
     }
 

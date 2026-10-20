@@ -97,6 +97,36 @@ public sealed class EraCharactersController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("{characterId:guid}/equipment/equip")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("EquipEraEquipment")]
+    [ProducesResponseType(typeof(EquipEraEquipmentResponse), 200)]
+    public async Task<IActionResult> EquipAsync(
+        [FromRoute] Guid characterId, [FromBody] EquipEraEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        var response = await _mediator
+            .SendAsync<EquipEraEquipmentCommand, EquipEraEquipmentResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("{characterId:guid}/equipment/unequip")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("UnequipEraEquipment")]
+    [ProducesResponseType(typeof(UnequipEraEquipmentResponse), 200)]
+    public async Task<IActionResult> UnequipAsync(
+        [FromRoute] Guid characterId, [FromBody] UnequipEraEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        var response = await _mediator
+            .SendAsync<UnequipEraEquipmentCommand, UnequipEraEquipmentResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("{characterId:guid}/delete")]
     [SkipPermissionCheck]
     [DescriptionLocalization("DeleteEraCharacter")]

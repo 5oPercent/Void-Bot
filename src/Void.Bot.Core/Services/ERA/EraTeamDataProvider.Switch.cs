@@ -15,6 +15,10 @@ public partial interface IEraTeamDataProvider
 public partial class EraTeamDataProvider
 {
     private const string SwitchScript = SocialCommitFunctions + "\n" + PeersCommitFunctions + "\n" + """
+        if redis.call('GET', KEYS[#KEYS - 1]) ~= ARGV[9] or
+           redis.call('GET', KEYS[#KEYS]) ~= ARGV[10] then
+            return 0
+        end
         local original = redis.call('GET', KEYS[2])
         local target = redis.call('GET', KEYS[4])
         if not original or not target then
@@ -54,7 +58,7 @@ public partial class EraTeamDataProvider
                 return -3
             end
         end
-        for i = 6, #KEYS do
+        for i = 6, #KEYS - 2 do
             local owner = redis.call('GET', KEYS[i])
             if owner == ARGV[3] or owner == ARGV[4] then
                 redis.call('DEL', KEYS[i])
@@ -107,6 +111,8 @@ public partial class EraTeamDataProvider
             EraNetworkingConstants.RedisTeamCodePrefix + target.TeamCode
         };
         keys.AddRange(players.Select(PlayerKey));
+        keys.Add(AuthorityFenceKey(original.TeamId));
+        keys.Add(AuthorityFenceKey(target.TeamId));
         if (remaining != null)
         {
             remaining.StorageVersion = Guid.NewGuid();
@@ -117,6 +123,12 @@ public partial class EraTeamDataProvider
             DescribeSwitchTeam(original.TeamId, remaining, 2, 3, players),
             DescribeSwitchTeam(target.TeamId, target, 4, 5, players)
         };
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        await using var authority = await EraTeamAuthorityLock.AcquireAsync(_connectionString,
+            new[] { original.TeamId, target.TeamId }, cancellationToken).ConfigureAwait(false);
+        var originalFence = await database.StringIncrementAsync(AuthorityFenceKey(original.TeamId)).ConfigureAwait(false);
+        var targetFence = await database.StringIncrementAsync(AuthorityFenceKey(target.TeamId)).ConfigureAwait(false);
         var values = new RedisValue[]
         {
             expectedOriginalVersion.ToString("D"),
@@ -126,11 +138,12 @@ public partial class EraTeamDataProvider
             JsonSerializer.Serialize(teams),
             players.IndexOf(movingPlayerId) + 6,
             DateTimeOffset.UtcNow.ToString("O"),
-            Guid.NewGuid().ToString("D")
+            Guid.NewGuid().ToString("D"),
+            originalFence,
+            targetFence
         };
-        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
-        cancellationToken.ThrowIfCancellationRequested();
         var result = await database.ScriptEvaluateAsync(SwitchScript, keys.ToArray(), values).ConfigureAwait(false);
+        await authority.CommitAsync().ConfigureAwait(false);
         return (EraTeamWriteStatus)(int)result;
     }
 

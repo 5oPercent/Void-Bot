@@ -1,19 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Core.Services.ERA;
 
-public interface IEraEquipmentDataProvider : IScope
+public partial interface IEraEquipmentDataProvider : IScope
 {
     Task<EraEquipmentConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken);
     Task<EraEquipmentReadSnapshot?> GetCharacterSnapshotAsync(
         Guid characterId, Guid playerId, CancellationToken cancellationToken);
 }
 
-/// <summary>只读数据访问，不建表、初始化、加写锁或提交工作单元。</summary>
-public sealed class EraEquipmentDataProvider : IEraEquipmentDataProvider
+/// <summary>装备查询与位置变更的数据访问；Request 不产生写入，事务由工作单元提交。</summary>
+public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
 {
     private static readonly Guid ConfigurationId = Guid.Parse("30000000-0000-0000-0000-000000000001");
     private readonly VoidBotDbContext _dbContext;
@@ -44,6 +45,13 @@ public sealed class EraEquipmentDataProvider : IEraEquipmentDataProvider
             join armor in _dbContext.Set<EraArmorInstanceData>()
                 on equipment!.Id equals armor.EquipmentId into armorGroup
             from armor in armorGroup.DefaultIfEmpty()
+            join member in _dbContext.Set<EraWorldMember>().Where(member => member.IsContinuing)
+                on (Guid?)character.Id equals member.ActiveCharacterId into memberGroup
+            from member in memberGroup.DefaultIfEmpty()
+            join world in _dbContext.Set<EraWorld>().Where(world => world.State == EraWorldState.Building ||
+                    world.State == EraWorldState.Ready || world.State == EraWorldState.Ending)
+                on member!.WorldId equals world.Id into worldGroup
+            from world in worldGroup.DefaultIfEmpty()
             select new
             {
                 character.Id,
@@ -51,7 +59,8 @@ public sealed class EraEquipmentDataProvider : IEraEquipmentDataProvider
                 character.IsDisabled,
                 character.EquipmentVersion,
                 Equipment = equipment,
-                Armor = armor
+                Armor = armor,
+                World = world
             }).AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
 
         if (rows.Count == 0)
@@ -66,6 +75,11 @@ public sealed class EraEquipmentDataProvider : IEraEquipmentDataProvider
             PlayerId = first.PlayerId,
             IsCharacterDisabled = first.IsDisabled,
             EquipmentVersion = first.EquipmentVersion,
+            EquippedOperationRestriction = first.World == null ? null : new EraEquippedOperationRestrictionDto
+            {
+                WorldInstanceId = first.World.Id, WorldVersion = first.World.Version,
+                RestrictionVersion = first.World.RestrictionVersion, IsRestricted = first.World.IsEquippedOperationsRestricted
+            },
             Entries = rows.Where(row => row.Equipment != null)
                 .Select(row => new EraEquipmentReadEntry(row.Equipment!, row.Armor)).ToList()
         };
@@ -79,6 +93,7 @@ public sealed class EraEquipmentReadSnapshot
     public Guid PlayerId { get; set; }
     public bool IsCharacterDisabled { get; set; }
     public long EquipmentVersion { get; set; }
+    public EraEquippedOperationRestrictionDto? EquippedOperationRestriction { get; set; }
     public List<EraEquipmentReadEntry> Entries { get; set; } = new List<EraEquipmentReadEntry>();
 }
 

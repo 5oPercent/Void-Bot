@@ -47,6 +47,7 @@ public static class HostExtension
         {
             containerBuilder.RegisterType<InitializationHostedService>().As<IHostedService>().SingleInstance();
             containerBuilder.RegisterType<EraPunchHostedService>().As<IHostedService>().SingleInstance();
+            containerBuilder.RegisterType<EraWorldLifetimeHostedService>().As<IHostedService>().SingleInstance();
             containerBuilder.RegisterModule(new VoidBotModule(null, Log.Logger, configuration, typeof(VoidBotModule).Assembly));
         });
         
