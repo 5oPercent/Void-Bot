@@ -30,6 +30,11 @@ public class EraCharacter : IEntity<Guid>, IEntityCreated, IEntityModified
     public bool IsDisabled { get; set; }
 
     public long Version { get; set; }
+
+    /// <summary>背包与已穿装备共享的独立并发版本；所有未来装备写操作须在角色锁内递增。</summary>
+    [ConcurrencyCheck]
+    public long EquipmentVersion { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 }

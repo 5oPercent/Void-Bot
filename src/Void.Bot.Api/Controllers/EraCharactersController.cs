@@ -67,6 +67,79 @@ public sealed class EraCharactersController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{characterId:guid}/equipment")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraCharacterEquipment")]
+    [ProducesResponseType(typeof(GetEraCharacterEquipmentResponse), 200)]
+    public async Task<IActionResult> GetEquipmentAsync(
+        [FromRoute] Guid characterId, [FromQuery] GetEraCharacterEquipmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        request.CharacterId = characterId;
+        var response = await _mediator
+            .RequestAsync<GetEraCharacterEquipmentRequest, GetEraCharacterEquipmentResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("{characterId:guid}/inventory")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraCharacterInventory")]
+    [ProducesResponseType(typeof(GetEraCharacterInventoryResponse), 200)]
+    public async Task<IActionResult> GetInventoryAsync(
+        [FromRoute] Guid characterId, [FromQuery] GetEraCharacterInventoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        request.CharacterId = characterId;
+        var response = await _mediator
+            .RequestAsync<GetEraCharacterInventoryRequest, GetEraCharacterInventoryResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("{characterId:guid}/equipment/equip")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("EquipEraEquipment")]
+    [ProducesResponseType(typeof(EquipEraEquipmentResponse), 200)]
+    public async Task<IActionResult> EquipAsync(
+        [FromRoute] Guid characterId, [FromBody] EquipEraEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        var response = await _mediator
+            .SendAsync<EquipEraEquipmentCommand, EquipEraEquipmentResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("{characterId:guid}/equipment/unequip")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("UnequipEraEquipment")]
+    [ProducesResponseType(typeof(UnequipEraEquipmentResponse), 200)]
+    public async Task<IActionResult> UnequipAsync(
+        [FromRoute] Guid characterId, [FromBody] UnequipEraEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        var response = await _mediator
+            .SendAsync<UnequipEraEquipmentCommand, UnequipEraEquipmentResponse>(command, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("{characterId:guid}/inventory/{equipmentId:guid}/drop")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("DropEraInventoryEquipment")]
+    [ProducesResponseType(typeof(DropEraInventoryEquipmentResponse), 200)]
+    public async Task<IActionResult> DropInventoryEquipmentAsync(
+        [FromRoute] Guid characterId, [FromRoute] Guid equipmentId, [FromBody] DropEraInventoryEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        command.EquipmentId = equipmentId;
+        return Ok(await _mediator.SendAsync<DropEraInventoryEquipmentCommand, DropEraInventoryEquipmentResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
     [HttpPost("{characterId:guid}/delete")]
     [SkipPermissionCheck]
     [DescriptionLocalization("DeleteEraCharacter")]

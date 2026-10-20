@@ -53,7 +53,7 @@ JSON 配装避免当前四槽结构增加大量拆表与单槽接口；服务层
 - Validator：`Core/Validators/ERA`，每个命令校验器独立文件。
 - Entity：`Core/Domain/ERA`，每个持久化实体独立文件。
 - Service：`EraSkillService.cs` 保留公共依赖与上下文；按配置、配装、学习拆为 `.Configuration`、`.Profile`、`.Learning`，接口和实现同主题放在同一分片。
-- DataProvider：`Core/Services/ERA/EraSkillDataProvider.cs`，保持单一数据访问入口，不提交事务。
+- DataProvider：`Core/Services/ERA/Skill/EraSkillDataProvider.cs`，保持单一数据访问入口，不提交事务。
 - 映射：`Core/Mappings/EraSkillMapping.cs`，使用 AutoMapper 将 JSON 存储实体转换为消息 DTO。
 
 技能模块后端使用普通构造函数、完整方法体和带大括号的条件／循环，不使用主构造函数、表达式方法或隐式 `new()`。本次拆分不改变 API 字段、枚举值或数据库结构。

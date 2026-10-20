@@ -1,7 +1,7 @@
 using System.Globalization;
 using FluentValidation;
 using Void.Bot.Core.Middlewares.FluentMessageValidator;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Player;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Dto.ERA;
 

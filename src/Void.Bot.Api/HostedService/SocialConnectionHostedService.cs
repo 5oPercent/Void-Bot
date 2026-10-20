@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Void.Bot.Api.Hubs;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 
 namespace Void.Bot.Api.HostedService;
 

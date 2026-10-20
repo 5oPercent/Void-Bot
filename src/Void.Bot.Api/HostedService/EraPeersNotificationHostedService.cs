@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Threading.Channels;
 using Void.Bot.Api.Hubs;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Social;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Services.Social;
 using Void.Bot.Core.Settings.ERA;
 

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Void.Bot.Core.Data;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 
 namespace Void.Bot.Api.Hubs;
 

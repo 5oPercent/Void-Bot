@@ -1,7 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Void.Bot.Core.Services.ERA;
+using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Message.Dto.ERA;
 
