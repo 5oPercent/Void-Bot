@@ -6,7 +6,7 @@ using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-/// <summary>本人继续参与世界的角色领取私人掉落；成功回执在玩家装备写操作范围内防重。</summary>
+/// <summary>本人继续参与世界的角色领取私人或分享掉落；成功回执在玩家装备写操作范围内防重。</summary>
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 public sealed class PickupEraEquipmentDropCommand : ICommand, IRequireEraPlayer
 {

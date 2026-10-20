@@ -102,6 +102,59 @@ public partial class EraIntegrationFixture
     [Fact]
     [Trait("Category", "ERAWorldLifetimeIntegration")]
     [Trait("Category", "ERAWorldIntegration")]
+    public async Task Equipment_restriction_read_should_leave_member_rows_unlocked()
+    {
+        await SeedAsync();
+        await using var team = await CreateWorldTeamAsync();
+        var world = await RegisterWorldAsync(team);
+        var paused = new EraIntegrationSqlInterceptor { PauseFirstUpdate = true };
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var equip = SendEquipAsync(Equip(_inventory[0]), paused, timeout.Token);
+        try
+        {
+            // 暂停在首条装备写入前，确保真实限制查询已完成且其事务仍持有世界共享锁。
+            await paused.UpdateReached.Task.WaitAsync(timeout.Token);
+            await ReadDatabaseAsync(async context =>
+            {
+                await using var transaction = await context.Database.BeginTransactionAsync(
+                    System.Data.IsolationLevel.ReadCommitted, timeout.Token);
+                // 独立连接直接抢占成员排他锁；若限制 JOIN 也锁了成员，NOWAIT 会立即使本用例失败。
+                var members = await context.Set<EraWorldMember>().FromSqlInterpolated(
+                        $"SELECT * FROM era_world_member WHERE world_id = {world.WorldInstanceId.ToString()} AND player_id = {_playerId.ToString()} FOR UPDATE NOWAIT")
+                    .AsNoTracking().ToListAsync(timeout.Token);
+                members.Count.ShouldBe(1);
+                members[0].IsContinuing.ShouldBeTrue();
+                members[0].ActiveCharacterId.ShouldBe(_characterId);
+                await transaction.RollbackAsync(timeout.Token);
+            });
+            paused.ResumeUpdate.TrySetResult();
+            (await equip).Code.ShouldBe(HttpStatusCode.OK);
+        }
+        finally
+        {
+            paused.ResumeUpdate.TrySetResult();
+            await timeout.CancelAsync();
+            try
+            {
+                await equip;
+            }
+            catch
+            {
+                // 请求收束后才清理数据库，保留锁范围断言的原始异常。
+            }
+        }
+        await ReadDatabaseAsync(async context =>
+        {
+            (await context.Set<EraWorldMember>().SingleAsync()).IsContinuing.ShouldBeTrue();
+            (await context.Set<EraWorld>().SingleAsync()).State.ShouldBe(EraWorldState.Building);
+            (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(4);
+            (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(1);
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "ERAWorldLifetimeIntegration")]
+    [Trait("Category", "ERAWorldIntegration")]
     public async Task Timeout_and_waiting_equipment_write_should_release_restriction_and_preserve_owned_assets()
     {
         _worldTestClock = new EraWorldTestClock(DateTimeOffset.UtcNow);

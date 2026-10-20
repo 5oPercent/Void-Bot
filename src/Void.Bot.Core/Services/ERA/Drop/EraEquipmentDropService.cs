@@ -22,6 +22,7 @@ public interface IEraEquipmentDropService : IScope
     Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<GetEraEquipmentDropsResponse> GetAsync(GetEraEquipmentDropsRequest request, CancellationToken cancellationToken);
     Task<PickupEraEquipmentDropResponse> PickupAsync(PickupEraEquipmentDropCommand command, CancellationToken cancellationToken);
+    Task<DropEraInventoryEquipmentResponse> DropAsync(DropEraInventoryEquipmentCommand command, CancellationToken cancellationToken);
 }
 
 public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
@@ -90,9 +91,14 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             WorldInstanceId = snapshot.World.Id, WorldVersion = snapshot.World.Version,
             CharacterId = snapshot.Character.Id, EquipmentVersion = snapshot.Character.EquipmentVersion, ManifestVersion = manifest?.Version
         };
+        var now = _clock.GetUtcNow();
         foreach (var entry in snapshot.Entries)
         {
-            if (!IsValidEntry(entry) || entry.Drop.PrivateOwnerPlayerId != player.Id)
+            if (!CanPickup(entry.Drop, entry.Share, player.Id, now))
+            {
+                continue;
+            }
+            if (!IsValidEntry(entry))
             {
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             }
@@ -101,6 +107,8 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             result.Drops.Add(new EraEquipmentDropDto
             {
                 DropId = entry.Drop.Id, DropVersion = entry.Drop.Version, EquipmentId = item.Id, EquipmentVersion = item.Version,
+                PrivateOwnerPlayerId = entry.Drop.PrivateOwnerPlayerId, DroppedByPlayerId = entry.Drop.DroppedByPlayerId,
+                ShareUntil = entry.Share?.ShareUntil,
                 DefinitionId = item.DefinitionId, DefinitionVersion = item.DefinitionVersion,
                 Definition = manifest?.Definitions.SingleOrDefault(definition => definition.Id == item.DefinitionId),
                 Grade = item.Grade, InventorySlot = item.InventorySlot, CreatedAt = item.CreatedAt,
@@ -168,25 +176,10 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         {
             throw Error(HttpStatusCode.Conflict, "era.drop_version_conflict", text => text.VersionConflict);
         }
-        var initial = await _worlds.GetWorldAsync(command.WorldInstanceId, cancellationToken).ConfigureAwait(false);
-        if (initial == null)
-        {
-            throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
-        }
-        var team = await _worlds.LockTeamAsync(initial.TeamId, cancellationToken).ConfigureAwait(false);
-        var world = await _worlds.LockWorldAsync(initial.Id, cancellationToken).ConfigureAwait(false);
-        if (world == null || world.State != EraWorldState.Ready || team.ActiveWorldId != world.Id)
-        {
-            throw Error(HttpStatusCode.Conflict, "era.drop_world_unavailable", text => text.WorldUnavailable);
-        }
-        var members = await _worlds.GetMembersAsync(world.Id, false, cancellationToken).ConfigureAwait(false);
-        if (!members.Any(member => member.PlayerId == character.PlayerId && member.CharacterId == character.Id && member.IsContinuing &&
-            member.ActiveCharacterId == character.Id && member.ActivePlayerId == character.PlayerId))
-        {
-            throw Error(HttpStatusCode.Forbidden, "era.drop_character_unavailable", text => text.CharacterUnavailable);
-        }
+        var world = await LockActiveWorldAsync(command.WorldInstanceId, character, cancellationToken).ConfigureAwait(false);
         var drop = await _drops.LockDropAsync(command.DropId, cancellationToken).ConfigureAwait(false);
-        if (drop == null || drop.WorldInstanceId != world.Id || drop.PrivateOwnerPlayerId != character.PlayerId)
+        var share = drop == null ? null : await _drops.LockShareAsync(drop.EquipmentId, cancellationToken).ConfigureAwait(false);
+        if (drop == null || drop.WorldInstanceId != world.Id || !CanPickup(drop, share, character.PlayerId, _clock.GetUtcNow()))
         {
             throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
         }
@@ -196,7 +189,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         }
         var snapshot = await _equipment.LockCharacterEquipmentAsync(character, cancellationToken).ConfigureAwait(false);
         var entry = await _drops.LockEquipmentAsync(drop.EquipmentId, cancellationToken).ConfigureAwait(false);
-        if (entry == null || !IsValidEntry(new EraEquipmentDropReadEntry(drop, entry.Equipment, entry.Armor)))
+        if (entry == null || !IsValidEntry(new EraEquipmentDropReadEntry(drop, entry.Equipment, entry.Armor, share)))
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
         }
@@ -210,6 +203,16 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             throw Error(HttpStatusCode.Conflict, "era.drop_inventory_full", text => text.InventoryFull);
         }
         if (character.EquipmentVersion == long.MaxValue || equipment.Version == long.MaxValue || drop.Version == long.MaxValue)
+        {
+            throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
+        }
+        // 取得所有写锁后重判期限，等待背包／装备锁的时间不能延长他人的分享资格。
+        var now = _clock.GetUtcNow();
+        if (!CanPickup(drop, share, character.PlayerId, now))
+        {
+            throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
+        }
+        if (drop.DroppedByPlayerId.HasValue && (share == null || share.ShareUntil - equipment.CreatedAt != TimeSpan.FromHours(1)))
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
         }
@@ -234,7 +237,6 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             PreviousEquipmentVersion = character.EquipmentVersion, State = state,
             Pickup = new EraEquipmentDropPickupDto { WorldInstanceId = world.Id, DropId = drop.Id, EquipmentId = equipment.Id, DropVersion = drop.Version }
         };
-        var now = _clock.GetUtcNow();
         await _equipment.CreateOperationReceiptAsync(new EraEquipmentOperationReceipt
         {
             Id = Guid.NewGuid(), PlayerId = character.PlayerId, CharacterId = character.Id, RequestId = command.RequestId,
@@ -249,16 +251,70 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         return new PickupEraEquipmentDropResponse { Code = HttpStatusCode.OK, Data = receipt };
     }
 
+    private async Task<EraWorld> LockActiveWorldAsync(Guid worldId, EraCharacter character, CancellationToken cancellationToken)
+    {
+        var initial = await _worlds.GetWorldAsync(worldId, cancellationToken).ConfigureAwait(false);
+        if (initial == null)
+        {
+            throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
+        }
+        var team = await _worlds.LockTeamAsync(initial.TeamId, cancellationToken).ConfigureAwait(false);
+        var world = await _worlds.LockWorldAsync(initial.Id, cancellationToken).ConfigureAwait(false);
+        if (world == null || world.State != EraWorldState.Ready || team.ActiveWorldId != world.Id)
+        {
+            throw Error(HttpStatusCode.Conflict, "era.drop_world_unavailable", text => text.WorldUnavailable);
+        }
+        var members = await _worlds.GetMembersAsync(world.Id, false, cancellationToken).ConfigureAwait(false);
+        if (!members.Any(member => member.PlayerId == character.PlayerId && member.CharacterId == character.Id && member.IsContinuing &&
+            member.ActiveCharacterId == character.Id && member.ActivePlayerId == character.PlayerId))
+        {
+            throw Error(HttpStatusCode.Forbidden, "era.drop_character_unavailable", text => text.CharacterUnavailable);
+        }
+        return world;
+    }
+
+    private static List<Guid>? ReadSharePlayers(EraEquipmentShare? share)
+    {
+        if (share == null || share.EquipmentId == Guid.Empty || share.ShareUntil == default)
+        {
+            return null;
+        }
+        try
+        {
+            var players = JsonSerializer.Deserialize<List<Guid>>(share.AllowedPlayerIdsPayload);
+            return players != null && players.Count > 0 &&
+                players.All(player => player != Guid.Empty) && players.Distinct().Count() == players.Count ? players : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static bool CanPickup(EraEquipmentDrop drop, EraEquipmentShare? share, Guid playerId, DateTimeOffset now)
+    {
+        if (drop.PrivateOwnerPlayerId.HasValue)
+        {
+            return drop.PrivateOwnerPlayerId == playerId && !drop.DroppedByPlayerId.HasValue;
+        }
+        var players = ReadSharePlayers(share);
+        return drop.DroppedByPlayerId.HasValue && players != null && players.Contains(drop.DroppedByPlayerId.Value) &&
+            (now < share!.ShareUntil ? players.Contains(playerId) : drop.DroppedByPlayerId == playerId);
+    }
+
     private static bool IsValidEntry(EraEquipmentDropReadEntry entry)
     {
         var drop = entry.Drop;
         var item = entry.Equipment;
         var armor = entry.Armor;
         return drop.Status == EraEquipmentDropStatus.Available && drop.Version > 0 && drop.CreatedAt != default &&
+            (drop.PrivateOwnerPlayerId.HasValue != drop.DroppedByPlayerId.HasValue) &&
             double.IsFinite(drop.X) && double.IsFinite(drop.Y) && double.IsFinite(drop.Z) && double.IsFinite(drop.YawRadians) &&
             item != null && drop.EquipmentId == item.Id && drop.ActiveEquipmentId == item.Id && item.Location == EraEquipmentLocation.Ground &&
             !item.OwnerPlayerId.HasValue && !item.CharacterId.HasValue && !item.EquippedSlot.HasValue && item.EquipmentType == EraEquipmentType.Armor &&
             item.Version > 0 && item.DefinitionVersion > 0 && !string.IsNullOrWhiteSpace(item.DefinitionId) && item.CreatedAt != default &&
+            (!drop.DroppedByPlayerId.HasValue || entry.Share != null && entry.Share.EquipmentId == item.Id &&
+                entry.Share.ShareUntil - item.CreatedAt == TimeSpan.FromHours(1)) &&
             System.Enum.IsDefined(item.Grade) && System.Enum.IsDefined(item.InventorySlot) && armor != null && armor.EquipmentId == item.Id &&
             armor.GenerationRuleVersion > 0 && armor.Strength >= 0 && armor.Survival >= 0 && armor.Mobility >= 0 &&
             armor.Focus >= 0 && armor.Efficiency >= 0 && armor.Resistance >= 0;

@@ -33,6 +33,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
     private readonly Guid _otherCharacterId = Guid.NewGuid();
     private readonly Guid _otherAccountId = Guid.NewGuid();
     private bool _enableWorldNetworking;
+    private int? _worldTestMaxMembers;
     private EraWorldTestClock? _worldTestClock;
     private IEraTeamDataProvider? _worldTestTeamProvider;
     private readonly List<EraEquipmentInstance> _inventory = new List<EraEquipmentInstance>();
@@ -55,13 +56,20 @@ public partial class EraIntegrationFixture : IntegrationFixture
                 builder.RegisterInstance(new EraWorldLifetimeSetting(new ConfigurationBuilder().Build()));
             }
             if (_worldTestTeamProvider != null) builder.RegisterInstance(_worldTestTeamProvider).As<IEraTeamDataProvider>();
-            if (_enableWorldNetworking)
+            if (_enableWorldNetworking || _worldTestMaxMembers.HasValue)
             {
+                var overrides = new Dictionary<string, string?>();
+                if (_enableWorldNetworking)
+                {
+                    overrides["Era:Networking:Enabled"] = "true";
+                    overrides["Era:Networking:PublicHost"] = "localhost";
+                }
+                if (_worldTestMaxMembers.HasValue)
+                {
+                    overrides["Era:Networking:MaxMembers"] = _worldTestMaxMembers.Value.ToString();
+                }
                 var configuration = new ConfigurationBuilder().AddConfiguration(_root.Resolve<IConfiguration>())
-                    .AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["Era:Networking:Enabled"] = "true", ["Era:Networking:PublicHost"] = "localhost"
-                    }).Build();
+                    .AddInMemoryCollection(overrides).Build();
                 builder.RegisterInstance(new EraNetworkingSetting(configuration));
             }
             if (accountId.HasValue)

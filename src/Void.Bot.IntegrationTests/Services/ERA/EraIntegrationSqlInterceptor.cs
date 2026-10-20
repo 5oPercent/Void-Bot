@@ -96,7 +96,8 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
-        if (PauseDropSave && command.CommandText.Contains("UPDATE `era_equipment_drop`", StringComparison.OrdinalIgnoreCase))
+        if (PauseDropSave && (command.CommandText.Contains("UPDATE `era_equipment_drop`", StringComparison.OrdinalIgnoreCase) ||
+            command.CommandText.Contains("INSERT INTO `era_equipment_drop`", StringComparison.OrdinalIgnoreCase)))
         {
             DropSaveReached.TrySetResult();
             await ResumeDropSave.Task.WaitAsync(cancellationToken).ConfigureAwait(false);

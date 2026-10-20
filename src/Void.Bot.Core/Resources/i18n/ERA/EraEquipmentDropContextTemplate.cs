@@ -17,4 +17,6 @@ public sealed class EraEquipmentDropContextTemplate : IContextTemplate
     public string DeliveryUnavailable { get; set; } = "该节点未配置为地面发放";
     public string MembersChanged { get; set; } = "世界成员已变化，请使用原请求标识重试";
     public string IdempotencyConflict { get; set; } = "请求标识或业务事件已用于不同参数";
+    public string ShareUnavailable { get; set; } = "装备不具备原始分享资格，不能丢出";
+    public string ShareExpired { get; set; } = "装备分享期限已结束，不能再次丢出";
 }

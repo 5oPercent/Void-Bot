@@ -74,7 +74,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             string.IsNullOrWhiteSpace(command.SourceDefinitionId) || command.SourceDefinitionId.Length > 128 ||
             command.SourceDefinitionId != command.SourceDefinitionId.Trim() || string.IsNullOrWhiteSpace(command.RewardNodeId) ||
             command.RewardNodeId.Length > 128 || command.RewardNodeId != command.RewardNodeId.Trim() ||
-            command.Recipients == null || command.Recipients.Count is < 1 or > 4 ||
+            command.Recipients == null || command.Recipients.Count == 0 ||
             command.Recipients.Any(recipient => recipient == null || recipient.PlayerId == Guid.Empty || recipient.CharacterId == Guid.Empty) ||
             command.Recipients.Select(recipient => recipient.PlayerId).Distinct().Count() != command.Recipients.Count ||
             command.Recipients.Select(recipient => recipient.CharacterId).Distinct().Count() != command.Recipients.Count)
@@ -103,7 +103,6 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             return new PrepareEraInventoryRewardResponse { Code = HttpStatusCode.OK, Data = previous.Id, IsReplay = true };
         }
         if (request != null) throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_data_unavailable", text => text.DataUnavailable);
-
         // 两份配置在事务中加共享锁；首次接受后不再依赖当前配置或当前名单。
         var configuration = await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false);
         var manifestRow = await _equipment.LockConfigurationAsync(cancellationToken).ConfigureAwait(false);
@@ -292,7 +291,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
     {
         if (plan.SchemaVersion != 1 || plan.EventId != rewardEvent.Id || plan.AcceptedAt != rewardEvent.AcceptedAt ||
             plan.ConfigurationVersion != rewardEvent.ConfigurationVersion || plan.ManifestVersion != rewardEvent.ManifestVersion ||
-            plan.ConfigurationVersion < 1 || plan.ManifestVersion < 1 || plan.Grants == null || plan.Grants.Count is < 1 or > 4 ||
+            plan.ConfigurationVersion < 1 || plan.ManifestVersion < 1 || plan.Grants == null || plan.Grants.Count == 0 ||
             plan.Node == null || plan.Pool == null || plan.Node.SourceType != rewardEvent.SourceType ||
             plan.Node.SourceDefinitionId != rewardEvent.SourceDefinitionId || plan.Node.RewardNodeId != rewardEvent.RewardNodeId ||
             plan.Node.PoolId != plan.Pool.Id || plan.Node.Delivery != EraRewardDelivery.Inventory ||

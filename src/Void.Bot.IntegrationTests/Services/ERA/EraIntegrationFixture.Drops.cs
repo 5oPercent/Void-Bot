@@ -61,10 +61,10 @@ public partial class EraIntegrationFixture
     }
 
     private Task<PickupEraEquipmentDropResponse> PickupDropAsync(PickupEraEquipmentDropCommand command,
-        EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default)
+        EraIntegrationSqlInterceptor? interceptor = null, CancellationToken cancellationToken = default, Guid? accountId = null)
     {
         return RequestAsync((mediator, token) => mediator.SendAsync<PickupEraEquipmentDropCommand, PickupEraEquipmentDropResponse>(command, token),
-            interceptor, cancellationToken);
+            interceptor, cancellationToken, accountId);
     }
 
     private Task<EndEraWorldResponse> EndDropWorldAsync(EraWorldDto world, Guid memberId, EraIntegrationSqlInterceptor? interceptor = null,

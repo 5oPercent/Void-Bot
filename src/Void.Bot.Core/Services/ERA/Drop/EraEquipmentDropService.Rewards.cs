@@ -77,7 +77,7 @@ public sealed partial class EraEquipmentDropService
             }
             if (receipt == null || receipt.EventId != previous.Id || receipt.WorldInstanceId != command.WorldInstanceId || receipt.Grants == null ||
                 receipt.ConfigurationVersion != previous.ConfigurationVersion || receipt.ManifestVersion != previous.ManifestVersion ||
-                receipt.CreatedAt != previous.AcceptedAt || receipt.Grants.Count is < 1 or > 16 ||
+                receipt.CreatedAt != previous.AcceptedAt || receipt.Grants.Count == 0 ||
                 receipt.Grants.Any(grant => grant == null || grant.EquipmentIds == null || grant.DropIds == null ||
                     grant.EquipmentIds.Count != grant.DropIds.Count || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty || grant.CharacterId == Guid.Empty))
             {
@@ -109,7 +109,8 @@ public sealed partial class EraEquipmentDropService
             member.ActiveCharacterId == member.CharacterId && !characters[member.CharacterId].IsDisabled &&
             context.Team.Members.Any(live => live.PlayerId == member.PlayerId && live.CharacterId == member.CharacterId &&
                 live.MemberId == member.MemberId && live.ExpiresAt > clockNow)).OrderBy(member => member.PlayerId).ToList();
-        if (recipients.Count is < 1 or > 16 || recipients.Count > context.Team.MaxMembers)
+        // 队伍服务管理人数上限；发放只使用实际有效成员，不再另设人数限制。
+        if (recipients.Count == 0)
         {
             throw Error(HttpStatusCode.Conflict, "era.drop_members_changed", text => text.MembersChanged);
         }

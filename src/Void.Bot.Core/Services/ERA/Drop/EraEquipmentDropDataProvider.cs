@@ -12,7 +12,9 @@ public interface IEraEquipmentDropDataProvider : IScope
     Task<EraEquipmentDropReadSnapshot?> ReadVisibleAsync(Guid worldId, Guid playerId, CancellationToken cancellationToken);
     Task<EraEquipmentDrop?> LockDropAsync(Guid dropId, CancellationToken cancellationToken);
     Task<EraEquipmentReadEntry?> LockEquipmentAsync(Guid equipmentId, CancellationToken cancellationToken);
+    Task<EraEquipmentShare?> LockShareAsync(Guid equipmentId, CancellationToken cancellationToken);
     void Add(EraEquipmentDrop drop, EraEquipmentShare share);
+    void AddDrop(EraEquipmentDrop drop);
     Task InvalidateWorldAsync(Guid worldId, CancellationToken cancellationToken);
 }
 
@@ -27,22 +29,25 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
 
     public async Task<EraEquipmentDropReadSnapshot?> ReadVisibleAsync(Guid worldId, Guid playerId, CancellationToken cancellationToken)
     {
-        // 一条 SQL 固定世界、本人继续状态、角色版本和私人可见条目；空掉落仍返回根记录。
+        // 一条 SQL 固定角色及候选条目；分享名单与时间资格由 Service 统一检查后再返回客户端。
         var rows = await (from world in _context.Set<EraWorld>()
             where world.Id == worldId
             join member in _context.Set<EraWorldMember>().Where(row => row.PlayerId == playerId) on world.Id equals member.WorldId
             join character in _context.Set<EraCharacter>() on new { member.CharacterId, member.PlayerId }
                 equals new { CharacterId = character.Id, character.PlayerId }
             join team in _context.Set<EraWorldTeamState>() on world.TeamId equals team.TeamId
-            join drop in _context.Set<EraEquipmentDrop>().Where(row => row.Status == EraEquipmentDropStatus.Available && row.PrivateOwnerPlayerId == playerId)
+            join drop in _context.Set<EraEquipmentDrop>().Where(row => row.Status == EraEquipmentDropStatus.Available &&
+                (row.PrivateOwnerPlayerId == playerId || row.PrivateOwnerPlayerId == null && row.DroppedByPlayerId != null))
                 on world.Id equals drop.WorldInstanceId into dropGroup
             from drop in dropGroup.DefaultIfEmpty()
             join equipment in _context.Set<EraEquipmentInstance>() on drop!.EquipmentId equals equipment.Id into equipmentGroup
             from equipment in equipmentGroup.DefaultIfEmpty()
             join armor in _context.Set<EraArmorInstanceData>() on equipment!.Id equals armor.EquipmentId into armorGroup
             from armor in armorGroup.DefaultIfEmpty()
+            join share in _context.Set<EraEquipmentShare>() on equipment!.Id equals share.EquipmentId into shareGroup
+            from share in shareGroup.DefaultIfEmpty()
             orderby drop!.CreatedAt, drop.Id
-            select new { World = world, Member = member, Character = character, team.ActiveWorldId, Drop = drop, Equipment = equipment, Armor = armor })
+            select new { World = world, Member = member, Character = character, team.ActiveWorldId, Drop = drop, Equipment = equipment, Armor = armor, Share = share })
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
         if (rows.Count == 0)
         {
@@ -50,7 +55,7 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         }
         var first = rows[0];
         return new EraEquipmentDropReadSnapshot(first.World, first.Member, first.Character, first.ActiveWorldId,
-            rows.Where(row => row.Drop != null).Select(row => new EraEquipmentDropReadEntry(row.Drop!, row.Equipment, row.Armor)).ToList());
+            rows.Where(row => row.Drop != null).Select(row => new EraEquipmentDropReadEntry(row.Drop!, row.Equipment, row.Armor, row.Share)).ToList());
     }
 
     public async Task<EraEquipmentDrop?> LockDropAsync(Guid dropId, CancellationToken cancellationToken)
@@ -76,6 +81,23 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
             $"SELECT * FROM era_armor_instance_data WHERE equipment_id = {equipmentId.ToString()} FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
         return equipment.Count == 0 ? null : new EraEquipmentReadEntry(equipment.Single(), armor.SingleOrDefault());
+    }
+
+    public async Task<EraEquipmentShare?> LockShareAsync(Guid equipmentId, CancellationToken cancellationToken)
+    {
+        if (_context.Database.CurrentTransaction == null)
+        {
+            throw new InvalidOperationException("Share reads require the drop command transaction.");
+        }
+        var rows = await _context.Set<EraEquipmentShare>().FromSqlInterpolated(
+                $"SELECT * FROM era_equipment_share WHERE equipment_id = {equipmentId.ToString()} FOR SHARE")
+            .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        return rows.SingleOrDefault();
+    }
+
+    public void AddDrop(EraEquipmentDrop drop)
+    {
+        _context.Set<EraEquipmentDrop>().Add(drop);
     }
 
     public void Add(EraEquipmentDrop drop, EraEquipmentShare share)

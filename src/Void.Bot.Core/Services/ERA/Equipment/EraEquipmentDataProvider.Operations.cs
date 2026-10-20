@@ -55,9 +55,10 @@ public sealed partial class EraEquipmentDataProvider
             throw new InvalidOperationException("Equipment locks require the command transaction.");
         }
 
+        // 只锁世界行：JOIN 成员若也加共享锁，会与结束事务“先锁世界、再更新成员”的顺序形成死锁。
         // 世界限制共享锁先于实例锁，限制声明及结束须等待本次装备事务完成。
         var worlds = await _dbContext.Set<EraWorld>().FromSqlInterpolated(
-                $"SELECT world.* FROM era_world AS world INNER JOIN era_world_member AS member ON member.world_id = world.id WHERE member.active_character_id = {character.Id.ToString()} AND member.is_continuing = 1 AND world.state IN (1, 2, 3) FOR SHARE")
+                $"SELECT world.* FROM era_world AS world INNER JOIN era_world_member AS member ON member.world_id = world.id WHERE member.active_character_id = {character.Id.ToString()} AND member.is_continuing = 1 AND world.state IN (1, 2, 3) FOR SHARE OF world")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
         var world = worlds.SingleOrDefault();
         // 调用方已先锁玩家、角色；按 ID 顺序锁本角色物品，再读取其不可变护甲数据。
