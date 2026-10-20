@@ -7,6 +7,8 @@ public sealed class EraCharactersEndpointContextTemplate : IContextTemplate
 {
     public string GetEraCharacterList { get; set; } = "获取本人 ERA 角色列表";
     public string GetEraCharacter { get; set; } = "获取本人指定 ERA 角色";
+    public string GetEraCharacterEquipment { get; set; } = "读取本人 ERA 角色背包与已穿装备快照";
+    public string GetEraCharacterInventory { get; set; } = "读取本人 ERA 角色背包与槽位候选";
     public string CreateEraCharacter { get; set; } = "幂等创建本人 ERA 角色";
     public string DeleteEraCharacter { get; set; } = "禁用本人 ERA 角色";
 }

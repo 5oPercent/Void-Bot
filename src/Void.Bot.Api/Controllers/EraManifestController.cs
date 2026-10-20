@@ -54,4 +54,18 @@ public sealed class EraManifestController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("equipment")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraEquipmentManifest")]
+    [ProducesResponseType(typeof(GetEraEquipmentManifestResponse), 200)]
+    public async Task<IActionResult> GetEquipmentAsync(
+        [FromQuery] GetEraEquipmentManifestRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _mediator
+            .RequestAsync<GetEraEquipmentManifestRequest, GetEraEquipmentManifestResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
 }

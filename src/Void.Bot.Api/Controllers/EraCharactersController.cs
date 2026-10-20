@@ -67,6 +67,36 @@ public sealed class EraCharactersController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{characterId:guid}/equipment")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraCharacterEquipment")]
+    [ProducesResponseType(typeof(GetEraCharacterEquipmentResponse), 200)]
+    public async Task<IActionResult> GetEquipmentAsync(
+        [FromRoute] Guid characterId, [FromQuery] GetEraCharacterEquipmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        request.CharacterId = characterId;
+        var response = await _mediator
+            .RequestAsync<GetEraCharacterEquipmentRequest, GetEraCharacterEquipmentResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("{characterId:guid}/inventory")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GetEraCharacterInventory")]
+    [ProducesResponseType(typeof(GetEraCharacterInventoryResponse), 200)]
+    public async Task<IActionResult> GetInventoryAsync(
+        [FromRoute] Guid characterId, [FromQuery] GetEraCharacterInventoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        request.CharacterId = characterId;
+        var response = await _mediator
+            .RequestAsync<GetEraCharacterInventoryRequest, GetEraCharacterInventoryResponse>(request, cancellationToken)
+            .ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("{characterId:guid}/delete")]
     [SkipPermissionCheck]
     [DescriptionLocalization("DeleteEraCharacter")]
