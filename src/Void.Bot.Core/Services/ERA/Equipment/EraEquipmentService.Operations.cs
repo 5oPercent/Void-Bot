@@ -164,24 +164,13 @@ public sealed partial class EraEquipmentService
             return Error<T>(HttpStatusCode.Forbidden, "era.equipment_operations_restricted", text => text.OperationsRestricted);
         }
 
-        // 按最终分区数量检查；同类替换先减去候选再加回旧装备，不要求额外空格。
-        foreach (var partition in System.Enum.GetValues<EraArmorSlot>())
+        // 检查事务完成后的背包总数；替换一出一进，不要求额外空格。
+        var count = snapshot.Entries.Count(entry => entry.Equipment.Location == EraEquipmentLocation.Inventory);
+        if (equip != null) count--;
+        if (equip == null || current != null) count++;
+        if (count > EraEquipmentRules.InventoryCapacity)
         {
-            var count = snapshot.Entries.Count(entry => entry.Equipment.Location == EraEquipmentLocation.Inventory &&
-                entry.Equipment.InventorySlot == partition);
-            if (equip != null && item.InventorySlot == partition)
-            {
-                count--;
-            }
-            var returning = equip != null ? current : item;
-            if (returning?.InventorySlot == partition)
-            {
-                count++;
-            }
-            if (count > InventoryCapacityPerSlot)
-            {
-                return Error<T>(HttpStatusCode.Conflict, "era.equipment_inventory_full", text => text.InventoryFull);
-            }
+            return Error<T>(HttpStatusCode.Conflict, "era.equipment_inventory_full", text => text.InventoryFull);
         }
 
         if (character.EquipmentVersion == long.MaxValue || item.Version == long.MaxValue || current?.Version == long.MaxValue)

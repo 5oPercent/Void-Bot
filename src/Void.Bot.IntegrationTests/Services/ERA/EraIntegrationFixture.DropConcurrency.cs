@@ -45,7 +45,7 @@ public partial class EraIntegrationFixture
     [Trait("Category", "ERADropIntegration")]
     public async Task Concurrent_pickups_should_replay_same_request_or_reject_a_second_last_slot_write(bool differentDrop)
     {
-        await SeedAsync(11);
+        await SeedAsync(119);
         await ConfigureRewardsAsync(count: differentDrop ? 2 : 1, source: EraRewardSourceType.Monster, delivery: EraRewardDelivery.Ground);
         await using var team = await CreateWorldTeamAsync();
         var world = await ReadyDropWorldAsync(team);
@@ -110,7 +110,7 @@ public partial class EraIntegrationFixture
         }
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraEquipmentInstance>().CountAsync(row => row.CharacterId == _characterId)).ShouldBe(12);
+            (await context.Set<EraEquipmentInstance>().CountAsync(row => row.CharacterId == _characterId)).ShouldBe(120);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(1);
             (await context.Set<EraEquipmentDrop>().CountAsync(row => row.Status == EraEquipmentDropStatus.Available)).ShouldBe(differentDrop ? 1 : 0);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(4);

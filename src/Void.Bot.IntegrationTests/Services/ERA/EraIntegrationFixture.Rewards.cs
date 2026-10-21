@@ -153,7 +153,7 @@ public partial class EraIntegrationFixture
     [Trait("Category", "ERARewardIntegration")]
     public async Task Full_inventory_should_preserve_plan_without_partial_grants_and_retry_without_current_configuration()
     {
-        await SeedAsync(12);
+        await SeedAsync(120);
         await ConfigureRewardsAsync(count: 2);
         var command = RewardCommand(includeOther: true);
         var prepared = await PrepareRewardAsync(command);
@@ -167,8 +167,8 @@ public partial class EraIntegrationFixture
             rewardEvent.ResultPayload.ShouldBeNull();
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(0);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(0);
-            (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(13);
-            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(13);
+            (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(121);
+            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(121);
             (await context.Set<EraCharacter>().ToListAsync()).ShouldAllBe(character => character.EquipmentVersion == 3);
             var configuration = await context.Set<EraRewardConfiguration>().SingleAsync();
             configuration.Version = 12;
@@ -200,7 +200,7 @@ public partial class EraIntegrationFixture
                 saved.Resistance.ShouldBe(item.Attributes.Resistance);
                 (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == item.EquipmentId)).DefinitionVersion.ShouldBe(7);
             }
-            (await context.Set<EraEquipmentInstance>().CountAsync(item => item.CharacterId == _characterId && item.Location == EraEquipmentLocation.Inventory)).ShouldBe(12);
+            (await context.Set<EraEquipmentInstance>().CountAsync(item => item.CharacterId == _characterId && item.Location == EraEquipmentLocation.Inventory)).ShouldBe(120);
         });
     }
 
@@ -239,7 +239,7 @@ public partial class EraIntegrationFixture
     [Trait("Category", "ERARewardIntegration")]
     public async Task Zero_chance_should_persist_an_empty_result_and_never_reroll_after_configuration_changes()
     {
-        await SeedAsync(12);
+        await SeedAsync(120);
         await ConfigureRewardsAsync(chance: 0);
         var command = RewardCommand();
         var prepared = await PrepareRewardAsync(command);
@@ -251,7 +251,7 @@ public partial class EraIntegrationFixture
         (await GrantRewardAsync(prepared.Data)).IsReplay.ShouldBeTrue();
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(13);
+            (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(121);
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(1);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(0);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(3);

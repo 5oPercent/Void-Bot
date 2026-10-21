@@ -167,16 +167,16 @@ public class EraEquipmentOperationFixture
     }
 
     [Fact]
-    public async Task Should_replace_when_partition_is_full_and_release_old_slot_first()
+    public async Task Should_replace_at_shared_inventory_capacity_and_release_old_slot_first()
     {
         var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
         var candidate = AddItem();
-        for (var index = 0; index < 11; index++) AddItem();
+        for (var index = 0; index < 119; index++) AddItem();
 
         var response = await Service().EquipAsync(Equip(candidate), CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
-        response.Data!.State.TotalInventoryCount.ShouldBe(12);
+        response.Data!.State.TotalInventoryCount.ShouldBe(120);
         response.Data.State.InventoryItems.Any(item => item.Id == old.Id).ShouldBeTrue();
         response.Data.State.InventoryItems.Any(item => item.Id == candidate.Id).ShouldBeFalse();
         _lastChanges!.Select(change => change.EquipmentId).ShouldBe(new[] { old.Id, candidate.Id });
@@ -189,16 +189,16 @@ public class EraEquipmentOperationFixture
     }
 
     [Fact]
-    public async Task Should_unequip_into_twelfth_space_without_needing_current_definition()
+    public async Task Should_unequip_into_120th_space_without_needing_current_definition()
     {
         var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
-        for (var index = 0; index < 11; index++) AddItem();
+        for (var index = 0; index < 119; index++) AddItem();
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);
 
         var response = await Service().UnequipAsync(Unequip(old), CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
-        response.Data!.State.TotalInventoryCount.ShouldBe(12);
+        response.Data!.State.TotalInventoryCount.ShouldBe(120);
         response.Data.State.EquippedSlots.All(slot => slot.Equipment == null).ShouldBeTrue();
         response.Data.State.ManifestVersion.ShouldBeNull();
         old.Location.ShouldBe(EraEquipmentLocation.Inventory);
@@ -207,10 +207,24 @@ public class EraEquipmentOperationFixture
     }
 
     [Fact]
-    public async Task Should_reject_full_partition_unequip_without_mutation_or_success_receipt()
+    public async Task Full_inventory_should_allow_equipping_an_empty_slot_and_release_one_shared_space()
+    {
+        var candidate = AddItem();
+        for (var index = 0; index < 119; index++) AddItem();
+
+        var response = await Service().EquipAsync(Equip(candidate), CancellationToken.None);
+
+        response.Code.ShouldBe(HttpStatusCode.OK);
+        response.Data!.State.TotalInventoryCapacity.ShouldBe(120);
+        response.Data.State.TotalInventoryCount.ShouldBe(119);
+        candidate.Location.ShouldBe(EraEquipmentLocation.Equipped);
+    }
+
+    [Fact]
+    public async Task Should_reject_full_inventory_unequip_without_mutation_or_success_receipt()
     {
         var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
-        for (var index = 0; index < 12; index++) AddItem();
+        for (var index = 0; index < 120; index++) AddItem();
 
         var response = await Service().UnequipAsync(Unequip(old), CancellationToken.None);
 
@@ -223,19 +237,21 @@ public class EraEquipmentOperationFixture
     }
 
     [Fact]
-    public async Task Should_not_borrow_other_partition_space_during_replacement()
+    public async Task Should_allow_cross_partition_replacement_when_shared_inventory_is_full()
     {
         var old = AddItem(EraArmorSlot.Body, EraEquipmentLocation.Equipped);
         old.EquippedSlot = EraArmorSlot.Head;
-        for (var index = 0; index < 12; index++) AddItem(EraArmorSlot.Body);
+        for (var index = 0; index < 119; index++) AddItem(EraArmorSlot.Body);
         var candidate = AddItem();
 
         var response = await Service().EquipAsync(Equip(candidate), CancellationToken.None);
 
-        response.ErrorCode.ShouldBe("era.equipment_inventory_full");
-        _lastChanges.ShouldBeNull();
-        old.Location.ShouldBe(EraEquipmentLocation.Equipped);
-        candidate.Location.ShouldBe(EraEquipmentLocation.Inventory);
+        response.Code.ShouldBe(HttpStatusCode.OK);
+        response.Data!.State.TotalInventoryCount.ShouldBe(120);
+        response.Data.State.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Body).Count.ShouldBe(120);
+        _lastChanges.ShouldNotBeNull();
+        old.Location.ShouldBe(EraEquipmentLocation.Inventory);
+        candidate.Location.ShouldBe(EraEquipmentLocation.Equipped);
     }
 
     [Fact]

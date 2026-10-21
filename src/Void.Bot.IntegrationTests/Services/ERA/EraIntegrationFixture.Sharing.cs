@@ -232,7 +232,7 @@ public partial class EraIntegrationFixture
     [Trait("Category", "ERADropIntegration")]
     public async Task Expired_shared_equipment_should_remain_on_ground_when_the_dropper_inventory_is_full()
     {
-        await SeedAsync(12);
+        await SeedAsync(120);
         await SeedShareAsync(_inventory[0], _playerId, _otherPlayerId);
         await using var team = await CreateWorldTeamAsync(includeOther: true);
         var world = await ReadyDropWorldAsync(team);

@@ -198,7 +198,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         {
             throw Error(HttpStatusCode.Conflict, "era.drop_version_conflict", text => text.VersionConflict);
         }
-        if (snapshot.Entries.Count(row => row.Equipment.Location == EraEquipmentLocation.Inventory && row.Equipment.InventorySlot == equipment.InventorySlot) >= 12)
+        if (snapshot.Entries.Count(row => row.Equipment.Location == EraEquipmentLocation.Inventory) >= EraEquipmentRules.InventoryCapacity)
         {
             throw Error(HttpStatusCode.Conflict, "era.drop_inventory_full", text => text.InventoryFull);
         }

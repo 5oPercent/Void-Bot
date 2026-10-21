@@ -70,6 +70,30 @@ public class EraRewardPoolFixture
         }));
     }
 
+    [Theory]
+    [InlineData(120, 1, true)]
+    [InlineData(1, 120, true)]
+    [InlineData(12, 10, true)]
+    [InlineData(121, 1, false)]
+    [InlineData(1, 121, false)]
+    [InlineData(11, 11, false)]
+    public void Reward_batch_should_respect_shared_120_item_capacity(int count, int rolls, bool valid)
+    {
+        var node = Node(EraRewardSourceType.Task, EraRewardDelivery.Inventory);
+        node.Rolls = rolls;
+        var pool = Pool();
+        pool.Entries[0].Count = count;
+        var rules = new EraRewardRules { Nodes = new List<EraRewardNode> { node }, Pools = new List<EraRewardPool> { pool } };
+        if (valid)
+        {
+            Should.NotThrow(() => EraRewardConfigurationValidator.Validate(rules));
+        }
+        else
+        {
+            Should.Throw<ArgumentException>(() => EraRewardConfigurationValidator.Validate(rules));
+        }
+    }
+
     private static EraRewardNode Node(EraRewardSourceType source, EraRewardDelivery delivery)
     {
         return new EraRewardNode

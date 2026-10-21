@@ -28,7 +28,6 @@ public partial interface IEraEquipmentService : IScope
 /// <summary>装备查询与装配业务；不生成资产，写事务由 Mediator 工作单元统一提交。</summary>
 public sealed partial class EraEquipmentService : IEraEquipmentService
 {
-    private const int InventoryCapacityPerSlot = 12;
     private readonly IEraEquipmentDataProvider _dataProvider;
     private readonly IEraCharacterContext _characterContext;
     private readonly ILocalizationService _localizationService;
@@ -162,7 +161,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
         var inventory = items.Where(item => item.Location == EraEquipmentLocation.Inventory)
             .OrderBy(item => item.CreatedAt).ThenBy(item => item.Id).ToList();
         var equipped = items.Where(item => item.Location == EraEquipmentLocation.Equipped).ToList();
-        if (slots.Any(partition => inventory.Count(item => item.InventorySlot == partition) > InventoryCapacityPerSlot) ||
+        if (inventory.Count > EraEquipmentRules.InventoryCapacity ||
             equipped.GroupBy(item => item.EquippedSlot).Any(group => group.Count() > 1))
         {
             return null;
@@ -176,13 +175,12 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             EquippedOperationRestriction = snapshot.EquippedOperationRestriction,
             ManifestVersion = manifest?.Version,
             FilterSlot = slot,
-            TotalInventoryCapacity = slots.Length * InventoryCapacityPerSlot,
+            TotalInventoryCapacity = EraEquipmentRules.InventoryCapacity,
             TotalInventoryCount = inventory.Count,
             InventoryPartitions = slots.Select(partition => new EraArmorInventoryPartitionDto
             {
                 Slot = partition,
-                Count = inventory.Count(item => item.InventorySlot == partition),
-                Capacity = InventoryCapacityPerSlot
+                Count = inventory.Count(item => item.InventorySlot == partition)
             }).ToList(),
             InventoryItems = slot.HasValue
                 ? inventory.Where(item => item.InventorySlot == slot.Value &&
@@ -224,7 +222,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                     Budget = EraArmorGenerationRules.GetBudget(grade)
                 }).ToList()
             };
-            manifest.InventoryCapacityPerSlot = InventoryCapacityPerSlot;
+            manifest.InventoryCapacity = EraEquipmentRules.InventoryCapacity;
             return manifest;
         }
         catch (JsonException)

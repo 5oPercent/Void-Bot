@@ -136,8 +136,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId)))
             throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         // 拒绝即使空背包也可能永远装不下的配置；普通满包则保留计划供整理后重试。
-        if (pool.Entries.GroupBy(entry => definitions[entry.DefinitionId].InventorySlot)
-            .Any(group => group.Max(entry => entry.Count) * node.Rolls > 12))
+        if ((long)pool.Entries.Max(entry => entry.Count) * node.Rolls > EraEquipmentRules.InventoryCapacity)
             throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         foreach (var recipient in recipients)
         {
@@ -242,10 +241,9 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             var counts = await _rewards.LockInventoryCountsAsync(character.Id, cancellationToken).ConfigureAwait(false);
             if (character.EquipmentVersion < 0 || (grant.Equipment.Count > 0 && character.EquipmentVersion == long.MaxValue))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_data_unavailable", text => text.DataUnavailable);
-            foreach (var slot in System.Enum.GetValues<EraArmorSlot>())
+            if (counts.Values.Sum(count => (long)count) + grant.Equipment.Count > EraEquipmentRules.InventoryCapacity)
             {
-                if (counts.GetValueOrDefault(slot) + grant.Equipment.Count(item => item.InventorySlot == slot) > 12)
-                    throw Error(HttpStatusCode.Conflict, "era.reward_inventory_full", text => text.InventoryFull);
+                throw Error(HttpStatusCode.Conflict, "era.reward_inventory_full", text => text.InventoryFull);
             }
         }
 
@@ -296,7 +294,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             plan.Node.SourceDefinitionId != rewardEvent.SourceDefinitionId || plan.Node.RewardNodeId != rewardEvent.RewardNodeId ||
             plan.Node.PoolId != plan.Pool.Id || plan.Node.Delivery != EraRewardDelivery.Inventory ||
             plan.Grants.Any(grant => grant == null || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty ||
-                grant.CharacterId == Guid.Empty || grant.Equipment == null || grant.Equipment.Count > 72) ||
+                grant.CharacterId == Guid.Empty || grant.Equipment == null || grant.Equipment.Count > EraEquipmentRules.InventoryCapacity) ||
             plan.Grants.Select(grant => grant.PlayerId).Distinct().Count() != plan.Grants.Count ||
             plan.Grants.Select(grant => grant.CharacterId).Distinct().Count() != plan.Grants.Count ||
             plan.Grants.Select(grant => grant.GrantId).Distinct().Count() != plan.Grants.Count)

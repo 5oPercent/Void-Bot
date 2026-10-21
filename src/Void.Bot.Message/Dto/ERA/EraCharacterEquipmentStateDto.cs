@@ -17,11 +17,11 @@ public sealed class EraCharacterEquipmentStateDto
     public long? ManifestVersion { get; set; }
     /// <summary>仅背包接口可指定的目标槽位筛选；限定对应实例分区并检查当前定义兼容关系，定义缺失时按分区降级展示。</summary>
     public EraArmorSlot? FilterSlot { get; set; }
-    /// <summary>六类护甲的背包总容量，当前为 72。</summary>
+    /// <summary>角色背包装备共享的总容量，当前为 120；不含已穿装备。</summary>
     public int TotalInventoryCapacity { get; set; }
     /// <summary>所有护甲分区的背包实例数，不受筛选影响。</summary>
     public int TotalInventoryCount { get; set; }
-    /// <summary>全部六个分区的计数与容量，不受筛选影响。</summary>
+    /// <summary>全部六个分类的计数，不受筛选影响；分类不设独立容量。</summary>
     public List<EraArmorInventoryPartitionDto> InventoryPartitions { get; set; } = new List<EraArmorInventoryPartitionDto>();
     /// <summary>当前背包实例或筛选后的候选，按生成时间、实例 ID 稳定排序。</summary>
     public List<EraEquipmentInstanceDto> InventoryItems { get; set; } = new List<EraEquipmentInstanceDto>();
