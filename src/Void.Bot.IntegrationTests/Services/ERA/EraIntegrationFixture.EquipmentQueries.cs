@@ -29,7 +29,7 @@ public partial class EraIntegrationFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.EquipmentVersion.ShouldBe(3);
         response.Data.TotalInventoryCount.ShouldBe(0);
-        response.Data.TotalInventoryCapacity.ShouldBe(72);
+        response.Data.TotalInventoryCapacity.ShouldBe(120);
         response.Data.InventoryItems.ShouldBeEmpty();
         response.Data.EquippedSlots.Count.ShouldBe(6);
         response.Data.EquippedSlots.ShouldAllBe(slot => slot.Equipment == null);

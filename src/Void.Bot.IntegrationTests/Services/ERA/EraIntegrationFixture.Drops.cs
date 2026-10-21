@@ -157,7 +157,7 @@ public partial class EraIntegrationFixture
     public async Task Full_inventory_should_keep_private_drop_available_and_allow_pickup_after_share_expiration()
     {
         _worldTestClock = new EraWorldTestClock(DateTimeOffset.UtcNow);
-        await SeedAsync(12);
+        await SeedAsync(120);
         await ConfigureRewardsAsync(source: EraRewardSourceType.Monster, delivery: EraRewardDelivery.Ground);
         await using var team = await CreateWorldTeamAsync();
         var world = await ReadyDropWorldAsync(team);
@@ -178,7 +178,7 @@ public partial class EraIntegrationFixture
         });
         _worldTestClock.Advance(TimeSpan.FromHours(2));
         (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.Single().DropId.ShouldBe(drop.DropId);
-        (await PickupDropAsync(command)).Data!.State.InventoryItems.Count.ShouldBe(12);
+        (await PickupDropAsync(command)).Data!.State.InventoryItems.Count.ShouldBe(120);
         (await PickupDropAsync(command)).IsReplay.ShouldBeTrue();
         await ReadDatabaseAsync(async context =>
         {

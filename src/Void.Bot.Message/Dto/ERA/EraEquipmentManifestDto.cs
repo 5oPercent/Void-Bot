@@ -13,6 +13,6 @@ public sealed class EraEquipmentManifestDto
     public List<EraArmorDefinitionDto> Definitions { get; set; } = new List<EraArmorDefinitionDto>();
     /// <summary>由后端生成器提供，忽略配置载荷内同名字段。</summary>
     public EraArmorGenerationRulesDto GenerationRules { get; set; } = new EraArmorGenerationRulesDto();
-    /// <summary>每个护甲分区的背包容量，不含已穿装备。</summary>
-    public int InventoryCapacityPerSlot { get; set; }
+    /// <summary>角色背包装备共享的总容量，不含已穿装备；各分区不设独立上限。</summary>
+    public int InventoryCapacity { get; set; }
 }

@@ -10,7 +10,7 @@ public sealed class EraEquipmentDropContextTemplate : IContextTemplate
     public string WorldUnavailable { get; set; } = "世界未就绪或已经结束";
     public string CharacterUnavailable { get; set; } = "角色不可用或未继续参与该世界";
     public string VersionConflict { get; set; } = "背包、装备或掉落已变化，请刷新后重试";
-    public string InventoryFull { get; set; } = "该装备对应的背包分区已满，掉落保持可领取";
+    public string InventoryFull { get; set; } = "背包已满，掉落保持可领取";
     public string DataUnavailable { get; set; } = "掉落、装备或历史回执数据不完整";
     public string ConfigurationUnavailable { get; set; } = "奖励配置或装备目录不可用";
     public string SourceUnavailable { get; set; } = "该奖励来源或节点尚未配置";

@@ -12,9 +12,9 @@ public partial class EraIntegrationFixture
 {
     [Fact]
     [Trait("Category", "ERAEquipmentIntegration")]
-    public async Task Full_partition_swap_should_commit_both_positions_and_one_receipt()
+    public async Task Full_inventory_swap_should_commit_both_positions_and_one_receipt()
     {
-        await SeedAsync(12, equipped: true);
+        await SeedAsync(120, equipped: true);
         var command = Equip(_inventory[0]);
 
         var response = await SendEquipAsync(command);
@@ -22,7 +22,7 @@ public partial class EraIntegrationFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.IsReplay.ShouldBeFalse();
         response.Data!.State.EquipmentVersion.ShouldBe(4);
-        response.Data.State.TotalInventoryCount.ShouldBe(12);
+        response.Data.State.TotalInventoryCount.ShouldBe(120);
         response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!.Id.ShouldBe(command.EquipmentId);
         await ReadDatabaseAsync(async context =>
         {
@@ -30,8 +30,8 @@ public partial class EraIntegrationFixture
             character.EquipmentVersion.ShouldBe(4);
             character.Version.ShouldBe(12);
             var items = await context.Set<EraEquipmentInstance>().Where(row => row.CharacterId == _characterId).ToListAsync();
-            items.Count.ShouldBe(13);
-            items.Count(item => item.Location == EraEquipmentLocation.Inventory).ShouldBe(12);
+            items.Count.ShouldBe(121);
+            items.Count(item => item.Location == EraEquipmentLocation.Inventory).ShouldBe(120);
             var candidate = items.Single(item => item.Id == command.EquipmentId);
             candidate.Location.ShouldBe(EraEquipmentLocation.Equipped);
             candidate.EquippedSlot.ShouldBe(EraArmorSlot.Head);
@@ -63,9 +63,9 @@ public partial class EraIntegrationFixture
 
     [Fact]
     [Trait("Category", "ERAEquipmentIntegration")]
-    public async Task Full_partition_unequip_should_leave_all_rows_and_versions_unchanged()
+    public async Task Full_inventory_unequip_should_leave_all_rows_and_versions_unchanged()
     {
-        await SeedAsync(12, equipped: true);
+        await SeedAsync(120, equipped: true);
 
         var response = await SendUnequipAsync(_equipped!.Id);
 

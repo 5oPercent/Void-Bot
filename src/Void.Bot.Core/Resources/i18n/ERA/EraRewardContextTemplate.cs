@@ -13,6 +13,6 @@ public sealed class EraRewardContextTemplate : IContextTemplate
     public string DeliveryUnavailable { get; set; } = "该奖励需要地面掉落流程，不能直接发放到背包";
     public string RecipientUnavailable { get; set; } = "奖励领取角色不存在、归属不符或已禁用";
     public string EventNotFound { get; set; } = "奖励事件不存在";
-    public string InventoryFull { get; set; } = "奖励超出背包分区容量，整批未发放；整理后可重试";
+    public string InventoryFull { get; set; } = "奖励超出背包总容量，整批未发放；整理后可重试";
     public string DataUnavailable { get; set; } = "已保存的奖励计划或回执不完整";
 }

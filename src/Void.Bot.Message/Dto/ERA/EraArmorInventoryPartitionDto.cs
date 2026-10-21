@@ -9,6 +9,4 @@ public sealed class EraArmorInventoryPartitionDto
     public EraArmorSlot Slot { get; set; }
     /// <summary>该分区当前背包实例数，不受候选筛选影响。</summary>
     public int Count { get; set; }
-    /// <summary>该分区容量。</summary>
-    public int Capacity { get; set; }
 }

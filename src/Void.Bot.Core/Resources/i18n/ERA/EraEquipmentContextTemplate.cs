@@ -15,7 +15,7 @@ public sealed class EraEquipmentContextTemplate : IContextTemplate
     public string ConfigVersionConflict { get; set; } = "装备目录版本已变化，请刷新候选后重新操作";
     public string DefinitionUnavailable { get; set; } = "装备定义暂不可用，不能装配该物品";
     public string IncompatibleSlot { get; set; } = "装备不兼容目标槽位";
-    public string InventoryFull { get; set; } = "装备原背包分区已满，无法卸下或替换";
+    public string InventoryFull { get; set; } = "背包已满，无法将装备放回背包";
     public string IdempotencyConflict { get; set; } = "请求标识已经用于不同的装备操作参数";
     public string OperationsRestricted { get; set; } = "当前世界限制操作已穿装备；空槽装配及背包物品操作仍允许";
 }

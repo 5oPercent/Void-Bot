@@ -69,7 +69,7 @@ public class EraEquipmentServiceFixture
             {
                 Version = 999,
                 Definitions = new List<EraArmorDefinitionDto> { Definition() },
-                InventoryCapacityPerSlot = 999,
+                InventoryCapacity = 999,
                 GenerationRules = new EraArmorGenerationRulesDto { Version = 999, MaximumDeviation = 999 }
             })
         };
@@ -113,7 +113,7 @@ public class EraEquipmentServiceFixture
 
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.Version.ShouldBe(7);
-        response.Data.InventoryCapacityPerSlot.ShouldBe(12);
+        response.Data.InventoryCapacity.ShouldBe(120);
         response.Data.GenerationRules.Version.ShouldBe(1);
         response.Data.GenerationRules.MaximumDeviation.ShouldBe(3);
         response.Data.GenerationRules.WeightsPercent.ShouldBe(new[] { 40, 20, 15, 10, 10, 5 });
@@ -182,13 +182,13 @@ public class EraEquipmentServiceFixture
 
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.EquipmentVersion.ShouldBe(0);
-        response.Data.TotalInventoryCapacity.ShouldBe(72);
+        response.Data.TotalInventoryCapacity.ShouldBe(120);
         response.Data.TotalInventoryCount.ShouldBe(0);
         response.Data.InventoryItems.ShouldBeEmpty();
         response.Data.EquippedSlots.Count.ShouldBe(6);
         response.Data.EquippedSlots.All(slot => slot.Equipment == null).ShouldBeTrue();
         response.Data.InventoryPartitions.Count.ShouldBe(6);
-        response.Data.InventoryPartitions.All(partition => partition.Count == 0 && partition.Capacity == 12).ShouldBeTrue();
+        response.Data.InventoryPartitions.All(partition => partition.Count == 0).ShouldBeTrue();
         await _players.DidNotReceive().LockCharacterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -234,23 +234,24 @@ public class EraEquipmentServiceFixture
     }
 
     [Fact]
-    public async Task Should_count_equipped_item_separately_from_full_twelve_item_partition()
+    public async Task Should_allow_one_slot_to_use_all_120_inventory_spaces_and_exclude_equipped_items()
     {
-        for (var index = 0; index < 12; index++) _snapshot.Entries.Add(Entry());
+        for (var index = 0; index < 120; index++) _snapshot.Entries.Add(Entry());
         _snapshot.Entries.Add(Entry(EraArmorSlot.Head, EraEquipmentLocation.Equipped));
 
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
-        response.Data!.TotalInventoryCount.ShouldBe(12);
-        response.Data.InventoryItems.Count.ShouldBe(12);
+        response.Data!.TotalInventoryCount.ShouldBe(120);
+        response.Data.TotalInventoryCapacity.ShouldBe(120);
+        response.Data.InventoryItems.Count.ShouldBe(120);
         response.Data.EquippedSlots.Count(slot => slot.Equipment != null).ShouldBe(1);
     }
 
     [Fact]
-    public async Task Should_report_overfull_partition_instead_of_hiding_the_thirteenth_item()
+    public async Task Should_report_overfull_inventory_instead_of_hiding_the_121st_item()
     {
-        for (var index = 0; index < 13; index++) _snapshot.Entries.Add(Entry());
+        for (var index = 0; index < 121; index++) _snapshot.Entries.Add(Entry());
 
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
 
@@ -259,19 +260,20 @@ public class EraEquipmentServiceFixture
     }
 
     [Fact]
-    public async Task Should_allow_seventy_two_inventory_items_plus_six_equipped_items()
+    public async Task Should_share_120_inventory_spaces_across_slots_and_exclude_six_equipped_items()
     {
         foreach (var slot in System.Enum.GetValues<EraArmorSlot>())
         {
-            for (var index = 0; index < 12; index++) _snapshot.Entries.Add(Entry(slot));
+            for (var index = 0; index < 20; index++) _snapshot.Entries.Add(Entry(slot));
             _snapshot.Entries.Add(Entry(slot, EraEquipmentLocation.Equipped));
         }
 
         var response = await Service().GetEquipmentAsync(new GetEraCharacterEquipmentRequest { CharacterId = _character.Id }, CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
-        response.Data!.TotalInventoryCount.ShouldBe(72);
-        response.Data.InventoryPartitions.All(partition => partition.Count == 12).ShouldBeTrue();
+        response.Data!.TotalInventoryCount.ShouldBe(120);
+        response.Data.TotalInventoryCapacity.ShouldBe(120);
+        response.Data.InventoryPartitions.All(partition => partition.Count == 20).ShouldBeTrue();
         response.Data.EquippedSlots.All(slot => slot.Equipment != null).ShouldBeTrue();
     }
 

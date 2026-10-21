@@ -60,7 +60,7 @@ public partial class EraIntegrationFixture
     [Trait("Category", "ERARewardIntegration")]
     public async Task Different_events_competing_for_the_last_inventory_slot_should_commit_only_one_reward()
     {
-        await SeedAsync(11);
+        await SeedAsync(119);
         await ConfigureRewardsAsync();
         // 两个不同作用域没有共同事件锁，仍必须通过玩家／角色锁串行化容量检查。
         var first = await PrepareRewardAsync(RewardCommand());
@@ -99,7 +99,7 @@ public partial class EraIntegrationFixture
         {
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(1);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(1);
-            (await context.Set<EraEquipmentInstance>().CountAsync(row => row.CharacterId == _characterId)).ShouldBe(12);
+            (await context.Set<EraEquipmentInstance>().CountAsync(row => row.CharacterId == _characterId)).ShouldBe(120);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(4);
             (await context.Set<EraRewardEvent>().SingleAsync(row => row.Id == second.Data)).ResultPayload.ShouldBeNull();
         });
