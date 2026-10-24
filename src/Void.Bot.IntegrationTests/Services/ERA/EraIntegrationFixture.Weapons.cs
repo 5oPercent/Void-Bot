@@ -16,7 +16,7 @@ public partial class EraIntegrationFixture
     private static EraWeaponCatalogDto WeaponCatalog()
     {
         var catalog = new EraWeaponCatalogDto();
-        catalog.StatEffectProfiles.Add(new EraWeaponStatEffectProfileDto
+        catalog.StatMappings.Add(new EraWeaponStatMappingDto
         {
             Id = Guid.Parse("40000000-0000-0000-0000-000000000001"), Name = "Integration rifle effects",
             SpreadDegreesAtZero = 3, SpreadDegreesAtHundred = 1, RecoilDegreesAtZero = 2, RecoilDegreesAtHundred = .5,
@@ -25,7 +25,7 @@ public partial class EraIntegrationFixture
         var template = new EraWeaponTemplateDto
         {
             Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Integration rifle", PresentationKey = "scifi_rifle",
-            StatEffectProfileId = catalog.StatEffectProfiles[0].Id,
+            StatMappingId = catalog.StatMappings[0].Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
             BaseStats = new EraWeaponStatsDto
             {
@@ -88,6 +88,89 @@ public partial class EraIntegrationFixture
     }
 
     [Fact]
+    public async Task Shared_weapon_stat_mapping_management_should_publish_and_preserve_the_remaining_catalog()
+    {
+        await SeedAsync(0);
+        var catalog = WeaponCatalog();
+        await PublishWeaponsAsync(catalog);
+        var mapping = JsonSerializer.Deserialize<EraWeaponStatMappingDto>(JsonSerializer.Serialize(catalog.StatMappings[0]))!;
+        mapping.Id = Guid.NewGuid();
+        mapping.Name = "Custom effects";
+        var saved = await RequestAsync((mediator, token) => mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(
+            new SaveEraWeaponStatMappingCommand { ExpectedManifestVersion = 8, StatMapping = mapping }, token));
+        saved.Data!.Version.ShouldBe(9);
+        saved.Data.Configuration.StatMappings.Count.ShouldBe(2);
+        JsonSerializer.Serialize(saved.Data.Configuration.Templates).ShouldBe(JsonSerializer.Serialize(catalog.Templates));
+        JsonSerializer.Serialize(saved.Data.Configuration.Modifications).ShouldBe(JsonSerializer.Serialize(catalog.Modifications));
+
+        var list = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponStatMappingsRequest, GetEraWeaponStatMappingsResponse>(
+            new GetEraWeaponStatMappingsRequest { PageIndex = 1, PageSize = 1, Search = "CUSTOM" }, token));
+        list.Version.ShouldBe(9);
+        list.Data!.Total.ShouldBe(1);
+        list.Data.Items.Single().Id.ShouldBe(mapping.Id);
+        var detail = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponStatMappingRequest, GetEraWeaponStatMappingResponse>(
+            new GetEraWeaponStatMappingRequest { Id = mapping.Id }, token));
+        detail.Version.ShouldBe(9);
+        detail.Data!.ReadySecondsAtZero.ShouldBe(1);
+
+        mapping.ReadySecondsAtZero = .8;
+        var updated = await RequestAsync((mediator, token) => mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(
+            new SaveEraWeaponStatMappingCommand { ExpectedManifestVersion = 9, StatMapping = mapping }, token));
+        updated.Data!.Version.ShouldBe(10);
+        updated.Data.Configuration.StatMappings.Single(row => row.Id == mapping.Id).ReadySecondsAtZero.ShouldBe(.8);
+        updated.Data.Configuration.StatMappings.Count.ShouldBe(2);
+
+        var stale = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(
+                new SaveEraWeaponStatMappingCommand { ExpectedManifestVersion = 9, StatMapping = mapping }, token)));
+        stale.Code.ShouldBe(HttpStatusCode.Conflict);
+        stale.ErrorCode.ShouldBe("era.weapon_config_version_conflict");
+        var referenced = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<DeleteEraWeaponStatMappingCommand, DeleteEraWeaponStatMappingResponse>(
+                new DeleteEraWeaponStatMappingCommand { ExpectedManifestVersion = 10, Id = catalog.StatMappings[0].Id }, token)));
+        referenced.Code.ShouldBe(HttpStatusCode.Conflict);
+        referenced.ErrorCode.ShouldBe("era.weapon_reference_conflict");
+
+        var deleted = await RequestAsync((mediator, token) => mediator.SendAsync<DeleteEraWeaponStatMappingCommand, DeleteEraWeaponStatMappingResponse>(
+            new DeleteEraWeaponStatMappingCommand { ExpectedManifestVersion = 10, Id = mapping.Id }, token));
+        deleted.Data!.Version.ShouldBe(11);
+        deleted.Data.Configuration.StatMappings.Single().Id.ShouldBe(catalog.StatMappings[0].Id);
+        var missing = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
+            mediator.RequestAsync<GetEraWeaponStatMappingRequest, GetEraWeaponStatMappingResponse>(
+                new GetEraWeaponStatMappingRequest { Id = mapping.Id }, token)));
+        missing.Code.ShouldBe(HttpStatusCode.NotFound);
+        await ReadDatabaseAsync(async context =>
+        {
+            (await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId)).Version.ShouldBe(11);
+            (await context.Set<EraWeaponStatMapping>().SingleAsync()).Id.ShouldBe(catalog.StatMappings[0].Id);
+        });
+    }
+
+    [Fact]
+    public async Task Invalid_shared_weapon_stat_mapping_writes_should_leave_the_publication_unchanged()
+    {
+        await SeedAsync(0);
+        var catalog = WeaponCatalog();
+        await PublishWeaponsAsync(catalog);
+        var mapping = catalog.StatMappings[0];
+        mapping.ReadySecondsAtHundred = 0;
+        var invalid = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(
+                new SaveEraWeaponStatMappingCommand { ExpectedManifestVersion = 8, StatMapping = mapping }, token)));
+        invalid.Code.ShouldBe(HttpStatusCode.BadRequest);
+        invalid.ErrorCode.ShouldBe("era.weapon_invalid_configuration");
+        var missing = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<DeleteEraWeaponStatMappingCommand, DeleteEraWeaponStatMappingResponse>(
+                new DeleteEraWeaponStatMappingCommand { ExpectedManifestVersion = 8, Id = Guid.NewGuid() }, token)));
+        missing.Code.ShouldBe(HttpStatusCode.NotFound);
+        await ReadDatabaseAsync(async context =>
+        {
+            (await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId)).Version.ShouldBe(8);
+            (await context.Set<EraWeaponStatMapping>().SingleAsync()).ReadySecondsAtHundred.ShouldBe(.35);
+        });
+    }
+
+    [Fact]
     public async Task Weapons_and_armor_should_compete_for_the_same_120_inventory_capacity()
     {
         await SeedAsync(119);
@@ -132,7 +215,7 @@ public partial class EraIntegrationFixture
         };
         (await SelectWeaponAsync(command)).Data!.State.EquipmentVersion.ShouldBe(5);
         catalog.Templates[0].BaseStats.Damage = 55;
-        catalog.StatEffectProfiles[0].SpreadDegreesAtHundred = .5;
+        catalog.StatMappings[0].SpreadDegreesAtHundred = .5;
         foreach (var definition in catalog.Templates[0].Slots) { definition.CandidateCount = 1; definition.Pool.RemoveAt(0); }
         (await PublishWeaponsAsync(catalog, 8)).Data!.Version.ShouldBe(9);
         var current = (await ReadWeaponEquipmentAsync()).Data!;
@@ -141,8 +224,8 @@ public partial class EraIntegrationFixture
         var updatedManifest = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraEquipmentManifestRequest, GetEraEquipmentManifestResponse>(
             new GetEraEquipmentManifestRequest(), token));
         updatedManifest.Data!.Version.ShouldBe(9);
-        updatedManifest.Data.Weapons.StatEffectProfiles.Single().SpreadDegreesAtHundred.ShouldBe(.5);
-        updatedManifest.Data.Weapons.Templates.Single().StatEffectProfileId.ShouldBe(catalog.StatEffectProfiles[0].Id);
+        updatedManifest.Data.Weapons.StatMappings.Single().SpreadDegreesAtHundred.ShouldBe(.5);
+        updatedManifest.Data.Weapons.Templates.Single().StatMappingId.ShouldBe(catalog.StatMappings[0].Id);
         item = current.InventoryItems.Single();
         item.Version.ShouldBe(2);
         item.DefinitionVersion.ShouldBe(8);
@@ -156,7 +239,7 @@ public partial class EraIntegrationFixture
             new DisableEraWeaponTemplateCommand { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), ExpectedManifestVersion = 9 }, token));
         disabled.Data!.Version.ShouldBe(10);
         disabled.Data.Configuration.Templates.Single().IsGenerationEnabled.ShouldBeFalse();
-        disabled.Data.Configuration.StatEffectProfiles.Single().SpreadDegreesAtHundred.ShouldBe(.5);
+        disabled.Data.Configuration.StatMappings.Single().SpreadDegreesAtHundred.ShouldBe(.5);
         (await ReadWeaponEquipmentAsync()).Data!.InventoryItems.Single().Id.ShouldBe(itemId);
         await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
             mediator.SendAsync<DeleteEraWeaponTemplateCommand, DeleteEraWeaponTemplateResponse>(

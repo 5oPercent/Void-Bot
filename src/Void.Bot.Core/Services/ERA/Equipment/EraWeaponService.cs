@@ -17,11 +17,15 @@ public interface IEraWeaponService : IScope
     Task<GetEraWeaponTemplateResponse> GetTemplateAsync(GetEraWeaponTemplateRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponModificationsResponse> GetModificationsAsync(GetEraWeaponModificationsRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponModificationResponse> GetModificationAsync(GetEraWeaponModificationRequest request, CancellationToken cancellationToken);
+    Task<GetEraWeaponStatMappingsResponse> GetStatMappingsAsync(GetEraWeaponStatMappingsRequest request, CancellationToken cancellationToken);
+    Task<GetEraWeaponStatMappingResponse> GetStatMappingAsync(GetEraWeaponStatMappingRequest request, CancellationToken cancellationToken);
     Task<SaveEraWeaponTemplateResponse> SaveTemplateAsync(SaveEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<SaveEraWeaponModificationResponse> SaveModificationAsync(SaveEraWeaponModificationCommand command, CancellationToken cancellationToken);
+    Task<SaveEraWeaponStatMappingResponse> SaveStatMappingAsync(SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken);
     Task<DisableEraWeaponTemplateResponse> DisableTemplateAsync(DisableEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponTemplateResponse> DeleteTemplateAsync(DeleteEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponModificationResponse> DeleteModificationAsync(DeleteEraWeaponModificationCommand command, CancellationToken cancellationToken);
+    Task<DeleteEraWeaponStatMappingResponse> DeleteStatMappingAsync(DeleteEraWeaponStatMappingCommand command, CancellationToken cancellationToken);
     Task<PublishEraWeaponConfigurationResponse> PublishConfigurationAsync(PublishEraWeaponConfigurationCommand command, CancellationToken cancellationToken);
     Task<ValidateEraWeaponConfigurationResponse> ValidateConfigurationAsync(ValidateEraWeaponConfigurationRequest request, CancellationToken cancellationToken);
 }
@@ -74,6 +78,22 @@ public sealed class EraWeaponService : IEraWeaponService
                 throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound) };
     }
 
+    public async Task<GetEraWeaponStatMappingsResponse> GetStatMappingsAsync(GetEraWeaponStatMappingsRequest request, CancellationToken cancellationToken)
+    {
+        var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
+        var items = manifest.Weapons.StatMappings.Where(row => string.IsNullOrWhiteSpace(request.Search) ||
+            row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase)).ToList();
+        return new GetEraWeaponStatMappingsResponse { Code = HttpStatusCode.OK, Version = manifest.Version, Data = Page(items, request.PageIndex, request.PageSize) };
+    }
+
+    public async Task<GetEraWeaponStatMappingResponse> GetStatMappingAsync(GetEraWeaponStatMappingRequest request, CancellationToken cancellationToken)
+    {
+        var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
+        return new GetEraWeaponStatMappingResponse { Code = HttpStatusCode.OK, Version = manifest.Version,
+            Data = manifest.Weapons.StatMappings.SingleOrDefault(row => row.Id == request.Id) ??
+                throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound) };
+    }
+
     public Task<SaveEraWeaponTemplateResponse> SaveTemplateAsync(SaveEraWeaponTemplateCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponTemplateResponse>(command.ExpectedManifestVersion, catalog =>
         {
@@ -89,6 +109,15 @@ public sealed class EraWeaponService : IEraWeaponService
             if (command.Modification == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.Modifications.RemoveAll(row => row.Id == command.Modification.Id);
             catalog.Modifications.Add(command.Modification);
+            return catalog;
+        }, cancellationToken);
+
+    public Task<SaveEraWeaponStatMappingResponse> SaveStatMappingAsync(SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken) =>
+        WriteAsync<SaveEraWeaponStatMappingResponse>(command.ExpectedManifestVersion, catalog =>
+        {
+            if (command.StatMapping == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
+            catalog.StatMappings.RemoveAll(row => row.Id == command.StatMapping.Id);
+            catalog.StatMappings.Add(command.StatMapping);
             return catalog;
         }, cancellationToken);
 
@@ -114,6 +143,17 @@ public sealed class EraWeaponService : IEraWeaponService
         {
             if (catalog.Modifications.RemoveAll(row => row.Id == command.Id) != 1)
                 throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound);
+            return catalog;
+        }, cancellationToken);
+
+    public Task<DeleteEraWeaponStatMappingResponse> DeleteStatMappingAsync(DeleteEraWeaponStatMappingCommand command, CancellationToken cancellationToken) =>
+        WriteAsync<DeleteEraWeaponStatMappingResponse>(command.ExpectedManifestVersion, catalog =>
+        {
+            if (!catalog.StatMappings.Any(row => row.Id == command.Id))
+                throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound);
+            if (catalog.Templates.Any(row => row.StatMappingId == command.Id))
+                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
+            catalog.StatMappings.RemoveAll(row => row.Id == command.Id);
             return catalog;
         }, cancellationToken);
 
@@ -148,7 +188,7 @@ public sealed class EraWeaponService : IEraWeaponService
         var proposed = apply(new EraWeaponCatalogDto
         {
             Templates = manifest.Weapons.Templates.ToList(), Modifications = manifest.Weapons.Modifications.ToList(),
-            StatEffectProfiles = manifest.Weapons.StatEffectProfiles.ToList()
+            StatMappings = manifest.Weapons.StatMappings.ToList()
         });
         try { EraWeaponConfigurationValidator.Validate(proposed); }
         catch (ArgumentException) { throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration); }

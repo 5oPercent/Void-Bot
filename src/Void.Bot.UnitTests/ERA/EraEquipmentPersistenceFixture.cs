@@ -153,7 +153,7 @@ public class EraEquipmentPersistenceFixture
             new Repository<EraEquipmentInstance>(context), new Repository<EraArmorInstanceData>(context),
             new Repository<EraWorldMember>(context), new Repository<EraWorld>(context),
             new Repository<EraPlayerAccountLink>(context), new Repository<EraEquipmentOperationReceipt>(context),
-            new Repository<EraWeaponTemplate>(context), new Repository<EraWeaponStatEffectProfile>(context), new Repository<EraWeaponModDefinition>(context),
+            new Repository<EraWeaponTemplate>(context), new Repository<EraWeaponStatMapping>(context), new Repository<EraWeaponModDefinition>(context),
             new Repository<EraWeaponModStatModifier>(context), new Repository<EraWeaponTemplateModSlot>(context),
             new Repository<EraWeaponTemplateModPool>(context), new Repository<EraWeaponModCandidate>(context),
             new Repository<EraWeaponModSelection>(context), Substitute.For<AutoMapper.IMapper>());

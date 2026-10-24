@@ -12,7 +12,7 @@ public sealed class EraWeaponTemplateDto
     public string Note { get; set; } = string.Empty;
     public bool IsGenerationEnabled { get; set; } = true;
     public string PresentationKey { get; set; } = string.Empty;
-    public Guid StatEffectProfileId { get; set; }
+    public Guid StatMappingId { get; set; }
     public EraWeaponStatsDto BaseStats { get; set; } = new EraWeaponStatsDto();
     public EraWeaponBehaviorDto Behavior { get; set; } = new EraWeaponBehaviorDto();
     public List<EraEquipmentSlot> CompatibleSlots { get; set; } = new List<EraEquipmentSlot>();

@@ -10,7 +10,7 @@ public sealed class EraWeaponEntityConfiguration : IEntityTypeConfiguration<EraW
 {
     public void Configure(EntityTypeBuilder<EraWeaponTemplate> builder)
     {
-        builder.HasOne<EraWeaponStatEffectProfile>().WithMany().HasForeignKey(row => row.StatEffectProfileId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<EraWeaponStatMapping>().WithMany().HasForeignKey(row => row.StatMappingId).OnDelete(DeleteBehavior.Restrict);
     }
 
     public void Configure(EntityTypeBuilder<EraWeaponTemplateModSlot> builder)

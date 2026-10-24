@@ -1,13 +1,15 @@
-using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Void.Bot.Message.Dto;
 
-namespace Void.Bot.Message.Dto.ERA;
+namespace Void.Bot.Core.Domain.ERA;
 
-/// <summary>可被多个模板引用的评分效果配置；端点与武器目录一起发布。</summary>
-[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class EraWeaponStatEffectProfileDto
+/// <summary>共享的武器属性映射配置，保存四组双端值；通过装备目录发布，实例不复制端点。</summary>
+[Table("era_weapon_stat_mapping")]
+public sealed class EraWeaponStatMapping : IEntity<Guid>
 {
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
+    [Key] public Guid Id { get; set; }
+    [StringLength(128)] public string Name { get; set; } = string.Empty;
     /// <summary>精准度 0 分的散布角，单位度。</summary>
     public double SpreadDegreesAtZero { get; set; }
     /// <summary>精准度 100 分的散布角，单位度。</summary>

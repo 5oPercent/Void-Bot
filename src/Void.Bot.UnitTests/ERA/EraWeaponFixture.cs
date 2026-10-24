@@ -22,7 +22,7 @@ public class EraWeaponFixture
     internal static EraWeaponCatalogDto Catalog()
     {
         var catalog = new EraWeaponCatalogDto();
-        catalog.StatEffectProfiles.Add(new EraWeaponStatEffectProfileDto
+        catalog.StatMappings.Add(new EraWeaponStatMappingDto
         {
             Id = Guid.Parse("40000000-0000-0000-0000-000000000001"), Name = "Test rifle effects",
             SpreadDegreesAtZero = 3, SpreadDegreesAtHundred = 1, RecoilDegreesAtZero = 2, RecoilDegreesAtHundred = .5,
@@ -31,7 +31,7 @@ public class EraWeaponFixture
         var template = new EraWeaponTemplateDto
         {
             Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Test rifle", PresentationKey = "scifi_rifle",
-            StatEffectProfileId = catalog.StatEffectProfiles[0].Id,
+            StatMappingId = catalog.StatMappings[0].Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
             BaseStats = new EraWeaponStatsDto
             {
@@ -120,19 +120,19 @@ public class EraWeaponFixture
     public void Should_reject_invalid_score_effect_endpoints(double zero, double hundred)
     {
         var catalog = Catalog();
-        catalog.StatEffectProfiles[0].SpreadDegreesAtZero = zero;
-        catalog.StatEffectProfiles[0].SpreadDegreesAtHundred = hundred;
+        catalog.StatMappings[0].SpreadDegreesAtZero = zero;
+        catalog.StatMappings[0].SpreadDegreesAtHundred = hundred;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 
     [Fact]
-    public void Should_require_referenced_effect_profile_and_positive_action_duration()
+    public void Should_require_referenced_stat_mapping_and_positive_action_duration()
     {
         var catalog = Catalog();
-        catalog.StatEffectProfiles[0].ReadySecondsAtHundred = 0;
+        catalog.StatMappings[0].ReadySecondsAtHundred = 0;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog = Catalog();
-        catalog.StatEffectProfiles.Clear();
+        catalog.StatMappings.Clear();
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 

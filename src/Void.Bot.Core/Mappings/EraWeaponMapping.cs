@@ -8,8 +8,8 @@ public sealed class EraWeaponMapping : VoidBotMappingProfile
 {
     public EraWeaponMapping()
     {
-        CreateMap<EraWeaponStatEffectProfile, EraWeaponStatEffectProfileDto>();
-        CreateMap<EraWeaponStatEffectProfileDto, EraWeaponStatEffectProfile>(MemberList.None);
+        CreateMap<EraWeaponStatMapping, EraWeaponStatMappingDto>();
+        CreateMap<EraWeaponStatMappingDto, EraWeaponStatMapping>(MemberList.None);
         CreateMap<EraWeaponTemplate, EraWeaponStatsDto>();
         CreateMap<EraWeaponStatsDto, EraWeaponTemplate>(MemberList.None);
         CreateMap<EraWeaponTemplate, EraWeaponTemplateDto>()
