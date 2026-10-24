@@ -31,7 +31,7 @@ public partial class EraIntegrationFixture
         response.Data.TotalInventoryCount.ShouldBe(0);
         response.Data.TotalInventoryCapacity.ShouldBe(120);
         response.Data.InventoryItems.ShouldBeEmpty();
-        response.Data.EquippedSlots.Count.ShouldBe(6);
+        response.Data.EquippedSlots.Count.ShouldBe(9);
         response.Data.EquippedSlots.ShouldAllBe(slot => slot.Equipment == null);
         await AssertOriginalStateAsync();
         await ReadDatabaseAsync(async context =>
@@ -55,15 +55,15 @@ public partial class EraIntegrationFixture
 
         var response = await RequestAsync((mediator, token) =>
             mediator.RequestAsync<GetEraCharacterInventoryRequest, GetEraCharacterInventoryResponse>(
-                new GetEraCharacterInventoryRequest { CharacterId = _characterId, Slot = EraArmorSlot.Head }, token));
+                new GetEraCharacterInventoryRequest { CharacterId = _characterId, Slot = EraEquipmentSlot.Head }, token));
 
         response.Code.ShouldBe(HttpStatusCode.OK);
         var state = response.Data!;
-        state.FilterSlot.ShouldBe(EraArmorSlot.Head);
+        state.FilterSlot.ShouldBe(EraEquipmentSlot.Head);
         state.TotalInventoryCount.ShouldBe(2);
         state.InventoryItems.Select(item => item.Id).OrderBy(id => id)
             .ShouldBe(_inventory.Select(item => item.Id).OrderBy(id => id));
-        state.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!.Id.ShouldBe(_equipped!.Id);
+        state.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(_equipped!.Id);
         foreach (var item in state.InventoryItems)
         {
             item.OwnerPlayerId.ShouldBe(_playerId);
@@ -140,7 +140,7 @@ public partial class EraIntegrationFixture
         var item = response.Data.InventoryItems.ShouldHaveSingleItem();
         item.Id.ShouldBe(_inventory[0].Id);
         item.Definition.ShouldBeNull();
-        item.DefinitionId.ShouldBe("test.Head");
+        item.DefinitionId.ShouldBe(Guid.Parse("10000000-0000-0000-0000-000000000001"));
         item.DefinitionVersion.ShouldBe(1);
         item.GenerationRuleVersion.ShouldBe(42);
         item.ArmorAttributes.Strength.ShouldBe(120);

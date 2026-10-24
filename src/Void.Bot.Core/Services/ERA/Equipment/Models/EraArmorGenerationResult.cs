@@ -7,7 +7,7 @@ namespace Void.Bot.Core.Services.ERA.Equipment.Models;
 public sealed class EraArmorGenerationResult
 {
     /// <summary>本次生成采用的护甲品阶。</summary>
-    public required EraArmorGrade Grade { get; init; }
+    public required EraEquipmentGrade Grade { get; init; }
 
     /// <summary>与六维结果一起持久化的生成规则版本。</summary>
     public required int GenerationRuleVersion { get; init; }

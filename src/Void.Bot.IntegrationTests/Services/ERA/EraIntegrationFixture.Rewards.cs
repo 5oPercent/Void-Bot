@@ -44,7 +44,7 @@ public partial class EraIntegrationFixture
                     {
                         Id = "test.pool", Entries = new List<EraRewardPoolEntry>
                         {
-                            new EraRewardPoolEntry { DefinitionId = "test.Head", Grade = EraArmorGrade.Common, Count = count, Weight = 1 }
+                            new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = count, Weight = 1 }
                         }
                     }
                 }
@@ -109,7 +109,7 @@ public partial class EraIntegrationFixture
             var items = await context.Set<EraEquipmentInstance>().Where(item => ids.Contains(item.Id)).ToListAsync();
             items.Count.ShouldBe(4);
             items.ShouldAllBe(item => item.Location == EraEquipmentLocation.Inventory && item.Version == 1 &&
-                item.DefinitionVersion == 7 && item.EquippedSlot == null && item.InventorySlot == EraArmorSlot.Head);
+                item.DefinitionVersion == 7 && item.EquippedSlot == null && item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
             foreach (var grant in response.Data.Grants)
                 items.Where(item => grant.EquipmentIds.Contains(item.Id)).ShouldAllBe(item => item.OwnerPlayerId == grant.PlayerId && item.CharacterId == grant.CharacterId);
             var armor = await context.Set<EraArmorInstanceData>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();

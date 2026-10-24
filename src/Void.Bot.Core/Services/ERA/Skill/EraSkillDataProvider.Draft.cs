@@ -23,51 +23,51 @@ public partial class EraSkillDataProvider
     {
         if (!forUpdate)
         {
-            return await _dbContext.Set<EraSkillDraftWorkspace>().AsNoTracking().SingleOrDefaultAsync(w => w.Id == DraftWorkspaceId, cancellationToken).ConfigureAwait(false);
+            return await _eraSkillDraftWorkspaceRepository.QueryNoTracking().SingleOrDefaultAsync(w => w.Id == DraftWorkspaceId, cancellationToken).ConfigureAwait(false);
         }
 
-        var rows = await _dbContext.Set<EraSkillDraftWorkspace>().FromSqlInterpolated($"SELECT * FROM era_skill_draft_workspace WHERE id = {DraftWorkspaceId.ToString()} FOR UPDATE").ToListAsync(cancellationToken).ConfigureAwait(false);
+        var rows = await _eraSkillDraftWorkspaceRepository.QuerySql($"SELECT * FROM era_skill_draft_workspace WHERE id = {DraftWorkspaceId.ToString()} FOR UPDATE").ToListAsync(cancellationToken).ConfigureAwait(false);
         return rows.SingleOrDefault();
     }
 
     public Task<List<EraSkillDraftRecord>> GetDraftRecordsAsync(bool forUpdate, CancellationToken cancellationToken)
     {
-        var query = _dbContext.Set<EraSkillDraftRecord>().Where(r => r.WorkspaceId == DraftWorkspaceId);
+        var query = _eraSkillDraftRecordRepository.Query().Where(r => r.WorkspaceId == DraftWorkspaceId);
         return (forUpdate ? query : query.AsNoTracking()).ToListAsync(cancellationToken);
     }
 
     public async Task AddDraftRecordAsync(EraSkillDraftRecord record, CancellationToken cancellationToken)
     {
-        await _dbContext.Set<EraSkillDraftRecord>().AddAsync(record, cancellationToken).ConfigureAwait(false);
+        await _eraSkillDraftRecordRepository.InsertAsync(record, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<EraSkillPublication?> GetPublicationAsync(long version, CancellationToken cancellationToken)
     {
-        return _dbContext.Set<EraSkillPublication>().AsNoTracking().SingleOrDefaultAsync(p => p.Version == version, cancellationToken);
+        return _eraSkillPublicationRepository.QueryNoTracking().SingleOrDefaultAsync(p => p.Version == version, cancellationToken);
     }
 
     public Task<List<EraSkillPublication>> GetPublicationsAsync(int skip, int take, CancellationToken cancellationToken)
     {
-        return _dbContext.Set<EraSkillPublication>().AsNoTracking().OrderByDescending(p => p.Version).Skip(skip).Take(take).ToListAsync(cancellationToken);
+        return _eraSkillPublicationRepository.QueryNoTracking().OrderByDescending(p => p.Version).Skip(skip).Take(take).ToListAsync(cancellationToken);
     }
 
     public Task<int> CountPublicationsAsync(CancellationToken cancellationToken)
     {
-        return _dbContext.Set<EraSkillPublication>().CountAsync(cancellationToken);
+        return _eraSkillPublicationRepository.Query().CountAsync(cancellationToken);
     }
 
     public async Task AddPublicationAsync(EraSkillPublication publication, CancellationToken cancellationToken)
     {
-        await _dbContext.Set<EraSkillPublication>().AddAsync(publication, cancellationToken).ConfigureAwait(false);
+        await _eraSkillPublicationRepository.InsertAsync(publication, cancellationToken).ConfigureAwait(false);
     }
 
     public Task<EraSkillPublishReceipt?> GetPublishReceiptAsync(Guid requestId, CancellationToken cancellationToken)
     {
-        return _dbContext.Set<EraSkillPublishReceipt>().AsNoTracking().SingleOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+        return _eraSkillPublishReceiptRepository.QueryNoTracking().SingleOrDefaultAsync(r => r.Id == requestId, cancellationToken);
     }
 
     public async Task AddPublishReceiptAsync(EraSkillPublishReceipt receipt, CancellationToken cancellationToken)
     {
-        await _dbContext.Set<EraSkillPublishReceipt>().AddAsync(receipt, cancellationToken).ConfigureAwait(false);
+        await _eraSkillPublishReceiptRepository.InsertAsync(receipt, cancellationToken).ConfigureAwait(false);
     }
 }

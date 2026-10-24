@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Dto.ERA;
 public sealed class EraEquippedArmorSlotDto
 {
     /// <summary>已穿槽位。</summary>
-    public EraArmorSlot Slot { get; set; }
+    public EraEquipmentSlot Slot { get; set; }
     /// <summary>当前已穿实例，空槽为 null。</summary>
     public EraEquipmentInstanceDto? Equipment { get; set; }
 }

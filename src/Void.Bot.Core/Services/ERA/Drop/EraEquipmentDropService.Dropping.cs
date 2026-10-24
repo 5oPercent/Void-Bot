@@ -112,13 +112,13 @@ public sealed partial class EraEquipmentDropService
         equipment.CharacterId = null;
         equipment.EquippedSlot = null;
         equipment.Version++;
-        if (!IsValidEntry(new EraEquipmentDropReadEntry(drop, equipment, item.Armor, share)))
+        if (!IsValidEntry(new EraEquipmentDropReadEntry(drop, equipment, item.Armor, share, item.Weapon)))
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
         }
         snapshot.Entries.RemoveAll(entry => entry.Equipment.Id == equipment.Id);
         snapshot.EquipmentVersion = character.EquipmentVersion + 1;
-        var manifest = EraEquipmentService.DecodeConfiguration(await _equipment.GetConfigurationAsync(cancellationToken).ConfigureAwait(false));
+        var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, false, cancellationToken).ConfigureAwait(false);
         var state = EraEquipmentService.CreateState(snapshot, manifest, null);
         if (state == null)
         {
@@ -142,6 +142,8 @@ public sealed partial class EraEquipmentDropService
             Operation = EraEquipmentOperation.Drop, RequestPayload = payload, ResultPayload = JsonSerializer.Serialize(receipt), CreatedAt = now
         }, cancellationToken).ConfigureAwait(false);
         character.EquipmentVersion = state.EquipmentVersion;
+        if (_notifications != null)
+            await _notifications.EnqueueAsync(character.PlayerId, character.Id, state.EquipmentVersion, command.RequestId, cancellationToken).ConfigureAwait(false);
         if (now > world.LastActiveAt)
         {
             world.LastActiveAt = now;

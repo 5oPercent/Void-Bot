@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
-using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 using Void.Bot.Message.Request.ERA;
 
@@ -24,13 +23,12 @@ public partial class EraIntegrationFixture
                 new GetEraCharacterEquipmentRequest { CharacterId = _characterId }, token));
         var filtered = await RequestAsync((mediator, token) =>
             mediator.RequestAsync<GetEraCharacterInventoryRequest, GetEraCharacterInventoryResponse>(
-                new GetEraCharacterInventoryRequest { CharacterId = _characterId, Slot = EraArmorSlot.Body }, token));
+                new GetEraCharacterInventoryRequest { CharacterId = _characterId, Slot = EraEquipmentSlot.Body }, token));
 
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.TotalInventoryCapacity.ShouldBe(120);
         response.Data.TotalInventoryCount.ShouldBe(count);
         response.Data.InventoryItems.Count.ShouldBe(count);
-        response.Data.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Head).Count.ShouldBe(count);
         response.Data.EquippedSlots.Count(slot => slot.Equipment != null).ShouldBe(1);
         filtered.Code.ShouldBe(HttpStatusCode.OK);
         filtered.Data!.InventoryItems.ShouldBeEmpty();
@@ -47,8 +45,7 @@ public partial class EraIntegrationFixture
         {
             foreach (var item in await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId).ToListAsync())
             {
-                item.InventorySlot = EraArmorSlot.Body;
-                item.DefinitionId = "test.Body";
+                item.DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002");
             }
             await context.SaveChangesAsync();
         });
@@ -61,8 +58,8 @@ public partial class EraIntegrationFixture
         var picked = await PickupDropAsync(PickupCommand(world, drops[0]));
 
         picked.Data!.State.TotalInventoryCount.ShouldBe(120);
-        picked.Data.State.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Body).Count.ShouldBe(119);
-        picked.Data.State.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Head).Count.ShouldBe(1);
+        picked.Data.State.InventoryItems.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(119);
+        picked.Data.State.InventoryItems.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(1);
         var second = PickupCommand(world, drops[1], picked.Data.State.EquipmentVersion);
         (await Should.ThrowAsync<EraRewardException>(() => PickupDropAsync(second))).ErrorCode.ShouldBe("era.drop_inventory_full");
         await ReadDatabaseAsync(async context =>
@@ -83,8 +80,7 @@ public partial class EraIntegrationFixture
         {
             foreach (var item in await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId).ToListAsync())
             {
-                item.InventorySlot = EraArmorSlot.Body;
-                item.DefinitionId = "test.Body";
+                item.DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002");
             }
             await context.SaveChangesAsync();
         });
@@ -111,8 +107,8 @@ public partial class EraIntegrationFixture
             var items = await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId &&
                 item.Location == EraEquipmentLocation.Inventory).ToListAsync();
             items.Count.ShouldBe(120);
-            items.Count(item => item.InventorySlot == EraArmorSlot.Body).ShouldBe(118);
-            items.Count(item => item.InventorySlot == EraArmorSlot.Head).ShouldBe(2);
+            items.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(118);
+            items.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(2);
         });
     }
 
@@ -134,7 +130,7 @@ public partial class EraIntegrationFixture
             var items = await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId &&
                 item.Location == EraEquipmentLocation.Inventory).ToListAsync();
             items.Count.ShouldBe(count);
-            items.ShouldAllBe(item => item.InventorySlot == EraArmorSlot.Head);
+            items.ShouldAllBe(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
         });
         (await GrantRewardAsync(prepared.Data)).IsReplay.ShouldBeTrue();
     }

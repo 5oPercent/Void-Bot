@@ -115,7 +115,7 @@ public sealed partial class EraEquipmentDropService
             throw Error(HttpStatusCode.Conflict, "era.drop_members_changed", text => text.MembersChanged);
         }
         var configuration = await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false);
-        var manifest = EraEquipmentService.DecodeConfiguration(await _equipment.LockConfigurationAsync(cancellationToken).ConfigureAwait(false));
+        var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, true, cancellationToken).ConfigureAwait(false);
         EraRewardRules rules;
         try
         {
@@ -141,8 +141,10 @@ public sealed partial class EraEquipmentDropService
             throw Error(HttpStatusCode.Conflict, "era.drop_delivery_unavailable", text => text.DeliveryUnavailable);
         }
         var pool = rules.Pools.Single(item => item.Id == node.PoolId);
-        var definitions = manifest!.Definitions.ToDictionary(item => item.Id, StringComparer.Ordinal);
-        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId)))
+        var definitions = manifest!.Definitions.ToDictionary(item => item.Id);
+        var weaponTemplates = manifest.Weapons.Templates.ToDictionary(item => item.Id);
+        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId) &&
+            (!weaponTemplates.TryGetValue(entry.DefinitionId, out var template) || !template.IsGenerationEnabled)))
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
         }
@@ -170,21 +172,29 @@ public sealed partial class EraEquipmentDropService
             var grant = new EraGroundRewardGrantReceiptDto { GrantId = Guid.NewGuid(), PlayerId = recipient.PlayerId, CharacterId = recipient.CharacterId };
             var items = new List<EraEquipmentInstance>();
             var armor = new List<EraArmorInstanceData>();
+            var weaponInstances = new Dictionary<Guid, EraWeaponInstanceDto>();
             foreach (var entry in _pools.Roll(node, pool))
             {
                 for (var index = 0; index < entry.Count; index++)
                 {
-                    var generated = _armor.Generate(entry.Grade);
+                    var isWeapon = weaponTemplates.TryGetValue(entry.DefinitionId, out var template);
+                    var generated = isWeapon ? null : _armor.Generate(entry.Grade);
                     var item = new EraEquipmentInstance
                     {
                         Id = Guid.NewGuid(), DefinitionId = entry.DefinitionId, DefinitionVersion = manifest.Version,
-                        EquipmentType = EraEquipmentType.Armor, Grade = generated.Grade, Location = EraEquipmentLocation.Ground,
-                        InventorySlot = definitions[entry.DefinitionId].InventorySlot, Version = 1, CreatedAt = now
+                        EquipmentType = isWeapon ? EraEquipmentType.Weapon : EraEquipmentType.Armor,
+                        Grade = entry.Grade, Location = EraEquipmentLocation.Ground,
+                        Version = 1, CreatedAt = now
                     };
                     items.Add(item);
-                    armor.Add(new EraArmorInstanceData
+                    if (isWeapon)
                     {
-                        EquipmentId = item.Id, GenerationRuleVersion = generated.GenerationRuleVersion,
+                        if (_weapons == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
+                        weaponInstances.Add(item.Id, _weapons.Generate(template!));
+                    }
+                    else armor.Add(new EraArmorInstanceData
+                    {
+                        EquipmentId = item.Id, GenerationRuleVersion = generated!.GenerationRuleVersion,
                         Strength = generated.Attributes.Strength, Survival = generated.Attributes.Survival, Mobility = generated.Attributes.Mobility,
                         Focus = generated.Attributes.Focus, Efficiency = generated.Attributes.Efficiency, Resistance = generated.Attributes.Resistance
                     });
@@ -204,6 +214,7 @@ public sealed partial class EraEquipmentDropService
                 Id = grant.GrantId, EventId = result.EventId, PlayerId = recipient.PlayerId, CharacterId = recipient.CharacterId,
                 GrantedAt = now, ResultPayload = JsonSerializer.Serialize(grant)
             }, items, armor);
+            if (weaponInstances.Count > 0) _rewards.AddWeaponInstances(weaponInstances);
             result.Grants.Add(grant);
         }
         rewardEvent.ResultPayload = JsonSerializer.Serialize(result);

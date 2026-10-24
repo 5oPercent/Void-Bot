@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-/// <summary>读取当前装备目录、生成规则及背包分区容量，不生成或初始化资产。</summary>
+/// <summary>读取当前装备目录、生成规则及共用背包容量，不生成或初始化资产。</summary>
 public sealed class GetEraEquipmentManifestRequest : IRequest
 {
 }

@@ -7,7 +7,8 @@ public sealed class EraEquipmentContextTemplate : IContextTemplate
 {
     public string ConfigUnavailable { get; set; } = "装备目录尚未初始化或格式无效";
     public string DataUnavailable { get; set; } = "装备数据不完整或状态无效，请稍后重试";
-    public string InvalidSlot { get; set; } = "护甲槽位无效";
+    public string InvalidSlot { get; set; } = "装备槽位无效";
+    public string InvalidEquipmentType { get; set; } = "装备类型无效";
     public string InvalidOperation { get; set; } = "装备操作参数或预期版本无效";
     public string CharacterDisabled { get; set; } = "禁用角色不能操作装备";
     public string EquipmentNotFound { get; set; } = "装备不存在或不在当前角色背包及已穿位置";

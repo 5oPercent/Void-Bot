@@ -2,7 +2,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Core.Services.ERA.Equipment.Models;
 
-/// <summary>单条查询产生的内部快照，不直接暴露持久化实体给 API。</summary>
+/// <summary>通过资产版本核验的内部快照，不直接暴露持久化实体给 API。</summary>
 public sealed class EraEquipmentReadSnapshot
 {
     public Guid CharacterId { get; set; }

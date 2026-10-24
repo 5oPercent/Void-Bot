@@ -8,13 +8,13 @@ namespace Void.Bot.UnitTest.ERA;
 public class EraArmorGeneratorFixture
 {
     [Theory]
-    [InlineData(EraArmorGrade.Worn, 54, new[] { 22, 11, 8, 5, 5, 3 })]
-    [InlineData(EraArmorGrade.Common, 60, new[] { 24, 12, 9, 6, 6, 3 })]
-    [InlineData(EraArmorGrade.Reliable, 69, new[] { 28, 14, 10, 7, 7, 3 })]
-    [InlineData(EraArmorGrade.Unusual, 75, new[] { 30, 15, 11, 8, 7, 4 })]
-    [InlineData(EraArmorGrade.Unique, 81, new[] { 33, 16, 12, 8, 8, 4 })]
+    [InlineData(EraEquipmentGrade.Worn, 54, new[] { 22, 11, 8, 5, 5, 3 })]
+    [InlineData(EraEquipmentGrade.Common, 60, new[] { 24, 12, 9, 6, 6, 3 })]
+    [InlineData(EraEquipmentGrade.Reliable, 69, new[] { 28, 14, 10, 7, 7, 3 })]
+    [InlineData(EraEquipmentGrade.Unusual, 75, new[] { 30, 15, 11, 8, 7, 4 })]
+    [InlineData(EraEquipmentGrade.Unique, 81, new[] { 33, 16, 12, 8, 8, 4 })]
     public void Should_allocate_entire_budget_by_largest_remainder(
-        EraArmorGrade grade,
+        EraEquipmentGrade grade,
         int budget,
         int[] expected)
     {
@@ -28,20 +28,20 @@ public class EraArmorGeneratorFixture
     [Fact]
     public void Should_allow_either_tied_remainder_without_changing_higher_priorities()
     {
-        var first = EraArmorGenerator.CreateBaseline(EraArmorGrade.Unusual, new MaximumRandom());
-        var second = EraArmorGenerator.CreateBaseline(EraArmorGrade.Unusual, new SwappedTieRandom());
+        var first = EraArmorGenerator.CreateBaseline(EraEquipmentGrade.Unusual, new MaximumRandom());
+        var second = EraArmorGenerator.CreateBaseline(EraEquipmentGrade.Unusual, new SwappedTieRandom());
 
         first.ShouldBe(new[] { 30, 15, 11, 8, 7, 4 });
         second.ShouldBe(new[] { 30, 15, 11, 7, 8, 4 });
     }
 
     [Theory]
-    [InlineData(EraArmorGrade.Worn)]
-    [InlineData(EraArmorGrade.Common)]
-    [InlineData(EraArmorGrade.Reliable)]
-    [InlineData(EraArmorGrade.Unusual)]
-    [InlineData(EraArmorGrade.Unique)]
-    public void Should_preserve_budget_deviation_nonnegative_values_and_rank_hierarchy(EraArmorGrade grade)
+    [InlineData(EraEquipmentGrade.Worn)]
+    [InlineData(EraEquipmentGrade.Common)]
+    [InlineData(EraEquipmentGrade.Reliable)]
+    [InlineData(EraEquipmentGrade.Unusual)]
+    [InlineData(EraEquipmentGrade.Unique)]
+    public void Should_preserve_budget_deviation_nonnegative_values_and_rank_hierarchy(EraEquipmentGrade grade)
     {
         for (var seed = 0; seed < 32; seed++)
         {
@@ -79,12 +79,12 @@ public class EraArmorGeneratorFixture
     }
 
     [Theory]
-    [InlineData(EraArmorGrade.Worn)]
-    [InlineData(EraArmorGrade.Common)]
-    [InlineData(EraArmorGrade.Reliable)]
-    [InlineData(EraArmorGrade.Unusual)]
-    [InlineData(EraArmorGrade.Unique)]
-    public void Should_return_versioned_final_attributes_with_reproducible_test_input(EraArmorGrade grade)
+    [InlineData(EraEquipmentGrade.Worn)]
+    [InlineData(EraEquipmentGrade.Common)]
+    [InlineData(EraEquipmentGrade.Reliable)]
+    [InlineData(EraEquipmentGrade.Unusual)]
+    [InlineData(EraEquipmentGrade.Unique)]
+    public void Should_return_versioned_final_attributes_with_reproducible_test_input(EraEquipmentGrade grade)
     {
         var generator = new EraArmorGenerator();
         var first = generator.Generate(grade, new Random(17));
@@ -103,17 +103,17 @@ public class EraArmorGeneratorFixture
     public void Should_reject_undefined_grade(int grade)
     {
         Should.Throw<ArgumentOutOfRangeException>(() =>
-            new EraArmorGenerator().Generate((EraArmorGrade)grade));
+            new EraArmorGenerator().Generate((EraEquipmentGrade)grade));
     }
 
     [Fact]
     public void Should_preserve_previous_result_after_another_generation()
     {
         var generator = new EraArmorGenerator();
-        var first = generator.Generate(EraArmorGrade.Common, new Random(17));
+        var first = generator.Generate(EraEquipmentGrade.Common, new Random(17));
         var saved = Values(first.Attributes);
 
-        generator.Generate(EraArmorGrade.Unique, new Random(33));
+        generator.Generate(EraEquipmentGrade.Unique, new Random(33));
 
         Values(first.Attributes).ShouldBe(saved);
     }
@@ -125,7 +125,7 @@ public class EraArmorGeneratorFixture
         // 只控制最后的排列，让每一维轮流拿到主属性；不靠随机种子碰巧覆盖六种结果。
         for (var target = 0; target < 6; target++)
         {
-            var result = generator.Generate(EraArmorGrade.Common, new PrimaryAttributeRandom(target));
+            var result = generator.Generate(EraEquipmentGrade.Common, new PrimaryAttributeRandom(target));
             var values = Values(result.Attributes);
 
             values[target].ShouldBe(values.Max());
@@ -137,8 +137,8 @@ public class EraArmorGeneratorFixture
     public void Should_allow_common_armor_to_reach_two_full_attributes()
     {
         var generator = new EraArmorGenerator();
-        var first = generator.Generate(EraArmorGrade.Common, new PrimaryAttributeRandom(0));
-        var second = generator.Generate(EraArmorGrade.Common, new PrimaryAttributeRandom(1));
+        var first = generator.Generate(EraEquipmentGrade.Common, new PrimaryAttributeRandom(0));
+        var second = generator.Generate(EraEquipmentGrade.Common, new PrimaryAttributeRandom(1));
 
         // 三件 A 主 B 次、三件 B 主 A 次；允许保留超过最终生效上限的原始贡献。
         var strength = 3 * (first.Attributes.Strength + second.Attributes.Strength);

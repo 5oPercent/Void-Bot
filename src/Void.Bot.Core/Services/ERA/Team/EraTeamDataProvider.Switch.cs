@@ -125,26 +125,26 @@ public partial class EraTeamDataProvider
         };
         var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
-        await using var authority = await EraTeamAuthorityLock.AcquireAsync(_connectionString,
-            new[] { original.TeamId, target.TeamId }, cancellationToken).ConfigureAwait(false);
-        var originalFence = await database.StringIncrementAsync(AuthorityFenceKey(original.TeamId)).ConfigureAwait(false);
-        var targetFence = await database.StringIncrementAsync(AuthorityFenceKey(target.TeamId)).ConfigureAwait(false);
-        var values = new RedisValue[]
+        return await _repository.ExecuteInIndependentTransactionAsync(AuthorityLockStatements(new[] { original.TeamId, target.TeamId }), async () =>
         {
-            expectedOriginalVersion.ToString("D"),
-            expectedTargetVersion.ToString("D"),
-            original.TeamId.ToString("D"),
-            target.TeamId.ToString("D"),
-            JsonSerializer.Serialize(teams),
-            players.IndexOf(movingPlayerId) + 6,
-            DateTimeOffset.UtcNow.ToString("O"),
-            Guid.NewGuid().ToString("D"),
-            originalFence,
-            targetFence
-        };
-        var result = await database.ScriptEvaluateAsync(SwitchScript, keys.ToArray(), values).ConfigureAwait(false);
-        await authority.CommitAsync().ConfigureAwait(false);
-        return (EraTeamWriteStatus)(int)result;
+            var originalFence = await database.StringIncrementAsync(AuthorityFenceKey(original.TeamId)).ConfigureAwait(false);
+            var targetFence = await database.StringIncrementAsync(AuthorityFenceKey(target.TeamId)).ConfigureAwait(false);
+            var values = new RedisValue[]
+            {
+                expectedOriginalVersion.ToString("D"),
+                expectedTargetVersion.ToString("D"),
+                original.TeamId.ToString("D"),
+                target.TeamId.ToString("D"),
+                JsonSerializer.Serialize(teams),
+                players.IndexOf(movingPlayerId) + 6,
+                DateTimeOffset.UtcNow.ToString("O"),
+                Guid.NewGuid().ToString("D"),
+                originalFence,
+                targetFence
+            };
+            var result = await database.ScriptEvaluateAsync(SwitchScript, keys.ToArray(), values).ConfigureAwait(false);
+            return (EraTeamWriteStatus)(int)result;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private static SwitchTeam DescribeSwitchTeam(Guid id, EraTeam? team, int teamKey, int codeKey, List<Guid> players)

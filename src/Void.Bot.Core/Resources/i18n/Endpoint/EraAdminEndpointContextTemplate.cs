@@ -5,6 +5,17 @@ namespace Void.Bot.Core.Resources.i18n.Endpoint;
 [Language("Endpoint", "EraAdmin")]
 public sealed class EraAdminEndpointContextTemplate : IContextTemplate
 {
+    public string GetEraWeaponTemplates { get; set; } = "分页查询武器模板";
+    public string GetEraWeaponTemplate { get; set; } = "读取武器模板与各槽候选数量";
+    public string SaveEraWeaponTemplate { get; set; } = "原子保存并发布武器模板与候选池";
+    public string DisableEraWeaponTemplate { get; set; } = "停用武器模板的新生成";
+    public string DeleteEraWeaponTemplate { get; set; } = "删除未引用的武器模板";
+    public string GetEraWeaponModifications { get; set; } = "分页查询公共武器改装";
+    public string GetEraWeaponModification { get; set; } = "读取武器改装及属性修正规则";
+    public string SaveEraWeaponModification { get; set; } = "原子保存并发布公共武器改装";
+    public string DeleteEraWeaponModification { get; set; } = "删除未引用的公共武器改装";
+    public string ValidateEraWeaponConfiguration { get; set; } = "校验拟发布武器配置";
+    public string PublishEraWeaponConfiguration { get; set; } = "原子发布完整武器配置";
     public string GetEraAdminPlayer { get; set; } = "官方查询指定 ERA 玩家的容量与版本";
     public string UpdateEraConfig { get; set; } = "发布 ERA 官方配置";
     public string SetEraWarehouseCapacity { get; set; } = "设置指定玩家的仓库容量";

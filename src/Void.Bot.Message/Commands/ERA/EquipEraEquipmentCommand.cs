@@ -16,7 +16,7 @@ public sealed class EquipEraEquipmentCommand : IEraEquipmentOperation
     /// <summary>当前角色背包中的候选实例 ID。</summary>
     public Guid EquipmentId { get; set; }
     /// <summary>目标已穿槽位。</summary>
-    public EraArmorSlot Slot { get; set; }
+    public EraEquipmentSlot Slot { get; set; }
     /// <summary>角色装备快照的预期版本。</summary>
     public long ExpectedEquipmentVersion { get; set; }
     /// <summary>候选实例的预期版本。</summary>

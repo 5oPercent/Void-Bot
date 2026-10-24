@@ -16,7 +16,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/era/admin")]
 [RequestSizeLimit(1048576)]
 [OpenApiTagOrder(499)]
-public sealed class EraAdminController : ControllerBase
+public sealed partial class EraAdminController : ControllerBase
 {
     private readonly IMediator _mediator;
 

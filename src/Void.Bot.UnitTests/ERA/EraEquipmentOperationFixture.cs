@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using NSubstitute.Extensions;
 using Shouldly;
@@ -40,12 +39,11 @@ public class EraEquipmentOperationFixture
             Version = 7,
             Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto
             {
-                Definitions = System.Enum.GetValues<EraArmorSlot>().Select(slot => new EraArmorDefinitionDto
+                Definitions = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorDefinitionDto
                 {
-                    Id = "test." + slot,
+                    Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
                     Name = "Test armor",
-                    InventorySlot = slot,
-                    CompatibleSlots = new List<EraArmorSlot> { slot }
+                    CompatibleSlots = new List<EraEquipmentSlot> { slot }
                 }).ToList()
             })
         };
@@ -97,15 +95,15 @@ public class EraEquipmentOperationFixture
         }))!;
     }
 
-    private EraEquipmentInstance AddItem(EraArmorSlot slot = EraArmorSlot.Head,
+    private EraEquipmentInstance AddItem(EraEquipmentSlot slot = EraEquipmentSlot.Head,
         EraEquipmentLocation location = EraEquipmentLocation.Inventory)
     {
         var equipment = new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = "test." + slot, DefinitionVersion = 1,
-            EquipmentType = EraEquipmentType.Armor, Grade = EraArmorGrade.Common,
+            Id = Guid.NewGuid(), DefinitionId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), DefinitionVersion = 1,
+            EquipmentType = EraEquipmentType.Armor, Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = _player.Id, CharacterId = _character.Id,
-            Location = location, InventorySlot = slot,
+            Location = location,
             EquippedSlot = location == EraEquipmentLocation.Equipped ? slot : null,
             Version = 5, CreatedAt = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero)
         };
@@ -117,7 +115,7 @@ public class EraEquipmentOperationFixture
         return equipment;
     }
 
-    private EquipEraEquipmentCommand Equip(EraEquipmentInstance item, EraArmorSlot slot = EraArmorSlot.Head)
+    private EquipEraEquipmentCommand Equip(EraEquipmentInstance item, EraEquipmentSlot slot = EraEquipmentSlot.Head)
     {
         var current = _stored.SingleOrDefault(entry => entry.Equipment.Location == EraEquipmentLocation.Equipped &&
             entry.Equipment.EquippedSlot == slot)?.Equipment;
@@ -153,7 +151,7 @@ public class EraEquipmentOperationFixture
         response.Data!.PreviousEquipmentVersion.ShouldBe(3);
         response.Data.State.EquipmentVersion.ShouldBe(4);
         response.Data.State.TotalInventoryCount.ShouldBe(0);
-        var equipped = response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!;
+        var equipped = response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!;
         equipped.Id.ShouldBe(item.Id);
         equipped.Version.ShouldBe(6);
         equipped.GenerationRuleVersion.ShouldBe(42);
@@ -169,7 +167,7 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_replace_at_shared_inventory_capacity_and_release_old_slot_first()
     {
-        var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
+        var old = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
         var candidate = AddItem();
         for (var index = 0; index < 119; index++) AddItem();
 
@@ -180,9 +178,13 @@ public class EraEquipmentOperationFixture
         response.Data.State.InventoryItems.Any(item => item.Id == old.Id).ShouldBeTrue();
         response.Data.State.InventoryItems.Any(item => item.Id == candidate.Id).ShouldBeFalse();
         _lastChanges!.Select(change => change.EquipmentId).ShouldBe(new[] { old.Id, candidate.Id });
-        _lastChanges[0].Location.ShouldBe(EraEquipmentLocation.Inventory);
-        _lastChanges[0].EquippedSlot.ShouldBeNull();
-        _lastChanges[1].Location.ShouldBe(EraEquipmentLocation.Equipped);
+        if (_lastChanges != null)
+        {
+            _lastChanges[0].Location.ShouldBe(EraEquipmentLocation.Inventory);
+            _lastChanges[0].EquippedSlot.ShouldBeNull();
+            _lastChanges[1].Location.ShouldBe(EraEquipmentLocation.Equipped);
+        }
+
         old.Version.ShouldBe(6);
         candidate.Version.ShouldBe(6);
         _character.EquipmentVersion.ShouldBe(4);
@@ -191,7 +193,7 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_unequip_into_120th_space_without_needing_current_definition()
     {
-        var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
+        var old = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
         for (var index = 0; index < 119; index++) AddItem();
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);
 
@@ -223,7 +225,7 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_reject_full_inventory_unequip_without_mutation_or_success_receipt()
     {
-        var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
+        var old = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
         for (var index = 0; index < 120; index++) AddItem();
 
         var response = await Service().UnequipAsync(Unequip(old), CancellationToken.None);
@@ -237,18 +239,17 @@ public class EraEquipmentOperationFixture
     }
 
     [Fact]
-    public async Task Should_allow_cross_partition_replacement_when_shared_inventory_is_full()
+    public async Task Should_replace_different_definitions_when_shared_inventory_is_full()
     {
-        var old = AddItem(EraArmorSlot.Body, EraEquipmentLocation.Equipped);
-        old.EquippedSlot = EraArmorSlot.Head;
-        for (var index = 0; index < 119; index++) AddItem(EraArmorSlot.Body);
+        var old = AddItem(EraEquipmentSlot.Body, EraEquipmentLocation.Equipped);
+        old.EquippedSlot = EraEquipmentSlot.Head;
+        for (var index = 0; index < 119; index++) AddItem(EraEquipmentSlot.Body);
         var candidate = AddItem();
 
         var response = await Service().EquipAsync(Equip(candidate), CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.State.TotalInventoryCount.ShouldBe(120);
-        response.Data.State.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Body).Count.ShouldBe(120);
         _lastChanges.ShouldNotBeNull();
         old.Location.ShouldBe(EraEquipmentLocation.Inventory);
         candidate.Location.ShouldBe(EraEquipmentLocation.Equipped);
@@ -269,7 +270,7 @@ public class EraEquipmentOperationFixture
         second.Data!.State.EquipmentVersion.ShouldBe(5);
         replay.IsReplay.ShouldBeTrue();
         replay.Data!.State.EquipmentVersion.ShouldBe(4);
-        replay.Data.State.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!.Id.ShouldBe(item.Id);
+        replay.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(item.Id);
         item.Location.ShouldBe(EraEquipmentLocation.Inventory);
         item.Version.ShouldBe(7);
         _character.EquipmentVersion.ShouldBe(5);
@@ -332,7 +333,7 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_reject_stale_character_item_and_target_versions_without_writes()
     {
-        var old = AddItem(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
+        var old = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
         var item = AddItem();
         var command = Equip(item);
         var service = Service();
@@ -358,7 +359,7 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_reject_candidate_already_equipped_in_another_slot()
     {
-        var item = AddItem(EraArmorSlot.Body, EraEquipmentLocation.Equipped);
+        var item = AddItem(EraEquipmentSlot.Body, EraEquipmentLocation.Equipped);
 
         var response = await Service().EquipAsync(Equip(item), CancellationToken.None);
 
@@ -369,14 +370,14 @@ public class EraEquipmentOperationFixture
     [Fact]
     public async Task Should_require_matching_manifest_and_compatible_definition_to_equip()
     {
-        var item = AddItem(EraArmorSlot.Body);
+        var item = AddItem(EraEquipmentSlot.Body);
         var command = Equip(item);
         var service = Service();
         command.ExpectedManifestVersion = 6;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_config_version_conflict");
         command.ExpectedManifestVersion = 7;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_incompatible_slot");
-        item.DefinitionId = "missing";
+        item.DefinitionId = Guid.NewGuid();
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_definition_unavailable");
 
         _lastChanges.ShouldBeNull();
@@ -446,7 +447,7 @@ public class EraEquipmentOperationFixture
         command.ExpectedEquippedEquipmentId = Guid.NewGuid();
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_invalid_operation");
         command.ExpectedEquippedEquipmentId = null;
-        command.Slot = (EraArmorSlot)0;
+        command.Slot = (EraEquipmentSlot)0;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_invalid_operation");
 
         _lastChanges.ShouldBeNull();
@@ -484,7 +485,7 @@ public class EraEquipmentOperationFixture
         var item = AddItem();
         _data.Configure().ApplyPositionChangesAsync(_character.Id, _player.Id,
                 Arg.Any<IReadOnlyList<EraEquipmentPositionChange>>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException(new DbUpdateConcurrencyException("simulated conflict")));
+            .Returns(Task.FromException(new EraEquipmentConcurrencyException("simulated conflict")));
 
         var exception = await Should.ThrowAsync<EraEquipmentWriteConflictException>(() => Service().EquipAsync(Equip(item), CancellationToken.None));
 

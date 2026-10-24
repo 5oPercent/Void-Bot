@@ -1,7 +1,7 @@
 namespace Void.Bot.Message.Enum.ERA;
 
-/// <summary>护甲品阶；不包含掉落概率或展示颜色约定。</summary>
-public enum EraArmorGrade
+/// <summary>装备品阶；六维生成预算只适用于护甲，武器不据此特化模板数值。</summary>
+public enum EraEquipmentGrade
 {
     /// <summary>旧物，54 点预算。</summary>
     Worn = 1,

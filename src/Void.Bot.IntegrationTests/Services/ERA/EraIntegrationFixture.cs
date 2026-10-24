@@ -10,6 +10,7 @@ using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.Account;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.Identity;
+using Void.Bot.Core.Services.ERA.Equipment;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Settings.System;
@@ -141,10 +142,10 @@ public partial class EraIntegrationFixture : IntegrationFixture
         configuration.Version = 7;
         configuration.Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto
         {
-            Definitions = System.Enum.GetValues<EraArmorSlot>().Select(slot => new EraArmorDefinitionDto
+            Definitions = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorDefinitionDto
             {
-                Id = "test." + slot, Name = "Test armor", InventorySlot = slot,
-                CompatibleSlots = new List<EraArmorSlot> { slot }
+                Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), Name = "Test armor",
+                CompatibleSlots = new List<EraEquipmentSlot> { slot }
             }).ToList()
         });
 
@@ -169,13 +170,13 @@ public partial class EraIntegrationFixture : IntegrationFixture
     {
         return new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = "test.Head", DefinitionVersion = 1,
-            EquipmentType = EraEquipmentType.Armor, Grade = EraArmorGrade.Common,
+            Id = Guid.NewGuid(), DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), DefinitionVersion = 1,
+            EquipmentType = EraEquipmentType.Armor, Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = location == EraEquipmentLocation.Ground ? null : playerId ?? _playerId,
             CharacterId = location is EraEquipmentLocation.Inventory or EraEquipmentLocation.Equipped
                 ? characterId ?? _characterId : null,
-            Location = location, InventorySlot = EraArmorSlot.Head,
-            EquippedSlot = location == EraEquipmentLocation.Equipped ? EraArmorSlot.Head : null,
+            Location = location,
+            EquippedSlot = location == EraEquipmentLocation.Equipped ? EraEquipmentSlot.Head : null,
             Version = 5, CreatedAt = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero)
         };
     }
@@ -198,7 +199,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
         return new EquipEraEquipmentCommand
         {
             CharacterId = _characterId, RequestId = requestId ?? Guid.NewGuid(),
-            EquipmentId = candidate.Id, Slot = EraArmorSlot.Head,
+            EquipmentId = candidate.Id, Slot = EraEquipmentSlot.Head,
             ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5, ExpectedManifestVersion = 7,
             ExpectedEquippedEquipmentId = _equipped?.Id, ExpectedEquippedVersion = _equipped?.Version
         };
@@ -217,7 +218,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
             new UnequipEraEquipmentCommand
             {
                 CharacterId = _characterId, RequestId = Guid.NewGuid(), EquipmentId = equipmentId,
-                Slot = EraArmorSlot.Head, ExpectedEquipmentVersion = equipmentVersion, ExpectedItemVersion = itemVersion
+                Slot = EraEquipmentSlot.Head, ExpectedEquipmentVersion = equipmentVersion, ExpectedItemVersion = itemVersion
             }, token));
     }
 

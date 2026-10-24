@@ -5,6 +5,7 @@ namespace Void.Bot.Core.Resources.i18n.Endpoint;
 [Language("Endpoint", "EraWorlds")]
 public sealed class EraWorldsEndpointContextTemplate : IContextTemplate
 {
+    public string GetEraWorldEquipment { get; set; } = "当前权威主机读取世界成员已穿装备";
     public string RegisterEraWorld { get; set; } = "登记独立 ERA 世界";
     public string GetEraWorld { get; set; } = "读取本人 ERA 世界状态";
     public string GetCurrentEraWorld { get; set; } = "读取本人当前 ERA 世界";
