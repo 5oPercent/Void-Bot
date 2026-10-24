@@ -28,7 +28,7 @@ public interface IEraWeaponDataProvider : IScope
 public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
 {
     private readonly IRepository<EraWeaponTemplate> _eraWeaponTemplateRepository;
-    private readonly IRepository<EraWeaponStatEffectProfile> _eraWeaponStatEffectProfileRepository;
+    private readonly IRepository<EraWeaponStatMapping> _eraWeaponStatMappingRepository;
     private readonly IRepository<EraWeaponModDefinition> _eraWeaponModDefinitionRepository;
     private readonly IRepository<EraWeaponModStatModifier> _eraWeaponModStatModifierRepository;
     private readonly IRepository<EraWeaponTemplateModSlot> _eraWeaponTemplateModSlotRepository;
@@ -43,7 +43,7 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
 
     public EraWeaponDataProvider(
         IRepository<EraWeaponTemplate> eraWeaponTemplateRepository,
-        IRepository<EraWeaponStatEffectProfile> eraWeaponStatEffectProfileRepository,
+        IRepository<EraWeaponStatMapping> eraWeaponStatMappingRepository,
         IRepository<EraWeaponModDefinition> eraWeaponModDefinitionRepository,
         IRepository<EraWeaponModStatModifier> eraWeaponModStatModifierRepository,
         IRepository<EraWeaponTemplateModSlot> eraWeaponTemplateModSlotRepository,
@@ -57,7 +57,7 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
         IMapper mapper)
     {
         _eraWeaponTemplateRepository = eraWeaponTemplateRepository;
-        _eraWeaponStatEffectProfileRepository = eraWeaponStatEffectProfileRepository;
+        _eraWeaponStatMappingRepository = eraWeaponStatMappingRepository;
         _eraWeaponModDefinitionRepository = eraWeaponModDefinitionRepository;
         _eraWeaponModStatModifierRepository = eraWeaponModStatModifierRepository;
         _eraWeaponTemplateModSlotRepository = eraWeaponTemplateModSlotRepository;
@@ -74,12 +74,12 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
     public async Task<EraWeaponCatalogDto> GetCatalogAsync(CancellationToken cancellationToken)
     {
         var templates = await _eraWeaponTemplateRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var profiles = await _eraWeaponStatEffectProfileRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var statMappings = await _eraWeaponStatMappingRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var definitions = await _eraWeaponModDefinitionRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var modifiers = await _eraWeaponModStatModifierRepository.QueryNoTracking().OrderBy(row => row.Sequence).ToListAsync(cancellationToken).ConfigureAwait(false);
         var slots = await _eraWeaponTemplateModSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Slot).ToListAsync(cancellationToken).ConfigureAwait(false);
         var pools = await _eraWeaponTemplateModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateCatalog(templates, profiles, definitions, modifiers, slots, pools, _mapper);
+        return EraWeaponDataMapping.CreateCatalog(templates, statMappings, definitions, modifiers, slots, pools, _mapper);
     }
 
     public async Task<Dictionary<Guid, EraWeaponInstanceDto>> GetInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)
@@ -128,17 +128,17 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
         await _eraWeaponModStatModifierRepository.ExecuteDeleteAsync(_ => true, cancellationToken).ConfigureAwait(false);
         var templates = await _eraWeaponTemplateRepository.Query().ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
         var modifications = await _eraWeaponModDefinitionRepository.Query().ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
-        var profiles = await _eraWeaponStatEffectProfileRepository.Query().ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
-        foreach (var entity in profiles.Values.Where(row => !catalog.StatEffectProfiles.Any(profile => profile.Id == row.Id)))
-            _eraWeaponStatEffectProfileRepository.Delete(entity);
-        foreach (var profile in catalog.StatEffectProfiles)
+        var statMappings = await _eraWeaponStatMappingRepository.Query().ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
+        foreach (var entity in statMappings.Values.Where(row => !catalog.StatMappings.Any(mapping => mapping.Id == row.Id)))
+            _eraWeaponStatMappingRepository.Delete(entity);
+        foreach (var mapping in catalog.StatMappings)
         {
-            if (!profiles.TryGetValue(profile.Id, out var entity))
+            if (!statMappings.TryGetValue(mapping.Id, out var entity))
             {
-                entity = new EraWeaponStatEffectProfile { Id = profile.Id };
-                _eraWeaponStatEffectProfileRepository.Insert(entity);
+                entity = new EraWeaponStatMapping { Id = mapping.Id };
+                _eraWeaponStatMappingRepository.Insert(entity);
             }
-            _mapper.Map(profile, entity);
+            _mapper.Map(mapping, entity);
         }
         foreach (var entity in templates.Values.Where(row => !catalog.Templates.Any(template => template.Id == row.Id))) _eraWeaponTemplateRepository.Delete(entity);
         foreach (var entity in modifications.Values.Where(row => !catalog.Modifications.Any(modification => modification.Id == row.Id))) _eraWeaponModDefinitionRepository.Delete(entity);
@@ -151,7 +151,7 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
             }
             entity.Name = template.Name; entity.Icon = template.Icon; entity.Note = template.Note;
             entity.IsGenerationEnabled = template.IsGenerationEnabled; entity.PresentationKey = template.PresentationKey;
-            entity.StatEffectProfileId = template.StatEffectProfileId;
+            entity.StatMappingId = template.StatMappingId;
             _mapper.Map(template.BaseStats, entity);
             entity.BehaviorPayload = JsonSerializer.Serialize(template.Behavior);
             entity.CompatibleSlotsPayload = JsonSerializer.Serialize(template.CompatibleSlots);

@@ -21,9 +21,9 @@
 ## 二、B0：跨端契约与规则定稿
 
 - [x] 对齐十一项属性、五个改装槽、运算方式及行为模式的稳定标识；现有护甲协议值保持原意，不挪用或重排。
-- [x] 移除武器大类枚举、模板 Kind 字段及其持久化、校验与示例；尚未部署，直接调整初始建表脚本。未来需要规则区分时按框架设计，当前不新增框架字段或表。
+- [x] 移除武器大类枚举、模板 Kind 字段及其持久化、校验与示例；该调整已包含在此前部署的初始脚本中。未来需要规则区分时按框架设计，当前不新增框架字段或表。
 - [x] 定稿基础属性单位、数值精度、支持属性、整数舍入与边界；数值规则引用共同设计，不在 DTO 中另设另一套规则。
-- [x] 按用户要求清理散布、后坐、就绪及瞄准的四个 Behavior Base 字段与校验、示例和测试数据；评分保留 0～100，效果端点改由后端共享配置提供。BaseReloadSeconds 及 ReloadSpeed 换算保留，武器实体 XML 备注补齐单位。后端尚未部署，本轮直接调整源码，不新增旧数据清理脚本，未运行测试。
+- [x] 按用户要求清理散布、后坐、就绪及瞄准的四个 Behavior Base 字段与校验、示例和测试数据；评分保留 0～100，效果端点改由后端共享配置提供。BaseReloadSeconds 及 ReloadSpeed 换算保留，武器实体 XML 备注补齐单位。该调整已包含在此前部署内容中；本轮命名变更另由 Script0039 迁移，未运行测试。
 - [x] 明确首版要支持的行为模式及类型化 `Behavior` 字段；模板内实现，不增加框架表或任意脚本执行能力。
 - [x] 每槽生成数量为必填正整数 `CandidateCount`；本次实现范围 1～16、按权重不放回、首个抽取项初始选中。各模板正式数量由管理配置决定，不按品阶覆盖，不使用随机数量范围。
 - [x] 装备主表的类型、品阶与穿戴位置通用化；武器与护甲共用背包及总容量，通过 EquipmentType 筛选，不增加武器背包分区。区分角色三个武器位置与武器内部五个槽位。
@@ -39,7 +39,7 @@
 ## 三、B1：八张表与资产通用化
 
 - [x] 新增 `era_weapon_template`：当前模板、十一项基础属性、适用属性、类型化行为配置和表现键。
-- [x] 新增 `era_weapon_stat_effect_profile`：Guid 身份、名称与四组评分 0／100 效果端点；模板通过 StatEffectProfileId 外键引用。由现有 Admin 完整配置预检／发布接口维护，目录读取包含共享配置，引用和端点一并校验；无需客户端发版调数值。
+- [x] 新增 `era_weapon_stat_mapping`：Guid 身份、名称与四组评分 0／100 效果端点；模板通过 StatMappingId 外键引用。支持 Admin 独立分页／详情／保存／删除及完整配置预检／发布，沿用全局版本与引用保护；无需客户端发版调数值。独立管理接口补充生命周期、版本冲突、非法端点与失败不落库的集成测试源码，尚未运行。
 - [x] 模板、改装定义及其所有引用统一使用 Guid；共用护甲定义和奖励配置引用同步调整，Admin ID 路由与空 Guid 校验同步；不为 ID 配置字符串排序规则。Script0038 迁移旧定义引用与 JSON 快照，尚未执行。
 - [x] 新增 `era_weapon_template_mod_slot`：模板、槽位、必填 `CandidateCount` 与顺序，按 `(TemplateId, SlotId)` 配置各槽的生成数量。
 - [x] 新增 `era_weapon_mod_definition`：公共改装定义、所属槽位、说明和图标。
@@ -52,6 +52,7 @@
 - [x] 扩展既有装备实体、DTO、查询与校验的类型分派，避免枪械被要求具有 `ArmorInstanceData`，也不破坏护甲数据完整性检查。
 - [x] ERA 持久化链路统一为 Service → DataProvider → IRepository → DbContext；移除 DataProvider 的上下文及其他 DataProvider 依赖，SQL 协调连接收口 Repository，业务 Service 使用领域并发异常。已补充边界与仓储测试源码，尚未运行。
 - [x] 按实际迁移序号新增 DbUp 脚本与实体映射，不修改已发布迁移，不在 GET 中补表或创建武器。
+- [x] 恢复已部署 Script0035 原始内容；新增 Script0039，将共享配置表、模板引用列及外键改为属性映射命名。用户确认没有旧业务数据，不增加 JSON 数据迁移或旧字段兼容逻辑；迁移执行与数据库验证尚未进行。
 
 共享背包补充：实例不保存背包部位分类，统一通过 Location 与 EquippedSlot 表达位置。Script0037 删除旧分类列并把角色背包索引改为 CharacterId + Location，既有迁移保持不变。背包查询通过 EquipmentType 与当前模板 CompatibleSlots 筛选，不返回分类计数；总数与容量始终覆盖整个背包。
 
@@ -81,6 +82,10 @@
 | GET `/weapon-modifications/{id}` | 改装详情及全部属性修正规则 |
 | POST `/weapon-modifications/{id}` | 创建或更新改装定义，修正规则与定义一起原子保存 |
 | POST `/weapon-modifications/{id}/delete` | 删除未引用的公共改装；池或实例仍引用时拒绝 |
+| GET `/weapon-stat-mappings` | 分页、按名称或 Guid 搜索共享属性映射配置 |
+| GET `/weapon-stat-mappings/{id}` | 完整端点及当前全局发布版本 |
+| POST `/weapon-stat-mappings/{id}` | 创建或整项替换共享属性映射配置并发布 |
+| POST `/weapon-stat-mappings/{id}/delete` | 删除未被任何模板引用的共享属性映射配置 |
 | POST `/configuration/validate` | 校验拟发布配置及关联变更，返回错误和影响说明，不写数据 |
 | POST `/configuration/publish` | 一次性提交多模板／改装的关联变更，统一校验并原子发布 |
 

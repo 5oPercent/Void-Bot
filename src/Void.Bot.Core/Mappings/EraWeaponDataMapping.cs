@@ -9,11 +9,11 @@ namespace Void.Bot.Core.Mappings;
 /// <summary>组装武器关系数据，不执行查询或写入。</summary>
 internal static class EraWeaponDataMapping
 {
-    internal static EraWeaponCatalogDto CreateCatalog(IReadOnlyCollection<EraWeaponTemplate> templates, IReadOnlyCollection<EraWeaponStatEffectProfile> profiles,
+    internal static EraWeaponCatalogDto CreateCatalog(IReadOnlyCollection<EraWeaponTemplate> templates, IReadOnlyCollection<EraWeaponStatMapping> statMappings,
         IReadOnlyCollection<EraWeaponModDefinition> definitions, IReadOnlyCollection<EraWeaponModStatModifier> modifiers,
         IReadOnlyCollection<EraWeaponTemplateModSlot> slots, IReadOnlyCollection<EraWeaponTemplateModPool> pools, IMapper mapper)
     {
-        var result = new EraWeaponCatalogDto { StatEffectProfiles = mapper.Map<List<EraWeaponStatEffectProfileDto>>(profiles) };
+        var result = new EraWeaponCatalogDto { StatMappings = mapper.Map<List<EraWeaponStatMappingDto>>(statMappings) };
         foreach (var entity in templates)
         {
             var template = mapper.Map<EraWeaponTemplateDto>(entity);

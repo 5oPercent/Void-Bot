@@ -13,8 +13,8 @@ public sealed class EraWeaponTemplate : IEntity<Guid>
     [StringLength(2048)] public string Note { get; set; } = string.Empty;
     public bool IsGenerationEnabled { get; set; }
     [StringLength(128)] public string PresentationKey { get; set; } = string.Empty;
-    /// <summary>共享评分效果配置的 Guid；随当前目录读取，不复制端点到实例。</summary>
-    public Guid StatEffectProfileId { get; set; }
+    /// <summary>共享属性映射配置的 Guid；随当前目录读取，不复制端点到实例。</summary>
+    public Guid StatMappingId { get; set; }
     /// <summary>单发基础伤害；角色强度、BUFF 与目标结算由游戏权威端另行应用。</summary>
     public double Damage { get; set; }
     /// <summary>射击频率，单位次／秒；例如 10 表示每秒 10 发，即 600 RPM。</summary>

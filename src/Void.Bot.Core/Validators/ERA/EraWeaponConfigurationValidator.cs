@@ -8,25 +8,25 @@ public static class EraWeaponConfigurationValidator
 {
     public static void Validate(EraWeaponCatalogDto catalog)
     {
-        if (catalog == null || catalog.Templates == null || catalog.Modifications == null || catalog.StatEffectProfiles == null ||
+        if (catalog == null || catalog.Templates == null || catalog.Modifications == null || catalog.StatMappings == null ||
             catalog.Templates.Count > EraWeaponConstants.MaximumDefinitions || catalog.Modifications.Count > EraWeaponConstants.MaximumDefinitions ||
-            catalog.StatEffectProfiles.Count > EraWeaponConstants.MaximumDefinitions)
+            catalog.StatMappings.Count > EraWeaponConstants.MaximumDefinitions)
             throw new ArgumentException("Weapon catalog size is invalid.");
         if (catalog.Templates.Any(template => template == null) || catalog.Modifications.Any(modification => modification == null) ||
-            catalog.StatEffectProfiles.Any(profile => profile == null))
+            catalog.StatMappings.Any(mapping => mapping == null))
             throw new ArgumentException("Weapon catalog definitions cannot be null.");
 
-        var profileIds = new HashSet<Guid>();
-        foreach (var profile in catalog.StatEffectProfiles)
+        var mappingIds = new HashSet<Guid>();
+        foreach (var mapping in catalog.StatMappings)
         {
-            if (profile.Id == Guid.Empty || !profileIds.Add(profile.Id) || string.IsNullOrWhiteSpace(profile.Name) || profile.Name.Length > 128)
-                throw new ArgumentException("Weapon stat effect profile identity is invalid.");
-            foreach (var (zero, hundred) in new[] { (profile.SpreadDegreesAtZero, profile.SpreadDegreesAtHundred),
-                (profile.RecoilDegreesAtZero, profile.RecoilDegreesAtHundred) })
+            if (mapping.Id == Guid.Empty || !mappingIds.Add(mapping.Id) || string.IsNullOrWhiteSpace(mapping.Name) || mapping.Name.Length > 128)
+                throw new ArgumentException("Weapon stat mapping identity is invalid.");
+            foreach (var (zero, hundred) in new[] { (mapping.SpreadDegreesAtZero, mapping.SpreadDegreesAtHundred),
+                (mapping.RecoilDegreesAtZero, mapping.RecoilDegreesAtHundred) })
                 if (!double.IsFinite(zero) || !double.IsFinite(hundred) || zero < hundred || zero > 180 || hundred < 0)
                     throw new ArgumentException("Weapon angle effect endpoints are invalid.");
-            foreach (var (zero, hundred) in new[] { (profile.ReadySecondsAtZero, profile.ReadySecondsAtHundred),
-                (profile.AimSecondsAtZero, profile.AimSecondsAtHundred) })
+            foreach (var (zero, hundred) in new[] { (mapping.ReadySecondsAtZero, mapping.ReadySecondsAtHundred),
+                (mapping.AimSecondsAtZero, mapping.AimSecondsAtHundred) })
                 if (!double.IsFinite(zero) || !double.IsFinite(hundred) || zero < hundred || zero > 3600 || hundred <= 0)
                     throw new ArgumentException("Weapon action effect endpoints are invalid.");
         }
@@ -57,7 +57,7 @@ public static class EraWeaponConfigurationValidator
                 throw new ArgumentException("Weapon template slots are invalid.");
             if (template.Id == Guid.Empty || !ids.Add(template.Id) || string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 128 ||
                 template.Icon is not { Length: <= 256 } || template.Note is not { Length: <= 2048 } ||
-                !ValidPresentationKey(template.PresentationKey) || !profileIds.Contains(template.StatEffectProfileId) ||
+                !ValidPresentationKey(template.PresentationKey) || !mappingIds.Contains(template.StatMappingId) ||
                 compatibleSlots.Any(value => value < EraEquipmentSlot.Weapon1 || value > EraEquipmentSlot.Weapon3) ||
                 compatibleSlots.Distinct().Count() != compatibleSlots.Count || slots.Select(slot => slot.Slot).Distinct().Count() != 5)
                 throw new ArgumentException("Weapon template or equipment mapping is invalid.");
