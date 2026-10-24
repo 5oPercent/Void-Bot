@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Dto.ERA;
 public sealed class EraArmorGradeBudgetDto
 {
     /// <summary>品阶协议值。</summary>
-    public EraArmorGrade Grade { get; set; }
+    public EraEquipmentGrade Grade { get; set; }
     /// <summary>单件六维合计。</summary>
     public int Budget { get; set; }
 }

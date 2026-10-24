@@ -49,14 +49,41 @@ public class EraEquipmentServiceFixture
         return new EraEquipmentService(_data, new EraCharacterContext(_players, players, _localization), _localization);
     }
 
-    private static EraArmorDefinitionDto Definition(string id = "test.head", EraArmorSlot slot = EraArmorSlot.Head)
+    [Fact]
+    public async Task Should_filter_weapons_and_armor_in_the_same_inventory_without_changing_total_capacity_or_count()
+    {
+        var catalog = EraWeaponFixture.Catalog();
+        _data.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
+        _snapshot.Entries.Add(Entry());
+        var weapon = Entry().Equipment;
+        weapon.EquipmentType = EraEquipmentType.Weapon;
+        weapon.DefinitionId = catalog.Templates[0].Id;
+        _snapshot.Entries.Add(new EraEquipmentReadEntry(weapon, null, EraWeaponGenerator.Generate(catalog.Templates[0], _ => 0)));
+        var unfiltered = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
+        unfiltered.Data!.InventoryItems.Count.ShouldBe(2);
+        var filtered = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest
+        {
+            CharacterId = _character.Id, EquipmentType = EraEquipmentType.Weapon, Slot = EraEquipmentSlot.Weapon2
+        }, CancellationToken.None);
+        filtered.Data!.InventoryItems.Single().Id.ShouldBe(weapon.Id);
+        filtered.Data.TotalInventoryCount.ShouldBe(2);
+        filtered.Data.TotalInventoryCapacity.ShouldBe(120);
+        filtered.Data.FilterEquipmentType.ShouldBe(EraEquipmentType.Weapon);
+        var invalid = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest
+        {
+            CharacterId = _character.Id, EquipmentType = (EraEquipmentType)100
+        }, CancellationToken.None);
+        invalid.Code.ShouldBe(HttpStatusCode.BadRequest);
+        invalid.ErrorCode.ShouldBe("era.equipment_invalid_type");
+    }
+
+    private static EraArmorDefinitionDto Definition(Guid? id = null, EraEquipmentSlot slot = EraEquipmentSlot.Head)
     {
         return new EraArmorDefinitionDto
         {
-            Id = id,
+            Id = id ?? Guid.Parse("10000000-0000-0000-0000-000000000001"),
             Name = "Same display name",
-            InventorySlot = slot,
-            CompatibleSlots = new List<EraArmorSlot> { slot }
+            CompatibleSlots = new List<EraEquipmentSlot> { slot }
         };
     }
 
@@ -75,20 +102,19 @@ public class EraEquipmentServiceFixture
         };
     }
 
-    private EraEquipmentReadEntry Entry(EraArmorSlot slot = EraArmorSlot.Head,
+    private EraEquipmentReadEntry Entry(EraEquipmentSlot slot = EraEquipmentSlot.Head,
         EraEquipmentLocation location = EraEquipmentLocation.Inventory)
     {
         var equipment = new EraEquipmentInstance
         {
             Id = Guid.NewGuid(),
-            DefinitionId = slot == EraArmorSlot.Head ? "test.head" : "test." + slot,
+            DefinitionId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
             DefinitionVersion = 2,
             EquipmentType = EraEquipmentType.Armor,
-            Grade = EraArmorGrade.Common,
+            Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = _player.Id,
             CharacterId = _character.Id,
             Location = location,
-            InventorySlot = slot,
             EquippedSlot = location == EraEquipmentLocation.Equipped ? slot : null,
             Version = 5,
             CreatedAt = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero)
@@ -185,10 +211,8 @@ public class EraEquipmentServiceFixture
         response.Data.TotalInventoryCapacity.ShouldBe(120);
         response.Data.TotalInventoryCount.ShouldBe(0);
         response.Data.InventoryItems.ShouldBeEmpty();
-        response.Data.EquippedSlots.Count.ShouldBe(6);
+        response.Data.EquippedSlots.Count.ShouldBe(9);
         response.Data.EquippedSlots.All(slot => slot.Equipment == null).ShouldBeTrue();
-        response.Data.InventoryPartitions.Count.ShouldBe(6);
-        response.Data.InventoryPartitions.All(partition => partition.Count == 0).ShouldBeTrue();
         await _players.DidNotReceive().LockCharacterAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -214,22 +238,20 @@ public class EraEquipmentServiceFixture
     public async Task Should_filter_only_inventory_candidates_and_keep_full_counts_and_equipped_snapshot()
     {
         var inventoryHead = Entry();
-        var equippedHead = Entry(EraArmorSlot.Head, EraEquipmentLocation.Equipped);
-        _snapshot.Entries.AddRange(new[] { inventoryHead, equippedHead, Entry(EraArmorSlot.Body) });
+        var equippedHead = Entry(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
+        _snapshot.Entries.AddRange(new[] { inventoryHead, equippedHead, Entry(EraEquipmentSlot.Body) });
         var service = Service();
 
         var filtered = await service.GetInventoryAsync(new GetEraCharacterInventoryRequest
         {
-            CharacterId = _character.Id, Slot = EraArmorSlot.Head
+            CharacterId = _character.Id, Slot = EraEquipmentSlot.Head
         }, CancellationToken.None);
         var complete = await service.GetEquipmentAsync(new GetEraCharacterEquipmentRequest { CharacterId = _character.Id }, CancellationToken.None);
 
         filtered.Data!.EquipmentVersion.ShouldBe(complete.Data!.EquipmentVersion);
         filtered.Data.TotalInventoryCount.ShouldBe(2);
         filtered.Data.InventoryItems.Select(item => item.Id).ShouldBe(new[] { inventoryHead.Equipment.Id });
-        filtered.Data.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Head).Count.ShouldBe(1);
-        filtered.Data.InventoryPartitions.Single(partition => partition.Slot == EraArmorSlot.Body).Count.ShouldBe(1);
-        filtered.Data.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!.Id.ShouldBe(equippedHead.Equipment.Id);
+        filtered.Data.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(equippedHead.Equipment.Id);
         complete.Data.InventoryItems.Count.ShouldBe(2);
     }
 
@@ -237,7 +259,7 @@ public class EraEquipmentServiceFixture
     public async Task Should_allow_one_slot_to_use_all_120_inventory_spaces_and_exclude_equipped_items()
     {
         for (var index = 0; index < 120; index++) _snapshot.Entries.Add(Entry());
-        _snapshot.Entries.Add(Entry(EraArmorSlot.Head, EraEquipmentLocation.Equipped));
+        _snapshot.Entries.Add(Entry(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped));
 
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
 
@@ -262,7 +284,7 @@ public class EraEquipmentServiceFixture
     [Fact]
     public async Task Should_share_120_inventory_spaces_across_slots_and_exclude_six_equipped_items()
     {
-        foreach (var slot in System.Enum.GetValues<EraArmorSlot>())
+        foreach (var slot in EraEquipmentRules.ArmorSlots)
         {
             for (var index = 0; index < 20; index++) _snapshot.Entries.Add(Entry(slot));
             _snapshot.Entries.Add(Entry(slot, EraEquipmentLocation.Equipped));
@@ -273,20 +295,19 @@ public class EraEquipmentServiceFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.TotalInventoryCount.ShouldBe(120);
         response.Data.TotalInventoryCapacity.ShouldBe(120);
-        response.Data.InventoryPartitions.All(partition => partition.Count == 20).ShouldBeTrue();
-        response.Data.EquippedSlots.All(slot => slot.Equipment != null).ShouldBeTrue();
+        response.Data.EquippedSlots.Where(slot => EraEquipmentRules.ArmorSlots.Contains(slot.Slot)).All(slot => slot.Equipment != null).ShouldBeTrue();
     }
 
     [Fact]
     public async Task Should_keep_missing_definition_and_catalog_assets_visible()
     {
-        var entry = Entry(EraArmorSlot.Body);
+        var entry = Entry(EraEquipmentSlot.Body);
         _snapshot.Entries.Add(entry);
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);
 
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest
         {
-            CharacterId = _character.Id, Slot = EraArmorSlot.Body
+            CharacterId = _character.Id
         }, CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
@@ -354,8 +375,8 @@ public class EraEquipmentServiceFixture
     [Fact]
     public async Task Should_reject_duplicate_equipped_slot()
     {
-        _snapshot.Entries.Add(Entry(EraArmorSlot.Head, EraEquipmentLocation.Equipped));
-        _snapshot.Entries.Add(Entry(EraArmorSlot.Head, EraEquipmentLocation.Equipped));
+        _snapshot.Entries.Add(Entry(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped));
+        _snapshot.Entries.Add(Entry(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped));
 
         var response = await Service().GetEquipmentAsync(new GetEraCharacterEquipmentRequest { CharacterId = _character.Id }, CancellationToken.None);
 
@@ -367,7 +388,7 @@ public class EraEquipmentServiceFixture
     public async Task Should_reject_inventory_instance_with_equipped_slot()
     {
         var entry = Entry();
-        entry.Equipment.EquippedSlot = EraArmorSlot.Head;
+        entry.Equipment.EquippedSlot = EraEquipmentSlot.Head;
         _snapshot.Entries.Add(entry);
 
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
@@ -394,7 +415,7 @@ public class EraEquipmentServiceFixture
     {
         var response = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest
         {
-            CharacterId = _character.Id, Slot = (EraArmorSlot)0
+            CharacterId = _character.Id, Slot = (EraEquipmentSlot)0
         }, CancellationToken.None);
 
         response.ErrorCode.ShouldBe("era.equipment_invalid_slot");
@@ -402,27 +423,53 @@ public class EraEquipmentServiceFixture
     }
 
     [Fact]
-    public void Should_reject_duplicate_definition_ids_but_preserve_case_sensitive_ids()
+    public void Should_reject_duplicate_and_empty_definition_ids()
     {
         var manifest = new EraEquipmentManifestDto
         {
             Version = 1,
-            Definitions = new List<EraArmorDefinitionDto> { Definition("head"), Definition("head") }
+            Definitions = new List<EraArmorDefinitionDto> { Definition(), Definition() }
         };
         Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(manifest));
 
-        manifest.Definitions[1].Id = "Head";
+        manifest.Definitions[1].Id = Guid.NewGuid();
         Should.NotThrow(() => EraEquipmentConfigurationValidator.Validate(manifest));
+        manifest.Definitions[1].Id = Guid.Empty;
+        Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(manifest));
     }
 
     [Fact]
-    public void Should_reject_definition_without_compatible_inventory_partition()
+    public void Should_allow_any_valid_armor_compatible_slots_without_a_stored_inventory_classification()
     {
         var definition = Definition();
-        definition.CompatibleSlots = new List<EraArmorSlot> { EraArmorSlot.Body };
-        Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(new EraEquipmentManifestDto
+        definition.CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Body };
+        Should.NotThrow(() => EraEquipmentConfigurationValidator.Validate(new EraEquipmentManifestDto
         {
             Version = 1, Definitions = new List<EraArmorDefinitionDto> { definition }
         }));
+    }
+
+    [Fact]
+    public async Task Should_filter_from_current_template_compatibility_and_exclude_missing_definitions()
+    {
+        var item = Entry();
+        _snapshot.Entries.Add(item);
+        var configuration = Configuration();
+        var manifest = JsonSerializer.Deserialize<EraEquipmentManifestDto>(configuration.Payload)!;
+        manifest.Definitions.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head, EraEquipmentSlot.Body };
+        configuration.Payload = JsonSerializer.Serialize(manifest);
+        _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(configuration);
+        var request = new GetEraCharacterInventoryRequest { CharacterId = _character.Id, Slot = EraEquipmentSlot.Body };
+        var compatible = await Service().GetInventoryAsync(request, CancellationToken.None);
+        compatible.Data!.InventoryItems.Single().Id.ShouldBe(item.Equipment.Id);
+        manifest.Definitions.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head };
+        configuration.Payload = JsonSerializer.Serialize(manifest);
+        (await Service().GetInventoryAsync(request, CancellationToken.None)).Data!.InventoryItems.ShouldBeEmpty();
+        _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);
+        var missing = await Service().GetInventoryAsync(request, CancellationToken.None);
+        missing.Data!.InventoryItems.ShouldBeEmpty();
+        missing.Data.TotalInventoryCount.ShouldBe(1);
+        (await Service().GetEquipmentAsync(new GetEraCharacterEquipmentRequest { CharacterId = _character.Id }, CancellationToken.None))
+            .Data!.InventoryItems.Single().Id.ShouldBe(item.Equipment.Id);
     }
 }

@@ -16,7 +16,7 @@ namespace Void.Bot.Api.Controllers;
 [Route("api/era/characters")]
 [RequestSizeLimit(16384)]
 [OpenApiTagOrder(402)]
-public sealed class EraCharactersController : ControllerBase
+public sealed partial class EraCharactersController : ControllerBase
 {
     private readonly IMediator _mediator;
 

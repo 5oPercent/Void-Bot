@@ -8,20 +8,22 @@ public static class EraRewardConfigurationValidator
 {
     public static void Validate(EraRewardRules configuration)
     {
-        if (configuration.SchemaVersion != 1 || configuration.Nodes == null || configuration.Nodes.Count > 10000 ||
-            configuration.Pools == null || configuration.Pools.Count > 1000)
+        if (configuration == null || configuration.SchemaVersion != 1 || configuration.Nodes == null || configuration.Nodes.Count > 10000 ||
+            configuration.Pools == null || configuration.Pools.Count > 1000 ||
+            configuration.Nodes.Any(node => node == null) || configuration.Pools.Any(pool => pool == null))
             throw new ArgumentException("Reward configuration schema is invalid.");
 
         var pools = new Dictionary<string, EraRewardPool>(StringComparer.Ordinal);
         foreach (var pool in configuration.Pools)
         {
-            if (pool == null || string.IsNullOrWhiteSpace(pool.Id) || pool.Id.Length > 128 || pool.Id != pool.Id.Trim() ||
-                !pools.TryAdd(pool.Id, pool) || pool.Entries == null || pool.Entries.Count is < 1 or > 1000)
+            var entries = pool.Entries;
+            if (entries == null || entries.Count is < 1 or > 1000 || entries.Any(entry => entry == null))
+                throw new ArgumentException("Reward pool entries are invalid.");
+            if (string.IsNullOrWhiteSpace(pool.Id) || pool.Id.Length > 128 || pool.Id != pool.Id.Trim() || !pools.TryAdd(pool.Id, pool))
                 throw new ArgumentException("Reward pool is invalid.");
-            foreach (var entry in pool.Entries)
+            foreach (var entry in entries)
             {
-                if (entry == null || string.IsNullOrWhiteSpace(entry.DefinitionId) || entry.DefinitionId.Length > 128 ||
-                    entry.DefinitionId != entry.DefinitionId.Trim() || !System.Enum.IsDefined(entry.Grade) ||
+                if (entry.DefinitionId == Guid.Empty || !System.Enum.IsDefined(entry.Grade) ||
                     entry.Count < 1 || entry.Count > EraEquipmentRules.InventoryCapacity || entry.Weight is < 1 or > 1000000)
                     throw new ArgumentException("Reward pool entry is invalid.");
             }
@@ -30,7 +32,7 @@ public static class EraRewardConfigurationValidator
         var nodes = new HashSet<(EraRewardSourceType, string, string)>();
         foreach (var node in configuration.Nodes)
         {
-            if (node == null || !System.Enum.IsDefined(node.SourceType) || !System.Enum.IsDefined(node.Delivery) ||
+            if (!System.Enum.IsDefined(node.SourceType) || !System.Enum.IsDefined(node.Delivery) ||
                 string.IsNullOrWhiteSpace(node.SourceDefinitionId) || node.SourceDefinitionId.Length > 128 ||
                 node.SourceDefinitionId != node.SourceDefinitionId.Trim() || string.IsNullOrWhiteSpace(node.RewardNodeId) ||
                 node.RewardNodeId.Length > 128 || node.RewardNodeId != node.RewardNodeId.Trim() ||

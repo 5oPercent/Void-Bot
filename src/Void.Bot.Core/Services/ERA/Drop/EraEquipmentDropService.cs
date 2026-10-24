@@ -6,6 +6,7 @@ using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
 using Void.Bot.Core.Services.ERA.Drop.Models;
 using Void.Bot.Core.Services.ERA.Equipment;
+using Void.Bot.Core.Services.ERA.Equipment.Models;
 using Void.Bot.Core.Services.ERA.Player;
 using Void.Bot.Core.Services.ERA.Reward;
 using Void.Bot.Core.Services.ERA.World;
@@ -39,11 +40,14 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
     private readonly IEraRewardPoolRoller _pools;
     private readonly ILocalizationService _localization;
     private readonly TimeProvider _clock;
+    private readonly IEraWeaponGenerator? _weapons;
+    private readonly IEraEquipmentNotificationService? _notifications;
 
     public EraEquipmentDropService(IEraEquipmentDropDataProvider drops, IEraWorldDataProvider worlds, IEraWorldService worldService,
         IEraRewardDataProvider rewards, IEraEquipmentDataProvider equipment, IEraDataProvider characters, IEraPlayerContext players,
         IEraCharacterContext characterContext, IEraArmorGenerator armor, IEraRewardPoolRoller pools,
-        ILocalizationService localization, TimeProvider clock)
+        ILocalizationService localization, TimeProvider clock, IEraWeaponGenerator? weapons = null,
+        IEraEquipmentNotificationService? notifications = null)
     {
         _drops = drops;
         _worlds = worlds;
@@ -57,6 +61,8 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         _pools = pools;
         _localization = localization;
         _clock = clock;
+        _weapons = weapons;
+        _notifications = notifications;
     }
 
     private EraRewardException Error(HttpStatusCode status, string code, Expression<Func<EraEquipmentDropContextTemplate, object>> text)
@@ -85,7 +91,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         {
             throw Error(HttpStatusCode.Forbidden, "era.drop_character_unavailable", text => text.CharacterUnavailable);
         }
-        var manifest = EraEquipmentService.DecodeConfiguration(await _equipment.GetConfigurationAsync(cancellationToken).ConfigureAwait(false));
+        var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, false, cancellationToken).ConfigureAwait(false);
         var result = new EraEquipmentDropStateDto
         {
             WorldInstanceId = snapshot.World.Id, WorldVersion = snapshot.World.Version,
@@ -103,7 +109,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             }
             var item = entry.Equipment!;
-            var armor = entry.Armor!;
+            var armor = entry.Armor;
             result.Drops.Add(new EraEquipmentDropDto
             {
                 DropId = entry.Drop.Id, DropVersion = entry.Drop.Version, EquipmentId = item.Id, EquipmentVersion = item.Version,
@@ -111,9 +117,11 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
                 ShareUntil = entry.Share?.ShareUntil,
                 DefinitionId = item.DefinitionId, DefinitionVersion = item.DefinitionVersion,
                 Definition = manifest?.Definitions.SingleOrDefault(definition => definition.Id == item.DefinitionId),
-                Grade = item.Grade, InventorySlot = item.InventorySlot, CreatedAt = item.CreatedAt,
-                GenerationRuleVersion = armor.GenerationRuleVersion,
-                ArmorAttributes = new EraArmorAttributesDto
+                Grade = item.Grade, CreatedAt = item.CreatedAt,
+                EquipmentType = item.EquipmentType, Weapon = entry.Weapon,
+                WeaponTemplate = manifest?.Weapons.Templates.SingleOrDefault(template => template.Id == item.DefinitionId),
+                GenerationRuleVersion = armor?.GenerationRuleVersion ?? 0,
+                ArmorAttributes = armor == null ? new EraArmorAttributesDto() : new EraArmorAttributesDto
                 {
                     Strength = armor.Strength, Survival = armor.Survival, Mobility = armor.Mobility,
                     Focus = armor.Focus, Efficiency = armor.Efficiency, Resistance = armor.Resistance
@@ -189,7 +197,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         }
         var snapshot = await _equipment.LockCharacterEquipmentAsync(character, cancellationToken).ConfigureAwait(false);
         var entry = await _drops.LockEquipmentAsync(drop.EquipmentId, cancellationToken).ConfigureAwait(false);
-        if (entry == null || !IsValidEntry(new EraEquipmentDropReadEntry(drop, entry.Equipment, entry.Armor, share)))
+        if (entry == null || !IsValidEntry(new EraEquipmentDropReadEntry(drop, entry.Equipment, entry.Armor, share, entry.Weapon)))
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
         }
@@ -216,7 +224,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
         }
-        var manifest = EraEquipmentService.DecodeConfiguration(await _equipment.GetConfigurationAsync(cancellationToken).ConfigureAwait(false));
+        var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, false, cancellationToken).ConfigureAwait(false);
         equipment.Location = EraEquipmentLocation.Inventory;
         equipment.OwnerPlayerId = character.PlayerId;
         equipment.CharacterId = character.Id;
@@ -243,6 +251,8 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             Operation = EraEquipmentOperation.Pickup, RequestPayload = payload, ResultPayload = JsonSerializer.Serialize(receipt), CreatedAt = now
         }, cancellationToken).ConfigureAwait(false);
         character.EquipmentVersion = state.EquipmentVersion;
+        if (_notifications != null)
+            await _notifications.EnqueueAsync(character.PlayerId, character.Id, state.EquipmentVersion, command.RequestId, cancellationToken).ConfigureAwait(false);
         if (now > world.LastActiveAt)
         {
             world.LastActiveAt = now;
@@ -311,12 +321,10 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             (drop.PrivateOwnerPlayerId.HasValue != drop.DroppedByPlayerId.HasValue) &&
             double.IsFinite(drop.X) && double.IsFinite(drop.Y) && double.IsFinite(drop.Z) && double.IsFinite(drop.YawRadians) &&
             item != null && drop.EquipmentId == item.Id && drop.ActiveEquipmentId == item.Id && item.Location == EraEquipmentLocation.Ground &&
-            !item.OwnerPlayerId.HasValue && !item.CharacterId.HasValue && !item.EquippedSlot.HasValue && item.EquipmentType == EraEquipmentType.Armor &&
-            item.Version > 0 && item.DefinitionVersion > 0 && !string.IsNullOrWhiteSpace(item.DefinitionId) && item.CreatedAt != default &&
+            !item.OwnerPlayerId.HasValue && !item.CharacterId.HasValue && !item.EquippedSlot.HasValue &&
+            item.Version > 0 && item.DefinitionVersion > 0 && item.DefinitionId != Guid.Empty && item.CreatedAt != default &&
             (!drop.DroppedByPlayerId.HasValue || entry.Share != null && entry.Share.EquipmentId == item.Id &&
                 entry.Share.ShareUntil - item.CreatedAt == TimeSpan.FromHours(1)) &&
-            System.Enum.IsDefined(item.Grade) && System.Enum.IsDefined(item.InventorySlot) && armor != null && armor.EquipmentId == item.Id &&
-            armor.GenerationRuleVersion > 0 && armor.Strength >= 0 && armor.Survival >= 0 && armor.Mobility >= 0 &&
-            armor.Focus >= 0 && armor.Efficiency >= 0 && armor.Resistance >= 0;
+            System.Enum.IsDefined(item.Grade) && EraEquipmentItemRules.ValidPayload(new EraEquipmentReadEntry(item, armor, entry.Weapon));
     }
 }

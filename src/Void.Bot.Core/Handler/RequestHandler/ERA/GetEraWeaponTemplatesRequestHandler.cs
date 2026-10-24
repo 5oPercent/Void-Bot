@@ -1,0 +1,21 @@
+using Mediator.Net.Context;
+using Mediator.Net.Contracts;
+using Void.Bot.Core.Services.ERA.Equipment;
+using Void.Bot.Message.Request.ERA;
+
+namespace Void.Bot.Core.Handler.RequestHandler.ERA;
+
+public sealed class GetEraWeaponTemplatesRequestHandler : IRequestHandler<GetEraWeaponTemplatesRequest, GetEraWeaponTemplatesResponse>
+{
+    private readonly IEraWeaponService _service;
+
+    public GetEraWeaponTemplatesRequestHandler(IEraWeaponService service)
+    {
+        _service = service;
+    }
+
+    public async Task<GetEraWeaponTemplatesResponse> Handle(IReceiveContext<GetEraWeaponTemplatesRequest> context, CancellationToken cancellationToken)
+    {
+        return await _service.GetTemplatesAsync(context.Message, cancellationToken).ConfigureAwait(false);
+    }
+}

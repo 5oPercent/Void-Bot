@@ -1,8 +1,43 @@
 using System.Linq.Expressions;
+using System.Data;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
+using MySqlConnector;
+using Void.Bot.Core.Settings.System;
 using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Data;
+
+/// <summary>独立协调事务仅保护跨存储提交，不复用或提交调用方的资产工作单元。</summary>
+public class Repository(ConnectionStringSetting setting) : IRepository
+{
+    public async Task<T> ExecuteInIndependentTransactionAsync<T>(IEnumerable<FormattableString> statements,
+        Func<Task<T>> action, CancellationToken cancellationToken)
+    {
+        await using var connection = new MySqlConnection(setting.Mysql);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken).ConfigureAwait(false);
+        foreach (var statement in statements)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            var names = new object[statement.ArgumentCount];
+            for (var index = 0; index < statement.ArgumentCount; index++)
+            {
+                var name = "@p" + index.ToString(CultureInfo.InvariantCulture);
+                names[index] = name;
+                command.Parameters.AddWithValue(name, statement.GetArgument(index) ?? DBNull.Value);
+            }
+            command.CommandText = string.Format(CultureInfo.InvariantCulture, statement.Format, names);
+            await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        }
+        var result = await action().ConfigureAwait(false);
+        // 外部存储已收到提交后等待 SQL 完成；取消不能把已执行的外部写入误判成未提交。
+        await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
+        return result;
+    }
+}
 
 public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEntity> where TEntity : class, IEntityBase
 {
@@ -95,4 +130,50 @@ public class Repository<TEntity>(VoidBotDbContext dbContext) : IRepository<TEnti
             ? dbContext.Set<TEntity>().AsNoTracking()
             : dbContext.Set<TEntity>().AsNoTracking().Where(predicate);
     }
+
+    public IQueryable<TEntity> QuerySql(FormattableString sql)
+    {
+        return dbContext.Set<TEntity>().FromSqlInterpolated(sql);
+    }
+
+    public IQueryable<TEntity> QuerySqlRaw(string sql)
+    {
+        return dbContext.Set<TEntity>().FromSqlRaw(sql);
+    }
+
+    public void RequireTransaction()
+    {
+        if (dbContext.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("This operation requires an outer unit-of-work transaction.");
+    }
+
+    public Task<int> ExecuteSqlAsync(FormattableString sql, CancellationToken cancellationToken = default)
+    {
+        RequireTransaction();
+        return dbContext.Database.ExecuteSqlInterpolatedAsync(sql, cancellationToken);
+    }
+
+    public Task<int> ExecuteUpdateAsync(Expression<Func<TEntity, bool>> predicate,
+        Expression<Func<SetPropertyCalls<TEntity>, SetPropertyCalls<TEntity>>> setters,
+        CancellationToken cancellationToken = default)
+    {
+        RequireTransaction();
+        return dbContext.Set<TEntity>().Where(predicate).ExecuteUpdateAsync(setters, cancellationToken);
+    }
+
+    public Task<int> ExecuteDeleteAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default)
+    {
+        RequireTransaction();
+        return dbContext.Set<TEntity>().Where(predicate).ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public void Insert(TEntity entity) => dbContext.Set<TEntity>().Add(entity);
+
+    public void InsertMany(IEnumerable<TEntity> entities) => dbContext.Set<TEntity>().AddRange(entities);
+
+    public void Update(TEntity entity) => dbContext.Set<TEntity>().Update(entity);
+
+    public void Delete(TEntity entity) => dbContext.Set<TEntity>().Remove(entity);
+
+    public void DeleteMany(IEnumerable<TEntity> entities) => dbContext.Set<TEntity>().RemoveRange(entities);
 }

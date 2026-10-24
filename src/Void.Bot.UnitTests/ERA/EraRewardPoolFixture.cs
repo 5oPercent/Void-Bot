@@ -22,16 +22,16 @@ public class EraRewardPoolFixture
     }
 
     [Theory]
-    [InlineData(0, "first")]
-    [InlineData(1, "first")]
-    [InlineData(2, "second")]
-    [InlineData(6, "second")]
+    [InlineData(0, "10000000-0000-0000-0000-000000000001")]
+    [InlineData(1, "10000000-0000-0000-0000-000000000001")]
+    [InlineData(2, "10000000-0000-0000-0000-000000000002")]
+    [InlineData(6, "10000000-0000-0000-0000-000000000002")]
     public void Pool_weights_should_use_half_open_ticket_ranges(long ticket, string definition)
     {
         var node = new EraRewardNode { ChanceBasisPoints = 10000, Rolls = 2 };
         var result = new EraRewardPoolRoller().Roll(node, Pool(), new TicketRandom(0, ticket));
         result.Count.ShouldBe(2);
-        result.ShouldAllBe(entry => entry.DefinitionId == definition); // 有放回抽取，同一项允许再次命中。
+        result.ShouldAllBe(entry => entry.DefinitionId == Guid.Parse(definition)); // 有放回抽取，同一项允许再次命中。
     }
 
     [Fact]
@@ -109,8 +109,8 @@ public class EraRewardPoolFixture
         {
             Id = "pool", Entries = new List<EraRewardPoolEntry>
             {
-                new EraRewardPoolEntry { DefinitionId = "first", Grade = EraArmorGrade.Common, Count = 1, Weight = 2 },
-                new EraRewardPoolEntry { DefinitionId = "second", Grade = EraArmorGrade.Reliable, Count = 1, Weight = 5 }
+                new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = 1, Weight = 2 },
+                new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002"), Grade = EraEquipmentGrade.Reliable, Count = 1, Weight = 5 }
             }
         };
     }

@@ -17,7 +17,9 @@
         ↓
  DataProvider
         ↓
-Repository / DbContext
+  Repository
+        ↓
+   DbContext
 ```
 
 - `Void.Bot.Api`：HTTP 边界、路由、模型绑定、认证/权限标记、OpenAPI 和结果转换。
@@ -33,6 +35,7 @@ Repository / DbContext
 - 一个消息通常对应一个 Handler，实现对应的 Mediator.Net Handler 接口。
 - Handler 保持薄：读取 `context.Message`、调用 Service、传递 `CancellationToken`；不要复制业务校验、查询、映射或持久化逻辑。
 - Service 负责业务规则、状态判断、用例编排、实体变更、DTO 映射和响应组装；Service 间通过接口协作。
+- Service 的持久化访问只能通过 DataProvider，禁止直接依赖 IRepository、DbContext 或数据库连接。
 - 命令成功后需要发布事件时，可在 Service 返回成功结果后由 Handler 发布；事件业务放在事件 Handler/Service。
 - Service 接口和实现位于 `Core/Services/<Domain>`，用 `IScope`、`ISingleton` 等标记声明生命周期。
 
@@ -68,6 +71,7 @@ Repository / DbContext
 
 - 响应继承 `VoidBotResponse` 或 `VoidBotResponse<T>`；分页复用 `PageInputDto`、`PagedListDto<T>`。
 - 固定 enum 使用显式数值；已发布值不得随意重排、复用或删除。
+- 实体、配置定义及其关联 ID 默认使用 Guid。确有特殊情况需要非 Guid 标识时，必须先向用户说明具体原因、替代方案与影响；不得自行改用字符串或数字主键。名称、资源路径及表现映射键不作为实体身份使用。
 - 固定值只有一个来源，不在 Controller、Service、Entity 中重复定义字符串或数字。
 - Message 保持纯契约，不引用 EF Core、DbContext、Service 或业务实现；敏感信息不得放入 DTO。
 
@@ -89,6 +93,10 @@ Repository / DbContext
 ### 4.3 Repository / DataProvider 规则
 
 - Repository 只封装通用 EF Core 增删改查；DataProvider 提供按领域命名的数据访问方法。
+- DataProvider 的持久化依赖只能是 IRepository<TEntity>，禁止注入或访问 DbContext、数据库连接、事务上下文，禁止通过工厂或属性绕过该边界。DbContext 仅由 Repository 与工作单元基础设施使用。
+- DataProvider 不通过其他 DataProvider 间接访问数据；共享实体与 DTO 组装使用无 I/O 的映射代码。Service 不依赖 EF 的查询、写入或异常类型，持久化冲突由 DataProvider 转为领域异常。
+- 需要行锁、参数化 SQL、条件更新或批量删除时，在 IRepository 补充通用能力；DataProvider 组织领域查询，Repository 不提交事务，外层 Mediator 工作单元保持统一提交边界。
+- 既有 Redis 队伍提交使用独立 SQL 协调锁：通过非泛型 IRepository 的独立事务入口执行，连接、事务和提交全部封装在 Repository；该入口不复用或提交调用方资产事务，不用于保存普通业务实体。单例 DataProvider 不得捕获作用域 DbContext 或实体仓储。
 - 复杂查询优先新增 DataProvider 方法，Service 不直接依赖通用 Repository 处理业务查询。
 - 读取默认使用 `QueryNoTracking()`；需要在当前工作单元修改实体时才使用跟踪查询 `Query()`。
 - 查询、分页和投影尽量在数据库端完成；所有 I/O 传递 `CancellationToken`。

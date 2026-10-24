@@ -13,6 +13,7 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     public bool PauseFirstUpdate { get; init; }
     public int ForceZeroRowsOnUpdate { get; init; }
     public bool FailReceiptInsert { get; init; }
+    public bool FailWeaponConfigurationInsert { get; init; }
     public bool PauseWorldSave { get; init; }
     public bool FailWorldSave { get; init; }
     public bool FailRewardLinkInsert { get; init; }
@@ -96,6 +97,11 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
+        if (FailWeaponConfigurationInsert && command.CommandText.Contains("INSERT INTO `era_weapon_template_mod_slot`", StringComparison.OrdinalIgnoreCase))
+        {
+            var failureAt = command.CommandText.IndexOf("INSERT INTO `era_weapon_template_mod_slot`", StringComparison.OrdinalIgnoreCase);
+            command.CommandText = command.CommandText[..failureAt] + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA weapon configuration integration failure';";
+        }
         if (PauseDropSave && (command.CommandText.Contains("UPDATE `era_equipment_drop`", StringComparison.OrdinalIgnoreCase) ||
             command.CommandText.Contains("INSERT INTO `era_equipment_drop`", StringComparison.OrdinalIgnoreCase)))
         {

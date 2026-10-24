@@ -15,15 +15,15 @@ public static class EraArmorGenerationRules
     public static IReadOnlyList<int> WeightsPercent { get; } = Array.AsReadOnly(new[] { 40, 20, 15, 10, 10, 5 });
 
     /// <summary>读取已确认品阶的单件预算；未定义品阶不回退到默认值。</summary>
-    public static int GetBudget(EraArmorGrade grade)
+    public static int GetBudget(EraEquipmentGrade grade)
     {
         return grade switch
         {
-            EraArmorGrade.Worn => 54,
-            EraArmorGrade.Common => 60,
-            EraArmorGrade.Reliable => 69,
-            EraArmorGrade.Unusual => 75,
-            EraArmorGrade.Unique => 81,
+            EraEquipmentGrade.Worn => 54,
+            EraEquipmentGrade.Common => 60,
+            EraEquipmentGrade.Reliable => 69,
+            EraEquipmentGrade.Unusual => 75,
+            EraEquipmentGrade.Unique => 81,
             _ => throw new ArgumentOutOfRangeException(nameof(grade), grade, "Unknown armor grade.")
         };
     }

@@ -32,7 +32,7 @@ public partial class EraIntegrationFixture
             items.Count(item => item.Location == EraEquipmentLocation.Equipped).ShouldBe(1);
             var winner = items.Single(item => item.Id == first.EquipmentId);
             winner.Location.ShouldBe(EraEquipmentLocation.Equipped);
-            winner.EquippedSlot.ShouldBe(EraArmorSlot.Head);
+            winner.EquippedSlot.ShouldBe(EraEquipmentSlot.Head);
             winner.Version.ShouldBe(6);
             var loser = items.Single(item => item.Id == second.EquipmentId);
             loser.Location.ShouldBe(EraEquipmentLocation.Inventory);
@@ -61,7 +61,7 @@ public partial class EraIntegrationFixture
         {
             response.Data!.RequestId.ShouldBe(first.RequestId);
             response.Data.State.EquipmentVersion.ShouldBe(4);
-            response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraArmorSlot.Head).Equipment!.Id.ShouldBe(first.EquipmentId);
+            response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(first.EquipmentId);
         }
         await ReadDatabaseAsync(async context =>
         {

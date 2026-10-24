@@ -20,7 +20,7 @@ namespace Void.Bot.Api.Controllers;
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [EnableRateLimiting(EraNetworkingConstants.TeamRateLimitPolicy)]
 [OpenApiTagOrder(406)]
-public sealed class EraWorldsController : ControllerBase
+public sealed partial class EraWorldsController : ControllerBase
 {
     private readonly IMediator _mediator;
 

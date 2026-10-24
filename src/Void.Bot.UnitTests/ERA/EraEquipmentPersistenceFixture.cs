@@ -22,6 +22,39 @@ public class EraEquipmentPersistenceFixture
     }
 
     [Fact]
+    public void Should_constrain_weapon_selections_to_candidates_of_the_same_instance_and_slot()
+    {
+        using var context = Context();
+        var types = new[] { typeof(EraWeaponTemplate), typeof(EraWeaponTemplateModSlot), typeof(EraWeaponModDefinition),
+            typeof(EraWeaponModStatModifier), typeof(EraWeaponTemplateModPool), typeof(EraWeaponModCandidate), typeof(EraWeaponModSelection) };
+        foreach (var type in types)
+        {
+            var entity = context.Model.FindEntityType(type);
+            entity.ShouldNotBeNull();
+            entity.GetForeignKeys().All(key => key.DeleteBehavior == DeleteBehavior.Restrict).ShouldBeTrue();
+        }
+        foreach (var type in new[] { typeof(EraWeaponTemplate), typeof(EraWeaponModDefinition) })
+            context.Model.FindEntityType(type)!.FindProperty("Id")!.ClrType.ShouldBe(typeof(Guid));
+        context.Model.FindEntityType(typeof(EraEquipmentInstance))!.FindProperty(nameof(EraEquipmentInstance.DefinitionId))!
+            .ClrType.ShouldBe(typeof(Guid));
+        var selection = context.Model.FindEntityType(typeof(EraWeaponModSelection))!;
+        var reference = selection.GetForeignKeys().Single();
+        reference.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentId", "Slot", "SelectedCandidateId" });
+        reference.PrincipalKey.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentId", "Slot", "CandidateId" });
+        var candidate = context.Model.FindEntityType(typeof(EraWeaponModCandidate))!;
+        candidate.GetForeignKeys().Any(key => key.PrincipalEntityType.ClrType == typeof(EraWeaponTemplateModPool)).ShouldBeFalse();
+        candidate.FindProperty("Damage").ShouldBeNull();
+        selection.FindProperty("Damage").ShouldBeNull();
+        context.Model.FindEntityType(typeof(EraEquipmentInstance))!.FindProperty("Damage").ShouldBeNull();
+        context.Model.FindEntityType(typeof(EraEquipmentInstance))!.FindProperty("InventorySlot").ShouldBeNull();
+        var inventoryIndex = context.Model.FindEntityType(typeof(EraEquipmentInstance))!.GetIndexes()
+            .Single(index => index.Properties.Select(property => property.Name)
+                .SequenceEqual(new[] { nameof(EraEquipmentInstance.CharacterId), nameof(EraEquipmentInstance.Location) }));
+        inventoryIndex.GetDatabaseName().ShouldBe("ix_era_equipment_character_inventory");
+        inventoryIndex.IsUnique.ShouldBeFalse();
+    }
+
+    [Fact]
     public void Should_map_private_drop_ownership_active_uniqueness_and_world_reward_without_cascade_deletes()
     {
         using var context = Context();
@@ -68,6 +101,10 @@ public class EraEquipmentPersistenceFixture
             nameof(EraCharacter.Id), nameof(EraCharacter.PlayerId)
         });
         equipment.GetForeignKeys().All(key => key.DeleteBehavior == DeleteBehavior.Restrict).ShouldBeTrue();
+        var ownerIndex = equipment.GetIndexes().Single(index => index.Properties.Select(property => property.Name)
+            .SequenceEqual(new[] { nameof(EraEquipmentInstance.OwnerPlayerId), nameof(EraEquipmentInstance.Location) }));
+        ownerIndex.GetDatabaseName().ShouldBe("ix_era_equipment_owner_location");
+        ownerIndex.IsUnique.ShouldBeFalse();
     }
 
     [Fact]
@@ -76,10 +113,12 @@ public class EraEquipmentPersistenceFixture
         using var context = Context();
         var equipment = context.Model.FindEntityType(typeof(EraEquipmentInstance))!;
 
-        equipment.GetIndexes().Any(index => index.IsUnique && index.Properties.Select(property => property.Name).SequenceEqual(new[]
+        var equippedIndex = equipment.GetIndexes().Single(index => index.Properties.Select(property => property.Name).SequenceEqual(new[]
         {
             nameof(EraEquipmentInstance.CharacterId), nameof(EraEquipmentInstance.EquippedSlot)
-        })).ShouldBeTrue();
+        }));
+        equippedIndex.GetDatabaseName().ShouldBe("ux_era_equipment_equipped_slot");
+        equippedIndex.IsUnique.ShouldBeTrue();
         equipment.FindProperty(nameof(EraEquipmentInstance.EquippedSlot))!.IsNullable.ShouldBeTrue();
         equipment.FindProperty(nameof(EraEquipmentInstance.Version))!.IsConcurrencyToken.ShouldBeTrue();
         context.Model.FindEntityType(typeof(EraCharacter))!
@@ -109,7 +148,15 @@ public class EraEquipmentPersistenceFixture
     public async Task Should_reject_position_updates_without_outer_command_transaction()
     {
         using var context = Context();
-        var data = new EraEquipmentDataProvider(context);
+        var data = new EraEquipmentDataProvider(
+            new Repository<EraEquipmentConfiguration>(context), new Repository<EraCharacter>(context),
+            new Repository<EraEquipmentInstance>(context), new Repository<EraArmorInstanceData>(context),
+            new Repository<EraWorldMember>(context), new Repository<EraWorld>(context),
+            new Repository<EraPlayerAccountLink>(context), new Repository<EraEquipmentOperationReceipt>(context),
+            new Repository<EraWeaponTemplate>(context), new Repository<EraWeaponStatEffectProfile>(context), new Repository<EraWeaponModDefinition>(context),
+            new Repository<EraWeaponModStatModifier>(context), new Repository<EraWeaponTemplateModSlot>(context),
+            new Repository<EraWeaponTemplateModPool>(context), new Repository<EraWeaponModCandidate>(context),
+            new Repository<EraWeaponModSelection>(context), Substitute.For<AutoMapper.IMapper>());
 
         await Should.ThrowAsync<InvalidOperationException>(() => data.ApplyPositionChangesAsync(
             Guid.NewGuid(), Guid.NewGuid(), Array.Empty<EraEquipmentPositionChange>(), CancellationToken.None));

@@ -32,10 +32,13 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
     private readonly IEraRewardPoolRoller _pools;
     private readonly ILocalizationService _localization;
     private readonly TimeProvider _clock;
+    private readonly IEraWeaponGenerator? _weapons;
+    private readonly IEraEquipmentNotificationService? _notifications;
 
     public EraInventoryRewardService(IEraRewardDataProvider rewards, IEraEquipmentDataProvider equipment,
         IEraDataProvider characters, IEraArmorGenerator armor, IEraRewardPoolRoller pools,
-        ILocalizationService localization, TimeProvider clock)
+        ILocalizationService localization, TimeProvider clock, IEraWeaponGenerator? weapons = null,
+        IEraEquipmentNotificationService? notifications = null)
     {
         _rewards = rewards;
         _equipment = equipment;
@@ -44,6 +47,8 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         _pools = pools;
         _localization = localization;
         _clock = clock;
+        _weapons = weapons;
+        _notifications = notifications;
     }
 
     private EraRewardException Error(HttpStatusCode status, string code, Expression<Func<EraRewardContextTemplate, object>> text)
@@ -61,6 +66,12 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         if (row == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         if (row.Version != command.ExpectedVersion)
             throw Error(HttpStatusCode.Conflict, "era.reward_configuration_version_conflict", text => text.ConfigurationVersionConflict);
+        // 与准备奖励相同：先奖励配置，再共享锁定装备目录，防止发布引用已删除的武器模板。
+        var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, true, cancellationToken).ConfigureAwait(false);
+        if (manifest == null || command.Configuration.Pools.SelectMany(pool => pool.Entries).Any(entry =>
+            !manifest.Definitions.Any(definition => definition.Id == entry.DefinitionId) &&
+            !manifest.Weapons.Templates.Any(template => template.Id == entry.DefinitionId)))
+            throw Error(HttpStatusCode.Conflict, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         // 只更新独立奖励配置版本，已有事件完全使用自己的快照；不提升任何缓存版本。
         row.Payload = JsonSerializer.Serialize(command.Configuration);
         row.Version++;
@@ -118,6 +129,8 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             manifest = JsonSerializer.Deserialize<EraEquipmentManifestDto>(manifestRow.Payload)
                 ?? throw new ArgumentException("Equipment configuration is null.");
             manifest.Version = manifestRow.Version;
+            manifest.Weapons = await _equipment.GetWeaponCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraWeaponCatalogDto();
+            EraWeaponConfigurationValidator.Validate(manifest.Weapons);
             EraEquipmentConfigurationValidator.Validate(manifest);
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
@@ -132,8 +145,10 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         if (node.Delivery != EraRewardDelivery.Inventory)
             throw Error(HttpStatusCode.Conflict, "era.reward_delivery_unavailable", text => text.DeliveryUnavailable);
         var pool = rules.Pools.Single(item => item.Id == node.PoolId);
-        var definitions = manifest.Definitions.ToDictionary(item => item.Id, StringComparer.Ordinal);
-        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId)))
+        var definitions = manifest.Definitions.ToDictionary(item => item.Id);
+        var weaponTemplates = manifest.Weapons.Templates.ToDictionary(item => item.Id);
+        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId) &&
+            (!weaponTemplates.TryGetValue(entry.DefinitionId, out var template) || !template.IsGenerationEnabled)))
             throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         // 拒绝即使空背包也可能永远装不下的配置；普通满包则保留计划供整理后重试。
         if ((long)pool.Entries.Max(entry => entry.Count) * node.Rolls > EraEquipmentRules.InventoryCapacity)
@@ -162,11 +177,21 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             {
                 for (var index = 0; index < entry.Count; index++)
                 {
+                    if (weaponTemplates.TryGetValue(entry.DefinitionId, out var template))
+                    {
+                        if (_weapons == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
+                        grant.Equipment.Add(new EraPlannedRewardEquipment
+                        {
+                            EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = entry.Grade,
+                            EquipmentType = EraEquipmentType.Weapon,
+                            Weapon = _weapons.Generate(template)
+                        });
+                        continue;
+                    }
                     var generated = _armor.Generate(entry.Grade);
                     grant.Equipment.Add(new EraPlannedRewardEquipment
                     {
                         EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = generated.Grade,
-                        InventorySlot = definitions[entry.DefinitionId].InventorySlot,
                         GenerationRuleVersion = generated.GenerationRuleVersion, Attributes = generated.Attributes
                     });
                 }
@@ -234,14 +259,18 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             characters.Add(character.Id, character);
         }
 
+        // 武器计划固化的引用在落库前固定目录锁，避免发布在计划转资产的间隙删掉模板。
+        if (plan.Grants.SelectMany(grant => grant.Equipment).Any(item => item.EquipmentType == EraEquipmentType.Weapon) &&
+            await _equipment.LockConfigurationAsync(cancellationToken).ConfigureAwait(false) == null)
+            throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         // 所有容量与版本检查完成前不创建任何正式装备或成功回执。
         foreach (var grant in plan.Grants.OrderBy(grant => grant.CharacterId))
         {
             var character = characters[grant.CharacterId];
-            var counts = await _rewards.LockInventoryCountsAsync(character.Id, cancellationToken).ConfigureAwait(false);
+            var count = await _rewards.LockInventoryCountAsync(character.Id, cancellationToken).ConfigureAwait(false);
             if (character.EquipmentVersion < 0 || (grant.Equipment.Count > 0 && character.EquipmentVersion == long.MaxValue))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_data_unavailable", text => text.DataUnavailable);
-            if (counts.Values.Sum(count => (long)count) + grant.Equipment.Count > EraEquipmentRules.InventoryCapacity)
+            if ((long)count + grant.Equipment.Count > EraEquipmentRules.InventoryCapacity)
             {
                 throw Error(HttpStatusCode.Conflict, "era.reward_inventory_full", text => text.InventoryFull);
             }
@@ -269,16 +298,21 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             }, grant.Equipment.Select(item => new EraEquipmentInstance
             {
                 Id = item.EquipmentId, DefinitionId = item.DefinitionId, DefinitionVersion = plan.ManifestVersion,
-                EquipmentType = EraEquipmentType.Armor, Grade = item.Grade, OwnerPlayerId = grant.PlayerId,
-                CharacterId = grant.CharacterId, Location = EraEquipmentLocation.Inventory, InventorySlot = item.InventorySlot,
+                EquipmentType = item.EquipmentType, Grade = item.Grade, OwnerPlayerId = grant.PlayerId,
+                CharacterId = grant.CharacterId, Location = EraEquipmentLocation.Inventory,
                 Version = 1, CreatedAt = result.GrantedAt
-            }), grant.Equipment.Select(item => new EraArmorInstanceData
+            }), grant.Equipment.Where(item => item.EquipmentType == EraEquipmentType.Armor).Select(item => new EraArmorInstanceData
             {
                 EquipmentId = item.EquipmentId, GenerationRuleVersion = item.GenerationRuleVersion,
                 Strength = item.Attributes.Strength, Survival = item.Attributes.Survival, Mobility = item.Attributes.Mobility,
                 Focus = item.Attributes.Focus, Efficiency = item.Attributes.Efficiency, Resistance = item.Attributes.Resistance
             }));
+            var weaponInstances = grant.Equipment.Where(item => item.EquipmentType == EraEquipmentType.Weapon)
+                .ToDictionary(item => item.EquipmentId, item => item.Weapon!);
+            if (weaponInstances.Count > 0) _rewards.AddWeaponInstances(weaponInstances);
             character.EquipmentVersion = receipt.EquipmentVersion;
+            if (grant.Equipment.Count > 0 && _notifications != null)
+                await _notifications.EnqueueAsync(grant.PlayerId, grant.CharacterId, receipt.EquipmentVersion, plan.EventId, cancellationToken).ConfigureAwait(false);
             result.Grants.Add(receipt);
         }
         rewardEvent.ResultPayload = JsonSerializer.Serialize(result);
@@ -303,10 +337,14 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment))
         {
             if (item == null || item.EquipmentId == Guid.Empty || !equipmentIds.Add(item.EquipmentId) ||
-                string.IsNullOrWhiteSpace(item.DefinitionId) || item.DefinitionId.Length > 128 ||
-                !System.Enum.IsDefined(item.Grade) || !System.Enum.IsDefined(item.InventorySlot) || item.GenerationRuleVersion < 1 ||
-                item.Attributes == null || item.Attributes.Strength < 0 || item.Attributes.Survival < 0 || item.Attributes.Mobility < 0 ||
-                item.Attributes.Focus < 0 || item.Attributes.Efficiency < 0 || item.Attributes.Resistance < 0)
+                item.DefinitionId == Guid.Empty ||
+                !System.Enum.IsDefined(item.Grade) ||
+                (item.EquipmentType == EraEquipmentType.Weapon
+                    ? !EraEquipmentItemRules.ValidWeapon(item.Weapon)
+                    : item.EquipmentType != EraEquipmentType.Armor ||
+                        item.GenerationRuleVersion < 1 || item.Attributes == null || item.Attributes.Strength < 0 ||
+                        item.Attributes.Survival < 0 || item.Attributes.Mobility < 0 || item.Attributes.Focus < 0 ||
+                        item.Attributes.Efficiency < 0 || item.Attributes.Resistance < 0))
                 throw new ArgumentException("Reward plan equipment is invalid.");
         }
     }

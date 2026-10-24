@@ -1,5 +1,3 @@
-using Void.Bot.Message.Enum.ERA;
-
 namespace Void.Bot.Message.Dto.ERA;
 
 /// <summary>装备目录与当前生成规则；版本不代表角色装备并发版本。</summary>
@@ -13,6 +11,8 @@ public sealed class EraEquipmentManifestDto
     public List<EraArmorDefinitionDto> Definitions { get; set; } = new List<EraArmorDefinitionDto>();
     /// <summary>由后端生成器提供，忽略配置载荷内同名字段。</summary>
     public EraArmorGenerationRulesDto GenerationRules { get; set; } = new EraArmorGenerationRulesDto();
-    /// <summary>角色背包装备共享的总容量，不含已穿装备；各分区不设独立上限。</summary>
+    /// <summary>角色背包装备共享的总容量，不含已穿装备。</summary>
     public int InventoryCapacity { get; set; }
+    /// <summary>关系表中的当前武器配置，与目录 Version 属于同一发布。</summary>
+    public EraWeaponCatalogDto Weapons { get; set; } = new EraWeaponCatalogDto();
 }

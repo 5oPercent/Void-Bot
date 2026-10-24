@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using StackExchange.Redis;
+using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Settings.ERA;
 using Void.Bot.Core.Settings.System;
@@ -143,16 +144,16 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
         """;
 
     private readonly CacheSetting _cacheSetting;
-    private readonly ConnectionStringSetting _connectionString;
+    private readonly IRepository _repository;
     private readonly Lazy<Task<ConnectionMultiplexer>> _connection;
     private ConnectionMultiplexer? _multiplexer;
     private int _disposed;
 
     public EraTeamDataProvider(CacheSetting cacheSetting, EraNetworkingSetting networkingSetting,
-        ConnectionStringSetting connectionString)
+        IRepository repository)
     {
         _cacheSetting = cacheSetting;
-        _connectionString = connectionString;
+        _repository = repository;
         if (networkingSetting.Enabled && string.IsNullOrWhiteSpace(cacheSetting.RedisConnection))
         {
             throw new InvalidOperationException("ERA networking requires ConnectionStrings:Redis.");
@@ -367,25 +368,35 @@ public partial class EraTeamDataProvider : IEraTeamDataProvider, IDisposable, IA
 
         var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
-        await using var authority = await EraTeamAuthorityLock.AcquireAsync(_connectionString,
-            new[] { teamId }, cancellationToken).ConfigureAwait(false);
-        var fence = await database.StringIncrementAsync(AuthorityFenceKey(teamId)).ConfigureAwait(false);
-        var values = new RedisValue[]
+        return await _repository.ExecuteInIndependentTransactionAsync(AuthorityLockStatements(new[] { teamId }), async () =>
         {
-            expected,
-            json,
-            teamId.ToString("D"),
-            teamExpiration,
-            JsonSerializer.Serialize(leases),
-            peersNotification,
-            DateTimeOffset.UtcNow.ToString("O"),
-            Guid.NewGuid().ToString("D"),
-            fence
-        };
-        // 发送后等待提交结果，不用取消等待把已执行的写入误判为未提交。
-        var result = await database.ScriptEvaluateAsync(CommitScript, keys.ToArray(), values).ConfigureAwait(false);
-        await authority.CommitAsync().ConfigureAwait(false);
-        return (EraTeamWriteStatus)(int)result;
+            var fence = await database.StringIncrementAsync(AuthorityFenceKey(teamId)).ConfigureAwait(false);
+            var values = new RedisValue[]
+            {
+                expected,
+                json,
+                teamId.ToString("D"),
+                teamExpiration,
+                JsonSerializer.Serialize(leases),
+                peersNotification,
+                DateTimeOffset.UtcNow.ToString("O"),
+                Guid.NewGuid().ToString("D"),
+                fence
+            };
+            // 发送后等待提交结果，不用取消等待把已执行的写入误判为未提交。
+            var result = await database.ScriptEvaluateAsync(CommitScript, keys.ToArray(), values).ConfigureAwait(false);
+            return (EraTeamWriteStatus)(int)result;
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static IEnumerable<FormattableString> AuthorityLockStatements(IEnumerable<Guid> teamIds)
+    {
+        // 切队一次锁两队，所有调用者保持相同排序。
+        foreach (var id in teamIds.Distinct().OrderBy(id => id.ToString("D"), StringComparer.Ordinal))
+        {
+            yield return $"INSERT INTO era_world_team_state (team_id, active_world_id) VALUES ({id.ToString("D")}, NULL) ON DUPLICATE KEY UPDATE team_id = team_id";
+            yield return $"SELECT team_id FROM era_world_team_state WHERE team_id = {id.ToString("D")} FOR UPDATE";
+        }
     }
 
     public async Task RemoveExpiredIndexAsync(CancellationToken cancellationToken)

@@ -13,13 +13,15 @@ public sealed class EraEquipmentDropDto
     public Guid? DroppedByPlayerId { get; set; }
     /// <summary>原分享期限，届满后分享条目仅本次丢出者可见；私人资格不受期限影响。</summary>
     public DateTimeOffset? ShareUntil { get; set; }
-    public string DefinitionId { get; set; } = string.Empty;
+    public Guid DefinitionId { get; set; }
     public long DefinitionVersion { get; set; }
     public EraArmorDefinitionDto? Definition { get; set; }
-    public EraArmorGrade Grade { get; set; }
-    public EraArmorSlot InventorySlot { get; set; }
+    public EraEquipmentGrade Grade { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public int GenerationRuleVersion { get; set; }
     public EraArmorAttributesDto ArmorAttributes { get; set; } = new EraArmorAttributesDto();
     public EraEquipmentDropPlacementDto Placement { get; set; } = new EraEquipmentDropPlacementDto();
+    public EraEquipmentType EquipmentType { get; set; } = EraEquipmentType.Armor;
+    public EraWeaponInstanceDto? Weapon { get; set; }
+    public EraWeaponTemplateDto? WeaponTemplate { get; set; }
 }

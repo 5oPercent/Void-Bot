@@ -7,19 +7,19 @@ namespace Void.Bot.Core.Services.ERA.Equipment;
 public interface IEraArmorGenerator : IScope
 {
     /// <summary>供后端正式发放流程调用；调用方必须将结果与装备及发放回执一起保存。</summary>
-    EraArmorGenerationResult Generate(EraArmorGrade grade);
+    EraArmorGenerationResult Generate(EraEquipmentGrade grade);
 }
 
 /// <summary>仅计算一次护甲生成结果，不创建资产、发放奖励或执行战斗属性效果。</summary>
 public sealed class EraArmorGenerator : IEraArmorGenerator
 {
-    public EraArmorGenerationResult Generate(EraArmorGrade grade)
+    public EraArmorGenerationResult Generate(EraEquipmentGrade grade)
     {
         return Generate(grade, Random.Shared);
     }
 
     // 测试入口只向程序集内部开放，不允许客户端指定正式生成的随机数或属性。
-    internal EraArmorGenerationResult Generate(EraArmorGrade grade, Random random)
+    internal EraArmorGenerationResult Generate(EraEquipmentGrade grade, Random random)
     {
         ArgumentNullException.ThrowIfNull(random);
         var baseline = CreateBaseline(grade, random);
@@ -48,7 +48,7 @@ public sealed class EraArmorGenerator : IEraArmorGenerator
         };
     }
 
-    internal static int[] CreateBaseline(EraArmorGrade grade, Random random)
+    internal static int[] CreateBaseline(EraEquipmentGrade grade, Random random)
     {
         var budget = EraArmorGenerationRules.GetBudget(grade);
         var weights = EraArmorGenerationRules.WeightsPercent;

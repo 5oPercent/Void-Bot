@@ -5,7 +5,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-/// <summary>将指定已穿装备卸下到实例保存的背包分区，满分区时拒绝。</summary>
+/// <summary>将指定已穿装备卸下到角色共用背包，背包已满时拒绝。</summary>
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 public sealed class UnequipEraEquipmentCommand : IEraEquipmentOperation
 {
@@ -16,7 +16,7 @@ public sealed class UnequipEraEquipmentCommand : IEraEquipmentOperation
     /// <summary>目标槽位当前已穿实例 ID。</summary>
     public Guid EquipmentId { get; set; }
     /// <summary>需要卸下的已穿槽位。</summary>
-    public EraArmorSlot Slot { get; set; }
+    public EraEquipmentSlot Slot { get; set; }
     /// <summary>角色装备快照的预期版本。</summary>
     public long ExpectedEquipmentVersion { get; set; }
     /// <summary>已穿实例的预期版本。</summary>

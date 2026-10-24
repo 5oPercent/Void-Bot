@@ -7,25 +7,21 @@ public static class EraEquipmentConfigurationValidator
 {
     public static void Validate(EraEquipmentManifestDto configuration)
     {
-        if (configuration.SchemaVersion != 1 || configuration.Version < 1 ||
-            configuration.Definitions == null || configuration.Definitions.Count > 10000)
+        if (configuration == null || configuration.SchemaVersion != 1 || configuration.Version < 1 ||
+            configuration.Definitions == null || configuration.Definitions.Count > 10000 || configuration.Definitions.Any(definition => definition == null))
         {
             throw new ArgumentException("Equipment configuration schema or version is invalid.");
         }
 
-        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var ids = new HashSet<Guid>();
         foreach (var definition in configuration.Definitions)
         {
-            if (definition == null || string.IsNullOrWhiteSpace(definition.Id) || definition.Id.Length > 128 ||
-                definition.Id != definition.Id.Trim() || !ids.Add(definition.Id) ||
+            if (definition.Id == Guid.Empty || !ids.Add(definition.Id) ||
                 string.IsNullOrWhiteSpace(definition.Name) || definition.Name.Length > 128 ||
-                definition.Icon == null || definition.Icon.Length > 256 ||
-                definition.Note == null || definition.Note.Length > 2048 ||
-                !System.Enum.IsDefined(definition.InventorySlot) ||
+                definition.Icon is not { Length: <= 256 } || definition.Note is not { Length: <= 2048 } ||
                 definition.CompatibleSlots == null || definition.CompatibleSlots.Count == 0 ||
-                definition.CompatibleSlots.Any(slot => !System.Enum.IsDefined(slot)) ||
-                definition.CompatibleSlots.Distinct().Count() != definition.CompatibleSlots.Count ||
-                !definition.CompatibleSlots.Contains(definition.InventorySlot))
+                definition.CompatibleSlots.Any(slot => !Void.Bot.Core.Services.ERA.Equipment.EraEquipmentRules.ArmorSlots.Contains(slot)) ||
+                definition.CompatibleSlots.Distinct().Count() != definition.CompatibleSlots.Count)
             {
                 throw new ArgumentException("Equipment definition or slot mapping is invalid.");
             }

@@ -6,10 +6,9 @@ namespace Void.Bot.Core.Services.ERA.Equipment.Models;
 public sealed class EraEquipmentPositionChange
 {
     public Guid EquipmentId { get; init; }
-    public EraArmorSlot InventorySlot { get; init; }
     public long ExpectedVersion { get; init; }
     public EraEquipmentLocation PreviousLocation { get; init; }
-    public EraArmorSlot? PreviousEquippedSlot { get; init; }
+    public EraEquipmentSlot? PreviousEquippedSlot { get; init; }
     public EraEquipmentLocation Location { get; init; }
-    public EraArmorSlot? EquippedSlot { get; init; }
+    public EraEquipmentSlot? EquippedSlot { get; init; }
 }

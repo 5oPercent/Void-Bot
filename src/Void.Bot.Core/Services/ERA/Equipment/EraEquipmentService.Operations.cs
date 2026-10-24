@@ -1,6 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
@@ -37,7 +36,7 @@ public sealed partial class EraEquipmentService
     {
         var equip = command as EquipEraEquipmentCommand;
         if (command.RequestId == Guid.Empty || command.CharacterId == Guid.Empty || command.EquipmentId == Guid.Empty ||
-            command.ExpectedEquipmentVersion < 0 || command.ExpectedItemVersion < 1 || !System.Enum.IsDefined(command.Slot) ||
+            command.ExpectedEquipmentVersion < 0 || command.ExpectedItemVersion < 1 || !EraEquipmentRules.EquippedSlots.Contains(command.Slot) ||
             (equip != null && (equip.ExpectedManifestVersion < 1 ||
                 equip.ExpectedEquippedEquipmentId.HasValue != equip.ExpectedEquippedVersion.HasValue ||
                 equip.ExpectedEquippedEquipmentId == Guid.Empty || equip.ExpectedEquippedVersion is <= 0)))
@@ -104,10 +103,7 @@ public sealed partial class EraEquipmentService
         }
 
         // 卸下无需当前定义仍存在；装配必须固定并校验目录版本与兼容关系。
-        var configuration = equip != null
-            ? await _dataProvider.LockConfigurationAsync(cancellationToken).ConfigureAwait(false)
-            : await _dataProvider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
-        var manifest = DecodeConfiguration(configuration);
+        var manifest = await ReadConfigurationAsync(_dataProvider, equip != null, cancellationToken).ConfigureAwait(false);
         if (equip != null)
         {
             if (manifest == null)
@@ -147,13 +143,15 @@ public sealed partial class EraEquipmentService
         if (equip != null)
         {
             var definition = manifest!.Definitions.SingleOrDefault(definition =>
-                string.Equals(definition.Id, item.DefinitionId, StringComparison.Ordinal));
-            if (definition == null)
+                definition.Id == item.DefinitionId);
+            var weapon = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == item.DefinitionId);
+            if (item.EquipmentType == EraEquipmentType.Armor ? definition == null : weapon == null)
             {
                 return Error<T>(HttpStatusCode.Conflict, "era.equipment_definition_unavailable", text => text.DefinitionUnavailable);
             }
 
-            if (!definition.CompatibleSlots.Contains(command.Slot))
+            if (item.EquipmentType == EraEquipmentType.Armor ? !definition!.CompatibleSlots.Contains(command.Slot) :
+                !weapon!.CompatibleSlots.Contains(command.Slot))
             {
                 return Error<T>(HttpStatusCode.BadRequest, "era.equipment_incompatible_slot", text => text.IncompatibleSlot);
             }
@@ -184,7 +182,6 @@ public sealed partial class EraEquipmentService
             changes.Add(new EraEquipmentPositionChange
             {
                 EquipmentId = current.Id,
-                InventorySlot = current.InventorySlot,
                 ExpectedVersion = current.Version,
                 PreviousLocation = current.Location,
                 PreviousEquippedSlot = current.EquippedSlot,
@@ -196,7 +193,6 @@ public sealed partial class EraEquipmentService
         changes.Add(new EraEquipmentPositionChange
         {
             EquipmentId = item.Id,
-            InventorySlot = item.InventorySlot,
             ExpectedVersion = item.Version,
             PreviousLocation = item.Location,
             PreviousEquippedSlot = item.EquippedSlot,
@@ -245,7 +241,7 @@ public sealed partial class EraEquipmentService
             await _dataProvider.ApplyPositionChangesAsync(character.Id, character.PlayerId, changes, cancellationToken)
                 .ConfigureAwait(false);
         }
-        catch (DbUpdateConcurrencyException)
+        catch (EraEquipmentConcurrencyException)
         {
             // 不返回失败响应，否则工作单元仍会提交已经执行的第一条 UPDATE。
             throw new EraEquipmentWriteConflictException(
@@ -254,6 +250,8 @@ public sealed partial class EraEquipmentService
 
         await _dataProvider.CreateOperationReceiptAsync(newReceipt, cancellationToken).ConfigureAwait(false);
         character.EquipmentVersion = state.EquipmentVersion;
+        if (_notifications != null)
+            await _notifications.EnqueueAsync(character.PlayerId, character.Id, state.EquipmentVersion, command.RequestId, cancellationToken).ConfigureAwait(false);
         return new T { Code = HttpStatusCode.OK, Data = result };
     }
 }
