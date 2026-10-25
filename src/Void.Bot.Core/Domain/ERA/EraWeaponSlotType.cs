@@ -7,6 +7,6 @@ namespace Void.Bot.Core.Domain.ERA;
 [Table("era_weapon_slot_type")]
 public sealed class EraWeaponSlotType : IEntity<Guid>
 {
-    [Key] public Guid Id { get; set; }
+    [Key] public Guid Id { get; set; } = Guid.NewGuid();
     [StringLength(128)] public string Name { get; set; } = string.Empty;
 }

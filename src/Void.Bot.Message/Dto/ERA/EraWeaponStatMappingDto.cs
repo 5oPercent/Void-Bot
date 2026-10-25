@@ -6,7 +6,7 @@ namespace Void.Bot.Message.Dto.ERA;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class EraWeaponStatMappingDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     /// <summary>精准度 0 分的散布角，单位度。</summary>
     public double SpreadDegreesAtZero { get; set; }

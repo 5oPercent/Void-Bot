@@ -9,6 +9,9 @@ public sealed class SaveEraWeaponStatMappingCommandValidator : FluentMessageVali
     public SaveEraWeaponStatMappingCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
-        RuleFor(command => command.StatMapping).NotNull();
+        RuleFor(command => command.StatMapping).NotNull().ChildRules(definition =>
+        {
+            definition.RuleFor(value => value.Id).NotEmpty();
+        });
     }
 }

@@ -9,6 +9,9 @@ public sealed class SaveEraWeaponSlotTypeCommandValidator : FluentMessageValidat
     public SaveEraWeaponSlotTypeCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
-        RuleFor(command => command.SlotType).NotNull();
+        RuleFor(command => command.SlotType).NotNull().ChildRules(definition =>
+        {
+            definition.RuleFor(value => value.Id).NotEmpty();
+        });
     }
 }

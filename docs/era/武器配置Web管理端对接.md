@@ -38,8 +38,8 @@ Content-Type: application/json
 - 使用现有后台登录身份和端点权限体系；超级管理员沿用既有规则，普通管理角色需授权对应方法与路径。
 - `/api/era/admin/...` 已在游戏会话过滤器中豁免，**不需要 `X-ERA-Client-Id`，不需要初始化玩家或占用游戏会话**。
 - 请求和响应字段使用 camelCase，枚举使用数字，Guid 使用标准 UUID 字符串。
-- 新建模板、方案、类型、改装或属性映射配置时由 Web 生成非空 Guid，更新沿用原 Guid。名称和表现键不作为身份。
-- 路由中的 `{id}` 使用 Guid 约束。保存时路由 ID 会覆盖正文对象的 `id`；Web 应保持二者一致。
+- 新建模板、方案、类型、改装项、属性映射及方案内槽位时，Web 不生成或发送 `id`，正式 Guid 由后端生成。更新沿用已保存的 Guid，名称和表现键不作为身份。
+- 路由中的 `{id}` 使用 Guid 约束。新建调用不带 ID 的集合 POST 接口，成功使用 `savedId` 定位对象；更新调用 `/{id}`，路由 ID 覆盖正文 ID，显式空 Guid 由 Validators 拒绝。
 - 写入及预检契约拒绝未知 JSON 字段。发送前剔除选中状态、表格序号、校验提示等 UI 字段。
 - 管理请求体上限为 1 MiB；完整武器目录序列化后也不得超过 1 MiB。
 - `templates`、`modifications`、`statMappings`、`slotTypes`、`slotConfigurations` 五个集合各最多 10000 项；数量上限与目录字节上限分别校验，未到数量上限也可能因体积过大被拒绝。
@@ -69,6 +69,7 @@ interface Page<T> {
 }
 
 interface ConfigurationResult {
+  savedId?: Guid | null;
   version: number; // 所有写入：版本在 data 内
   configuration: WeaponCatalog; // 成功后返回完整武器目录
 }
@@ -108,23 +109,28 @@ interface ConfigurationValidation {
 | --- | --- | --- | --- |
 | GET | `/weapon-templates` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponTemplate>>` |
 | GET | `/weapon-templates/{id}` | 路由 Guid | `VersionedRead<WeaponTemplate>` |
+| POST | `/weapon-templates` | `{ expectedManifestVersion, template }`，对象不含 `id` | `ApiResponse<ConfigurationResult>`，含 `savedId` |
 | POST | `/weapon-templates/{id}` | `{ expectedManifestVersion, template }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-templates/{id}/disable` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-templates/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | GET | `/weapon-modifications` | Query：`pageIndex`、`pageSize`、`search`、`slotTypeId` | `VersionedRead<Page<WeaponModification>>` |
 | GET | `/weapon-modifications/{id}` | 路由 Guid | `VersionedRead<WeaponModification>` |
+| POST | `/weapon-modifications` | `{ expectedManifestVersion, modification }`，对象不含 `id` | `ApiResponse<ConfigurationResult>`，含 `savedId` |
 | POST | `/weapon-modifications/{id}` | `{ expectedManifestVersion, modification }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-modifications/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | GET | `/weapon-stat-mappings` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponStatMapping>>` |
 | GET | `/weapon-stat-mappings/{id}` | 路由 Guid | `VersionedRead<WeaponStatMapping>` |
+| POST | `/weapon-stat-mappings` | `{ expectedManifestVersion, statMapping }`，对象不含 `id` | `ApiResponse<ConfigurationResult>`，含 `savedId` |
 | POST | `/weapon-stat-mappings/{id}` | `{ expectedManifestVersion, statMapping }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-stat-mappings/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | GET | `/weapon-slot-types` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponSlotType>>` |
 | GET | `/weapon-slot-types/{id}` | 路由 Guid | `VersionedRead<WeaponSlotType>` |
+| POST | `/weapon-slot-types` | `{ expectedManifestVersion, slotType }`，对象不含 `id` | `ApiResponse<ConfigurationResult>`，含 `savedId` |
 | POST | `/weapon-slot-types/{id}` | `{ expectedManifestVersion, slotType }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-slot-types/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | GET | `/weapon-slot-configurations` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponSlotConfiguration>>` |
 | GET | `/weapon-slot-configurations/{id}` | 路由 Guid | `VersionedRead<WeaponSlotConfiguration>` |
+| POST | `/weapon-slot-configurations` | `{ expectedManifestVersion, slotConfiguration }`，对象不含 `id` | `ApiResponse<ConfigurationResult>`，含 `savedId` |
 | POST | `/weapon-slot-configurations/{id}` | `{ expectedManifestVersion, slotConfiguration }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-slot-configurations/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/configuration/validate` | `{ configuration }` | `ApiResponse<ConfigurationValidation>` |
@@ -197,7 +203,7 @@ const statMappingBody = {
 - 停用只将 `isGenerationEnabled` 设为 false，不删除模板。重新启用使用完整模板保存，将该字段设为 true。
 - 停用只阻止新生成；已有武器及已接受的固定奖励计划仍可使用模板。
 - 单项保存只替换指定模板、改装或共享属性映射配置，保留目录内其他对象；成功响应仍返回完整 `configuration`。
-- 单项模板保存引用的属性映射配置、候选池改装必须已经存在于当前目录。首次配置依次保存类型、公共改装、槽位方案与属性映射，每次采用成功返回的新版本，再保存模板；需要一次原子创建全部关联对象时使用完整目录发布。
+- 单项模板保存引用的属性映射配置、候选池改装必须已经存在于当前目录。首次配置依次保存类型、公共改装、槽位方案与属性映射，每次采用成功返回的新版本，再保存模板；完整目录发布用于统一提交批量关联变更。
 - 删除模板时检查装备资产、奖励池、待发奖励计划等引用；改装仍在方案池或固定实例候选中时不能删除。
 - 共享属性映射配置被任一模板引用时，单项删除返回 `409 / era.weapon_reference_conflict`，停用的模板也计入引用。先更换模板引用，再删除；也可在一次完整发布中同时调整引用和删除配置。
 - 属性映射保存会校验名称、Guid 和八个端点，沿用第 4 节约束；非法端点返回 `400 / era.weapon_invalid_configuration`。不存在的详情或删除目标返回 `404 / era.weapon_not_found`。
@@ -232,7 +238,7 @@ const validationBody = { configuration: completeCatalog };
 
 预检通过后，以读取到的当前版本提交完整目录。发布会再次检查版本、配置和引用。**遗漏的对象视为删除，不是保持原值。**尤其不能将某个分页列表、搜索结果或仅本次修改的对象作为完整目录发布。
 
-共享属性映射配置也可以通过第 3.2 节的单项接口维护。完整发布中删除某属性映射配置时，目标目录内所有模板必须已经解除或更换其引用；同一次发布可以创建属性映射配置、公共改装及引用它们的模板。
+共享属性映射配置也可以通过第 3.2 节的单项接口维护。完整发布中删除某属性映射配置时，目标目录内所有模板必须已经解除或更换其引用；同一次发布可以保存属性映射配置、公共改装及模板之间的引用。
 
 ### 3.4 读取完整武器目录
 
@@ -350,7 +356,7 @@ interface WeaponStatMapping {
 
 | 字段 | 填写与约束 |
 | --- | --- |
-| `id` | 非空 Guid；目录内不重复，也不能与已有其他装备模板身份冲突 |
+| `id` | 只读的后端生成 Guid；新建请求不发送，更新沿用；目录内不重复 |
 | `name` | 非空白，最长 128 字符 |
 | `icon` | 字符串，最长 256 字符，可为空；图标引用，不是物品身份 |
 | `note` | 字符串，最长 2048 字符，可为空 |
@@ -408,7 +414,7 @@ interface WeaponStatMapping {
 
 | 字段 | 约束 |
 | --- | --- |
-| `id` | 具体槽位的非空 Guid，整个目录内唯一；复制方案必须重新生成 |
+| `id` | 已保存槽位的只读 Guid；新增、复制或变更类型时不发送，后端生成；目录内唯一 |
 | `name` | 槽位显示名称，非空白，最长 128 字符 |
 | `slotTypeId` | 引用同目录的适配类型；同一方案可重复使用同一类型 |
 | `candidateCount` | 必填的生成数量，整数 1～16 |
@@ -475,9 +481,11 @@ interface WeaponStatMapping {
 
 例如散布端点 3→1 度，精准度 75 时为 1.5 度，85 时为 1.3 度。端点由后端发布，调整无需更新客户端，也不复制到玩家实例。
 
+新建对象使用集合 POST；保存成功的 `savedId` 和新版本用于后续引用与连续新增。新建对象及方案内新增槽位省略 ID，由 DTO 的 `Guid.NewGuid()` 默认值生成；显式空 Guid 由 Validators 拒绝，不由控制器或保存服务补正。完整目录仍执行统一配置和引用校验。
+
 ## 5. 完整发布请求示例
 
-以下示例包含一个模板、一个可复用方案、五个适配类型及公共改装、一个属性映射配置。示例槽位数不构成系统数量限制。用于新目录联调；已有目录中使用时，应先完整保留仍需存在的对象，再合并修改。`expectedManifestVersion=7` 仅为示意，必须换为实际读取值。示例不会自动生成玩家武器。
+以下示例包含一个模板、一个可复用方案、五个适配类型及公共改装、一个属性映射配置。示例槽位数不构成系统数量限制。已有目录使用时，完整保留仍需存在的对象，并使用实际关联 ID 合并修改。`expectedManifestVersion=7` 仅为示意，必须换为实际读取值。示例不会自动生成玩家武器。
 
 ```http
 POST /api/era/admin/equipment/configuration/publish
@@ -701,7 +709,7 @@ Content-Type: application/json
 
 1. 用管理列表和详情实现模板／方案／类型／改装／属性映射页面。读取版本与表单初始值一起保存，字段修改仅更新 Web 表单。
 2. 对单项完整 DTO 做本地校验；现有目录已包含引用对象时，调用单项保存即可。
-3. 单项属性映射配置使用独立保存接口。需要关联创建或批量调整时，按第 3.4 节取得同一版本完整目录，再构建完整目标目录。
+3. 单项属性映射配置使用独立保存接口。新增关联对象先依次调用创建接口；需要批量调整时，按第 3.4 节取得同一版本完整目录，再构建完整目标目录。
 4. 完整目录先预检；`errors` 非空时展示问题并继续编辑。预检通过后仍使用明确的基线版本发布。
 5. 成功后从 `data.configuration` 整体更新本地目录，从 `data.version` 更新发布基线，再刷新相关列表和详情。一次只保留一个发布请求，避免不同页签用旧版本覆盖。
 6. 遇到版本冲突时保留未提交表单，重新读取并比较差异，让管理员确认后再提交；不自动换成新版本盲目重试。
@@ -741,7 +749,7 @@ Admin 写入没有 `requestId` 幂等参数。请求超时可能已经发布成�
 
 - 管理角色可以调用获授权路径，未授权角色被拒绝；无需游戏客户端会话。
 - 模板、改装与属性映射配置分页／详情的版本来自响应顶层，写入版本来自 `data.version`。
-- 五类对象都支持单项完整保存；关联对象可按依赖顺序逐项创建，或通过完整目录一次发布。
+- 五类对象都支持单项完整保存；关联对象按依赖顺序逐项创建，已有配置可通过完整目录一次更新。
 - 删除仍在方案池中的改装按 400 处理；移出池后仍被资产引用按 409 处理。两者均保留表单并展示错误。
 - 预检中 `code=200` 且 `errors` 非空时不能进入发布成功状态。
 - 更新模板／改装／属性映射配置后，其他编辑页的旧版本请求发生冲突，未提交表单得以保留。

@@ -77,23 +77,28 @@
 | --- | --- |
 | GET `/weapon-templates` | 分页、筛选武器模板，返回当前目录版本 |
 | GET `/weapon-templates/{id}` | 模板详情，包含基础属性、行为、表现键和槽位方案引用 |
-| POST `/weapon-templates/{id}` | 创建或更新模板聚合，完整保存模板及方案引用 |
+| POST `/weapon-templates` | 新建：ExpectedManifestVersion、Template；对象不提供 ID，由后端返回 SavedId |
+| POST `/weapon-templates/{id}` | 更新已有模板聚合，完整保存模板及方案引用 |
 | POST `/weapon-templates/{id}/disable` | 停止用于新生成，保留旧实例模板引用和属性读取 |
 | POST `/weapon-templates/{id}/delete` | 删除未被资产或其他配置引用的模板；有引用时拒绝 |
 | GET `/weapon-modifications` | 分页、按槽位类型等条件筛选公共改装定义 |
 | GET `/weapon-modifications/{id}` | 改装详情及全部属性修正规则 |
-| POST `/weapon-modifications/{id}` | 创建或更新改装定义，修正规则与定义一起原子保存 |
+| POST `/weapon-modifications` | 新建：ExpectedManifestVersion、Modification；对象不提供 ID，由后端返回 SavedId |
+| POST `/weapon-modifications/{id}` | 更新已有改装定义，修正规则与定义一起原子保存 |
 | POST `/weapon-modifications/{id}/delete` | 删除未引用的公共改装；池或实例仍引用时拒绝 |
 | GET `/weapon-stat-mappings` | 分页、按名称或 Guid 搜索共享属性映射配置 |
 | GET `/weapon-stat-mappings/{id}` | 完整端点及当前全局发布版本 |
-| POST `/weapon-stat-mappings/{id}` | 创建或整项替换共享属性映射配置并发布 |
+| POST `/weapon-stat-mappings` | 新建：ExpectedManifestVersion、StatMapping；对象不提供 ID，由后端返回 SavedId |
+| POST `/weapon-stat-mappings/{id}` | 更新已有配置共享属性映射配置并发布 |
 | POST `/weapon-stat-mappings/{id}/delete` | 删除未被任何模板引用的共享属性映射配置 |
 | GET `/weapon-slot-types` | 槽位类型分页与搜索 |
 | GET `/weapon-slot-types/{id}` | 槽位类型详情与当前目录版本 |
+| POST `/weapon-slot-types` | 新建：ExpectedManifestVersion、SlotType；对象不提供 ID，由后端返回 SavedId |
 | POST `/weapon-slot-types/{id}` | 完整保存并发布槽位类型 |
 | POST `/weapon-slot-types/{id}/delete` | 删除未引用的槽位类型 |
 | GET `/weapon-slot-configurations` | 整套槽位方案分页与搜索 |
 | GET `/weapon-slot-configurations/{id}` | 整套槽位方案详情与当前目录版本 |
+| POST `/weapon-slot-configurations` | 新建：ExpectedManifestVersion、SlotConfiguration；对象不提供 ID，由后端返回 SavedId |
 | POST `/weapon-slot-configurations/{id}` | 完整保存并发布整套槽位方案 |
 | POST `/weapon-slot-configurations/{id}/delete` | 删除未引用的整套槽位方案 |
 | POST `/configuration/validate` | 校验拟发布配置及关联变更，返回错误和影响说明，不写数据 |

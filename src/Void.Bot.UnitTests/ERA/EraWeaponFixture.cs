@@ -407,4 +407,151 @@ public class EraWeaponFixture
         foreach (var slot in copy.Slots) slot.Id = Guid.NewGuid();
         Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
+
+    [Fact]
+    public void Should_default_missing_dto_ids_and_reject_explicit_empty_ids_in_validators()
+    {
+        var generated = new[]
+        {
+            JsonSerializer.Deserialize<EraWeaponTemplateDto>("{}")!.Id,
+            JsonSerializer.Deserialize<EraWeaponModDefinitionDto>("{}")!.Id,
+            JsonSerializer.Deserialize<EraWeaponStatMappingDto>("{}")!.Id,
+            JsonSerializer.Deserialize<EraWeaponSlotTypeDto>("{}")!.Id,
+            JsonSerializer.Deserialize<EraWeaponSlotConfigurationDto>("{}")!.Id,
+            JsonSerializer.Deserialize<EraWeaponConfigurationSlotDto>("{}")!.Id
+        };
+        generated.ShouldAllBe(id => id != Guid.Empty);
+        generated.Distinct().Count().ShouldBe(generated.Length);
+        var type = JsonSerializer.Deserialize<EraWeaponSlotTypeDto>("{\"Id\":\"00000000-0000-0000-0000-000000000000\"}")!;
+        var results = new[]
+        {
+            new SaveEraWeaponTemplateCommandValidator().Validate(new SaveEraWeaponTemplateCommand
+            {
+                ExpectedManifestVersion = 7, Template = new EraWeaponTemplateDto { Id = Guid.Empty }
+            }),
+            new SaveEraWeaponModificationCommandValidator().Validate(new SaveEraWeaponModificationCommand
+            {
+                ExpectedManifestVersion = 7, Modification = new EraWeaponModDefinitionDto { Id = Guid.Empty }
+            }),
+            new SaveEraWeaponStatMappingCommandValidator().Validate(new SaveEraWeaponStatMappingCommand
+            {
+                ExpectedManifestVersion = 7, StatMapping = new EraWeaponStatMappingDto { Id = Guid.Empty }
+            }),
+            new SaveEraWeaponSlotTypeCommandValidator().Validate(new SaveEraWeaponSlotTypeCommand
+            {
+                ExpectedManifestVersion = 7, SlotType = type
+            }),
+            new SaveEraWeaponSlotConfigurationCommandValidator().Validate(new SaveEraWeaponSlotConfigurationCommand
+            {
+                ExpectedManifestVersion = 7, SlotConfiguration = new EraWeaponSlotConfigurationDto { Id = Guid.Empty }
+            }),
+            new SaveEraWeaponSlotConfigurationCommandValidator().Validate(new SaveEraWeaponSlotConfigurationCommand
+            {
+                ExpectedManifestVersion = 7, SlotConfiguration = new EraWeaponSlotConfigurationDto
+                {
+                    Slots = new List<EraWeaponConfigurationSlotDto> { new EraWeaponConfigurationSlotDto { Id = Guid.Empty } }
+                }
+            })
+        };
+        results.ShouldAllBe(result => !result.IsValid);
+        type.Id.ShouldBe(Guid.Empty);
+        new SaveEraWeaponTemplateCommandValidator().Validate(new SaveEraWeaponTemplateCommand
+        {
+            ExpectedManifestVersion = 7, Template = null!
+        }).IsValid.ShouldBeFalse();
+        new SaveEraWeaponSlotConfigurationCommandValidator().Validate(new SaveEraWeaponSlotConfigurationCommand
+        {
+            ExpectedManifestVersion = 7, SlotConfiguration = new EraWeaponSlotConfigurationDto { Slots = null! }
+        }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Should_preserve_dto_generated_ids_when_creating_and_updating_configurations()
+    {
+        var current = new EraWeaponCatalogDto();
+        var weapons = Substitute.For<IEraWeaponDataProvider>();
+        var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}" };
+        weapons.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
+        weapons.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
+        weapons.GetReferencedWeaponsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
+        weapons.GetReferencedSlotsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModSelection>());
+        weapons.GetReferencedCandidatesAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModCandidate>());
+        weapons.GetPendingRewardPlansAsync(Arg.Any<CancellationToken>()).Returns(new List<string>());
+        weapons.ReplaceCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            current = call.Arg<EraWeaponCatalogDto>(); return Task.CompletedTask;
+        });
+        var service = new EraWeaponService(weapons, Substitute.For<IEraEquipmentDataProvider>(), user,
+            Substitute.For<ILocalizationService>(), TimeProvider.System);
+        var first = await service.SaveSlotTypeAsync(new SaveEraWeaponSlotTypeCommand
+        {
+            ExpectedManifestVersion = 7, SlotType = new EraWeaponSlotTypeDto { Name = "Optic" }
+        }, CancellationToken.None);
+        var firstId = first.Data!.SavedId!.Value;
+        firstId.ShouldNotBe(Guid.Empty);
+        var second = await service.SaveSlotTypeAsync(new SaveEraWeaponSlotTypeCommand
+        {
+            ExpectedManifestVersion = 8, SlotType = new EraWeaponSlotTypeDto { Name = "Muzzle" }
+        }, CancellationToken.None);
+        second.Data!.SavedId.ShouldNotBe(first.Data.SavedId);
+        second.Data.Configuration.SlotTypes.Count.ShouldBe(2);
+        var update = await service.SaveSlotTypeAsync(new SaveEraWeaponSlotTypeCommand
+        {
+            ExpectedManifestVersion = 9, SlotType = new EraWeaponSlotTypeDto { Id = firstId, Name = "Main optic" }
+        }, CancellationToken.None);
+        update.Data!.SavedId.ShouldBe(firstId);
+        update.Data.Configuration.SlotTypes.Count.ShouldBe(2);
+        var modification = await service.SaveModificationAsync(new SaveEraWeaponModificationCommand
+        {
+            ExpectedManifestVersion = 10,
+            Modification = new EraWeaponModDefinitionDto { Name = "Optic attachment", SlotTypeId = firstId }
+        }, CancellationToken.None);
+        var scheme = await service.SaveSlotConfigurationAsync(new SaveEraWeaponSlotConfigurationCommand
+        {
+            ExpectedManifestVersion = 11,
+            SlotConfiguration = new EraWeaponSlotConfigurationDto
+            {
+                Name = "Optics",
+                Slots = new List<EraWeaponConfigurationSlotDto>
+                {
+                    new EraWeaponConfigurationSlotDto
+                    {
+                        Name = "Main optic", SlotTypeId = firstId, CandidateCount = 1,
+                        Pool = new List<EraWeaponModPoolEntryDto>
+                        {
+                            new EraWeaponModPoolEntryDto { ModDefinitionId = modification.Data!.SavedId!.Value, Weight = 1 }
+                        }
+                    }
+                }
+            }
+        }, CancellationToken.None);
+        var schemeId = scheme.Data!.SavedId!.Value;
+        schemeId.ShouldNotBe(Guid.Empty);
+        var savedScheme = scheme.Data.Configuration.SlotConfigurations.Single();
+        var savedSlotId = savedScheme.Slots.Single().Id;
+        savedSlotId.ShouldNotBe(Guid.Empty);
+        var edited = JsonSerializer.Deserialize<EraWeaponSlotConfigurationDto>(JsonSerializer.Serialize(savedScheme))!;
+        edited.Slots[0].Name = "Renamed optic";
+        var extra = new EraWeaponConfigurationSlotDto
+        {
+            Name = "Secondary optic", SlotTypeId = firstId, CandidateCount = 1, DisplayOrder = 1,
+            Pool = edited.Slots[0].Pool.ToList()
+        };
+        edited.Slots.Add(extra);
+        var updatedScheme = await service.SaveSlotConfigurationAsync(new SaveEraWeaponSlotConfigurationCommand
+        {
+            ExpectedManifestVersion = 12, SlotConfiguration = edited
+        }, CancellationToken.None);
+        updatedScheme.Data!.Configuration.SlotConfigurations.Single().Slots[0].Id.ShouldBe(savedSlotId);
+        extra.Id.ShouldNotBe(Guid.Empty); extra.Id.ShouldNotBe(savedSlotId);
+        var invalidScheme = JsonSerializer.Deserialize<EraWeaponSlotConfigurationDto>(JsonSerializer.Serialize(edited))!;
+        invalidScheme.Slots[1].Id = Guid.Empty;
+        var invalidSlot = await Should.ThrowAsync<EraWeaponException>(() => service.SaveSlotConfigurationAsync(new SaveEraWeaponSlotConfigurationCommand
+        {
+            ExpectedManifestVersion = 13, SlotConfiguration = invalidScheme
+        }, CancellationToken.None));
+        invalidSlot.Code.ShouldBe(HttpStatusCode.BadRequest);
+        publication.Version.ShouldBe(13);
+    }
 }

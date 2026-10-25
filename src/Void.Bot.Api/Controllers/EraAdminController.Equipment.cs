@@ -25,6 +25,15 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
+    [HttpPost("equipment/weapon-templates")]
+    [DescriptionLocalization("SaveEraWeaponTemplate")]
+    [ProducesResponseType(typeof(SaveEraWeaponTemplateResponse), 200)]
+    public async Task<IActionResult> CreateWeaponTemplateAsync([FromBody] SaveEraWeaponTemplateCommand command, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SaveEraWeaponTemplateCommand, SaveEraWeaponTemplateResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("equipment/weapon-templates/{id:guid}")]
     [DescriptionLocalization("SaveEraWeaponTemplate")]
     [ProducesResponseType(typeof(SaveEraWeaponTemplateResponse), 200)]
@@ -63,6 +72,15 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
+    [HttpPost("equipment/weapon-modifications")]
+    [DescriptionLocalization("SaveEraWeaponModification")]
+    [ProducesResponseType(typeof(SaveEraWeaponModificationResponse), 200)]
+    public async Task<IActionResult> CreateWeaponModificationAsync([FromBody] SaveEraWeaponModificationCommand command, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SaveEraWeaponModificationCommand, SaveEraWeaponModificationResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("equipment/weapon-modifications/{id:guid}")]
     [DescriptionLocalization("SaveEraWeaponModification")]
     [ProducesResponseType(typeof(SaveEraWeaponModificationResponse), 200)]
@@ -98,6 +116,15 @@ public sealed partial class EraAdminController
     public async Task<IActionResult> GetWeaponStatMappingAsync([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var response = await _mediator.RequestAsync<GetEraWeaponStatMappingRequest, GetEraWeaponStatMappingResponse>(new GetEraWeaponStatMappingRequest { Id = id }, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-stat-mappings")]
+    [DescriptionLocalization("SaveEraWeaponStatMapping")]
+    [ProducesResponseType(typeof(SaveEraWeaponStatMappingResponse), 200)]
+    public async Task<IActionResult> CreateWeaponStatMappingAsync([FromBody] SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 
@@ -166,6 +193,15 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
+    [HttpPost("equipment/weapon-slot-types")]
+    [DescriptionLocalization("SaveEraWeaponSlotType")]
+    [ProducesResponseType(typeof(SaveEraWeaponSlotTypeResponse), 200)]
+    public async Task<IActionResult> CreateWeaponSlotTypeAsync([FromBody] SaveEraWeaponSlotTypeCommand command, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SaveEraWeaponSlotTypeCommand, SaveEraWeaponSlotTypeResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
     [HttpPost("equipment/weapon-slot-types/{id:guid}")]
     [DescriptionLocalization("SaveEraWeaponSlotType")]
     [ProducesResponseType(typeof(SaveEraWeaponSlotTypeResponse), 200)]
@@ -201,6 +237,15 @@ public sealed partial class EraAdminController
     public async Task<IActionResult> GetWeaponSlotConfigurationAsync([FromRoute] Guid id, CancellationToken cancellationToken)
     {
         var response = await _mediator.RequestAsync<GetEraWeaponSlotConfigurationRequest, GetEraWeaponSlotConfigurationResponse>(new GetEraWeaponSlotConfigurationRequest { Id = id }, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-slot-configurations")]
+    [DescriptionLocalization("SaveEraWeaponSlotConfiguration")]
+    [ProducesResponseType(typeof(SaveEraWeaponSlotConfigurationResponse), 200)]
+    public async Task<IActionResult> CreateWeaponSlotConfigurationAsync([FromBody] SaveEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.SendAsync<SaveEraWeaponSlotConfigurationCommand, SaveEraWeaponSlotConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
 
