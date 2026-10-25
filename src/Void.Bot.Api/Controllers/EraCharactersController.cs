@@ -140,6 +140,18 @@ public sealed partial class EraCharactersController : ControllerBase
         return Ok(await _mediator.SendAsync<DropEraInventoryEquipmentCommand, DropEraInventoryEquipmentResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
+    [HttpPost("{characterId:guid}/inventory/destroy")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("DestroyEraInventoryEquipment")]
+    [ProducesResponseType(typeof(DestroyEraInventoryEquipmentResponse), 200)]
+    public async Task<IActionResult> DestroyInventoryEquipmentAsync(
+        [FromRoute] Guid characterId, [FromBody] DestroyEraInventoryEquipmentCommand command,
+        CancellationToken cancellationToken)
+    {
+        command.CharacterId = characterId;
+        return Ok(await _mediator.SendAsync<DestroyEraInventoryEquipmentCommand, DestroyEraInventoryEquipmentResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
     [HttpPost("{characterId:guid}/delete")]
     [SkipPermissionCheck]
     [DescriptionLocalization("DeleteEraCharacter")]

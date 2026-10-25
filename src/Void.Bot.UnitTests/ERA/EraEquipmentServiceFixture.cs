@@ -53,12 +53,13 @@ public class EraEquipmentServiceFixture
     public async Task Should_filter_weapons_and_armor_in_the_same_inventory_without_changing_total_capacity_or_count()
     {
         var catalog = EraWeaponFixture.Catalog();
+        var configuration = catalog.SlotConfigurations.Single(item => item.Id == catalog.Templates[0].SlotConfigurationId);
         _data.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         _snapshot.Entries.Add(Entry());
         var weapon = Entry().Equipment;
         weapon.EquipmentType = EraEquipmentType.Weapon;
         weapon.DefinitionId = catalog.Templates[0].Id;
-        _snapshot.Entries.Add(new EraEquipmentReadEntry(weapon, null, EraWeaponGenerator.Generate(catalog.Templates[0], _ => 0)));
+        _snapshot.Entries.Add(new EraEquipmentReadEntry(weapon, null, EraWeaponGenerator.Generate(configuration, _ => 0)));
         var unfiltered = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
         unfiltered.Data!.InventoryItems.Count.ShouldBe(2);
         var filtered = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest

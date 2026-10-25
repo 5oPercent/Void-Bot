@@ -9,7 +9,7 @@ public sealed class EraEquipmentOperationReceiptDto
     public Guid RequestId { get; set; }
     /// <summary>操作所属角色。</summary>
     public Guid CharacterId { get; set; }
-    /// <summary>装配／替换、卸下、拾取或丢出。</summary>
+    /// <summary>装配／替换、卸下、拾取、丢出、改装或批量销毁。</summary>
     public EraEquipmentOperation Operation { get; set; }
     /// <summary>操作前的角色装备版本。</summary>
     public long PreviousEquipmentVersion { get; set; }

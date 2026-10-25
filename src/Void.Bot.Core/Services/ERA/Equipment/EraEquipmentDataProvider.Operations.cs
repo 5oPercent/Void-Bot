@@ -97,6 +97,8 @@ public sealed partial class EraEquipmentDataProvider
                 setters => setters
                     .SetProperty(equipment => equipment.Location, change.Location)
                     .SetProperty(equipment => equipment.EquippedSlot, change.EquippedSlot)
+                    .SetProperty(equipment => equipment.CharacterId, change.Location == EraEquipmentLocation.Destroyed ? (Guid?)null : characterId)
+                    .SetProperty(equipment => equipment.OwnerPlayerId, change.Location == EraEquipmentLocation.Destroyed ? (Guid?)null : playerId)
                     .SetProperty(equipment => equipment.Version, change.ExpectedVersion + 1)
                     .SetProperty(equipment => equipment.UpdatedAt, (DateTimeOffset?)updatedAt), cancellationToken)
                 .ConfigureAwait(false);

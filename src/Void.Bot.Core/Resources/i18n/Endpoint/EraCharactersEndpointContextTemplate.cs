@@ -13,6 +13,7 @@ public sealed class EraCharactersEndpointContextTemplate : IContextTemplate
     public string EquipEraEquipment { get; set; } = "装配或原子替换本人 ERA 角色装备";
     public string UnequipEraEquipment { get; set; } = "将本人 ERA 角色已穿装备卸下回包";
     public string DropEraInventoryEquipment { get; set; } = "丢出本人背包中具备分享资格的装备";
+    public string DestroyEraInventoryEquipment { get; set; } = "批量销毁本人角色背包装备";
     public string CreateEraCharacter { get; set; } = "幂等创建本人 ERA 角色";
     public string DeleteEraCharacter { get; set; } = "禁用本人 ERA 角色";
 }
