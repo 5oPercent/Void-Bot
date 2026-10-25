@@ -11,7 +11,8 @@ public sealed class EraInventoryRewardPlan
     public long ManifestVersion { get; set; }
     public DateTimeOffset AcceptedAt { get; set; }
     /// <summary>首次使用的来源节点及池完整快照，供审计；发放只消费已抽出的 Equipment。</summary>
-    public EraRewardNode Node { get; set; } = new EraRewardNode();
-    public EraRewardPool Pool { get; set; } = new EraRewardPool();
+    public EraRewardNode? Node { get; set; }
+    public EraRewardPool? Pool { get; set; }
+    public List<EraEquipmentRewardEntry>? Entries { get; set; }
     public List<EraPlannedRewardGrant> Grants { get; set; } = new List<EraPlannedRewardGrant>();
 }

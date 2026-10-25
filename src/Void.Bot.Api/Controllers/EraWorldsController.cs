@@ -144,6 +144,16 @@ public sealed partial class EraWorldsController : ControllerBase
         return Ok(await _mediator.SendAsync<SubmitEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
+    [HttpPost("{worldInstanceId:guid}/rewards/ground/grant")]
+    [DescriptionLocalization("GrantEraGroundReward")]
+    [ProducesResponseType(typeof(SubmitEraGroundRewardResponse), 200)]
+    public async Task<IActionResult> GrantGroundRewardAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] GrantEraGroundRewardCommand command, CancellationToken cancellationToken)
+    {
+        command.WorldInstanceId = worldInstanceId;
+        return Ok(await _mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
     [HttpGet("{worldInstanceId:guid}/equipment-drops")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetEraEquipmentDrops")]

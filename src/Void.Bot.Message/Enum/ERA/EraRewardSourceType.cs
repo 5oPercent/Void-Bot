@@ -6,5 +6,7 @@ public enum EraRewardSourceType
     Internal = 1,
     Task = 2,
     Monster = 3,
-    Chest = 4
+    Chest = 4,
+    /// <summary>世界内事件完成，由当前房主按配置触发奖励。</summary>
+    Event = 5
 }

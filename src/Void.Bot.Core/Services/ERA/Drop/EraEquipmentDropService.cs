@@ -20,6 +20,7 @@ namespace Void.Bot.Core.Services.ERA.Drop;
 
 public interface IEraEquipmentDropService : IScope
 {
+    Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<GetEraEquipmentDropsResponse> GetAsync(GetEraEquipmentDropsRequest request, CancellationToken cancellationToken);
     Task<PickupEraEquipmentDropResponse> PickupAsync(PickupEraEquipmentDropCommand command, CancellationToken cancellationToken);

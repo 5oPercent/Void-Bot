@@ -16,7 +16,8 @@ public sealed class EraWorldsEndpointContextTemplate : IContextTemplate
     public string LeaveEraWorld { get; set; } = "报告本人离开世界";
     public string EndEraWorld { get; set; } = "结束世界或释放失败构建";
     public string SetEraWorldEquipmentRestriction { get; set; } = "声明已穿装备操作限制";
-    public string SubmitEraGroundReward { get; set; } = "房主提交怪物或宝箱私人地面奖励";
+    public string SubmitEraGroundReward { get; set; } = "房主提交怪物、宝箱或世界事件私人地面奖励";
+    public string GrantEraGroundReward { get; set; } = "直接指定奖励条目生成私人地面装备";
     public string GetEraEquipmentDrops { get; set; } = "读取本人可领取的私人或分享地面掉落";
     public string PickupEraEquipmentDrop { get; set; } = "拾取本人世界中的私人或分享地面装备";
 }

@@ -6,8 +6,9 @@ namespace Void.Bot.Core.Services.ERA.Reward.Models;
 public sealed class EraGroundRewardPlan
 {
     public int SchemaVersion { get; set; } = 1;
-    public EraRewardNode Node { get; set; } = new EraRewardNode();
-    public EraRewardPool Pool { get; set; } = new EraRewardPool();
+    public EraRewardNode? Node { get; set; }
+    public EraRewardPool? Pool { get; set; }
+    public List<EraEquipmentRewardEntry>? Entries { get; set; }
     public EraEquipmentDropPlacementDto Placement { get; set; } = new EraEquipmentDropPlacementDto();
     public List<Guid> AllowedPlayerIds { get; set; } = new List<Guid>();
 }
