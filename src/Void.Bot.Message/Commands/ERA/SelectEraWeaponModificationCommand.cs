@@ -3,7 +3,6 @@ using System.Data;
 using Mediator.Net.Contracts;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto.ERA;
-using Void.Bot.Message.Enum.ERA;
 using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
@@ -15,7 +14,7 @@ public sealed class SelectEraWeaponModificationCommand : ICommand, IRequireEraPl
     public Guid CharacterId { get; set; }
     public Guid EquipmentId { get; set; }
     public Guid RequestId { get; set; }
-    public EraWeaponModSlot Slot { get; set; }
+    public Guid SlotId { get; set; }
     public Guid CandidateId { get; set; }
     public long ExpectedManifestVersion { get; set; }
     public long ExpectedEquipmentVersion { get; set; }

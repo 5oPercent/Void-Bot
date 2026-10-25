@@ -12,7 +12,7 @@ public sealed class SelectEraWeaponModificationCommandValidator : FluentMessageV
         RuleFor(command => command.EquipmentId).NotEmpty();
         RuleFor(command => command.RequestId).NotEmpty();
         RuleFor(command => command.CandidateId).NotEmpty();
-        RuleFor(command => command.Slot).IsInEnum();
+        RuleFor(command => command.SlotId).NotEmpty();
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0);
         RuleFor(command => command.ExpectedEquipmentVersion).GreaterThanOrEqualTo(0).LessThan(long.MaxValue);
         RuleFor(command => command.ExpectedItemVersion).GreaterThan(0).LessThan(long.MaxValue);

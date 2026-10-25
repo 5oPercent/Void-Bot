@@ -190,7 +190,7 @@ public sealed partial class EraEquipmentDropService
                     if (isWeapon)
                     {
                         if (_weapons == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
-                        weaponInstances.Add(item.Id, _weapons.Generate(template!));
+                        weaponInstances.Add(item.Id, _weapons.Generate(manifest.Weapons.SlotConfigurations.Single(configuration => configuration.Id == template!.SlotConfigurationId)));
                     }
                     else armor.Add(new EraArmorInstanceData
                     {

@@ -15,9 +15,17 @@ public sealed class EraAdminEndpointContextTemplate : IContextTemplate
     public string SaveEraWeaponModification { get; set; } = "原子保存并发布公共武器改装";
     public string DeleteEraWeaponModification { get; set; } = "删除未引用的公共武器改装";
     public string GetEraWeaponStatMappings { get; set; } = "分页查询共享武器属性映射配置";
+    public string GetEraWeaponSlotConfigurations { get; set; } = "分页查询武器改装槽位方案";
+    public string GetEraWeaponSlotTypes { get; set; } = "分页查询武器改装槽类型";
     public string GetEraWeaponStatMapping { get; set; } = "读取共享武器属性映射配置";
+    public string GetEraWeaponSlotConfiguration { get; set; } = "读取武器改装槽位方案";
+    public string GetEraWeaponSlotType { get; set; } = "读取武器改装槽类型";
     public string SaveEraWeaponStatMapping { get; set; } = "原子保存并发布共享武器属性映射配置";
+    public string SaveEraWeaponSlotConfiguration { get; set; } = "原子保存并发布武器改装槽位方案";
+    public string SaveEraWeaponSlotType { get; set; } = "原子保存并发布武器改装槽类型";
     public string DeleteEraWeaponStatMapping { get; set; } = "删除未引用的共享武器属性映射配置";
+    public string DeleteEraWeaponSlotConfiguration { get; set; } = "删除未引用的武器改装槽位方案";
+    public string DeleteEraWeaponSlotType { get; set; } = "删除未引用的武器改装槽类型";
     public string ValidateEraWeaponConfiguration { get; set; } = "校验拟发布武器配置";
     public string PublishEraWeaponConfiguration { get; set; } = "原子发布完整武器配置";
     public string GetEraAdminPlayer { get; set; } = "官方查询指定 ERA 玩家的容量与版本";

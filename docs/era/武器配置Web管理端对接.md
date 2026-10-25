@@ -1,10 +1,12 @@
 # ERA 武器配置 Web 管理端对接
 
-更新日期：2026-10-24。面向 Web 后台开发，以当前 Controller、DTO、Validator 和 Service 源码为准；本文未进行部署环境 HTTP 联调。
+更新日期：2026-10-25。面向 Web 后台开发，以当前 Controller、DTO、Validator 和 Service 源码为准；本文未进行部署环境 HTTP 联调。
 
-范围：武器模板、公共改装定义、共享属性映射配置、预检和发布。玩家实例、背包、装备操作及战斗执行不在本文范围。
+范围：武器模板、槽位类型、整套槽位方案、公共改装定义、共享属性映射配置、预检和发布。玩家实例、背包、装备操作及战斗执行不在本文范围。
 
-此前后端已部署。本轮接口及字段采用 `weapon-stat-mappings`、`statMappingId`、`statMappings`；升级数据库需通过新增的 `Script0039_rename_era_weapon_stat_mapping.sql` 从已部署的原始命名迁移，历史脚本保持原样。Web 与 Godot 应同步使用本文的新契约；本轮迁移尚未执行。
+槽位相关契约使用 `slotTypes`、`slotConfigurations`、`slotConfigurationId`、`slotTypeId`；Script0040 按空武器业务表升级结构，不执行旧数据转换。完整规则见 [武器改装槽位方案](武器改装槽位方案.md)。
+
+接口及字段统一采用 `weapon-stat-mappings`、`statMappingId`、`statMappings`。已部署数据库升级需执行 `Script0039_rename_era_weapon_stat_mapping.sql`，调整表、列和外键名称，历史脚本保持原样。已确认没有旧业务数据，不增加历史 JSON 数据迁移或旧字段兼容。Web 与 Godot 应同步使用新契约；目标环境的迁移执行状态需部署时确认。
 
 ## 1. 当前可接入范围
 
@@ -12,11 +14,13 @@
 | --- | --- |
 | 武器模板 | 分页、详情、新建／完整更新、停用、删除 |
 | 公共改装 | 分页、详情、新建／完整更新、删除 |
+| 槽位类型 | 分页、详情、新建／完整更新、删除 |
+| 整套槽位方案 | 分页、详情、新建／完整更新、删除；槽位和候选池独立维护 |
 | 共享属性映射配置 | 分页、详情、新建／完整更新、删除；也支持随完整目录预检、发布 |
 | 完整武器目录 | `GET /api/era/manifest/equipment` 的 `data.weapons`；支持完整目录预检和原子发布 |
 | 草稿 | 无后端草稿；Web 可以维护未提交表单，保存成功就是发布 |
 
-完整目录已有清单接口，包含模板、改装及共享效果三类集合，版本位于 `data.version`。该清单路径目前仍要求有效游戏客户端会话；独立 Admin 管理接口不要求游戏会话，Web 可直接完成三类对象的单项管理。纯 Web 批量发布时，也可以按第 3.4 节从三类管理分页完整读取同一版本目录。
+完整目录已有清单接口，包含模板、改装、属性映射、槽位类型及方案五类集合，版本位于 `data.version`。该清单路径目前仍要求有效游戏客户端会话；独立 Admin 管理接口不要求游戏会话，Web 可直接完成五类对象的单项管理。纯 Web 批量发布时，也可以按第 3.4 节从五类管理分页完整读取同一版本目录。
 
 `GET /api/era/admin/configuration` 与 `/configuration/export` 属于技能／BUFF 草稿，不能用于读取武器目录。武器路径中包含 `/equipment/`。
 
@@ -34,10 +38,11 @@ Content-Type: application/json
 - 使用现有后台登录身份和端点权限体系；超级管理员沿用既有规则，普通管理角色需授权对应方法与路径。
 - `/api/era/admin/...` 已在游戏会话过滤器中豁免，**不需要 `X-ERA-Client-Id`，不需要初始化玩家或占用游戏会话**。
 - 请求和响应字段使用 camelCase，枚举使用数字，Guid 使用标准 UUID 字符串。
-- 新建模板、改装或属性映射配置时由 Web 生成非空 Guid，更新沿用原 Guid。名称和表现键不作为身份。
+- 新建模板、方案、类型、改装或属性映射配置时由 Web 生成非空 Guid，更新沿用原 Guid。名称和表现键不作为身份。
 - 路由中的 `{id}` 使用 Guid 约束。保存时路由 ID 会覆盖正文对象的 `id`；Web 应保持二者一致。
 - 写入及预检契约拒绝未知 JSON 字段。发送前剔除选中状态、表格序号、校验提示等 UI 字段。
 - 管理请求体上限为 1 MiB；完整武器目录序列化后也不得超过 1 MiB。
+- `templates`、`modifications`、`statMappings`、`slotTypes`、`slotConfigurations` 五个集合各最多 10000 项；数量上限与目录字节上限分别校验，未到数量上限也可能因体积过大被拒绝。
 
 ### 2.2 响应与成功判断
 
@@ -106,7 +111,7 @@ interface ConfigurationValidation {
 | POST | `/weapon-templates/{id}` | `{ expectedManifestVersion, template }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-templates/{id}/disable` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-templates/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
-| GET | `/weapon-modifications` | Query：`pageIndex`、`pageSize`、`search`、`slot` | `VersionedRead<Page<WeaponModification>>` |
+| GET | `/weapon-modifications` | Query：`pageIndex`、`pageSize`、`search`、`slotTypeId` | `VersionedRead<Page<WeaponModification>>` |
 | GET | `/weapon-modifications/{id}` | 路由 Guid | `VersionedRead<WeaponModification>` |
 | POST | `/weapon-modifications/{id}` | `{ expectedManifestVersion, modification }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-modifications/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
@@ -114,6 +119,14 @@ interface ConfigurationValidation {
 | GET | `/weapon-stat-mappings/{id}` | 路由 Guid | `VersionedRead<WeaponStatMapping>` |
 | POST | `/weapon-stat-mappings/{id}` | `{ expectedManifestVersion, statMapping }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/weapon-stat-mappings/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
+| GET | `/weapon-slot-types` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponSlotType>>` |
+| GET | `/weapon-slot-types/{id}` | 路由 Guid | `VersionedRead<WeaponSlotType>` |
+| POST | `/weapon-slot-types/{id}` | `{ expectedManifestVersion, slotType }` | `ApiResponse<ConfigurationResult>` |
+| POST | `/weapon-slot-types/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
+| GET | `/weapon-slot-configurations` | Query：`pageIndex`、`pageSize`、`search` | `VersionedRead<Page<WeaponSlotConfiguration>>` |
+| GET | `/weapon-slot-configurations/{id}` | 路由 Guid | `VersionedRead<WeaponSlotConfiguration>` |
+| POST | `/weapon-slot-configurations/{id}` | `{ expectedManifestVersion, slotConfiguration }` | `ApiResponse<ConfigurationResult>` |
+| POST | `/weapon-slot-configurations/{id}/delete` | `{ expectedManifestVersion }` | `ApiResponse<ConfigurationResult>` |
 | POST | `/configuration/validate` | `{ configuration }` | `ApiResponse<ConfigurationValidation>` |
 | POST | `/configuration/publish` | `{ expectedManifestVersion, configuration }` | `ApiResponse<ConfigurationResult>` |
 
@@ -121,7 +134,7 @@ interface ConfigurationValidation {
 
 - `pageIndex` 从 1 开始，默认 1；`pageSize` 默认 20，范围 1～100。
 - `search` 可省略，最大 128 字符；按 ID 或名称进行不区分大小写的包含匹配。
-- 改装列表的 `slot` 可省略；指定时使用改装槽编号 1～5。
+- 改装列表的 `slotTypeId` 可省略；指定时使用类型字典的 Guid。
 - 当前没有模板启用状态、武器大类或自定义排序查询参数。
 - `data.items` 即完整单项 DTO；详情接口返回同一结构。
 - 分页响应顶层版本可能在翻页期间变化。需要组成一致快照时，版本变化应重新读取，不能混合不同版本。
@@ -130,7 +143,7 @@ interface ConfigurationValidation {
 
 ```http
 GET /api/era/admin/equipment/weapon-templates?pageIndex=1&pageSize=20&search=步枪
-GET /api/era/admin/equipment/weapon-modifications?pageIndex=1&pageSize=100&slot=4
+GET /api/era/admin/equipment/weapon-modifications?pageIndex=1&pageSize=100&slotTypeId=50000000-0000-0000-0000-000000000004
 GET /api/era/admin/equipment/weapon-stat-mappings?pageIndex=1&pageSize=20&search=步枪
 ```
 
@@ -155,7 +168,7 @@ GET /api/era/admin/equipment/weapon-stat-mappings?pageIndex=1&pageSize=20&search
 
 ### 3.2 单项保存、停用和删除
 
-模板、改装和共享效果保存均为 **upsert + 整项替换**。不支持通过省略字段保持原值的 PATCH 语义，应发送完整单项 DTO。
+模板、改装和属性映射保存均为 **upsert + 整项替换**。不支持通过省略字段保持原值的 PATCH 语义，应发送完整单项 DTO。
 
 ```typescript
 // selectedTemplate 为完整 WeaponTemplate；currentVersion 来自最新有效读取。
@@ -184,15 +197,17 @@ const statMappingBody = {
 - 停用只将 `isGenerationEnabled` 设为 false，不删除模板。重新启用使用完整模板保存，将该字段设为 true。
 - 停用只阻止新生成；已有武器及已接受的固定奖励计划仍可使用模板。
 - 单项保存只替换指定模板、改装或共享属性映射配置，保留目录内其他对象；成功响应仍返回完整 `configuration`。
-- 单项模板保存引用的属性映射配置、候选池改装必须已经存在于当前目录。首次同时创建关联对象，应使用完整目录发布。
-- 删除模板时检查装备资产、奖励池、待发奖励计划等引用；改装仍在模板池或固定实例候选中时不能删除。
+- 单项模板保存引用的属性映射配置、候选池改装必须已经存在于当前目录。首次配置依次保存类型、公共改装、槽位方案与属性映射，每次采用成功返回的新版本，再保存模板；需要一次原子创建全部关联对象时使用完整目录发布。
+- 删除模板时检查装备资产、奖励池、待发奖励计划等引用；改装仍在方案池或固定实例候选中时不能删除。
 - 共享属性映射配置被任一模板引用时，单项删除返回 `409 / era.weapon_reference_conflict`，停用的模板也计入引用。先更换模板引用，再删除；也可在一次完整发布中同时调整引用和删除配置。
-- 效果保存会校验名称、Guid 和八个端点，沿用第 4 节约束；非法端点返回 `400 / era.weapon_invalid_configuration`。不存在的详情或删除目标返回 `404 / era.weapon_not_found`。
+- 属性映射保存会校验名称、Guid 和八个端点，沿用第 4 节约束；非法端点返回 `400 / era.weapon_invalid_configuration`。不存在的详情或删除目标返回 `404 / era.weapon_not_found`。
 - 缩小模板兼容穿戴位置、修改改装槽位、使旧实例引用不再成立等变更也可能被引用保护拒绝。
+
+引用相关失败不能只处理 409：当前服务先校验拟发布目录，再检查资产引用。删除仍在方案候选池中的改装，会因池引用缺失返回 `400 / era.weapon_invalid_configuration`；改装已移出池，但仍被实例候选或待发奖励计划引用时，返回 `409 / era.weapon_reference_conflict`。单项删除被模板引用的属性映射有显式保护，返回 409；完整发布遗漏仍被模板引用的映射则属于目录校验失败，返回 400。
 
 ### 3.3 完整目录预检与发布
 
-`configuration` 的类型是 **WeaponCatalog 本身**，只包含 `templates`、`modifications`、`statMappings` 三个集合，不是整个装备 manifest，也没有外层 `weapons` 字段。
+`configuration` 的类型是 **WeaponCatalog 本身**，只包含 `templates`、`modifications`、`statMappings`、`slotTypes`、`slotConfigurations` 五个集合，不是整个装备 manifest，也没有外层 `weapons` 字段。
 
 预检正文：
 
@@ -221,11 +236,13 @@ const validationBody = { configuration: completeCatalog };
 
 ### 3.4 读取完整武器目录
 
-现有 `GET /api/era/manifest/equipment` 返回装备清单：发布版本在 `data.version`，武器目录为 `data.weapons`，包含 `templates`、`modifications`、`statMappings`。预检／发布时只取 `data.weapons` 作为 `configuration`，不要提交整个装备清单。
+现有 `GET /api/era/manifest/equipment` 返回装备清单：发布版本在 `data.version`，武器目录为 `data.weapons`，包含 `templates`、`modifications`、`statMappings`、`slotTypes`、`slotConfigurations`。预检／发布时只取 `data.weapons` 作为 `configuration`，不要提交整个装备清单。
 
 该路径沿用游戏端鉴权：需要 Bearer 身份及已获取有效会话的 `X-ERA-Client-Id`；仅传一个随机客户端 Guid 不会自动获取会话。本文新增的四个属性映射配置接口属于 Admin 路径，不需要此会话。
 
-纯 Web 也可无游戏会话读取完整目录：分别完整遍历模板、改装、属性映射配置三个 Admin 分页接口，不传 `search` 或 `slot`，取全每类的所有页。所有响应顶层 `version` 必须相同，任意一页版本变化均丢弃此次采集结果并重新读取。只拼模板与改装两类、漏页、混合不同版本或使用筛选结果，都不能作为完整发布目录。
+纯 Web 也可无游戏会话读取完整目录：分别完整遍历模板、改装、属性映射、类型及方案五个 Admin 分页接口，不传 `search` 或 `slotTypeId`，取全每类的所有页。所有响应顶层 `version` 必须相同，任意一页版本变化均丢弃此次采集结果并重新读取。只拼模板与改装两类、漏页、混合不同版本或使用筛选结果，都不能作为完整发布目录。
+
+初始建库脚本 Script0029 已创建版本为 1 的固定空装备目录行；没有武器配置时，管理分页应返回当前版本和空列表。Web 必须采用实际返回版本，不能把示例版本或 1 写死。若返回 `503 / era.weapon_config_unavailable`，应检查目标环境迁移及目录状态，不能当作空目录继续发布；武器管理接口不会自动初始化缺失的目录行。
 
 ## 4. 数据结构
 
@@ -234,7 +251,6 @@ const validationBody = { configuration: completeCatalog };
 ```typescript
 type Guid = string;
 type WeaponEquipmentSlot = 101 | 102 | 103;
-type WeaponModSlot = 1 | 2 | 3 | 4 | 5;
 type WeaponStat = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 type ModifierOperation = 1 | 2;
 
@@ -242,6 +258,8 @@ interface WeaponCatalog {
   templates: WeaponTemplate[];
   modifications: WeaponModification[];
   statMappings: WeaponStatMapping[];
+  slotTypes: WeaponSlotType[];
+  slotConfigurations: WeaponSlotConfiguration[];
 }
 
 interface WeaponTemplate {
@@ -255,7 +273,7 @@ interface WeaponTemplate {
   baseStats: WeaponStats;
   behavior: WeaponBehavior;
   compatibleSlots: WeaponEquipmentSlot[];
-  slots: WeaponTemplateSlot[];
+  slotConfigurationId: Guid;
 }
 
 interface WeaponStats {
@@ -280,8 +298,22 @@ interface WeaponBehavior {
   burstCount: number;
 }
 
-interface WeaponTemplateSlot {
-  slot: WeaponModSlot;
+interface WeaponSlotType {
+  id: Guid;
+  name: string;
+}
+
+interface WeaponSlotConfiguration {
+  id: Guid;
+  name: string;
+  note: string;
+  slots: WeaponConfigurationSlot[];
+}
+
+interface WeaponConfigurationSlot {
+  id: Guid;
+  name: string;
+  slotTypeId: Guid;
   candidateCount: number;
   displayOrder: number;
   pool: Array<{ modDefinitionId: Guid; weight: number }>;
@@ -290,7 +322,7 @@ interface WeaponTemplateSlot {
 interface WeaponModification {
   id: Guid;
   name: string;
-  slot: WeaponModSlot;
+  slotTypeId: Guid;
   description: string;
   icon: string;
   modifiers: Array<{
@@ -326,7 +358,7 @@ interface WeaponStatMapping {
 | `presentationKey` | 非空，最长 128 字符，无首尾空白；仅允许 ASCII 字母、数字、`.`、`_`、`-`，如 `scifi_rifle` |
 | `statMappingId` | 必须引用同目录中存在的属性映射配置 Guid |
 | `compatibleSlots` | 非空、不重复，仅允许 101、102、103 |
-| `slots` | 当前必须恰好包含五个不同改装槽，各出现一次 |
+| `slotConfigurationId` | 必须引用同目录中的整套槽位方案；模板不内嵌槽位或候选池 |
 
 没有 `kind` 或武器大类字段；也没有模板品阶、玩家当前弹药量、单件武器最终属性等字段。
 
@@ -334,7 +366,7 @@ interface WeaponStatMapping {
 
 ### 4.2 十一项基础属性
 
-所有数字必须有限，不能使用 NaN、Infinity 或字符串形式的数字。
+所有数字必须有限。Web 统一提交 JSON 数字，不发送 NaN、Infinity 或字符串形式的数字。
 
 | 属性编号 | 字段 | 单位／填写含义 | 后端范围 |
 | --- | --- | --- | --- |
@@ -370,28 +402,32 @@ interface WeaponStatMapping {
 
 行为中不再有 `baseSpreadDegrees`、`baseRecoilDegrees`、`baseReadySeconds`、`baseAimSeconds`，发送这些字段会被拒绝。
 
-### 4.4 模板槽位与候选池
+### 4.4 独立槽位方案与候选池
 
-改装槽：1 瞄具、2 枪管、3 握把、4 弹匣、5 枪托。穿戴位置 101／102／103 与这些内部改装槽不是同一组编号。
+槽位类型由 `slotTypes` 定义，可按需增加。整套方案通过 `slots` 保存零个或多个槽位，同类型允许多个槽位。具体槽位使用独立 UUID；穿戴位置 101／102／103 仍使用原装备枚举。方案与类型的名称必填、最多 128 字符，方案 `note` 最多 2048 字符。
 
 | 字段 | 约束 |
 | --- | --- |
-| `slot` | 1～5，模板五个槽不重复 |
+| `id` | 具体槽位的非空 Guid，整个目录内唯一；复制方案必须重新生成 |
+| `name` | 槽位显示名称，非空白，最长 128 字符 |
+| `slotTypeId` | 引用同目录的适配类型；同一方案可重复使用同一类型 |
 | `candidateCount` | 必填的生成数量，整数 1～16 |
-| `displayOrder` | 非负整数；表示模板槽位显示顺序 |
+| `displayOrder` | 非负整数；按此值和槽位 UUID 排序 |
 | `pool` | 最多 256 项，数量至少等于 `candidateCount` |
-| `pool[].modDefinitionId` | 必须引用同目录公共改装，改装的 `slot` 必须与本槽一致，池内不重复 |
+| `pool[].modDefinitionId` | 必须引用同目录公共改装，改装的 `slotTypeId` 必须与本槽一致，池内不重复 |
 | `pool[].weight` | 正整数；同一池权重总和不得超过 2147483647 |
 
 生成按权重不放回抽取，每个槽首个抽出的候选初始选中。`candidateCount` 不是池总数，也不是可同时安装数量；每个槽同时只选一个候选。
 
 生成数量、池和权重变更只影响新武器，不会补齐、截断或重抽已有实例候选。Web 不编辑玩家实例候选。
 
+方案数量及每方案槽位最多 10000 项，同时受完整目录 1 MiB 限制。编辑槽位类型时应分配新的槽位 ID；排序和改名保留 ID。方案更换、增删或排序只影响新生成，已有实例保留名称、类型、顺序与候选快照。所有关联模板均参与属性兼容校验。
+
 ### 4.5 公共改装与修正规则
 
 改装 `id` 为非空 Guid，`name` 非空白且最长 128 字符，`description` 最长 2048 字符，`icon` 最长 256 字符；后两项可使用空字符串。
 
-- `slot` 使用 1～5。
+- `slotTypeId` 必须引用类型字典中的 Guid。
 - `modifiers` 最多 22 条，可以为空；空规则可表示原厂候选。
 - `stat` 使用十一项属性编号；`operation=1` 表示固定加值，`operation=2` 表示加算百分比。
 - `value` 为有限数，绝对值不超过 1000000；百分比必须大于 -1。`0.2` 是 +20%，`-0.2` 是 -20%。
@@ -408,6 +444,17 @@ interface WeaponStatMapping {
 ```
 
 最终属性按 `(Base + 所有 Flat 之和) × (1 + 所有 AddPercent 之和)` 汇总后限制，容量最后向下取整。Web 预览应从基础值重新计算，不在上次结果上反复加减。
+
+若 Web 展示最终属性，需与当前 Godot 预览使用同一限制：
+
+| 最终属性 | 汇总后的处理 |
+| --- | --- |
+| 精准度、稳定性、操控性 | 限制在 0～100，再用于双端值映射 |
+| 装载容量 | 向下取整后限制在 1～1000000 |
+| 储备上限 | 向下取整后限制在 0～1000000 |
+| 其余有效属性 | 限制在 0.000001～1000000；蓄力时间上限为 3600 |
+
+最后一行是当前客户端的数值保护，不代表正式平衡下限。不适用的投射物速度／蓄力时间保持 null，不参与修正和计算；非有限计算结果应作为预览错误处理。后端保存的是基础值与修正规则，不落库这些最终值，也不会替 Web 计算最终属性。
 
 ### 4.6 共享属性映射配置
 
@@ -430,7 +477,7 @@ interface WeaponStatMapping {
 
 ## 5. 完整发布请求示例
 
-以下示例创建一份包含一个模板、五个公共改装及一个属性映射配置的完整目标目录。用于新目录联调；已有目录中使用时，应先完整保留仍需存在的对象，再合并修改。`expectedManifestVersion=7` 仅为示意，必须换为实际读取值。示例不会自动生成玩家武器。
+以下示例包含一个模板、一个可复用方案、五个适配类型及公共改装、一个属性映射配置。示例槽位数不构成系统数量限制。用于新目录联调；已有目录中使用时，应先完整保留仍需存在的对象，再合并修改。`expectedManifestVersion=7` 仅为示意，必须换为实际读取值。示例不会自动生成玩家武器。
 
 ```http
 POST /api/era/admin/equipment/configuration/publish
@@ -442,65 +489,206 @@ Content-Type: application/json
 {
   "expectedManifestVersion": 7,
   "configuration": {
-    "statMappings": [{
-      "id": "40000000-0000-0000-0000-000000000001",
-      "name": "步枪初始属性映射",
-      "spreadDegreesAtZero": 3,
-      "spreadDegreesAtHundred": 1,
-      "recoilDegreesAtZero": 2,
-      "recoilDegreesAtHundred": 0.5,
-      "readySecondsAtZero": 1,
-      "readySecondsAtHundred": 0.35,
-      "aimSecondsAtZero": 0.5,
-      "aimSecondsAtHundred": 0.15
-    }],
-    "modifications": [
-      { "id": "30000000-0000-0000-0001-000000000001", "name": "标准瞄具", "slot": 1, "description": "", "icon": "", "modifiers": [] },
-      { "id": "30000000-0000-0000-0002-000000000001", "name": "标准枪管", "slot": 2, "description": "", "icon": "", "modifiers": [] },
-      { "id": "30000000-0000-0000-0003-000000000001", "name": "标准握把", "slot": 3, "description": "", "icon": "", "modifiers": [] },
-      { "id": "30000000-0000-0000-0004-000000000001", "name": "扩容弹匣", "slot": 4, "description": "装载上限增加 10 发，装填速度降低 20%", "icon": "", "modifiers": [
-        { "stat": 3, "operation": 1, "value": 10 },
-        { "stat": 5, "operation": 2, "value": -0.2 }
-      ] },
-      { "id": "30000000-0000-0000-0005-000000000001", "name": "标准枪托", "slot": 5, "description": "", "icon": "", "modifiers": [] }
+    "statMappings": [
+      {
+        "id": "40000000-0000-0000-0000-000000000001",
+        "name": "步枪初始属性映射",
+        "spreadDegreesAtZero": 3,
+        "spreadDegreesAtHundred": 1,
+        "recoilDegreesAtZero": 2,
+        "recoilDegreesAtHundred": 0.5,
+        "readySecondsAtZero": 1,
+        "readySecondsAtHundred": 0.35,
+        "aimSecondsAtZero": 0.5,
+        "aimSecondsAtHundred": 0.15
+      }
     ],
-    "templates": [{
-      "id": "20000000-0000-0000-0000-000000000001",
-      "name": "巡逻步枪",
-      "icon": "",
-      "note": "全自动射线步枪",
-      "isGenerationEnabled": true,
-      "presentationKey": "scifi_rifle",
-      "statMappingId": "40000000-0000-0000-0000-000000000001",
-      "baseStats": {
-        "damage": 50,
-        "frequency": 10,
-        "loadedCapacity": 30,
-        "reserveCapacity": 120,
-        "reloadSpeed": 1,
-        "range": 30,
-        "accuracy": 75,
-        "stability": 50,
-        "handling": 50,
-        "projectileSpeed": null,
-        "chargeTime": null
+    "modifications": [
+      {
+        "id": "30000000-0000-0000-0001-000000000001",
+        "name": "标准瞄具",
+        "description": "",
+        "icon": "",
+        "modifiers": [],
+        "slotTypeId": "50000000-0000-0000-0000-000000000001"
       },
-      "behavior": {
-        "fireMode": 2,
-        "hitMode": 1,
-        "reloadMode": 1,
-        "baseReloadSeconds": 2.4,
-        "burstCount": 1
+      {
+        "id": "30000000-0000-0000-0002-000000000001",
+        "name": "标准枪管",
+        "description": "",
+        "icon": "",
+        "modifiers": [],
+        "slotTypeId": "50000000-0000-0000-0000-000000000002"
       },
-      "compatibleSlots": [101, 102, 103],
-      "slots": [
-        { "slot": 1, "candidateCount": 1, "displayOrder": 1, "pool": [{ "modDefinitionId": "30000000-0000-0000-0001-000000000001", "weight": 1 }] },
-        { "slot": 2, "candidateCount": 1, "displayOrder": 2, "pool": [{ "modDefinitionId": "30000000-0000-0000-0002-000000000001", "weight": 1 }] },
-        { "slot": 3, "candidateCount": 1, "displayOrder": 3, "pool": [{ "modDefinitionId": "30000000-0000-0000-0003-000000000001", "weight": 1 }] },
-        { "slot": 4, "candidateCount": 1, "displayOrder": 4, "pool": [{ "modDefinitionId": "30000000-0000-0000-0004-000000000001", "weight": 1 }] },
-        { "slot": 5, "candidateCount": 1, "displayOrder": 5, "pool": [{ "modDefinitionId": "30000000-0000-0000-0005-000000000001", "weight": 1 }] }
-      ]
-    }]
+      {
+        "id": "30000000-0000-0000-0003-000000000001",
+        "name": "标准握把",
+        "description": "",
+        "icon": "",
+        "modifiers": [],
+        "slotTypeId": "50000000-0000-0000-0000-000000000003"
+      },
+      {
+        "id": "30000000-0000-0000-0004-000000000001",
+        "name": "扩容弹匣",
+        "description": "装载上限增加 10 发，装填速度降低 20%",
+        "icon": "",
+        "modifiers": [
+          {
+            "stat": 3,
+            "operation": 1,
+            "value": 10
+          },
+          {
+            "stat": 5,
+            "operation": 2,
+            "value": -0.2
+          }
+        ],
+        "slotTypeId": "50000000-0000-0000-0000-000000000004"
+      },
+      {
+        "id": "30000000-0000-0000-0005-000000000001",
+        "name": "标准枪托",
+        "description": "",
+        "icon": "",
+        "modifiers": [],
+        "slotTypeId": "50000000-0000-0000-0000-000000000005"
+      }
+    ],
+    "templates": [
+      {
+        "id": "20000000-0000-0000-0000-000000000001",
+        "name": "巡逻步枪",
+        "icon": "",
+        "note": "全自动射线步枪",
+        "isGenerationEnabled": true,
+        "presentationKey": "scifi_rifle",
+        "statMappingId": "40000000-0000-0000-0000-000000000001",
+        "baseStats": {
+          "damage": 50,
+          "frequency": 10,
+          "loadedCapacity": 30,
+          "reserveCapacity": 120,
+          "reloadSpeed": 1,
+          "range": 30,
+          "accuracy": 75,
+          "stability": 50,
+          "handling": 50,
+          "projectileSpeed": null,
+          "chargeTime": null
+        },
+        "behavior": {
+          "fireMode": 2,
+          "hitMode": 1,
+          "reloadMode": 1,
+          "baseReloadSeconds": 2.4,
+          "burstCount": 1
+        },
+        "compatibleSlots": [
+          101,
+          102,
+          103
+        ],
+        "slotConfigurationId": "70000000-0000-0000-0000-000000000001"
+      }
+    ],
+    "slotTypes": [
+      {
+        "id": "50000000-0000-0000-0000-000000000001",
+        "name": "瞄具"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000002",
+        "name": "枪管"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000003",
+        "name": "握把"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000004",
+        "name": "弹匣"
+      },
+      {
+        "id": "50000000-0000-0000-0000-000000000005",
+        "name": "枪托"
+      }
+    ],
+    "slotConfigurations": [
+      {
+        "id": "70000000-0000-0000-0000-000000000001",
+        "name": "巡逻步枪改装方案",
+        "note": "",
+        "slots": [
+          {
+            "candidateCount": 1,
+            "displayOrder": 1,
+            "pool": [
+              {
+                "modDefinitionId": "30000000-0000-0000-0001-000000000001",
+                "weight": 1
+              }
+            ],
+            "id": "60000000-0000-0000-0000-000000000001",
+            "name": "瞄具",
+            "slotTypeId": "50000000-0000-0000-0000-000000000001"
+          },
+          {
+            "candidateCount": 1,
+            "displayOrder": 2,
+            "pool": [
+              {
+                "modDefinitionId": "30000000-0000-0000-0002-000000000001",
+                "weight": 1
+              }
+            ],
+            "id": "60000000-0000-0000-0000-000000000002",
+            "name": "枪管",
+            "slotTypeId": "50000000-0000-0000-0000-000000000002"
+          },
+          {
+            "candidateCount": 1,
+            "displayOrder": 3,
+            "pool": [
+              {
+                "modDefinitionId": "30000000-0000-0000-0003-000000000001",
+                "weight": 1
+              }
+            ],
+            "id": "60000000-0000-0000-0000-000000000003",
+            "name": "握把",
+            "slotTypeId": "50000000-0000-0000-0000-000000000003"
+          },
+          {
+            "candidateCount": 1,
+            "displayOrder": 4,
+            "pool": [
+              {
+                "modDefinitionId": "30000000-0000-0000-0004-000000000001",
+                "weight": 1
+              }
+            ],
+            "id": "60000000-0000-0000-0000-000000000004",
+            "name": "弹匣",
+            "slotTypeId": "50000000-0000-0000-0000-000000000004"
+          },
+          {
+            "candidateCount": 1,
+            "displayOrder": 5,
+            "pool": [
+              {
+                "modDefinitionId": "30000000-0000-0000-0005-000000000001",
+                "weight": 1
+              }
+            ],
+            "id": "60000000-0000-0000-0000-000000000005",
+            "name": "枪托",
+            "slotTypeId": "50000000-0000-0000-0000-000000000005"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -511,7 +699,7 @@ Content-Type: application/json
 
 ## 6. Web 编辑与恢复流程
 
-1. 用管理列表和详情实现模板／改装／共享效果页面。读取版本与表单初始值一起保存，字段修改仅更新 Web 表单。
+1. 用管理列表和详情实现模板／方案／类型／改装／属性映射页面。读取版本与表单初始值一起保存，字段修改仅更新 Web 表单。
 2. 对单项完整 DTO 做本地校验；现有目录已包含引用对象时，调用单项保存即可。
 3. 单项属性映射配置使用独立保存接口。需要关联创建或批量调整时，按第 3.4 节取得同一版本完整目录，再构建完整目标目录。
 4. 完整目录先预检；`errors` 非空时展示问题并继续编辑。预检通过后仍使用明确的基线版本发布。
@@ -528,7 +716,7 @@ Admin 写入没有 `requestId` 幂等参数。请求超时可能已经发布成�
 
 | `errorCode` | `code` | Web 处理 |
 | --- | --- | --- |
-| `era.weapon_invalid_configuration` | 400 | 提示配置无效，保留表单；检查基础值、端点、五槽、候选数量和引用 |
+| `era.weapon_invalid_configuration` | 400 | 提示配置无效，保留表单；检查基础值、端点、槽位方案、候选数量和目录内引用，包括删除造成的引用缺失 |
 | `era.weapon_config_version_conflict` | 409 | 目录已更新，重新读取、比较并确认后提交 |
 | `era.weapon_reference_conflict` | 409 | 对象仍被引用或修改破坏现有引用；保留配置并处理引用关系 |
 | `era.weapon_not_found` | 404 | 目标不存在，刷新列表；不要自动以新建方式覆盖旧编辑上下文 |
@@ -553,13 +741,14 @@ Admin 写入没有 `requestId` 幂等参数。请求超时可能已经发布成�
 
 - 管理角色可以调用获授权路径，未授权角色被拒绝；无需游戏客户端会话。
 - 模板、改装与属性映射配置分页／详情的版本来自响应顶层，写入版本来自 `data.version`。
-- 三类对象都支持单项完整保存；关联对象可按依赖顺序逐项创建，或通过完整目录一次发布。
+- 五类对象都支持单项完整保存；关联对象可按依赖顺序逐项创建，或通过完整目录一次发布。
+- 删除仍在方案池中的改装按 400 处理；移出池后仍被资产引用按 409 处理。两者均保留表单并展示错误。
 - 预检中 `code=200` 且 `errors` 非空时不能进入发布成功状态。
 - 更新模板／改装／属性映射配置后，其他编辑页的旧版本请求发生冲突，未提交表单得以保留。
-- 示例 JSON 中所有模板池引用和属性映射配置引用均可在同目录解析。
-- 已存在的实例候选不因修改模板池或 `candidateCount` 改变；被引用对象的非法删除会被拒绝。
+- 示例 JSON 中所有方案池引用和属性映射配置引用均可在同目录解析。
+- 已存在的实例候选不因修改方案池或 `candidateCount` 改变；被引用对象的非法删除会被拒绝。
 - 只允许发送契约字段，不发送 `kind`、旧四个 Base 字段、玩家实例候选或最终属性。
 
-共享效果接口的保存同样立即发布并增加全局版本，不新增独立效果版本、数据库表或草稿流程。效果接口及权限仍需实际部署联调；本轮未编译或运行测试。
+属性映射接口的保存同样立即发布并增加全局版本，不新增独立映射版本、数据库表或草稿流程。本文已对照源码核对，接口权限及目标环境迁移状态仍需部署联调确认。
 
 实现细节与玩家侧边界见 [武器模板与改装后端接口](武器模板与改装接口.md)。源码入口：`EraAdminController.Equipment.cs`、`EraWeaponService.cs`、`EraWeaponConfigurationValidator.cs`、`EraClientSessionAttribute.cs`。

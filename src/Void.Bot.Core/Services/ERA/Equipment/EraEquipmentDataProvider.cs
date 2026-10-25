@@ -34,10 +34,12 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     private readonly IRepository<EraWeaponStatMapping> _eraWeaponStatMappingRepository;
     private readonly IRepository<EraWeaponModDefinition> _eraWeaponModDefinitionRepository;
     private readonly IRepository<EraWeaponModStatModifier> _eraWeaponModStatModifierRepository;
-    private readonly IRepository<EraWeaponTemplateModSlot> _eraWeaponTemplateModSlotRepository;
-    private readonly IRepository<EraWeaponTemplateModPool> _eraWeaponTemplateModPoolRepository;
+    private readonly IRepository<EraWeaponConfigurationSlot> _eraWeaponConfigurationSlotRepository;
+    private readonly IRepository<EraWeaponConfigurationModPool> _eraWeaponConfigurationModPoolRepository;
     private readonly IRepository<EraWeaponModCandidate> _eraWeaponModCandidateRepository;
     private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
+    private readonly IRepository<EraWeaponSlotType> _eraWeaponSlotTypeRepository;
+    private readonly IRepository<EraWeaponSlotConfiguration> _eraWeaponSlotConfigurationRepository;
     private readonly IMapper _mapper;
 
     public EraEquipmentDataProvider(
@@ -53,10 +55,12 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         IRepository<EraWeaponStatMapping> eraWeaponStatMappingRepository,
         IRepository<EraWeaponModDefinition> eraWeaponModDefinitionRepository,
         IRepository<EraWeaponModStatModifier> eraWeaponModStatModifierRepository,
-        IRepository<EraWeaponTemplateModSlot> eraWeaponTemplateModSlotRepository,
-        IRepository<EraWeaponTemplateModPool> eraWeaponTemplateModPoolRepository,
+        IRepository<EraWeaponConfigurationSlot> eraWeaponConfigurationSlotRepository,
+        IRepository<EraWeaponConfigurationModPool> eraWeaponConfigurationModPoolRepository,
         IRepository<EraWeaponModCandidate> eraWeaponModCandidateRepository,
         IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
+        IRepository<EraWeaponSlotType> eraWeaponSlotTypeRepository,
+        IRepository<EraWeaponSlotConfiguration> eraWeaponSlotConfigurationRepository,
         IMapper mapper)
     {
         _eraEquipmentConfigurationRepository = eraEquipmentConfigurationRepository;
@@ -71,10 +75,12 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         _eraWeaponStatMappingRepository = eraWeaponStatMappingRepository;
         _eraWeaponModDefinitionRepository = eraWeaponModDefinitionRepository;
         _eraWeaponModStatModifierRepository = eraWeaponModStatModifierRepository;
-        _eraWeaponTemplateModSlotRepository = eraWeaponTemplateModSlotRepository;
-        _eraWeaponTemplateModPoolRepository = eraWeaponTemplateModPoolRepository;
+        _eraWeaponConfigurationSlotRepository = eraWeaponConfigurationSlotRepository;
+        _eraWeaponConfigurationModPoolRepository = eraWeaponConfigurationModPoolRepository;
         _eraWeaponModCandidateRepository = eraWeaponModCandidateRepository;
         _eraWeaponModSelectionRepository = eraWeaponModSelectionRepository;
+        _eraWeaponSlotTypeRepository = eraWeaponSlotTypeRepository;
+        _eraWeaponSlotConfigurationRepository = eraWeaponSlotConfigurationRepository;
         _mapper = mapper;
     }
 
@@ -84,9 +90,11 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         var statMappings = await _eraWeaponStatMappingRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var definitions = await _eraWeaponModDefinitionRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var modifiers = await _eraWeaponModStatModifierRepository.QueryNoTracking().OrderBy(row => row.Sequence).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var slots = await _eraWeaponTemplateModSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Slot).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var pools = await _eraWeaponTemplateModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateCatalog(templates, statMappings, definitions, modifiers, slots, pools, _mapper);
+        var slots = await _eraWeaponConfigurationSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var pools = await _eraWeaponConfigurationModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var slotTypes = await _eraWeaponSlotTypeRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var configurations = await _eraWeaponSlotConfigurationRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraWeaponDataMapping.CreateCatalog(slotTypes, configurations, templates, statMappings, definitions, modifiers, slots, pools, _mapper);
     }
 
     public async Task<EraEquipmentConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken)
@@ -162,7 +170,7 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         var candidates = await _eraWeaponModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
         var selections = await _eraWeaponModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
-            .OrderBy(row => row.Slot).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper);
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
 }

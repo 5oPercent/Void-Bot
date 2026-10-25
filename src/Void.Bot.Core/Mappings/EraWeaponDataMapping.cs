@@ -9,11 +9,27 @@ namespace Void.Bot.Core.Mappings;
 /// <summary>组装武器关系数据，不执行查询或写入。</summary>
 internal static class EraWeaponDataMapping
 {
-    internal static EraWeaponCatalogDto CreateCatalog(IReadOnlyCollection<EraWeaponTemplate> templates, IReadOnlyCollection<EraWeaponStatMapping> statMappings,
+    internal static EraWeaponCatalogDto CreateCatalog(IReadOnlyCollection<EraWeaponSlotType> slotTypes, IReadOnlyCollection<EraWeaponSlotConfiguration> configurations,
+        IReadOnlyCollection<EraWeaponTemplate> templates, IReadOnlyCollection<EraWeaponStatMapping> statMappings,
         IReadOnlyCollection<EraWeaponModDefinition> definitions, IReadOnlyCollection<EraWeaponModStatModifier> modifiers,
-        IReadOnlyCollection<EraWeaponTemplateModSlot> slots, IReadOnlyCollection<EraWeaponTemplateModPool> pools, IMapper mapper)
+        IReadOnlyCollection<EraWeaponConfigurationSlot> slots, IReadOnlyCollection<EraWeaponConfigurationModPool> pools, IMapper mapper)
     {
-        var result = new EraWeaponCatalogDto { StatMappings = mapper.Map<List<EraWeaponStatMappingDto>>(statMappings) };
+        var result = new EraWeaponCatalogDto
+        {
+            SlotTypes = mapper.Map<List<EraWeaponSlotTypeDto>>(slotTypes),
+            StatMappings = mapper.Map<List<EraWeaponStatMappingDto>>(statMappings)
+        };
+        foreach (var entity in configurations)
+        {
+            var configuration = mapper.Map<EraWeaponSlotConfigurationDto>(entity);
+            foreach (var row in slots.Where(row => row.ConfigurationId == entity.Id))
+            {
+                var slot = mapper.Map<EraWeaponConfigurationSlotDto>(row);
+                slot.Pool = mapper.Map<List<EraWeaponModPoolEntryDto>>(pools.Where(pool => pool.SlotId == row.Id));
+                configuration.Slots.Add(slot);
+            }
+            result.SlotConfigurations.Add(configuration);
+        }
         foreach (var entity in templates)
         {
             var template = mapper.Map<EraWeaponTemplateDto>(entity);
@@ -21,12 +37,6 @@ internal static class EraWeaponDataMapping
                 ?? throw new ArgumentException("Weapon behavior is missing.");
             template.CompatibleSlots = JsonSerializer.Deserialize<List<EraEquipmentSlot>>(entity.CompatibleSlotsPayload)
                 ?? throw new ArgumentException("Weapon equipment mapping is missing.");
-            foreach (var row in slots.Where(row => row.TemplateId == entity.Id))
-            {
-                var slot = mapper.Map<EraWeaponTemplateSlotDto>(row);
-                slot.Pool = mapper.Map<List<EraWeaponModPoolEntryDto>>(pools.Where(pool => pool.TemplateId == entity.Id && pool.Slot == row.Slot));
-                template.Slots.Add(slot);
-            }
             result.Templates.Add(template);
         }
         foreach (var entity in definitions)
@@ -39,16 +49,16 @@ internal static class EraWeaponDataMapping
     }
 
     internal static Dictionary<Guid, EraWeaponInstanceDto> CreateInstances(IReadOnlyCollection<EraWeaponModCandidate> candidates,
-        IReadOnlyCollection<EraWeaponModSelection> selections, IMapper mapper)
+        IReadOnlyCollection<EraWeaponModSelection> selections, IMapper mapper, IEnumerable<Guid> equipmentIds)
     {
-        if (candidates.Any(candidate => !selections.Any(selection => selection.EquipmentId == candidate.EquipmentId && selection.Slot == candidate.Slot)))
+        if (candidates.Any(candidate => !selections.Any(selection => selection.EquipmentId == candidate.EquipmentId && selection.SlotId == candidate.SlotId)))
             throw new ArgumentException("Weapon candidates have no corresponding selection.");
-        return selections.Select(row => row.EquipmentId).Distinct().ToDictionary(id => id, id => new EraWeaponInstanceDto
+        return equipmentIds.Distinct().ToDictionary(id => id, id => new EraWeaponInstanceDto
         {
-            Slots = selections.Where(row => row.EquipmentId == id).Select(row => new EraWeaponInstanceSlotDto
+            Slots = selections.Where(row => row.EquipmentId == id).OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).Select(row => new EraWeaponInstanceSlotDto
             {
-                Slot = row.Slot, SelectedCandidateId = row.SelectedCandidateId,
-                Candidates = mapper.Map<List<EraWeaponCandidateDto>>(candidates.Where(candidate => candidate.EquipmentId == id && candidate.Slot == row.Slot))
+                SlotId = row.SlotId, Name = row.Name, SlotTypeId = row.SlotTypeId, DisplayOrder = row.DisplayOrder, SelectedCandidateId = row.SelectedCandidateId,
+                Candidates = mapper.Map<List<EraWeaponCandidateDto>>(candidates.Where(candidate => candidate.EquipmentId == id && candidate.SlotId == row.SlotId))
             }).ToList()
         });
     }
@@ -56,13 +66,13 @@ internal static class EraWeaponDataMapping
     internal static IEnumerable<EraWeaponModCandidate> CreateCandidates(Guid equipmentId, EraWeaponInstanceDto instance) =>
         instance.Slots.SelectMany(slot => slot.Candidates.Select(candidate => new EraWeaponModCandidate
         {
-            CandidateId = candidate.CandidateId, EquipmentId = equipmentId, Slot = slot.Slot,
+            CandidateId = candidate.CandidateId, EquipmentId = equipmentId, SlotId = slot.SlotId,
             ModDefinitionId = candidate.ModDefinitionId, DisplayOrder = candidate.DisplayOrder
         }));
 
     internal static IEnumerable<EraWeaponModSelection> CreateSelections(Guid equipmentId, EraWeaponInstanceDto instance) =>
         instance.Slots.Select(slot => new EraWeaponModSelection
         {
-            EquipmentId = equipmentId, Slot = slot.Slot, SelectedCandidateId = slot.SelectedCandidateId
+            EquipmentId = equipmentId, SlotId = slot.SlotId, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder, SelectedCandidateId = slot.SelectedCandidateId
         });
 }

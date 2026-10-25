@@ -18,7 +18,7 @@ public sealed partial class EraEquipmentService
     public async Task<SelectEraWeaponModificationResponse> SelectWeaponModificationAsync(SelectEraWeaponModificationCommand command, CancellationToken cancellationToken)
     {
         if (command.CharacterId == Guid.Empty || command.EquipmentId == Guid.Empty || command.RequestId == Guid.Empty ||
-            command.CandidateId == Guid.Empty || !System.Enum.IsDefined(command.Slot) || command.ExpectedManifestVersion < 1 ||
+            command.CandidateId == Guid.Empty || command.SlotId == Guid.Empty || command.ExpectedManifestVersion < 1 ||
             command.ExpectedEquipmentVersion < 0 || command.ExpectedEquipmentVersion == long.MaxValue ||
             command.ExpectedItemVersion < 1 || command.ExpectedItemVersion == long.MaxValue)
             return Error<SelectEraWeaponModificationResponse>(HttpStatusCode.BadRequest, "era.equipment_invalid_operation", text => text.InvalidOperation);
@@ -56,9 +56,9 @@ public sealed partial class EraEquipmentService
         var entry = snapshot.Entries.SingleOrDefault(row => row.Equipment.Id == command.EquipmentId);
         if (entry?.Equipment.EquipmentType != EraEquipmentType.Weapon || entry.Weapon == null)
             return Error<SelectEraWeaponModificationResponse>(HttpStatusCode.NotFound, "era.equipment_not_found", text => text.EquipmentNotFound);
-        var slot = entry.Weapon.Slots.SingleOrDefault(row => row.Slot == command.Slot);
+        var slot = entry.Weapon.Slots.SingleOrDefault(row => row.SlotId == command.SlotId);
         var candidate = slot?.Candidates.SingleOrDefault(row => row.CandidateId == command.CandidateId);
-        if (candidate == null || !manifest.Weapons.Modifications.Any(row => row.Id == candidate.ModDefinitionId && row.Slot == command.Slot))
+        if (candidate == null || !manifest.Weapons.Modifications.Any(row => row.Id == candidate.ModDefinitionId && row.SlotTypeId == slot!.SlotTypeId))
             return Error<SelectEraWeaponModificationResponse>(HttpStatusCode.BadRequest, "era.weapon_invalid_candidate", text => text.InvalidOperation);
         if (entry.Equipment.Version != command.ExpectedItemVersion)
             return Error<SelectEraWeaponModificationResponse>(HttpStatusCode.Conflict, "era.equipment_version_conflict", text => text.VersionConflict);
@@ -82,7 +82,7 @@ public sealed partial class EraEquipmentService
         {
             try
             {
-                await _weaponData.UpdateSelectionAsync(entry.Equipment.Id, command.Slot, previousCandidate, command.CandidateId,
+                await _weaponData.UpdateSelectionAsync(entry.Equipment.Id, command.SlotId, previousCandidate, command.CandidateId,
                     command.ExpectedItemVersion, cancellationToken).ConfigureAwait(false);
             }
             catch (EraEquipmentConcurrencyException)

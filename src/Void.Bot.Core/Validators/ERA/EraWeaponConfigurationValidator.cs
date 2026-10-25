@@ -9,13 +9,19 @@ public static class EraWeaponConfigurationValidator
     public static void Validate(EraWeaponCatalogDto catalog)
     {
         if (catalog == null || catalog.Templates == null || catalog.Modifications == null || catalog.StatMappings == null ||
-            catalog.Templates.Count > EraWeaponConstants.MaximumDefinitions || catalog.Modifications.Count > EraWeaponConstants.MaximumDefinitions ||
-            catalog.StatMappings.Count > EraWeaponConstants.MaximumDefinitions)
+            catalog.SlotTypes == null || catalog.SlotConfigurations == null ||
+            new[] { catalog.Templates.Count, catalog.Modifications.Count, catalog.StatMappings.Count,
+                catalog.SlotTypes.Count, catalog.SlotConfigurations.Count }.Any(count => count > EraWeaponConstants.MaximumDefinitions))
             throw new ArgumentException("Weapon catalog size is invalid.");
-        if (catalog.Templates.Any(template => template == null) || catalog.Modifications.Any(modification => modification == null) ||
-            catalog.StatMappings.Any(mapping => mapping == null))
+        if (catalog.Templates.Any(value => value == null) || catalog.Modifications.Any(value => value == null) ||
+            catalog.StatMappings.Any(value => value == null) || catalog.SlotTypes.Any(value => value == null) ||
+            catalog.SlotConfigurations.Any(value => value == null))
             throw new ArgumentException("Weapon catalog definitions cannot be null.");
 
+        var typeIds = new HashSet<Guid>();
+        foreach (var type in catalog.SlotTypes)
+            if (type.Id == Guid.Empty || !typeIds.Add(type.Id) || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 128)
+                throw new ArgumentException("Weapon slot type identity or name is invalid.");
         var mappingIds = new HashSet<Guid>();
         foreach (var mapping in catalog.StatMappings)
         {
@@ -38,47 +44,59 @@ public static class EraWeaponConfigurationValidator
             if (modifiers == null || modifiers.Count > EraWeaponConstants.MaximumModifiers || modifiers.Any(value => value == null))
                 throw new ArgumentException("Weapon attribute modifiers are invalid.");
             if (modification.Id == Guid.Empty || !modifications.TryAdd(modification.Id, modification) ||
-                string.IsNullOrWhiteSpace(modification.Name) || modification.Name.Length > 128 || !System.Enum.IsDefined(modification.Slot) ||
+                string.IsNullOrWhiteSpace(modification.Name) || modification.Name.Length > 128 || !typeIds.Contains(modification.SlotTypeId) ||
                 modification.Description is not { Length: <= 2048 } || modification.Icon is not { Length: <= 256 })
                 throw new ArgumentException("Weapon modification is invalid.");
-            if (modifiers.Any(value => !System.Enum.IsDefined(value.Stat) ||
-                    !System.Enum.IsDefined(value.Operation) || !double.IsFinite(value.Value) || Math.Abs(value.Value) > 1000000 ||
+            if (modifiers.Any(value => !System.Enum.IsDefined(value.Stat) || !System.Enum.IsDefined(value.Operation) ||
+                    !double.IsFinite(value.Value) || Math.Abs(value.Value) > 1000000 ||
                     value.Operation == EraWeaponModifierOperation.AddPercent && value.Value <= -1) ||
                 modifiers.Select(value => (value.Stat, value.Operation)).Distinct().Count() != modifiers.Count)
                 throw new ArgumentException("Weapon attribute modifier is invalid.");
         }
 
+        var configurations = new Dictionary<Guid, EraWeaponSlotConfigurationDto>();
+        var slotIds = new HashSet<Guid>();
+        foreach (var configuration in catalog.SlotConfigurations)
+        {
+            if (configuration.Id == Guid.Empty || !configurations.TryAdd(configuration.Id, configuration) ||
+                string.IsNullOrWhiteSpace(configuration.Name) || configuration.Name.Length > 128 ||
+                configuration.Note is not { Length: <= 2048 } || configuration.Slots == null ||
+                configuration.Slots.Count > EraWeaponConstants.MaximumDefinitions || configuration.Slots.Any(slot => slot == null))
+                throw new ArgumentException("Weapon slot configuration is invalid.");
+            foreach (var slot in configuration.Slots)
+            {
+                if (slot.Id == Guid.Empty || !slotIds.Add(slot.Id) || !typeIds.Contains(slot.SlotTypeId) ||
+                    string.IsNullOrWhiteSpace(slot.Name) || slot.Name.Length > 128 || slot.DisplayOrder < 0)
+                    throw new ArgumentException("Weapon configuration slot identity, type or name is invalid.");
+                var pool = slot.Pool;
+                if (pool == null || pool.Count > EraWeaponConstants.MaximumPoolEntries || pool.Any(entry => entry == null) ||
+                    slot.CandidateCount < 1 || slot.CandidateCount > EraWeaponConstants.MaximumCandidatesPerSlot ||
+                    pool.Count < slot.CandidateCount || pool.Sum(entry => (long)entry.Weight) > int.MaxValue ||
+                    pool.Select(entry => entry.ModDefinitionId).Distinct().Count() != pool.Count)
+                    throw new ArgumentException("Weapon CandidateCount exceeds the distinct available pool or its limit.");
+                if (pool.Any(entry => entry.Weight <= 0 || !modifications.TryGetValue(entry.ModDefinitionId, out var modification) ||
+                    modification.SlotTypeId != slot.SlotTypeId))
+                    throw new ArgumentException("Weapon pool reference, weight or slot type is invalid.");
+            }
+        }
+
         var ids = new HashSet<Guid>();
         foreach (var template in catalog.Templates)
         {
-            var slots = template.Slots;
             var compatibleSlots = template.CompatibleSlots;
-            if (slots == null || slots.Count != 5 || slots.Any(slot => slot == null) || compatibleSlots == null || compatibleSlots.Count == 0)
-                throw new ArgumentException("Weapon template slots are invalid.");
             if (template.Id == Guid.Empty || !ids.Add(template.Id) || string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 128 ||
                 template.Icon is not { Length: <= 256 } || template.Note is not { Length: <= 2048 } ||
                 !ValidPresentationKey(template.PresentationKey) || !mappingIds.Contains(template.StatMappingId) ||
+                !configurations.TryGetValue(template.SlotConfigurationId, out var configuration) ||
+                compatibleSlots == null || compatibleSlots.Count == 0 ||
                 compatibleSlots.Any(value => value < EraEquipmentSlot.Weapon1 || value > EraEquipmentSlot.Weapon3) ||
-                compatibleSlots.Distinct().Count() != compatibleSlots.Count || slots.Select(slot => slot.Slot).Distinct().Count() != 5)
-                throw new ArgumentException("Weapon template or equipment mapping is invalid.");
+                compatibleSlots.Distinct().Count() != compatibleSlots.Count)
+                throw new ArgumentException("Weapon template, configuration reference or equipment mapping is invalid.");
             ValidateStats(template.BaseStats, template.Behavior);
-            foreach (var slot in slots)
-            {
-                var pool = slot.Pool;
-                if (pool == null || pool.Count > EraWeaponConstants.MaximumPoolEntries || pool.Any(entry => entry == null))
-                    throw new ArgumentException("Weapon candidate pool is invalid.");
-                if (!System.Enum.IsDefined(slot.Slot) || slot.CandidateCount < 1 || slot.CandidateCount > EraWeaponConstants.MaximumCandidatesPerSlot ||
-                    slot.DisplayOrder < 0 || pool.Count < slot.CandidateCount || pool.Sum(entry => (long)entry.Weight) > int.MaxValue ||
-                    pool.Select(entry => entry.ModDefinitionId).Distinct().Count() != pool.Count)
-                    throw new ArgumentException("Weapon CandidateCount exceeds the distinct available pool or its limit.");
-                foreach (var entry in pool)
-                {
-                    if (entry.Weight <= 0 || !modifications.TryGetValue(entry.ModDefinitionId, out var modification) || modification.Slot != slot.Slot ||
-                        modification.Modifiers.Any(value => value.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue ||
-                            value.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue))
-                        throw new ArgumentException("Weapon pool reference, weight or supported attribute is invalid.");
-                }
-            }
+            if (configuration.Slots.SelectMany(slot => slot.Pool).Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value =>
+                value.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue ||
+                value.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue)))
+                throw new ArgumentException("Weapon configuration uses an attribute unsupported by an associated template.");
         }
         if (System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(catalog).Length > EraWeaponConstants.MaximumCatalogBytes)
             throw new ArgumentException("Weapon catalog exceeds its publication byte budget.");

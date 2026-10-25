@@ -16,5 +16,5 @@ public sealed class EraWeaponTemplateDto
     public EraWeaponStatsDto BaseStats { get; set; } = new EraWeaponStatsDto();
     public EraWeaponBehaviorDto Behavior { get; set; } = new EraWeaponBehaviorDto();
     public List<EraEquipmentSlot> CompatibleSlots { get; set; } = new List<EraEquipmentSlot>();
-    public List<EraWeaponTemplateSlotDto> Slots { get; set; } = new List<EraWeaponTemplateSlotDto>();
+    public Guid SlotConfigurationId { get; set; }
 }

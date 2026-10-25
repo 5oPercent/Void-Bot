@@ -28,10 +28,12 @@ public class EraWeaponFixture
             SpreadDegreesAtZero = 3, SpreadDegreesAtHundred = 1, RecoilDegreesAtZero = 2, RecoilDegreesAtHundred = .5,
             ReadySecondsAtZero = 1, ReadySecondsAtHundred = .35, AimSecondsAtZero = .5, AimSecondsAtHundred = .15
         });
+        var configuration = new EraWeaponSlotConfigurationDto { Id = Guid.NewGuid(), Name = "Rifle slots" };
+        catalog.SlotConfigurations.Add(configuration);
         var template = new EraWeaponTemplateDto
         {
             Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Test rifle", PresentationKey = "scifi_rifle",
-            StatMappingId = catalog.StatMappings[0].Id,
+            StatMappingId = catalog.StatMappings[0].Id, SlotConfigurationId = configuration.Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
             BaseStats = new EraWeaponStatsDto
             {
@@ -44,15 +46,21 @@ public class EraWeaponFixture
                 BaseReloadSeconds = 2.4
             }
         };
-        foreach (var slot in System.Enum.GetValues<EraWeaponModSlot>())
+        foreach (var slot in Enumerable.Range(1, 5))
         {
-            var definition = new EraWeaponTemplateSlotDto { Slot = slot, CandidateCount = 2, DisplayOrder = (int)slot };
+            var typeId = Guid.Parse($"50000000-0000-0000-0000-{slot:000000000000}");
+            catalog.SlotTypes.Add(new EraWeaponSlotTypeDto { Id = typeId, Name = $"Type {slot}" });
+            var definition = new EraWeaponConfigurationSlotDto
+            {
+                Id = Guid.Parse($"60000000-0000-0000-0000-{slot:000000000000}"), Name = $"Slot {slot}",
+                SlotTypeId = typeId, CandidateCount = 2, DisplayOrder = slot
+            };
             for (var index = 0; index < 3; index++)
             {
                 var id = Guid.Parse($"30000000-0000-0000-{(int)slot:0000}-{index + 1:000000000000}");
                 catalog.Modifications.Add(new EraWeaponModDefinitionDto
                 {
-                    Id = id, Name = $"Test {slot} {index}", Slot = slot,
+                    Id = id, Name = $"Test {slot} {index}", SlotTypeId = typeId,
                     Modifiers = new List<EraWeaponModifierDto>
                     {
                         new EraWeaponModifierDto { Stat = EraWeaponStat.Handling, Operation = EraWeaponModifierOperation.Flat, Value = -index }
@@ -60,7 +68,7 @@ public class EraWeaponFixture
                 });
                 definition.Pool.Add(new EraWeaponModPoolEntryDto { ModDefinitionId = id, Weight = index + 1 });
             }
-            template.Slots.Add(definition);
+            configuration.Slots.Add(definition);
         }
         catalog.Templates.Add(template);
         return catalog;
@@ -74,7 +82,7 @@ public class EraWeaponFixture
     public void Should_reject_unfulfillable_or_out_of_bound_candidate_counts(int count)
     {
         var catalog = Catalog();
-        catalog.Templates[0].Slots[0].CandidateCount = count;
+        catalog.SlotConfigurations[0].Slots[0].CandidateCount = count;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 
@@ -84,7 +92,7 @@ public class EraWeaponFixture
         var catalog = Catalog();
         var restored = JsonSerializer.Deserialize<EraWeaponCatalogDto>(JsonSerializer.Serialize(catalog))!;
         restored.Templates[0].Id.ShouldBe(catalog.Templates[0].Id);
-        restored.Templates[0].Slots[0].Pool[0].ModDefinitionId.ShouldBe(catalog.Modifications[0].Id);
+        restored.SlotConfigurations[0].Slots[0].Pool[0].ModDefinitionId.ShouldBe(catalog.Modifications[0].Id);
         Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(restored));
         restored.Templates[0].Id = Guid.Empty;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(restored));
@@ -201,7 +209,7 @@ public class EraWeaponFixture
     public void Should_reject_duplicate_pool_entries_and_unsupported_modifiers()
     {
         var catalog = Catalog();
-        catalog.Templates[0].Slots[0].Pool[1].ModDefinitionId = catalog.Templates[0].Slots[0].Pool[0].ModDefinitionId;
+        catalog.SlotConfigurations[0].Slots[0].Pool[1].ModDefinitionId = catalog.SlotConfigurations[0].Slots[0].Pool[0].ModDefinitionId;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog = Catalog();
         catalog.Modifications[0].Modifiers[0].Stat = EraWeaponStat.ChargeTime;
@@ -212,10 +220,10 @@ public class EraWeaponFixture
     public void Should_generate_exact_distinct_candidates_per_slot_and_only_select_generated_candidates()
     {
         var catalog = Catalog();
-        catalog.Templates[0].Slots[0].CandidateCount = 1;
-        catalog.Templates[0].Slots[1].CandidateCount = 3;
+        catalog.SlotConfigurations[0].Slots[0].CandidateCount = 1;
+        catalog.SlotConfigurations[0].Slots[1].CandidateCount = 3;
         EraWeaponConfigurationValidator.Validate(catalog);
-        var instance = EraWeaponGenerator.Generate(catalog.Templates[0], _ => 0);
+        var instance = EraWeaponGenerator.Generate(catalog.SlotConfigurations[0], _ => 0);
         instance.Slots.Select(slot => slot.Candidates.Count).ShouldBe(new[] { 1, 3, 2, 2, 2 });
         instance.Slots.All(slot => slot.Candidates.Select(candidate => candidate.ModDefinitionId).Distinct().Count() == slot.Candidates.Count).ShouldBeTrue();
         instance.Slots.All(slot => slot.Candidates.Any(candidate => candidate.CandidateId == slot.SelectedCandidateId)).ShouldBeTrue();
@@ -225,13 +233,14 @@ public class EraWeaponFixture
     [Fact]
     public void Should_respect_weight_interval_boundaries_and_remove_each_drawn_entry()
     {
-        var template = Catalog().Templates[0];
+        var catalog = Catalog();
+        var template = catalog.Templates[0];
         var bounds = new List<int>();
-        var instance = EraWeaponGenerator.Generate(template, bound => { bounds.Add(bound); return bound - 1; });
+        var instance = EraWeaponGenerator.Generate(catalog.SlotConfigurations[0], bound => { bounds.Add(bound); return bound - 1; });
         bounds.ShouldBe(new[] { 6, 3, 6, 3, 6, 3, 6, 3, 6, 3 });
         foreach (var slot in instance.Slots)
         {
-            var pool = template.Slots.Single(value => value.Slot == slot.Slot).Pool;
+            var pool = catalog.SlotConfigurations[0].Slots.Single(value => value.Id == slot.SlotId).Pool;
             slot.Candidates[0].ModDefinitionId.ShouldBe(pool[2].ModDefinitionId);
             slot.Candidates[1].ModDefinitionId.ShouldBe(pool[1].ModDefinitionId);
         }
@@ -240,7 +249,7 @@ public class EraWeaponFixture
     [Fact]
     public void Should_reject_selected_candidate_from_another_slot()
     {
-        var instance = EraWeaponGenerator.Generate(Catalog().Templates[0], _ => 0);
+        var instance = EraWeaponGenerator.Generate(Catalog().SlotConfigurations[0], _ => 0);
         instance.Slots[0].SelectedCandidateId = instance.Slots[1].Candidates[0].CandidateId;
         EraEquipmentItemRules.ValidWeapon(instance).ShouldBeFalse();
     }
@@ -250,7 +259,7 @@ public class EraWeaponFixture
     {
         var catalog = Catalog();
         var template = catalog.Templates[0];
-        var instance = EraWeaponGenerator.Generate(template, _ => 0);
+        var instance = EraWeaponGenerator.Generate(catalog.SlotConfigurations[0], _ => 0);
         var before = JsonSerializer.Serialize(instance);
         var character = Guid.NewGuid();
         var player = Guid.NewGuid();
@@ -261,7 +270,7 @@ public class EraWeaponFixture
             Version = 3, CreatedAt = DateTimeOffset.UtcNow
         };
         template.BaseStats.Damage = 55;
-        foreach (var slot in template.Slots) { slot.Pool.RemoveAt(0); slot.CandidateCount = 1; }
+        foreach (var slot in catalog.SlotConfigurations[0].Slots) { slot.Pool.RemoveAt(0); slot.CandidateCount = 1; }
         EraWeaponConfigurationValidator.Validate(catalog);
         var snapshot = new EraEquipmentReadSnapshot
         {
@@ -290,6 +299,7 @@ public class EraWeaponFixture
         weapons.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         weapons.GetReferencedWeaponsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
         weapons.GetReferencedCandidatesAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModCandidate>());
+        weapons.GetReferencedSlotsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModSelection>());
         weapons.GetPendingRewardPlansAsync(Arg.Any<CancellationToken>()).Returns(new List<string>());
         var service = new EraWeaponService(weapons, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
         catalog.Templates[0].BaseStats.Damage = 55;
@@ -313,9 +323,9 @@ public class EraWeaponFixture
     {
         var catalog = Catalog();
         var template = catalog.Templates[0];
-        var instance = EraWeaponGenerator.Generate(template, _ => 0);
+        var instance = EraWeaponGenerator.Generate(catalog.SlotConfigurations[0], _ => 0);
         var chosen = instance.Slots[0].Candidates[1].CandidateId;
-        foreach (var slot in template.Slots) { slot.Pool.RemoveAt(1); slot.CandidateCount = 1; }
+        foreach (var slot in catalog.SlotConfigurations[0].Slots) { slot.Pool.RemoveAt(1); slot.CandidateCount = 1; }
         var character = new EraCharacter { Id = Guid.NewGuid(), PlayerId = Guid.NewGuid(), EquipmentVersion = 3 };
         var item = new EraEquipmentInstance
         {
@@ -341,14 +351,60 @@ public class EraWeaponFixture
         var command = new SelectEraWeaponModificationCommand
         {
             CharacterId = character.Id, EquipmentId = item.Id, RequestId = Guid.NewGuid(),
-            Slot = instance.Slots[0].Slot, CandidateId = chosen, ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5
+            SlotId = instance.Slots[0].SlotId, CandidateId = chosen, ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5
         };
         var response = await new EraEquipmentService(data, context, Substitute.For<ILocalizationService>(), weapons)
             .SelectWeaponModificationAsync(command, CancellationToken.None);
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.State.EquipmentVersion.ShouldBe(4);
         response.Data.State.InventoryItems.Single().Weapon!.Slots[0].SelectedCandidateId.ShouldBe(chosen);
-        await weapons.Received(1).UpdateSelectionAsync(item.Id, command.Slot, Arg.Any<Guid>(), chosen, 5, Arg.Any<CancellationToken>());
+        await weapons.Received(1).UpdateSelectionAsync(item.Id, command.SlotId, Arg.Any<Guid>(), chosen, 5, Arg.Any<CancellationToken>());
         instance.Slots[0].Candidates.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(12)]
+    public void Should_generate_dynamic_slot_counts_and_allow_repeated_types(int count)
+    {
+        var catalog = Catalog();
+        var configuration = catalog.SlotConfigurations[0];
+        var first = configuration.Slots[0];
+        configuration.Slots = Enumerable.Range(0, count).Select(index => new EraWeaponConfigurationSlotDto
+        {
+            Id = Guid.NewGuid(), Name = $"Optic {index}", SlotTypeId = first.SlotTypeId, DisplayOrder = index,
+            CandidateCount = first.CandidateCount, Pool = first.Pool.ToList()
+        }).ToList();
+        Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
+        var instance = EraWeaponGenerator.Generate(configuration, _ => 0);
+        instance.Slots.Count.ShouldBe(count);
+        EraEquipmentItemRules.ValidWeapon(instance).ShouldBeTrue();
+        instance.Slots.Select(slot => slot.SlotId).Distinct().Count().ShouldBe(count);
+        var snapshot = JsonSerializer.Serialize(instance);
+        configuration.Slots.Clear();
+        JsonSerializer.Serialize(instance).ShouldBe(snapshot);
+        EraEquipmentItemRules.ValidWeapon(instance).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Should_validate_every_template_sharing_a_scheme_and_reject_duplicate_slot_ids()
+    {
+        var catalog = Catalog();
+        catalog.Modifications[0].Modifiers[0].Stat = EraWeaponStat.ProjectileSpeed;
+        catalog.Templates[0].Behavior.HitMode = EraWeaponHitMode.Projectile;
+        catalog.Templates[0].BaseStats.ProjectileSpeed = 100;
+        Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
+        var other = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(catalog.Templates[0]))!;
+        other.Id = Guid.NewGuid(); other.Behavior.HitMode = EraWeaponHitMode.Hitscan; other.BaseStats.ProjectileSpeed = null;
+        catalog.Templates.Add(other);
+        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
+        catalog.Templates.Remove(other);
+        var copy = JsonSerializer.Deserialize<EraWeaponSlotConfigurationDto>(JsonSerializer.Serialize(catalog.SlotConfigurations[0]))!;
+        copy.Id = Guid.NewGuid(); catalog.SlotConfigurations.Add(copy);
+        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
+        foreach (var slot in copy.Slots) slot.Id = Guid.NewGuid();
+        Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 }
