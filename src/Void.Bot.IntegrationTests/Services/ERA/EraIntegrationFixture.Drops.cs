@@ -79,6 +79,7 @@ public partial class EraIntegrationFixture
     [Theory]
     [InlineData(EraRewardSourceType.Monster)]
     [InlineData(EraRewardSourceType.Chest)]
+    [InlineData(EraRewardSourceType.Event)]
     [Trait("Category", "ERADropIntegration")]
     public async Task Ground_rewards_should_be_private_and_pickup_should_keep_saved_attributes_identity_and_share_deadline(EraRewardSourceType source)
     {

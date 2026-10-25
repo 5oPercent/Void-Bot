@@ -18,6 +18,8 @@ public sealed class PrepareEraInventoryRewardCommand : ICommand
     public string SourceDefinitionId { get; set; } = string.Empty;
     public int TriggerIndex { get; set; }
     public string RewardNodeId { get; set; } = string.Empty;
+    /// <summary>不为空时直接发放条目，跳过来源节点与奖励池；仍以业务来源身份防重。</summary>
+    public List<EraEquipmentRewardEntry>? Entries { get; set; }
     /// <summary>可信业务确认过的领取名单；客户端不能指定奖励内容或调用本命令。</summary>
     public List<EraRewardRecipient> Recipients { get; set; } = new List<EraRewardRecipient>();
 }

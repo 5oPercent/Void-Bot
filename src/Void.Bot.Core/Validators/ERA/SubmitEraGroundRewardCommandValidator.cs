@@ -13,7 +13,7 @@ public sealed class SubmitEraGroundRewardCommandValidator : FluentMessageValidat
         RuleFor(command => command.RequestId).NotEmpty();
         RuleFor(command => command.MemberId).NotEmpty();
         RuleFor(command => command.AuthorityEpoch).GreaterThan(0);
-        RuleFor(command => command.SourceType).Must(source => source is EraRewardSourceType.Monster or EraRewardSourceType.Chest);
+        RuleFor(command => command.SourceType).Must(source => source is EraRewardSourceType.Monster or EraRewardSourceType.Chest or EraRewardSourceType.Event);
         RuleFor(command => command.SourceInstanceId).NotEmpty();
         RuleFor(command => command.SourceDefinitionId).NotEmpty().MaximumLength(128);
         RuleFor(command => command.TriggerIndex).GreaterThan(0);

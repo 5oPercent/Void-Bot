@@ -44,7 +44,8 @@ public class EraRewardPoolFixture
             {
                 Node(EraRewardSourceType.Task, EraRewardDelivery.Inventory),
                 Node(EraRewardSourceType.Monster, EraRewardDelivery.Inventory),
-                Node(EraRewardSourceType.Chest, EraRewardDelivery.Ground)
+                Node(EraRewardSourceType.Chest, EraRewardDelivery.Ground),
+                Node(EraRewardSourceType.Event, EraRewardDelivery.Ground)
             }
         };
         Should.NotThrow(() => EraRewardConfigurationValidator.Validate(rules));

@@ -82,9 +82,12 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
     {
         if (command.ScopeId == Guid.Empty || command.RequestId == Guid.Empty || command.SourceInstanceId == Guid.Empty ||
             !System.Enum.IsDefined(command.SourceType) || command.TriggerIndex < 1 ||
-            string.IsNullOrWhiteSpace(command.SourceDefinitionId) || command.SourceDefinitionId.Length > 128 ||
+            command.Entries == null && (string.IsNullOrWhiteSpace(command.SourceDefinitionId) || command.SourceDefinitionId.Length > 128 ||
             command.SourceDefinitionId != command.SourceDefinitionId.Trim() || string.IsNullOrWhiteSpace(command.RewardNodeId) ||
-            command.RewardNodeId.Length > 128 || command.RewardNodeId != command.RewardNodeId.Trim() ||
+            command.RewardNodeId.Length > 128 || command.RewardNodeId != command.RewardNodeId.Trim()) ||
+            command.Entries != null && (command.Entries.Count == 0 || command.Entries.Count > 120 ||
+                command.Entries.Any(entry => entry == null || !new EraEquipmentRewardEntryValidator().Validate(entry).IsValid) ||
+                command.Entries.Sum(entry => (long)entry.Count) > EraEquipmentRules.InventoryCapacity) ||
             command.Recipients == null || command.Recipients.Count == 0 ||
             command.Recipients.Any(recipient => recipient == null || recipient.PlayerId == Guid.Empty || recipient.CharacterId == Guid.Empty) ||
             command.Recipients.Select(recipient => recipient.PlayerId).Distinct().Count() != command.Recipients.Count ||
@@ -92,7 +95,12 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             throw Error(HttpStatusCode.BadRequest, "era.reward_invalid_operation", text => text.InvalidOperation);
 
         var recipients = command.Recipients.OrderBy(recipient => recipient.PlayerId).ToList();
-        var requestPayload = JsonSerializer.Serialize(new
+        var requestPayload = command.Entries != null ? JsonSerializer.Serialize(new
+        {
+            SchemaVersion = 1, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
+            command.TriggerIndex, command.RewardNodeId, command.Entries,
+            Recipients = recipients.Select(recipient => new { recipient.PlayerId, recipient.CharacterId }).ToList()
+        }) : JsonSerializer.Serialize(new
         {
             SchemaVersion = 1, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
             command.TriggerIndex, command.RewardNodeId,
@@ -114,45 +122,38 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             return new PrepareEraInventoryRewardResponse { Code = HttpStatusCode.OK, Data = previous.Id, IsReplay = true };
         }
         if (request != null) throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_data_unavailable", text => text.DataUnavailable);
-        // 两份配置在事务中加共享锁；首次接受后不再依赖当前配置或当前名单。
-        var configuration = await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false);
-        var manifestRow = await _equipment.LockConfigurationAsync(cancellationToken).ConfigureAwait(false);
-        EraRewardRules rules;
-        EraEquipmentManifestDto manifest;
+        // 配置奖励才读取奖励规则；直接条目只依赖已有装备目录。锁顺序保持奖励配置在装备目录之前。
+        var configuration = command.Entries == null
+            ? await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false) : null;
+        EraEquipmentManifestDto? manifest;
+        EraRewardNode? node = null;
+        EraRewardPool? pool = null;
         try
         {
-            if (configuration == null || configuration.Version < 1 || manifestRow == null)
-                throw new ArgumentException("Reward configuration is missing.");
-            rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload)
-                ?? throw new ArgumentException("Reward configuration is null.");
-            EraRewardConfigurationValidator.Validate(rules);
-            manifest = JsonSerializer.Deserialize<EraEquipmentManifestDto>(manifestRow.Payload)
-                ?? throw new ArgumentException("Equipment configuration is null.");
-            manifest.Version = manifestRow.Version;
-            manifest.Weapons = await _equipment.GetWeaponCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraWeaponCatalogDto();
-            EraWeaponConfigurationValidator.Validate(manifest.Weapons);
-            EraEquipmentConfigurationValidator.Validate(manifest);
+            manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, true, cancellationToken).ConfigureAwait(false);
+            if (manifest == null) throw new ArgumentException("Equipment configuration is missing.");
+            if (command.Entries == null)
+            {
+                if (configuration == null || configuration.Version < 1) throw new ArgumentException("Reward configuration is missing.");
+                var rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload) ?? throw new ArgumentException("Reward configuration is null.");
+                EraRewardConfigurationValidator.Validate(rules);
+                node = rules.Nodes.SingleOrDefault(item => item.SourceType == command.SourceType &&
+                    item.SourceDefinitionId == command.SourceDefinitionId && item.RewardNodeId == command.RewardNodeId);
+                if (node == null) throw Error(HttpStatusCode.Conflict, "era.reward_source_unavailable", text => text.SourceUnavailable);
+                if (node.Delivery != EraRewardDelivery.Inventory)
+                    throw Error(HttpStatusCode.Conflict, "era.reward_delivery_unavailable", text => text.DeliveryUnavailable);
+                pool = rules.Pools.Single(item => item.Id == node.PoolId);
+                var definitions = manifest.Definitions.Select(item => item.Id).ToHashSet();
+                var templates = manifest.Weapons.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
+                if (pool.Entries.Any(entry => !definitions.Contains(entry.DefinitionId) && !templates.Contains(entry.DefinitionId)) ||
+                    (long)pool.Entries.Max(entry => entry.Count) * node.Rolls > EraEquipmentRules.InventoryCapacity)
+                    throw new ArgumentException("Reward pool is invalid.");
+            }
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
             throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         }
-
-        var node = rules.Nodes.SingleOrDefault(item => item.SourceType == command.SourceType &&
-            item.SourceDefinitionId == command.SourceDefinitionId && item.RewardNodeId == command.RewardNodeId);
-        if (node == null) throw Error(HttpStatusCode.Conflict, "era.reward_source_unavailable", text => text.SourceUnavailable);
-        // 只看配置的发放方式，不按任务、怪物或宝箱来源限制背包能力。
-        if (node.Delivery != EraRewardDelivery.Inventory)
-            throw Error(HttpStatusCode.Conflict, "era.reward_delivery_unavailable", text => text.DeliveryUnavailable);
-        var pool = rules.Pools.Single(item => item.Id == node.PoolId);
-        var definitions = manifest.Definitions.ToDictionary(item => item.Id);
-        var weaponTemplates = manifest.Weapons.Templates.ToDictionary(item => item.Id);
-        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId) &&
-            (!weaponTemplates.TryGetValue(entry.DefinitionId, out var template) || !template.IsGenerationEnabled)))
-            throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
-        // 拒绝即使空背包也可能永远装不下的配置；普通满包则保留计划供整理后重试。
-        if ((long)pool.Entries.Max(entry => entry.Count) * node.Rolls > EraEquipmentRules.InventoryCapacity)
-            throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         foreach (var recipient in recipients)
         {
             var character = await _characters.GetCharacterByIdAsync(recipient.CharacterId, cancellationToken).ConfigureAwait(false);
@@ -163,9 +164,9 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         var now = _clock.GetUtcNow();
         var plan = new EraInventoryRewardPlan
         {
-            EventId = Guid.NewGuid(), ConfigurationVersion = configuration!.Version,
+            EventId = Guid.NewGuid(), ConfigurationVersion = configuration?.Version ?? 0,
             ManifestVersion = manifest.Version, AcceptedAt = new DateTimeOffset(now.Ticks - now.Ticks % 10, now.Offset),
-            Node = node, Pool = pool
+            Node = node, Pool = pool, Entries = command.Entries
         };
         foreach (var recipient in recipients)
         {
@@ -173,28 +174,15 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
             {
                 GrantId = Guid.NewGuid(), PlayerId = recipient.PlayerId, CharacterId = recipient.CharacterId
             };
-            foreach (var entry in _pools.Roll(node, pool))
+            try
             {
-                for (var index = 0; index < entry.Count; index++)
-                {
-                    if (weaponTemplates.TryGetValue(entry.DefinitionId, out var template))
-                    {
-                        if (_weapons == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
-                        grant.Equipment.Add(new EraPlannedRewardEquipment
-                        {
-                            EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = entry.Grade,
-                            EquipmentType = EraEquipmentType.Weapon,
-                            Weapon = _weapons.Generate(manifest.Weapons.SlotConfigurations.Single(configuration => configuration.Id == template.SlotConfigurationId))
-                        });
-                        continue;
-                    }
-                    var generated = _armor.Generate(entry.Grade);
-                    grant.Equipment.Add(new EraPlannedRewardEquipment
-                    {
-                        EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = generated.Grade,
-                        GenerationRuleVersion = generated.GenerationRuleVersion, Attributes = generated.Attributes
-                    });
-                }
+                grant.Equipment = EraRewardEquipmentGenerator.Generate(command.Entries ?? (IEnumerable<EraEquipmentRewardEntry>)_pools.Roll(node!, pool!), manifest, _armor, _weapons);
+            }
+            catch (ArgumentException)
+            {
+                throw command.Entries != null
+                    ? Error(HttpStatusCode.BadRequest, "era.reward_invalid_operation", text => text.InvalidOperation)
+                    : Error(HttpStatusCode.ServiceUnavailable, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
             }
             plan.Grants.Add(grant);
         }
@@ -323,10 +311,14 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
     {
         if (plan.SchemaVersion != 1 || plan.EventId != rewardEvent.Id || plan.AcceptedAt != rewardEvent.AcceptedAt ||
             plan.ConfigurationVersion != rewardEvent.ConfigurationVersion || plan.ManifestVersion != rewardEvent.ManifestVersion ||
-            plan.ConfigurationVersion < 1 || plan.ManifestVersion < 1 || plan.Grants == null || plan.Grants.Count == 0 ||
-            plan.Node == null || plan.Pool == null || plan.Node.SourceType != rewardEvent.SourceType ||
-            plan.Node.SourceDefinitionId != rewardEvent.SourceDefinitionId || plan.Node.RewardNodeId != rewardEvent.RewardNodeId ||
-            plan.Node.PoolId != plan.Pool.Id || plan.Node.Delivery != EraRewardDelivery.Inventory ||
+            plan.ConfigurationVersion < 0 || plan.ManifestVersion < 1 || plan.Grants == null || plan.Grants.Count == 0 ||
+            (plan.Entries == null
+                ? plan.ConfigurationVersion < 1 || plan.Node == null || plan.Pool == null || plan.Node.SourceType != rewardEvent.SourceType ||
+                    plan.Node.SourceDefinitionId != rewardEvent.SourceDefinitionId || plan.Node.RewardNodeId != rewardEvent.RewardNodeId ||
+                    plan.Node.PoolId != plan.Pool.Id || plan.Node.Delivery != EraRewardDelivery.Inventory
+                : plan.ConfigurationVersion != 0 || plan.Node != null || plan.Pool != null || plan.Entries.Count == 0 ||
+                    plan.Entries.Any(entry => entry == null || !new EraEquipmentRewardEntryValidator().Validate(entry).IsValid) ||
+                    plan.Entries.Sum(entry => (long)entry.Count) > EraEquipmentRules.InventoryCapacity) ||
             plan.Grants.Any(grant => grant == null || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty ||
                 grant.CharacterId == Guid.Empty || grant.Equipment == null || grant.Equipment.Count > EraEquipmentRules.InventoryCapacity) ||
             plan.Grants.Select(grant => grant.PlayerId).Distinct().Count() != plan.Grants.Count ||

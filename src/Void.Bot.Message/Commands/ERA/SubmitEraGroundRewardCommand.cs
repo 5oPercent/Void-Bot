@@ -6,7 +6,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-/// <summary>当前房主提交怪物／宝箱地面奖励；不接收品阶、数量、属性或领取名单。</summary>
+/// <summary>当前房主提交怪物／宝箱／世界事件地面奖励；不接收品阶、数量、属性或领取名单。</summary>
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 public sealed class SubmitEraGroundRewardCommand : ICommand
 {
@@ -18,7 +18,7 @@ public sealed class SubmitEraGroundRewardCommand : ICommand
     public Guid MemberId { get; set; }
     /// <summary>当前房主代次，只用于权限校验，不参与业务事件身份。</summary>
     public long AuthorityEpoch { get; set; }
-    /// <summary>本入口仅开放怪物或宝箱来源；任务完成条件由未来任务业务验证。</summary>
+    /// <summary>本入口开放怪物、宝箱或世界事件来源；任务完成条件仍由任务业务验证。</summary>
     public EraRewardSourceType SourceType { get; set; }
     /// <summary>查找后端来源节点配置的定义 ID；同事件更改此值返回冲突。</summary>
     public string SourceDefinitionId { get; set; } = string.Empty;

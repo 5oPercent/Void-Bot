@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.ERA.Equipment;
+using Void.Bot.Core.Services.ERA.Reward;
 using Void.Bot.Core.Services.ERA.Reward.Models;
 using Void.Bot.Core.Validators.ERA;
 using Void.Bot.Message.Commands.ERA;
@@ -12,13 +13,30 @@ namespace Void.Bot.Core.Services.ERA.Drop;
 
 public sealed partial class EraEquipmentDropService
 {
-    public async Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken)
+    public Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken)
+    {
+        return SubmitAsync(command, null, null, cancellationToken);
+    }
+
+    public Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken)
+    {
+        // 直接发放以 RequestId 作为来源实例防重；无需来源定义、奖励节点或奖励池配置。
+        return SubmitAsync(new SubmitEraGroundRewardCommand
+        {
+            WorldInstanceId = command.WorldInstanceId, RequestId = command.RequestId, MemberId = command.MemberId,
+            AuthorityEpoch = command.AuthorityEpoch, SourceType = EraRewardSourceType.Internal,
+            SourceInstanceId = command.RequestId, TriggerIndex = 1, Placement = command.Placement
+        }, command.Entries, command.CharacterId, cancellationToken);
+    }
+
+    private async Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command,
+        IReadOnlyList<EraEquipmentRewardEntry>? entries, Guid? characterId, CancellationToken cancellationToken)
     {
         if (command.WorldInstanceId == Guid.Empty || command.RequestId == Guid.Empty || command.MemberId == Guid.Empty ||
-            command.AuthorityEpoch < 1 || command.SourceType is not (EraRewardSourceType.Monster or EraRewardSourceType.Chest) ||
-            command.SourceInstanceId == Guid.Empty || command.TriggerIndex < 1 || string.IsNullOrWhiteSpace(command.SourceDefinitionId) ||
+            command.AuthorityEpoch < 1 || entries == null && command.SourceType is not (EraRewardSourceType.Monster or EraRewardSourceType.Chest or EraRewardSourceType.Event) ||
+            command.SourceInstanceId == Guid.Empty || command.TriggerIndex < 1 || entries == null && (string.IsNullOrWhiteSpace(command.SourceDefinitionId) ||
             command.SourceDefinitionId.Length > 128 || command.SourceDefinitionId != command.SourceDefinitionId.Trim() ||
-            string.IsNullOrWhiteSpace(command.RewardNodeId) || command.RewardNodeId.Length > 128 || command.RewardNodeId != command.RewardNodeId.Trim() ||
+            string.IsNullOrWhiteSpace(command.RewardNodeId) || command.RewardNodeId.Length > 128 || command.RewardNodeId != command.RewardNodeId.Trim()) ||
             command.Placement == null || !double.IsFinite(command.Placement.X) || !double.IsFinite(command.Placement.Y) ||
             !double.IsFinite(command.Placement.Z) || !double.IsFinite(command.Placement.YawRadians))
         {
@@ -31,7 +49,10 @@ public sealed partial class EraEquipmentDropService
         {
             throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
         }
-        var payload = JsonSerializer.Serialize(new
+        var payload = entries != null ? JsonSerializer.Serialize(new
+        {
+            SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement
+        }) : JsonSerializer.Serialize(new
         {
             SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, command.SourceType,
             command.SourceDefinitionId, command.SourceInstanceId, command.TriggerIndex, command.RewardNodeId, command.Placement
@@ -79,7 +100,9 @@ public sealed partial class EraEquipmentDropService
                 receipt.ConfigurationVersion != previous.ConfigurationVersion || receipt.ManifestVersion != previous.ManifestVersion ||
                 receipt.CreatedAt != previous.AcceptedAt || receipt.Grants.Count == 0 ||
                 receipt.Grants.Any(grant => grant == null || grant.EquipmentIds == null || grant.DropIds == null ||
-                    grant.EquipmentIds.Count != grant.DropIds.Count || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty || grant.CharacterId == Guid.Empty))
+                    grant.EquipmentIds.Count != grant.DropIds.Count || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty || grant.CharacterId == Guid.Empty) ||
+                characterId != null && (receipt.Grants.Count != 1 || receipt.Grants[0].CharacterId != characterId ||
+                    receipt.Grants[0].EquipmentIds.Count != entries!.Sum(entry => entry.Count)))
             {
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             }
@@ -105,52 +128,53 @@ public sealed partial class EraEquipmentDropService
         {
             throw Error(HttpStatusCode.Conflict, "era.drop_members_changed", text => text.MembersChanged);
         }
-        var recipients = context.Members.Where(member => member.IsContinuing && member.ActivePlayerId == member.PlayerId &&
+        var recipients = context.Members.Where(member => (characterId == null || member.CharacterId == characterId) && member.IsContinuing && member.ActivePlayerId == member.PlayerId &&
             member.ActiveCharacterId == member.CharacterId && !characters[member.CharacterId].IsDisabled &&
             context.Team.Members.Any(live => live.PlayerId == member.PlayerId && live.CharacterId == member.CharacterId &&
                 live.MemberId == member.MemberId && live.ExpiresAt > clockNow)).OrderBy(member => member.PlayerId).ToList();
         // 队伍服务管理人数上限；发放只使用实际有效成员，不再另设人数限制。
         if (recipients.Count == 0)
         {
+            if (characterId != null)
+                throw Error(HttpStatusCode.Forbidden, "era.drop_character_unavailable", text => text.CharacterUnavailable);
             throw Error(HttpStatusCode.Conflict, "era.drop_members_changed", text => text.MembersChanged);
         }
-        var configuration = await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false);
+        var configuration = entries == null ? await _rewards.LockConfigurationAsync(false, cancellationToken).ConfigureAwait(false) : null;
         var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, true, cancellationToken).ConfigureAwait(false);
-        EraRewardRules rules;
-        try
+        if (manifest == null)
+            throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
+        long configurationVersion = 0;
+        EraRewardNode? node = null;
+        EraRewardPool? pool = null;
+        if (entries == null)
         {
-            if (configuration == null || configuration.Version < 1 || manifest == null)
+            EraRewardRules rules;
+            try
             {
-                throw new ArgumentException("Ground reward configuration is missing.");
+                if (configuration == null || configuration.Version < 1)
+                    throw new ArgumentException("Ground reward configuration is missing.");
+                rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload) ?? throw new ArgumentException("Reward configuration is null.");
+                EraRewardConfigurationValidator.Validate(rules);
             }
-            rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload) ?? throw new ArgumentException("Reward configuration is null.");
-            EraRewardConfigurationValidator.Validate(rules);
-        }
-        catch (Exception exception) when (exception is JsonException or ArgumentException)
-        {
-            throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
-        }
-        var node = rules.Nodes.SingleOrDefault(item => item.SourceType == command.SourceType &&
-            item.SourceDefinitionId == command.SourceDefinitionId && item.RewardNodeId == command.RewardNodeId);
-        if (node == null)
-        {
-            throw Error(HttpStatusCode.Conflict, "era.drop_source_unavailable", text => text.SourceUnavailable);
-        }
-        if (node.Delivery != EraRewardDelivery.Ground)
-        {
-            throw Error(HttpStatusCode.Conflict, "era.drop_delivery_unavailable", text => text.DeliveryUnavailable);
-        }
-        var pool = rules.Pools.Single(item => item.Id == node.PoolId);
-        var definitions = manifest!.Definitions.ToDictionary(item => item.Id);
-        var weaponTemplates = manifest.Weapons.Templates.ToDictionary(item => item.Id);
-        if (pool.Entries.Any(entry => !definitions.ContainsKey(entry.DefinitionId) &&
-            (!weaponTemplates.TryGetValue(entry.DefinitionId, out var template) || !template.IsGenerationEnabled)))
-        {
-            throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
+            catch (Exception exception) when (exception is JsonException or ArgumentException)
+            {
+                throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
+            }
+            node = rules.Nodes.SingleOrDefault(item => item.SourceType == command.SourceType &&
+                item.SourceDefinitionId == command.SourceDefinitionId && item.RewardNodeId == command.RewardNodeId);
+            if (node == null) throw Error(HttpStatusCode.Conflict, "era.drop_source_unavailable", text => text.SourceUnavailable);
+            if (node.Delivery != EraRewardDelivery.Ground)
+                throw Error(HttpStatusCode.Conflict, "era.drop_delivery_unavailable", text => text.DeliveryUnavailable);
+            pool = rules.Pools.Single(item => item.Id == node.PoolId);
+            configurationVersion = configuration!.Version;
+            var definitions = manifest.Definitions.Select(item => item.Id).ToHashSet();
+            var templates = manifest.Weapons.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
+            if (pool.Entries.Any(entry => !definitions.Contains(entry.DefinitionId) && !templates.Contains(entry.DefinitionId)))
+                throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
         }
         var result = new EraGroundRewardReceiptDto
         {
-            EventId = Guid.NewGuid(), WorldInstanceId = context.World.Id, ConfigurationVersion = configuration!.Version,
+            EventId = Guid.NewGuid(), WorldInstanceId = context.World.Id, ConfigurationVersion = configurationVersion,
             ManifestVersion = manifest.Version, CreatedAt = now
         };
         // 原分享资格取当时有效队伍名单，不要求队友已经加入 SQL 世界；私人发放对象仍须继续参与世界。
@@ -163,7 +187,7 @@ public sealed partial class EraEquipmentDropService
             SourceInstanceId = command.SourceInstanceId, SourceDefinitionId = command.SourceDefinitionId, TriggerIndex = command.TriggerIndex,
             RewardNodeId = command.RewardNodeId, RequestPayload = payload, ConfigurationVersion = result.ConfigurationVersion,
             ManifestVersion = result.ManifestVersion, AcceptedAt = now,
-            PlanPayload = JsonSerializer.Serialize(new EraGroundRewardPlan { Node = node, Pool = pool, Placement = command.Placement, AllowedPlayerIds = allowedPlayers })
+            PlanPayload = JsonSerializer.Serialize(new EraGroundRewardPlan { Node = node, Pool = pool, Entries = entries?.ToList(), Placement = command.Placement, AllowedPlayerIds = allowedPlayers })
         };
         _rewards.AddEvent(rewardEvent);
         // 配置、成员、房主权限、事件与所有资产在同一个命令事务中固定；空奖同样保存成功回执。
@@ -173,41 +197,42 @@ public sealed partial class EraEquipmentDropService
             var items = new List<EraEquipmentInstance>();
             var armor = new List<EraArmorInstanceData>();
             var weaponInstances = new Dictionary<Guid, EraWeaponInstanceDto>();
-            foreach (var entry in _pools.Roll(node, pool))
+            List<EraPlannedRewardEquipment> generated;
+            try
             {
-                for (var index = 0; index < entry.Count; index++)
+                generated = EraRewardEquipmentGenerator.Generate(entries ?? _pools.Roll(node!, pool!), manifest, _armor, _weapons);
+            }
+            catch (ArgumentException)
+            {
+                throw entries != null
+                    ? Error(HttpStatusCode.BadRequest, "era.drop_invalid_operation", text => text.InvalidOperation)
+                    : Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
+            }
+            foreach (var equipment in generated)
+            {
+                var item = new EraEquipmentInstance
                 {
-                    var isWeapon = weaponTemplates.TryGetValue(entry.DefinitionId, out var template);
-                    var generated = isWeapon ? null : _armor.Generate(entry.Grade);
-                    var item = new EraEquipmentInstance
-                    {
-                        Id = Guid.NewGuid(), DefinitionId = entry.DefinitionId, DefinitionVersion = manifest.Version,
-                        EquipmentType = isWeapon ? EraEquipmentType.Weapon : EraEquipmentType.Armor,
-                        Grade = entry.Grade, Location = EraEquipmentLocation.Ground,
-                        Version = 1, CreatedAt = now
-                    };
-                    items.Add(item);
-                    if (isWeapon)
-                    {
-                        if (_weapons == null) throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
-                        weaponInstances.Add(item.Id, _weapons.Generate(manifest.Weapons.SlotConfigurations.Single(configuration => configuration.Id == template!.SlotConfigurationId)));
-                    }
-                    else armor.Add(new EraArmorInstanceData
-                    {
-                        EquipmentId = item.Id, GenerationRuleVersion = generated!.GenerationRuleVersion,
-                        Strength = generated.Attributes.Strength, Survival = generated.Attributes.Survival, Mobility = generated.Attributes.Mobility,
-                        Focus = generated.Attributes.Focus, Efficiency = generated.Attributes.Efficiency, Resistance = generated.Attributes.Resistance
-                    });
-                    var drop = new EraEquipmentDrop
-                    {
-                        Id = Guid.NewGuid(), EquipmentId = item.Id, ActiveEquipmentId = item.Id, WorldInstanceId = context.World.Id,
-                        PrivateOwnerPlayerId = recipient.PlayerId, Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
-                        X = command.Placement.X, Y = command.Placement.Y, Z = command.Placement.Z, YawRadians = command.Placement.YawRadians
-                    };
-                    _drops.Add(drop, new EraEquipmentShare { EquipmentId = item.Id, AllowedPlayerIdsPayload = allowedPayload, ShareUntil = now.AddHours(1) });
-                    grant.EquipmentIds.Add(item.Id);
-                    grant.DropIds.Add(drop.Id);
-                }
+                    Id = equipment.EquipmentId, DefinitionId = equipment.DefinitionId, DefinitionVersion = manifest.Version,
+                    EquipmentType = equipment.EquipmentType, Grade = equipment.Grade,
+                    Location = EraEquipmentLocation.Ground, Version = 1, CreatedAt = now
+                };
+                items.Add(item);
+                if (equipment.EquipmentType == EraEquipmentType.Weapon) weaponInstances.Add(item.Id, equipment.Weapon!);
+                else armor.Add(new EraArmorInstanceData
+                {
+                    EquipmentId = item.Id, GenerationRuleVersion = equipment.GenerationRuleVersion,
+                    Strength = equipment.Attributes.Strength, Survival = equipment.Attributes.Survival, Mobility = equipment.Attributes.Mobility,
+                    Focus = equipment.Attributes.Focus, Efficiency = equipment.Attributes.Efficiency, Resistance = equipment.Attributes.Resistance
+                });
+                var drop = new EraEquipmentDrop
+                {
+                    Id = Guid.NewGuid(), EquipmentId = item.Id, ActiveEquipmentId = item.Id, WorldInstanceId = context.World.Id,
+                    PrivateOwnerPlayerId = recipient.PlayerId, Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
+                    X = command.Placement.X, Y = command.Placement.Y, Z = command.Placement.Z, YawRadians = command.Placement.YawRadians
+                };
+                _drops.Add(drop, new EraEquipmentShare { EquipmentId = item.Id, AllowedPlayerIdsPayload = allowedPayload, ShareUntil = now.AddHours(1) });
+                grant.EquipmentIds.Add(item.Id);
+                grant.DropIds.Add(drop.Id);
             }
             _rewards.AddGrant(new EraRewardGrant
             {
