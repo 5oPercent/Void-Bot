@@ -9,6 +9,14 @@ public sealed class SaveEraWeaponSlotConfigurationCommandValidator : FluentMessa
     public SaveEraWeaponSlotConfigurationCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
-        RuleFor(command => command.SlotConfiguration).NotNull();
+        RuleFor(command => command.SlotConfiguration).NotNull().ChildRules(definition =>
+        {
+            definition.RuleFor(value => value.Id).NotEmpty();
+            definition.RuleFor(value => value.Slots).NotNull();
+            definition.RuleForEach(value => value.Slots).NotNull().ChildRules(slot =>
+            {
+                slot.RuleFor(value => value.Id).NotEmpty();
+            });
+        });
     }
 }

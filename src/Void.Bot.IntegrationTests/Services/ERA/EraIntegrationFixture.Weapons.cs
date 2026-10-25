@@ -88,7 +88,7 @@ public partial class EraIntegrationFixture
         {
             var configuration = await context.Set<EraRewardConfiguration>().SingleAsync(row => row.Id == RewardConfigurationId);
             var rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload)!;
-            rules.Pools[0].Entries[0].DefinitionId = Guid.Parse("20000000-0000-0000-0000-000000000001");
+            rules.Pools[0].Entries[0].DefinitionId = (await context.Set<EraWeaponTemplate>().SingleAsync()).Id;
             configuration.Payload = JsonSerializer.Serialize(rules);
             await context.SaveChangesAsync();
         });
@@ -109,7 +109,7 @@ public partial class EraIntegrationFixture
         saved.Data!.Version.ShouldBe(9);
         saved.Data.Configuration.StatMappings.Count.ShouldBe(2);
         JsonSerializer.Serialize(saved.Data.Configuration.Templates).ShouldBe(JsonSerializer.Serialize(catalog.Templates));
-        JsonSerializer.Serialize(saved.Data.Configuration.Modifications).ShouldBe(JsonSerializer.Serialize(catalog.Modifications));
+        JsonSerializer.Serialize(saved.Data.Configuration.Modifications.OrderBy(row => row.Id)).ShouldBe(JsonSerializer.Serialize(catalog.Modifications.OrderBy(row => row.Id)));
 
         var list = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponStatMappingsRequest, GetEraWeaponStatMappingsResponse>(
             new GetEraWeaponStatMappingsRequest { PageIndex = 1, PageSize = 1, Search = "CUSTOM" }, token));
@@ -244,14 +244,14 @@ public partial class EraIntegrationFixture
         replay.IsReplay.ShouldBeTrue();
         replay.Data!.State.ManifestVersion.ShouldBe(8); // 原回执保留其目录，客户端不能用它覆盖较新目录。
         var disabled = await RequestAsync((mediator, token) => mediator.SendAsync<DisableEraWeaponTemplateCommand, DisableEraWeaponTemplateResponse>(
-            new DisableEraWeaponTemplateCommand { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), ExpectedManifestVersion = 9 }, token));
+            new DisableEraWeaponTemplateCommand { Id = catalog.Templates[0].Id, ExpectedManifestVersion = 9 }, token));
         disabled.Data!.Version.ShouldBe(10);
         disabled.Data.Configuration.Templates.Single().IsGenerationEnabled.ShouldBeFalse();
         disabled.Data.Configuration.StatMappings.Single().SpreadDegreesAtHundred.ShouldBe(.5);
         (await ReadWeaponEquipmentAsync()).Data!.InventoryItems.Single().Id.ShouldBe(itemId);
         await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
             mediator.SendAsync<DeleteEraWeaponTemplateCommand, DeleteEraWeaponTemplateResponse>(
-                new DeleteEraWeaponTemplateCommand { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), ExpectedManifestVersion = 10 }, token)));
+                new DeleteEraWeaponTemplateCommand { Id = catalog.Templates[0].Id, ExpectedManifestVersion = 10 }, token)));
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraWeaponModCandidate>().CountAsync(row => row.EquipmentId == itemId)).ShouldBe(10);
@@ -292,12 +292,13 @@ public partial class EraIntegrationFixture
         var catalog = WeaponCatalog();
         await PublishWeaponsAsync(catalog);
         var eventId = await PrepareWeaponRewardAsync();
+        var originalCatalog = JsonSerializer.Serialize(catalog);
         var removed = catalog.SlotConfigurations[0].Slots[0].Pool[0].ModDefinitionId;
         catalog.SlotConfigurations[0].Slots[0].Pool.RemoveAt(0);
         catalog.SlotConfigurations[0].Slots[0].CandidateCount = 1;
         catalog.Modifications.RemoveAll(value => value.Id == removed);
         await Should.ThrowAsync<EraWeaponException>(() => PublishWeaponsAsync(catalog, 8));
-        catalog = WeaponCatalog();
+        catalog = JsonSerializer.Deserialize<EraWeaponCatalogDto>(originalCatalog)!;
         catalog.Templates[0].BaseStats.Damage = 99;
         await Should.ThrowAsync<Exception>(() => PublishWeaponsAsync(catalog, 8,
             new EraIntegrationSqlInterceptor { FailWeaponConfigurationInsert = true }));
@@ -396,11 +397,21 @@ public partial class EraIntegrationFixture
         configuration.Slots.Remove(extra);
         for (var index = 0; index < 2; index++)
         {
-            var slot = JsonSerializer.Deserialize<EraWeaponConfigurationSlotDto>(JsonSerializer.Serialize(extra))!;
-            slot.Id = Guid.NewGuid(); slot.Name = $"New optic {index}"; slot.DisplayOrder = index + 5;
+            var slot = new EraWeaponConfigurationSlotDto
+            {
+                Name = $"New optic {index}", SlotTypeId = extra.SlotTypeId, CandidateCount = extra.CandidateCount,
+                DisplayOrder = index + 5, Pool = extra.Pool.ToList()
+            };
             configuration.Slots.Add(slot);
         }
-        await PublishWeaponsAsync(catalog, 8);
+        var saved = await RequestAsync((mediator, token) =>
+            mediator.SendAsync<SaveEraWeaponSlotConfigurationCommand, SaveEraWeaponSlotConfigurationResponse>(
+                new SaveEraWeaponSlotConfigurationCommand
+                {
+                    ExpectedManifestVersion = 8, SlotConfiguration = configuration
+                }, token));
+        saved.Data!.Version.ShouldBe(9);
+        configuration.Slots.ShouldAllBe(slot => slot.Id != Guid.Empty);
         var state = (await ReadWeaponEquipmentAsync()).Data!;
         var old = state.InventoryItems.Single();
         JsonSerializer.Serialize(old.Weapon).ShouldBe(snapshot);

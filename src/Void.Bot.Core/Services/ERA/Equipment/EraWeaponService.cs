@@ -137,47 +137,42 @@ public sealed class EraWeaponService : IEraWeaponService
     public Task<SaveEraWeaponTemplateResponse> SaveTemplateAsync(SaveEraWeaponTemplateCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponTemplateResponse>(command.ExpectedManifestVersion, catalog =>
         {
-            if (command.Template == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.Templates.RemoveAll(row => row.Id == command.Template.Id);
             catalog.Templates.Add(command.Template);
             return catalog;
-        }, cancellationToken);
+        }, cancellationToken, () => command.Template.Id);
 
     public Task<SaveEraWeaponModificationResponse> SaveModificationAsync(SaveEraWeaponModificationCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponModificationResponse>(command.ExpectedManifestVersion, catalog =>
         {
-            if (command.Modification == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.Modifications.RemoveAll(row => row.Id == command.Modification.Id);
             catalog.Modifications.Add(command.Modification);
             return catalog;
-        }, cancellationToken);
+        }, cancellationToken, () => command.Modification.Id);
 
     public Task<SaveEraWeaponStatMappingResponse> SaveStatMappingAsync(SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponStatMappingResponse>(command.ExpectedManifestVersion, catalog =>
         {
-            if (command.StatMapping == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.StatMappings.RemoveAll(row => row.Id == command.StatMapping.Id);
             catalog.StatMappings.Add(command.StatMapping);
             return catalog;
-        }, cancellationToken);
+        }, cancellationToken, () => command.StatMapping.Id);
 
     public Task<SaveEraWeaponSlotConfigurationResponse> SaveSlotConfigurationAsync(SaveEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponSlotConfigurationResponse>(command.ExpectedManifestVersion, catalog =>
         {
-            if (command.SlotConfiguration == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.SlotConfigurations.RemoveAll(row => row.Id == command.SlotConfiguration.Id);
             catalog.SlotConfigurations.Add(command.SlotConfiguration);
             return catalog;
-        }, cancellationToken);
+        }, cancellationToken, () => command.SlotConfiguration.Id);
 
     public Task<SaveEraWeaponSlotTypeResponse> SaveSlotTypeAsync(SaveEraWeaponSlotTypeCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponSlotTypeResponse>(command.ExpectedManifestVersion, catalog =>
         {
-            if (command.SlotType == null) throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration);
             catalog.SlotTypes.RemoveAll(row => row.Id == command.SlotType.Id);
             catalog.SlotTypes.Add(command.SlotType);
             return catalog;
-        }, cancellationToken);
+        }, cancellationToken, () => command.SlotType.Id);
 
     public Task<DisableEraWeaponTemplateResponse> DisableTemplateAsync(DisableEraWeaponTemplateCommand command, CancellationToken cancellationToken) =>
         WriteAsync<DisableEraWeaponTemplateResponse>(command.ExpectedManifestVersion, catalog =>
@@ -255,7 +250,7 @@ public sealed class EraWeaponService : IEraWeaponService
         return new ValidateEraWeaponConfigurationResponse { Code = HttpStatusCode.OK, Data = result };
     }
 
-    private async Task<T> WriteAsync<T>(long expectedVersion, Func<EraWeaponCatalogDto, EraWeaponCatalogDto> apply, CancellationToken cancellationToken)
+    private async Task<T> WriteAsync<T>(long expectedVersion, Func<EraWeaponCatalogDto, EraWeaponCatalogDto> apply, CancellationToken cancellationToken, Func<Guid?>? savedId = null)
         where T : EraResponse<EraWeaponConfigurationResultDto>, new()
     {
         if (!_currentUser.Id.HasValue || _currentUser.Id == Guid.Empty) throw Error(HttpStatusCode.Unauthorized, "era.weapon_unauthorized", value => value.Unauthorized);
@@ -279,7 +274,7 @@ public sealed class EraWeaponService : IEraWeaponService
         publication.Version++;
         publication.LastModifiedBy = _currentUser.Id;
         publication.UpdatedAt = _clock.GetUtcNow();
-        return new T { Code = HttpStatusCode.OK, Data = new EraWeaponConfigurationResultDto { Version = publication.Version, Configuration = proposed } };
+        return new T { Code = HttpStatusCode.OK, Data = new EraWeaponConfigurationResultDto { Version = publication.Version, Configuration = proposed, SavedId = savedId?.Invoke() } };
     }
 
     private async Task CheckReferencesAsync(EraWeaponCatalogDto proposed, EraEquipmentManifestDto manifest, CancellationToken cancellationToken)

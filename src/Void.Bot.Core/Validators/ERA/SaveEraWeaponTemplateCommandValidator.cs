@@ -9,6 +9,9 @@ public sealed class SaveEraWeaponTemplateCommandValidator : FluentMessageValidat
     public SaveEraWeaponTemplateCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
-        RuleFor(command => command.Template).NotNull();
+        RuleFor(command => command.Template).NotNull().ChildRules(definition =>
+        {
+            definition.RuleFor(value => value.Id).NotEmpty();
+        });
     }
 }

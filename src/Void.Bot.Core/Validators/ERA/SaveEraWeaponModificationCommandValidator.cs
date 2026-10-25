@@ -9,6 +9,9 @@ public sealed class SaveEraWeaponModificationCommandValidator : FluentMessageVal
     public SaveEraWeaponModificationCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
-        RuleFor(command => command.Modification).NotNull();
+        RuleFor(command => command.Modification).NotNull().ChildRules(definition =>
+        {
+            definition.RuleFor(value => value.Id).NotEmpty();
+        });
     }
 }

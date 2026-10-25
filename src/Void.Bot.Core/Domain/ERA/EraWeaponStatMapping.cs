@@ -8,7 +8,7 @@ namespace Void.Bot.Core.Domain.ERA;
 [Table("era_weapon_stat_mapping")]
 public sealed class EraWeaponStatMapping : IEntity<Guid>
 {
-    [Key] public Guid Id { get; set; }
+    [Key] public Guid Id { get; set; } = Guid.NewGuid();
     [StringLength(128)] public string Name { get; set; } = string.Empty;
     /// <summary>精准度 0 分的散布角，单位度。</summary>
     public double SpreadDegreesAtZero { get; set; }

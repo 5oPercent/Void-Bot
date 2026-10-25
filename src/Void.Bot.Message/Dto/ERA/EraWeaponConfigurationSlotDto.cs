@@ -5,7 +5,7 @@ namespace Void.Bot.Message.Dto.ERA;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class EraWeaponConfigurationSlotDto
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public Guid SlotTypeId { get; set; }
     public int CandidateCount { get; set; }
