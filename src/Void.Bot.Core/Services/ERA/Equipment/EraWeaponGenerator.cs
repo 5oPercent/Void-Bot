@@ -6,25 +6,25 @@ namespace Void.Bot.Core.Services.ERA.Equipment;
 
 public interface IEraWeaponGenerator : IScope
 {
-    EraWeaponInstanceDto Generate(EraWeaponTemplateDto template);
+    EraWeaponInstanceDto Generate(EraWeaponSlotConfigurationDto configuration);
 }
 
 /// <summary>只生成固定候选与当前选择，不产生基础属性副本；正式资产与结果由调用事务保存。</summary>
 public sealed class EraWeaponGenerator : IEraWeaponGenerator
 {
-    public EraWeaponInstanceDto Generate(EraWeaponTemplateDto template) => Generate(template, RandomNumberGenerator.GetInt32);
+    public EraWeaponInstanceDto Generate(EraWeaponSlotConfigurationDto configuration) => Generate(configuration, RandomNumberGenerator.GetInt32);
 
-    internal static EraWeaponInstanceDto Generate(EraWeaponTemplateDto template, Func<int, int> next)
+    internal static EraWeaponInstanceDto Generate(EraWeaponSlotConfigurationDto configuration, Func<int, int> next)
     {
         var result = new EraWeaponInstanceDto();
-        foreach (var slot in template.Slots.OrderBy(value => value.DisplayOrder).ThenBy(value => value.Slot))
+        foreach (var slot in configuration.Slots.OrderBy(value => value.DisplayOrder).ThenBy(value => value.Id))
         {
             if (slot.CandidateCount < 1 || slot.CandidateCount > EraWeaponConstants.MaximumCandidatesPerSlot ||
                 slot.CandidateCount > slot.Pool.Count || slot.Pool.Any(value => value.Weight <= 0) ||
                 slot.Pool.Select(value => value.ModDefinitionId).Distinct().Count() != slot.Pool.Count)
                 throw new ArgumentException("Weapon candidate pool cannot satisfy CandidateCount.");
             var available = slot.Pool.ToList();
-            var generated = new EraWeaponInstanceSlotDto { Slot = slot.Slot };
+            var generated = new EraWeaponInstanceSlotDto { SlotId = slot.Id, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder };
             for (var index = 0; index < slot.CandidateCount; index++)
             {
                 long total = available.Sum(value => (long)value.Weight);

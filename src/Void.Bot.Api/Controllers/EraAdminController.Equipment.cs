@@ -148,4 +148,80 @@ public sealed partial class EraAdminController
         var response = await _mediator.SendAsync<PublishEraWeaponConfigurationCommand, PublishEraWeaponConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
+    [HttpGet("equipment/weapon-slot-types")]
+    [DescriptionLocalization("GetEraWeaponSlotTypes")]
+    [ProducesResponseType(typeof(GetEraWeaponSlotTypesResponse), 200)]
+    public async Task<IActionResult> GetWeaponSlotTypesAsync([FromQuery] GetEraWeaponSlotTypesRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetEraWeaponSlotTypesRequest, GetEraWeaponSlotTypesResponse>(request, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("equipment/weapon-slot-types/{id:guid}")]
+    [DescriptionLocalization("GetEraWeaponSlotType")]
+    [ProducesResponseType(typeof(GetEraWeaponSlotTypeResponse), 200)]
+    public async Task<IActionResult> GetWeaponSlotTypeAsync([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetEraWeaponSlotTypeRequest, GetEraWeaponSlotTypeResponse>(new GetEraWeaponSlotTypeRequest { Id = id }, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-slot-types/{id:guid}")]
+    [DescriptionLocalization("SaveEraWeaponSlotType")]
+    [ProducesResponseType(typeof(SaveEraWeaponSlotTypeResponse), 200)]
+    public async Task<IActionResult> SaveWeaponSlotTypeAsync([FromRoute] Guid id, [FromBody] SaveEraWeaponSlotTypeCommand command, CancellationToken cancellationToken)
+    {
+        if (command.SlotType != null) command.SlotType.Id = id;
+        var response = await _mediator.SendAsync<SaveEraWeaponSlotTypeCommand, SaveEraWeaponSlotTypeResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-slot-types/{id:guid}/delete")]
+    [DescriptionLocalization("DeleteEraWeaponSlotType")]
+    [ProducesResponseType(typeof(DeleteEraWeaponSlotTypeResponse), 200)]
+    public async Task<IActionResult> DeleteWeaponSlotTypeAsync([FromRoute] Guid id, [FromBody] DeleteEraWeaponSlotTypeCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        var response = await _mediator.SendAsync<DeleteEraWeaponSlotTypeCommand, DeleteEraWeaponSlotTypeResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("equipment/weapon-slot-configurations")]
+    [DescriptionLocalization("GetEraWeaponSlotConfigurations")]
+    [ProducesResponseType(typeof(GetEraWeaponSlotConfigurationsResponse), 200)]
+    public async Task<IActionResult> GetWeaponSlotConfigurationsAsync([FromQuery] GetEraWeaponSlotConfigurationsRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetEraWeaponSlotConfigurationsRequest, GetEraWeaponSlotConfigurationsResponse>(request, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpGet("equipment/weapon-slot-configurations/{id:guid}")]
+    [DescriptionLocalization("GetEraWeaponSlotConfiguration")]
+    [ProducesResponseType(typeof(GetEraWeaponSlotConfigurationResponse), 200)]
+    public async Task<IActionResult> GetWeaponSlotConfigurationAsync([FromRoute] Guid id, CancellationToken cancellationToken)
+    {
+        var response = await _mediator.RequestAsync<GetEraWeaponSlotConfigurationRequest, GetEraWeaponSlotConfigurationResponse>(new GetEraWeaponSlotConfigurationRequest { Id = id }, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-slot-configurations/{id:guid}")]
+    [DescriptionLocalization("SaveEraWeaponSlotConfiguration")]
+    [ProducesResponseType(typeof(SaveEraWeaponSlotConfigurationResponse), 200)]
+    public async Task<IActionResult> SaveWeaponSlotConfigurationAsync([FromRoute] Guid id, [FromBody] SaveEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken)
+    {
+        if (command.SlotConfiguration != null) command.SlotConfiguration.Id = id;
+        var response = await _mediator.SendAsync<SaveEraWeaponSlotConfigurationCommand, SaveEraWeaponSlotConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
+    [HttpPost("equipment/weapon-slot-configurations/{id:guid}/delete")]
+    [DescriptionLocalization("DeleteEraWeaponSlotConfiguration")]
+    [ProducesResponseType(typeof(DeleteEraWeaponSlotConfigurationResponse), 200)]
+    public async Task<IActionResult> DeleteWeaponSlotConfigurationAsync([FromRoute] Guid id, [FromBody] DeleteEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken)
+    {
+        command.Id = id;
+        var response = await _mediator.SendAsync<DeleteEraWeaponSlotConfigurationCommand, DeleteEraWeaponSlotConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
+        return Ok(response);
+    }
+
 }

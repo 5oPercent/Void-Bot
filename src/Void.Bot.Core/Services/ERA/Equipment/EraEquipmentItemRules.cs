@@ -9,15 +9,16 @@ public static class EraEquipmentItemRules
 {
     public static bool ValidWeapon(EraWeaponInstanceDto? weapon)
     {
-        return weapon != null && weapon.Slots != null && weapon.Slots.Count == 5 &&
-            weapon.Slots.All(slot => slot != null && System.Enum.IsDefined(slot.Slot) && slot.Candidates != null &&
+        return weapon != null && weapon.Slots != null &&
+            weapon.Slots.All(slot => slot != null && slot.SlotId != Guid.Empty && slot.SlotTypeId != Guid.Empty &&
+                !string.IsNullOrWhiteSpace(slot.Name) && slot.Name.Length <= 128 && slot.DisplayOrder >= 0 && slot.Candidates != null &&
                 slot.Candidates.Count is >= 1 and <= EraWeaponConstants.MaximumCandidatesPerSlot &&
                 slot.Candidates.All(candidate => candidate != null && candidate.CandidateId != Guid.Empty &&
                     candidate.ModDefinitionId != Guid.Empty && candidate.DisplayOrder >= 0) &&
                 slot.Candidates.Select(candidate => candidate.CandidateId).Distinct().Count() == slot.Candidates.Count &&
                 slot.Candidates.Select(candidate => candidate.ModDefinitionId).Distinct().Count() == slot.Candidates.Count &&
                 slot.Candidates.Any(candidate => candidate.CandidateId == slot.SelectedCandidateId)) &&
-            weapon.Slots.Select(slot => slot.Slot).Distinct().Count() == 5 &&
+            weapon.Slots.Select(slot => slot.SlotId).Distinct().Count() == weapon.Slots.Count &&
             weapon.Slots.SelectMany(slot => slot.Candidates).Select(candidate => candidate.CandidateId).Distinct().Count() ==
                 weapon.Slots.Sum(slot => slot.Candidates.Count);
     }

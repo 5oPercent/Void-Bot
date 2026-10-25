@@ -184,7 +184,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
                         {
                             EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = entry.Grade,
                             EquipmentType = EraEquipmentType.Weapon,
-                            Weapon = _weapons.Generate(template)
+                            Weapon = _weapons.Generate(manifest.Weapons.SlotConfigurations.Single(configuration => configuration.Id == template.SlotConfigurationId))
                         });
                         continue;
                     }

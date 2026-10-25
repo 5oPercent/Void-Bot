@@ -22,10 +22,12 @@ public partial class EraIntegrationFixture
             SpreadDegreesAtZero = 3, SpreadDegreesAtHundred = 1, RecoilDegreesAtZero = 2, RecoilDegreesAtHundred = .5,
             ReadySecondsAtZero = 1, ReadySecondsAtHundred = .35, AimSecondsAtZero = .5, AimSecondsAtHundred = .15
         });
+        var configuration = new EraWeaponSlotConfigurationDto { Id = Guid.NewGuid(), Name = "Rifle slots" };
+        catalog.SlotConfigurations.Add(configuration);
         var template = new EraWeaponTemplateDto
         {
             Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Integration rifle", PresentationKey = "scifi_rifle",
-            StatMappingId = catalog.StatMappings[0].Id,
+            StatMappingId = catalog.StatMappings[0].Id, SlotConfigurationId = configuration.Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
             BaseStats = new EraWeaponStatsDto
             {
@@ -38,15 +40,21 @@ public partial class EraIntegrationFixture
                 BaseReloadSeconds = 2.4
             }
         };
-        foreach (var slot in System.Enum.GetValues<EraWeaponModSlot>())
+        foreach (var slot in Enumerable.Range(1, 5))
         {
-            var definition = new EraWeaponTemplateSlotDto { Slot = slot, CandidateCount = 2, DisplayOrder = (int)slot };
+            var typeId = Guid.Parse($"50000000-0000-0000-0000-{slot:000000000000}");
+            catalog.SlotTypes.Add(new EraWeaponSlotTypeDto { Id = typeId, Name = $"Type {slot}" });
+            var definition = new EraWeaponConfigurationSlotDto
+            {
+                Id = Guid.Parse($"60000000-0000-0000-0000-{slot:000000000000}"), Name = $"Slot {slot}",
+                SlotTypeId = typeId, CandidateCount = 2, DisplayOrder = slot
+            };
             for (var index = 0; index < 2; index++)
             {
                 var id = Guid.Parse($"30000000-0000-0000-{(int)slot:0000}-{index + 1:000000000000}");
                 catalog.Modifications.Add(new EraWeaponModDefinitionDto
                 {
-                    Id = id, Name = $"Test {slot} {index}", Slot = slot,
+                    Id = id, Name = $"Test {slot} {index}", SlotTypeId = typeId,
                     Modifiers = new List<EraWeaponModifierDto>
                     {
                         new EraWeaponModifierDto { Stat = EraWeaponStat.Handling, Operation = EraWeaponModifierOperation.Flat, Value = -index }
@@ -54,7 +62,7 @@ public partial class EraIntegrationFixture
                 });
                 definition.Pool.Add(new EraWeaponModPoolEntryDto { ModDefinitionId = id, Weight = index + 1 });
             }
-            template.Slots.Add(definition);
+            configuration.Slots.Add(definition);
         }
         catalog.Templates.Add(template);
         return catalog;
@@ -209,14 +217,14 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = itemId, RequestId = Guid.NewGuid(), Slot = slot.Slot,
+            CharacterId = _characterId, EquipmentId = itemId, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = slot.Candidates.Single(candidate => candidate.CandidateId != slot.SelectedCandidateId).CandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
         (await SelectWeaponAsync(command)).Data!.State.EquipmentVersion.ShouldBe(5);
         catalog.Templates[0].BaseStats.Damage = 55;
         catalog.StatMappings[0].SpreadDegreesAtHundred = .5;
-        foreach (var definition in catalog.Templates[0].Slots) { definition.CandidateCount = 1; definition.Pool.RemoveAt(0); }
+        foreach (var definition in catalog.SlotConfigurations[0].Slots) { definition.CandidateCount = 1; definition.Pool.RemoveAt(0); }
         (await PublishWeaponsAsync(catalog, 8)).Data!.Version.ShouldBe(9);
         var current = (await ReadWeaponEquipmentAsync()).Data!;
         current.ManifestVersion.ShouldBe(9);
@@ -262,7 +270,7 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon!.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), Slot = slot.Slot,
+            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = slot.Candidates.Single(candidate => candidate.CandidateId != slot.SelectedCandidateId).CandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
@@ -284,9 +292,9 @@ public partial class EraIntegrationFixture
         var catalog = WeaponCatalog();
         await PublishWeaponsAsync(catalog);
         var eventId = await PrepareWeaponRewardAsync();
-        var removed = catalog.Templates[0].Slots[0].Pool[0].ModDefinitionId;
-        catalog.Templates[0].Slots[0].Pool.RemoveAt(0);
-        catalog.Templates[0].Slots[0].CandidateCount = 1;
+        var removed = catalog.SlotConfigurations[0].Slots[0].Pool[0].ModDefinitionId;
+        catalog.SlotConfigurations[0].Slots[0].Pool.RemoveAt(0);
+        catalog.SlotConfigurations[0].Slots[0].CandidateCount = 1;
         catalog.Modifications.RemoveAll(value => value.Id == removed);
         await Should.ThrowAsync<EraWeaponException>(() => PublishWeaponsAsync(catalog, 8));
         catalog = WeaponCatalog();
@@ -297,8 +305,8 @@ public partial class EraIntegrationFixture
         {
             (await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId)).Version.ShouldBe(8);
             (await context.Set<EraWeaponTemplate>().SingleAsync()).Damage.ShouldBe(50);
-            (await context.Set<EraWeaponTemplateModPool>().CountAsync()).ShouldBe(10);
-            (await context.Set<EraWeaponTemplateModSlot>().ToListAsync()).ShouldAllBe(value => value.CandidateCount == 2);
+            (await context.Set<EraWeaponConfigurationModPool>().CountAsync()).ShouldBe(10);
+            (await context.Set<EraWeaponConfigurationSlot>().ToListAsync()).ShouldAllBe(value => value.CandidateCount == 2);
         });
         (await GrantRewardAsync(eventId)).Data!.Grants.Single().EquipmentIds.Count.ShouldBe(1);
     }
@@ -313,7 +321,7 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon!.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), Slot = slot.Slot,
+            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = item.Weapon.Slots[1].SelectedCandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
@@ -339,7 +347,7 @@ public partial class EraIntegrationFixture
         var candidate = slot.Candidates.Single(value => value.CandidateId != slot.SelectedCandidateId).CandidateId;
         var commands = Enumerable.Range(0, 2).Select(_ => new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), Slot = slot.Slot, CandidateId = candidate,
+            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId, CandidateId = candidate,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         }).ToList();
         var responses = await Task.WhenAll(commands.Select(command => SelectWeaponAsync(command)));
@@ -361,13 +369,53 @@ public partial class EraIntegrationFixture
         if (otherWeapon) await GrantRewardAsync(await PrepareWeaponRewardAsync());
         await ReadDatabaseAsync(async context =>
         {
-            var selections = await context.Set<EraWeaponModSelection>().OrderBy(value => value.Slot).ToListAsync();
+            var selections = await context.Set<EraWeaponModSelection>().OrderBy(value => value.SlotId).ToListAsync();
             var first = selections[0];
             first.SelectedCandidateId = otherWeapon
-                ? selections.First(value => value.EquipmentId != first.EquipmentId && value.Slot == first.Slot).SelectedCandidateId
-                : selections.First(value => value.EquipmentId == first.EquipmentId && value.Slot != first.Slot).SelectedCandidateId;
+                ? selections.First(value => value.EquipmentId != first.EquipmentId && value.SlotId == first.SlotId).SelectedCandidateId
+                : selections.First(value => value.EquipmentId == first.EquipmentId && value.SlotId != first.SlotId).SelectedCandidateId;
             await Should.ThrowAsync<DbUpdateException>(() => context.SaveChangesAsync());
         });
         (await ReadWeaponEquipmentAsync()).Code.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Shared_scheme_changes_should_affect_new_weapons_and_preserve_removed_instance_slots()
+    {
+        await SeedAsync(0);
+        var catalog = WeaponCatalog();
+        var configuration = catalog.SlotConfigurations[0];
+        var extra = JsonSerializer.Deserialize<EraWeaponConfigurationSlotDto>(JsonSerializer.Serialize(configuration.Slots[0]))!;
+        extra.Id = Guid.NewGuid(); extra.Name = "Secondary optic"; extra.DisplayOrder = 5;
+        configuration.Slots.Add(extra);
+        await PublishWeaponsAsync(catalog);
+        await GrantRewardAsync(await PrepareWeaponRewardAsync());
+        var original = (await ReadWeaponEquipmentAsync()).Data!.InventoryItems.Single();
+        original.Weapon!.Slots.Count.ShouldBe(6);
+        var snapshot = JsonSerializer.Serialize(original.Weapon);
+        configuration.Slots.Remove(extra);
+        for (var index = 0; index < 2; index++)
+        {
+            var slot = JsonSerializer.Deserialize<EraWeaponConfigurationSlotDto>(JsonSerializer.Serialize(extra))!;
+            slot.Id = Guid.NewGuid(); slot.Name = $"New optic {index}"; slot.DisplayOrder = index + 5;
+            configuration.Slots.Add(slot);
+        }
+        await PublishWeaponsAsync(catalog, 8);
+        var state = (await ReadWeaponEquipmentAsync()).Data!;
+        var old = state.InventoryItems.Single();
+        JsonSerializer.Serialize(old.Weapon).ShouldBe(snapshot);
+        var removed = old.Weapon!.Slots.Single(slot => slot.SlotId == extra.Id);
+        var candidateId = removed.Candidates.Single(candidate => candidate.CandidateId != removed.SelectedCandidateId).CandidateId;
+        var selected = await SelectWeaponAsync(new SelectEraWeaponModificationCommand
+        {
+            CharacterId = _characterId, EquipmentId = old.Id, RequestId = Guid.NewGuid(), SlotId = removed.SlotId,
+            CandidateId = candidateId, ExpectedManifestVersion = 9, ExpectedEquipmentVersion = state.EquipmentVersion,
+            ExpectedItemVersion = old.Version
+        });
+        selected.Code.ShouldBe(HttpStatusCode.OK);
+        await GrantRewardAsync(await PrepareWeaponRewardAsync());
+        var items = (await ReadWeaponEquipmentAsync()).Data!.InventoryItems;
+        items.Single(item => item.Id != old.Id).Weapon!.Slots.Count.ShouldBe(7);
+        items.Single(item => item.Id == old.Id).Weapon!.Slots.Count.ShouldBe(6);
     }
 }

@@ -112,7 +112,7 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         var armor = await _eraArmorInstanceDataRepository.QuerySql(
             $"SELECT * FROM era_armor_instance_data WHERE equipment_id = {equipmentId.ToString()} FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
-        var weapons = await ReadWeaponInstancesAsync(new[] { equipmentId }, cancellationToken).ConfigureAwait(false);
+        var weapons = await ReadWeaponInstancesAsync(equipment.Where(row => row.EquipmentType == EraEquipmentType.Weapon).Select(row => row.Id), cancellationToken).ConfigureAwait(false);
         return equipment.Count == 0 ? null : new EraEquipmentReadEntry(equipment.Single(), armor.SingleOrDefault(), weapons.GetValueOrDefault(equipmentId));
     }
 
@@ -174,7 +174,7 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         var candidates = await _eraWeaponModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
         var selections = await _eraWeaponModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
-            .OrderBy(row => row.Slot).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper);
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
 }
