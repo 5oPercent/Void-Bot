@@ -65,6 +65,11 @@ public class EraEquipmentOperationFixture
                 equipment.Location = change.Location;
                 equipment.EquippedSlot = change.EquippedSlot;
                 equipment.Version = change.ExpectedVersion + 1;
+                if (change.Location == EraEquipmentLocation.Destroyed)
+                {
+                    equipment.OwnerPlayerId = null;
+                    equipment.CharacterId = null;
+                }
             }
             return Task.CompletedTask;
         });
@@ -91,7 +96,7 @@ public class EraEquipmentOperationFixture
             PlayerId = _player.Id,
             EquipmentVersion = _character.EquipmentVersion,
             IsCharacterDisabled = _character.IsDisabled,
-            Entries = _stored
+            Entries = _stored.Where(entry => entry.Equipment.Location is EraEquipmentLocation.Inventory or EraEquipmentLocation.Equipped).ToList()
         }))!;
     }
 
@@ -136,6 +141,158 @@ public class EraEquipmentOperationFixture
             Slot = item.EquippedSlot!.Value,
             ExpectedEquipmentVersion = _character.EquipmentVersion, ExpectedItemVersion = item.Version
         };
+    }
+
+    private DestroyEraInventoryEquipmentCommand Destroy(params EraEquipmentInstance[] items)
+    {
+        return new DestroyEraInventoryEquipmentCommand
+        {
+            CharacterId = _character.Id, RequestId = Guid.NewGuid(), ExpectedEquipmentVersion = _character.EquipmentVersion,
+            Items = items.Select(item => new EraEquipmentDestructionItemDto { EquipmentId = item.Id, ExpectedItemVersion = item.Version }).ToList()
+        };
+    }
+
+    [Fact]
+    public async Task Should_destroy_a_batch_and_release_ownership_without_deleting_saved_payloads()
+    {
+        var first = AddItem();
+        var second = AddItem(EraEquipmentSlot.Body);
+        var kept = AddItem(EraEquipmentSlot.Feet);
+        var equipped = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
+        var response = await Service().DestroyInventoryAsync(Destroy(first, second), CancellationToken.None);
+
+        response.Code.ShouldBe(HttpStatusCode.OK);
+        response.Data!.Operation.ShouldBe(EraEquipmentOperation.Destroy);
+        response.Data.PreviousEquipmentVersion.ShouldBe(3);
+        response.Data.State.EquipmentVersion.ShouldBe(4);
+        response.Data.State.InventoryItems.Single().Id.ShouldBe(kept.Id);
+        response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(equipped.Id);
+        foreach (var item in new[] { first, second })
+        {
+            item.Location.ShouldBe(EraEquipmentLocation.Destroyed);
+            item.OwnerPlayerId.ShouldBeNull();
+            item.CharacterId.ShouldBeNull();
+            item.EquippedSlot.ShouldBeNull();
+            item.Version.ShouldBe(6);
+            _stored.Single(entry => entry.Equipment.Id == item.Id).Armor!.Strength.ShouldBe(120);
+        }
+        _character.Version.ShouldBe(12);
+        _character.EquipmentVersion.ShouldBe(4);
+        _receipts.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Should_reject_entire_destruction_batch_when_an_item_is_equipped_missing_or_stale()
+    {
+        var first = AddItem();
+        var equipped = AddItem(EraEquipmentSlot.Head, EraEquipmentLocation.Equipped);
+        var command = Destroy(first, equipped);
+        var service = Service();
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
+        command.Items[1].EquipmentId = Guid.NewGuid();
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_not_found");
+        command.Items[1].EquipmentId = AddItem().Id;
+        command.Items[1].ExpectedItemVersion = 4;
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
+        command.ExpectedEquipmentVersion = 2;
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
+        first.Location.ShouldBe(EraEquipmentLocation.Inventory);
+        first.Version.ShouldBe(5);
+        _character.EquipmentVersion.ShouldBe(3);
+        _lastChanges.ShouldBeNull();
+        _receipts.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_replay_destruction_in_any_selection_order_and_reject_changed_payload_or_operation()
+    {
+        var first = AddItem();
+        var second = AddItem();
+        var kept = AddItem();
+        var command = Destroy(first, second);
+        var service = Service();
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.OK);
+        (await service.EquipAsync(Equip(kept), CancellationToken.None)).Code.ShouldBe(HttpStatusCode.OK);
+        _character.IsDisabled = true;
+        command.Items.Reverse();
+        var replay = await service.DestroyInventoryAsync(command, CancellationToken.None);
+        replay.IsReplay.ShouldBeTrue();
+        replay.Data!.State.EquipmentVersion.ShouldBe(4);
+        _character.EquipmentVersion.ShouldBe(5);
+        first.Location.ShouldBe(EraEquipmentLocation.Destroyed);
+        first.Version.ShouldBe(6);
+        command.Items[0].ExpectedItemVersion++;
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_idempotency_conflict");
+        var equip = Equip(first);
+        equip.RequestId = command.RequestId;
+        (await service.EquipAsync(equip, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_idempotency_conflict");
+        _receipts.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Should_reject_invalid_destruction_selection_without_writes()
+    {
+        var item = AddItem();
+        var service = Service();
+        var command = Destroy();
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
+        command = Destroy(item, item);
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
+        command = Destroy(item);
+        command.Items[0] = null!;
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
+        command.Items = null!;
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
+        command.Items = Enumerable.Range(0, 121).Select(_ => new EraEquipmentDestructionItemDto { EquipmentId = Guid.NewGuid(), ExpectedItemVersion = 1 }).ToList();
+        (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
+        _lastChanges.ShouldBeNull();
+        _receipts.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_allow_inventory_destruction_without_definitions_during_equipped_operation_restriction()
+    {
+        var item = AddItem();
+        _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);
+        _data.Configure().LockCharacterEquipmentAsync(Arg.Any<EraCharacter>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            var snapshot = Snapshot();
+            snapshot.EquippedOperationRestriction = new EraEquippedOperationRestrictionDto
+            {
+                WorldInstanceId = Guid.NewGuid(), WorldVersion = 1, RestrictionVersion = 1, IsRestricted = true
+            };
+            return snapshot;
+        });
+        var response = await Service().DestroyInventoryAsync(Destroy(item), CancellationToken.None);
+        response.Code.ShouldBe(HttpStatusCode.OK);
+        response.Data!.State.TotalInventoryCount.ShouldBe(0);
+        response.Data.State.ManifestVersion.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Should_reject_destruction_for_disabled_or_foreign_characters()
+    {
+        var item = AddItem();
+        _character.IsDisabled = true;
+        (await Service().DestroyInventoryAsync(Destroy(item), CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_character_disabled");
+        _character.IsDisabled = false;
+        _character.PlayerId = Guid.NewGuid();
+        await Should.ThrowAsync<EraPlayerAccessException>(() => Service().DestroyInventoryAsync(Destroy(item), CancellationToken.None));
+        _lastChanges.ShouldBeNull();
+        _receipts.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_throw_to_roll_back_destruction_when_a_conditional_update_fails()
+    {
+        var first = AddItem();
+        var second = AddItem();
+        _data.Configure().ApplyPositionChangesAsync(_character.Id, _player.Id,
+            Arg.Any<IReadOnlyList<EraEquipmentPositionChange>>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new EraEquipmentConcurrencyException("write conflict"));
+        await Should.ThrowAsync<EraEquipmentWriteConflictException>(() => Service().DestroyInventoryAsync(Destroy(first, second), CancellationToken.None));
+        _receipts.ShouldBeEmpty();
+        _character.EquipmentVersion.ShouldBe(3);
     }
 
     [Fact]

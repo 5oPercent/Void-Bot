@@ -72,6 +72,7 @@ public class EraWorldEquipmentFixture
         equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
             { Version = 8, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}" });
         var catalog = EraWeaponFixture.Catalog();
+        var configuration = catalog.SlotConfigurations.Single(item => item.Id == catalog.Templates[0].SlotConfigurationId);
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         var snapshot = new EraEquipmentReadSnapshot { CharacterId = character, PlayerId = player.Id, EquipmentVersion = 5 };
         foreach (var equipped in new[] { false, true })
@@ -83,7 +84,7 @@ public class EraWorldEquipmentFixture
                 Location = equipped ? EraEquipmentLocation.Equipped : EraEquipmentLocation.Inventory,
                 EquippedSlot = equipped ? EraEquipmentSlot.Weapon1 : null, Version = 1, CreatedAt = DateTimeOffset.UtcNow
             };
-            snapshot.Entries.Add(new EraEquipmentReadEntry(item, null, EraWeaponGenerator.Generate(catalog.Templates[0], _ => 0)));
+            snapshot.Entries.Add(new EraEquipmentReadEntry(item, null, EraWeaponGenerator.Generate(configuration, _ => 0)));
         }
         equipment.GetCharacterSnapshotAsync(character, player.Id, Arg.Any<CancellationToken>()).Returns(snapshot);
         var response = await new EraWorldEquipmentService(worlds, teams, players, equipment, Substitute.For<ILocalizationService>(), TimeProvider.System)
