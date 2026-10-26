@@ -344,7 +344,7 @@ public class EraWeaponFixture
     [InlineData(1)]
     [InlineData(6)]
     [InlineData(12)]
-    public void Should_generate_dynamic_slot_counts_and_allow_repeated_types(int count)
+    public void Should_generate_configured_slots_and_reject_empty_schemes(int count)
     {
         var catalog = Catalog();
         var configuration = catalog.SlotConfigurations[0];
@@ -354,6 +354,12 @@ public class EraWeaponFixture
             Id = Guid.NewGuid(), Name = $"Optic {index}", SlotTypeId = first.SlotTypeId, DisplayOrder = index,
             CandidateCount = first.CandidateCount, Pool = first.Pool.ToList()
         }).ToList();
+        if (count == 0)
+        {
+            Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
+            Should.Throw<ArgumentException>(() => EraWeaponGenerator.Generate(configuration, _ => 0));
+            return;
+        }
         Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
         var instance = EraWeaponGenerator.Generate(configuration, _ => 0);
         instance.Slots.Count.ShouldBe(count);
@@ -613,7 +619,8 @@ public class EraWeaponFixture
         var instance = EraWeaponGenerator.Generate(current.SlotConfigurations[0], _ => 0);
         var referencedId = instance.Slots[0].Candidates[0].ModDefinitionId;
         var proposed = JsonSerializer.Deserialize<EraWeaponCatalogDto>(JsonSerializer.Serialize(current))!;
-        proposed.SlotConfigurations[0].Slots.Clear();
+        proposed.Templates[0].SlotConfigurationId = null;
+        proposed.SlotConfigurations.Clear();
         proposed.Modifications.RemoveAll(row => row.Id == referencedId);
         var plan = new EraInventoryRewardPlan { Grants = new()
         {

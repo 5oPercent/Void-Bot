@@ -18,10 +18,11 @@ public class EraEquipmentCatalogPersistenceFixture
     {
         var previous = new EraArmorCatalogDto
         {
-            Templates = new() { new EraArmorTemplateDto { Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head } } }
+            Templates = new() { new EraArmorTemplateDto { PresentationKey = "armor_test", Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head } } }
         };
         var current = JsonSerializer.Deserialize<EraArmorCatalogDto>(JsonSerializer.Serialize(previous))!;
         current.Templates[0].Name = "Renamed";
+        current.Templates[0].PresentationKey = "armor_core_001";
         var saved = new EraArmorTemplate { Id = previous.Templates[0].Id, Name = previous.Templates[0].Name };
         var unrelated = new EraArmorTemplate { Id = Guid.NewGuid(), Name = "Unrelated" };
         var templates = Substitute.For<IRepository<EraArmorTemplate>>();
@@ -36,6 +37,7 @@ public class EraEquipmentCatalogPersistenceFixture
             Substitute.For<IRepository<EraArmorSlotType>>(), Substitute.For<IRepository<EraArmorSlotConfiguration>>(), Substitute.For<IMapper>());
         await provider.SaveCatalogAsync(previous, current, CancellationToken.None);
         saved.Name.ShouldBe("Renamed");
+        saved.PresentationKey.ShouldBe("armor_core_001");
         unrelated.Name.ShouldBe("Unrelated");
         templates.DidNotReceiveWithAnyArgs().Insert(default!);
         templates.DidNotReceiveWithAnyArgs().Delete(default!);

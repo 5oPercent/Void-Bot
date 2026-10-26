@@ -47,7 +47,7 @@ public class EraEquipmentRewardFixture
     [Fact]
     public void Common_generation_should_consume_pool_results_or_direct_entries_without_new_definitions()
     {
-        var definition = new EraArmorTemplateDto { Id = Guid.NewGuid() };
+        var definition = new EraArmorTemplateDto { Id = Guid.NewGuid(), PresentationKey = "armor_test" };
         var manifest = new EraEquipmentManifestDto { Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { definition } } };
         var direct = new EraEquipmentRewardEntry { DefinitionId = definition.Id, Grade = EraEquipmentGrade.Reliable, Count = 2 };
         var generated = EraRewardEquipmentGenerator.Generate(new[] { direct }, manifest, new EraArmorGenerator(), null);
@@ -60,6 +60,16 @@ public class EraEquipmentRewardFixture
         } };
         var rolled = new EraRewardPoolRoller().Roll(new EraRewardNode { ChanceBasisPoints = 10000, Rolls = 1 }, pool);
         EraRewardEquipmentGenerator.Generate(rolled, manifest, new EraArmorGenerator(), null).Count.ShouldBe(2);
+        generated.ShouldAllBe(item => item.ArmorModifications.Slots.Count == 0);
+        var weapons = EraWeaponFixture.Catalog();
+        weapons.Templates[0].SlotConfigurationId = null;
+        weapons.SlotConfigurations.Clear();
+        EraWeaponConfigurationValidator.Validate(weapons);
+        manifest.Weapons = weapons;
+        direct.DefinitionId = weapons.Templates[0].Id;
+        var unmodified = EraRewardEquipmentGenerator.Generate(new[] { direct }, manifest, new EraArmorGenerator(), new EraWeaponGenerator());
+        unmodified.Count.ShouldBe(2);
+        unmodified.ShouldAllBe(item => item.Weapon != null && item.Weapon.Slots.Count == 0);
         direct.DefinitionId = Guid.NewGuid();
         Should.Throw<ArgumentException>(() => EraRewardEquipmentGenerator.Generate(new[] { direct }, manifest, new EraArmorGenerator(), null));
     }

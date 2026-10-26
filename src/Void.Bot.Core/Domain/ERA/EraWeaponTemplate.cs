@@ -14,7 +14,7 @@ public sealed class EraWeaponTemplate : IEntity<Guid>
     public bool IsGenerationEnabled { get; set; }
     [StringLength(128)] public string PresentationKey { get; set; } = string.Empty;
     /// <summary>可复用的整套改装槽位方案；只影响后续生成。</summary>
-    public Guid SlotConfigurationId { get; set; }
+    public Guid? SlotConfigurationId { get; set; }
     /// <summary>共享属性映射配置的 Guid；随当前目录读取，不复制端点到实例。</summary>
     public Guid StatMappingId { get; set; }
     /// <summary>单发基础伤害；角色强度、BUFF 与目标结算由游戏权威端另行应用。</summary>

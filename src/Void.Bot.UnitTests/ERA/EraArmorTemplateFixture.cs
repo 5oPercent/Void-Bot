@@ -54,11 +54,21 @@ public class EraArmorTemplateFixture
     {
         var catalog = new EraArmorCatalogDto
         {
-            Templates = new() { new EraArmorTemplateDto { Name = "Plain helmet", CompatibleSlots = new() { EraEquipmentSlot.Head } } }
+            Templates = new() { new EraArmorTemplateDto { PresentationKey = "armor_test", Name = "Plain helmet", CompatibleSlots = new() { EraEquipmentSlot.Head } } }
         };
         Should.NotThrow(() => EraArmorConfigurationValidator.Validate(catalog));
+        catalog.Templates[0].PresentationKey = string.Empty;
+        Should.Throw<ArgumentException>(() => EraArmorConfigurationValidator.Validate(catalog));
+        catalog.Templates[0].PresentationKey = "armor_core-001.variant";
+        Should.NotThrow(() => EraArmorConfigurationValidator.Validate(catalog));
+        catalog.Templates[0].PresentationKey = "armor core";
+        Should.Throw<ArgumentException>(() => EraArmorConfigurationValidator.Validate(catalog));
         var scheme = new EraArmorSlotConfigurationDto { Name = "Empty" };
-        new EraArmorModificationGenerator().Generate(scheme).Slots.ShouldBeEmpty();
+        catalog.Templates[0].PresentationKey = "armor_test";
+        catalog.Templates[0].SlotConfigurationId = scheme.Id;
+        catalog.SlotConfigurations.Add(scheme);
+        Should.Throw<ArgumentException>(() => EraArmorConfigurationValidator.Validate(catalog));
+        Should.Throw<ArgumentException>(() => new EraArmorModificationGenerator().Generate(scheme));
     }
 
     [Fact]
@@ -117,7 +127,7 @@ public class EraArmorTemplateFixture
     {
         var current = new EraArmorCatalogDto
         {
-            Templates = new() { new EraArmorTemplateDto { Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head, EraEquipmentSlot.Body } } }
+            Templates = new() { new EraArmorTemplateDto { PresentationKey = "armor_test", Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head, EraEquipmentSlot.Body } } }
         };
         var data = Substitute.For<IEraArmorDataProvider>();
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
@@ -156,7 +166,7 @@ public class EraArmorTemplateFixture
     {
         var current = new EraArmorCatalogDto
         {
-            Templates = new() { new EraArmorTemplateDto { Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head, EraEquipmentSlot.Body } } }
+            Templates = new() { new EraArmorTemplateDto { PresentationKey = "armor_test", Name = "Helmet", CompatibleSlots = new() { EraEquipmentSlot.Head, EraEquipmentSlot.Body } } }
         };
         var data = Substitute.For<IEraArmorDataProvider>();
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
@@ -197,13 +207,14 @@ public class EraArmorTemplateFixture
         var current = new EraArmorCatalogDto
         {
             SlotTypes = new() { type }, Modifications = new() { modification }, SlotConfigurations = new() { configuration },
-            Templates = new() { new EraArmorTemplateDto { Name = "Helmet", SlotConfigurationId = configuration.Id,
+            Templates = new() { new EraArmorTemplateDto { PresentationKey = "armor_test", Name = "Helmet", SlotConfigurationId = configuration.Id,
                 CompatibleSlots = new() { EraEquipmentSlot.Head } } }
         };
         var instance = EraArmorModificationGenerator.Generate(configuration, _ => 0);
         var referencedId = instance.Slots[0].Candidates[0].ModDefinitionId;
         var proposed = JsonSerializer.Deserialize<EraArmorCatalogDto>(JsonSerializer.Serialize(current))!;
-        proposed.SlotConfigurations[0].Slots.Clear();
+        proposed.Templates[0].SlotConfigurationId = null;
+        proposed.SlotConfigurations.Clear();
         proposed.Modifications.RemoveAll(row => row.Id == referencedId);
         var plan = new EraInventoryRewardPlan { Grants = new()
         {

@@ -85,7 +85,7 @@ public class EraEquipmentServiceFixture
         return new EraArmorTemplateDto
         {
             Id = id ?? Guid.Parse("10000000-0000-0000-0000-000000000001"),
-            Name = "Same display name",
+            Name = "Same display name", PresentationKey = "armor_test",
             CompatibleSlots = new List<EraEquipmentSlot> { slot }
         };
     }

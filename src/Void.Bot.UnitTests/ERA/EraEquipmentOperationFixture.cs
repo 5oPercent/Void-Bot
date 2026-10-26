@@ -42,7 +42,7 @@ public class EraEquipmentOperationFixture
                 Armors = new EraArmorCatalogDto { Templates = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorTemplateDto
                 {
                     Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
-                    Name = "Test armor",
+                    Name = "Test armor", PresentationKey = $"armor_test_{(int)slot}",
                     CompatibleSlots = new List<EraEquipmentSlot> { slot }
                 }).ToList() }
             })

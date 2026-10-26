@@ -203,6 +203,7 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
             }
             entity.Name = template.Name; entity.Icon = template.Icon; entity.Note = template.Note;
             entity.IsGenerationEnabled = template.IsGenerationEnabled;
+            entity.PresentationKey = template.PresentationKey;
             entity.SlotConfigurationId = template.SlotConfigurationId;
             entity.CompatibleSlotsPayload = JsonSerializer.Serialize(template.CompatibleSlots);
         }

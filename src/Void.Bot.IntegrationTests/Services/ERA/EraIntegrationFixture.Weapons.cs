@@ -465,5 +465,13 @@ public partial class EraIntegrationFixture
         var items = (await ReadWeaponEquipmentAsync()).Data!.InventoryItems;
         items.Single(item => item.Id != old.Id).Weapon!.Slots.Count.ShouldBe(7);
         items.Single(item => item.Id == old.Id).Weapon!.Slots.Count.ShouldBe(6);
+        catalog.Templates[0].SlotConfigurationId = null;
+        (await PublishWeaponsAsync(catalog, 9)).Data!.Version.ShouldBe(10);
+        await GrantRewardAsync(await PrepareWeaponRewardAsync());
+        var current = (await ReadWeaponEquipmentAsync()).Data!.InventoryItems;
+        current.Single(item => items.All(previous => previous.Id != item.Id)).Weapon!.Slots.ShouldBeEmpty();
+        current.Single(item => item.Id == old.Id).Weapon!.Slots.Count.ShouldBe(6);
+        await ReadDatabaseAsync(async context =>
+            (await context.Set<EraWeaponTemplate>().SingleAsync()).SlotConfigurationId.ShouldBeNull());
     }
 }
