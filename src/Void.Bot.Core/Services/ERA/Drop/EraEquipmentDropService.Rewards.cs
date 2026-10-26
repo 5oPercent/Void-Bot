@@ -167,7 +167,7 @@ public sealed partial class EraEquipmentDropService
                 throw Error(HttpStatusCode.Conflict, "era.drop_delivery_unavailable", text => text.DeliveryUnavailable);
             pool = rules.Pools.Single(item => item.Id == node.PoolId);
             configurationVersion = configuration!.Version;
-            var definitions = manifest.Definitions.Select(item => item.Id).ToHashSet();
+            var definitions = manifest.Armors.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
             var templates = manifest.Weapons.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
             if (pool.Entries.Any(entry => !definitions.Contains(entry.DefinitionId) && !templates.Contains(entry.DefinitionId)))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
@@ -220,7 +220,7 @@ public sealed partial class EraEquipmentDropService
                 if (equipment.EquipmentType == EraEquipmentType.Weapon) weaponInstances.Add(item.Id, equipment.Weapon!);
                 else armor.Add(new EraArmorInstanceData
                 {
-                    EquipmentId = item.Id, GenerationRuleVersion = equipment.GenerationRuleVersion,
+                    EquipmentId = item.Id, GenerationRuleVersion = equipment.GenerationRuleVersion, Modifications = equipment.ArmorModifications,
                     Strength = equipment.Attributes.Strength, Survival = equipment.Attributes.Survival, Mobility = equipment.Attributes.Mobility,
                     Focus = equipment.Attributes.Focus, Efficiency = equipment.Attributes.Efficiency, Resistance = equipment.Attributes.Resistance
                 });

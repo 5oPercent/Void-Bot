@@ -1,3 +1,6 @@
+using System.Text.Json;
+using Void.Bot.Core.Services.ERA.Reward.Models;
+using Void.Bot.Message.Enum.ERA;
 using System.Net;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
@@ -179,7 +182,9 @@ public sealed class EraWeaponService : IEraWeaponService
         {
             var template = catalog.Templates.SingleOrDefault(row => row.Id == command.Id) ??
                 throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound);
-            template.IsGenerationEnabled = false;
+            var disabled = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(template))!;
+            disabled.IsGenerationEnabled = false;
+            catalog.Templates[catalog.Templates.IndexOf(template)] = disabled;
             return catalog;
         }, cancellationToken);
 
@@ -261,6 +266,7 @@ public sealed class EraWeaponService : IEraWeaponService
         var manifest = EraEquipmentService.DecodeConfiguration(publication) ??
             throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
         manifest.Weapons = await _weapons.GetCatalogAsync(cancellationToken).ConfigureAwait(false);
+        manifest.Armors = await _equipment.GetArmorCatalogAsync(cancellationToken).ConfigureAwait(false);
         var proposed = apply(new EraWeaponCatalogDto
         {
             Templates = manifest.Weapons.Templates.ToList(), Modifications = manifest.Weapons.Modifications.ToList(),
@@ -270,7 +276,7 @@ public sealed class EraWeaponService : IEraWeaponService
         try { EraWeaponConfigurationValidator.Validate(proposed); }
         catch (ArgumentException) { throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration); }
         await CheckReferencesAsync(proposed, manifest, cancellationToken).ConfigureAwait(false);
-        await _weapons.ReplaceCatalogAsync(proposed, cancellationToken).ConfigureAwait(false);
+        await _weapons.SaveCatalogAsync(manifest.Weapons, proposed, cancellationToken).ConfigureAwait(false);
         publication.Version++;
         publication.LastModifiedBy = _currentUser.Id;
         publication.UpdatedAt = _clock.GetUtcNow();
@@ -279,16 +285,41 @@ public sealed class EraWeaponService : IEraWeaponService
 
     private async Task CheckReferencesAsync(EraWeaponCatalogDto proposed, EraEquipmentManifestDto manifest, CancellationToken cancellationToken)
     {
-        if (proposed.Templates.Any(template => manifest.Definitions.Any(armor => armor.Id == template.Id)))
-            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-        var types = proposed.SlotTypes.Select(row => row.Id).ToHashSet();
-        var previousSlots = manifest.Weapons.SlotConfigurations.SelectMany(configuration => configuration.Slots).ToDictionary(slot => slot.Id);
-        if (proposed.SlotConfigurations.SelectMany(configuration => configuration.Slots).Any(slot =>
-            previousSlots.TryGetValue(slot.Id, out var previous) && previous.SlotTypeId != slot.SlotTypeId))
+        if (proposed.Templates.Any(template => manifest.Armors.Templates.Any(other => other.Id == template.Id)))
             throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
         var templates = proposed.Templates.ToDictionary(row => row.Id);
+        var types = proposed.SlotTypes.Select(row => row.Id).ToHashSet();
         var modifications = proposed.Modifications.ToDictionary(row => row.Id);
+        var oldSlots = manifest.Weapons.SlotConfigurations.SelectMany(row => row.Slots).ToDictionary(row => row.Id);
+        var currentSlots = proposed.SlotConfigurations.SelectMany(row => row.Slots).ToDictionary(row => row.Id);
+        if (currentSlots.Values.Any(slot => oldSlots.TryGetValue(slot.Id, out var old) && old.SlotTypeId != slot.SlotTypeId))
+            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
         var removedTemplates = manifest.Weapons.Templates.Select(row => row.Id).Except(templates.Keys).ToHashSet();
+        var changes = new EraEquipmentReferenceChanges
+        {
+            TemplateIds = manifest.Weapons.Templates.Where(old => !templates.TryGetValue(old.Id, out var current) ||
+                old.CompatibleSlots.Except(current.CompatibleSlots).Any() ||
+                old.BaseStats.ChargeTime.HasValue && !current.BaseStats.ChargeTime.HasValue ||
+                old.BaseStats.ProjectileSpeed.HasValue && !current.BaseStats.ProjectileSpeed.HasValue).Select(row => row.Id).ToHashSet(),
+            ModificationIds = manifest.Weapons.Modifications.Where(old => !modifications.TryGetValue(old.Id, out var current) ||
+                old.SlotTypeId != current.SlotTypeId ||
+                current.Modifiers.Any(modifier => (modifier.Stat is EraWeaponStat.ChargeTime or EraWeaponStat.ProjectileSpeed) &&
+                    !old.Modifiers.Any(previous => previous.Stat == modifier.Stat))).Select(row => row.Id).ToHashSet(),
+            SlotTypeIds = manifest.Weapons.SlotTypes.Select(row => row.Id).Except(types).ToHashSet(),
+            SlotIds = currentSlots.Keys.Except(oldSlots.Keys).ToHashSet()
+        };
+        // 名称、图标、数值和平衡调整不改变引用，不读取玩家资产或待发计划。
+        if (!changes.HasChanges) return;
+        var items = await _weapons.GetReferencedWeaponsAsync(changes, cancellationToken).ConfigureAwait(false);
+        var instances = await _weapons.GetInstancesAsync(items.Select(row => row.Id), cancellationToken).ConfigureAwait(false);
+        foreach (var item in items)
+        {
+            if (!templates.TryGetValue(item.DefinitionId, out var template) ||
+                item.EquippedSlot.HasValue && !template.CompatibleSlots.Contains(item.EquippedSlot.Value) ||
+                !instances.TryGetValue(item.Id, out var instance))
+                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
+            CheckInstance(template, instance);
+        }
         if (removedTemplates.Count > 0)
         {
             var rewardPayload = await _weapons.GetRewardConfigurationPayloadAsync(cancellationToken).ConfigureAwait(false);
@@ -297,10 +328,10 @@ public sealed class EraWeaponService : IEraWeaponService
                 EraRewardRules rewards;
                 try
                 {
-                    rewards = System.Text.Json.JsonSerializer.Deserialize<EraRewardRules>(rewardPayload) ?? throw new ArgumentException("Reward configuration is missing.");
+                    rewards = JsonSerializer.Deserialize<EraRewardRules>(rewardPayload) ?? throw new ArgumentException("Reward configuration is missing.");
                     EraRewardConfigurationValidator.Validate(rewards);
                 }
-                catch (Exception exception) when (exception is ArgumentException or System.Text.Json.JsonException)
+                catch (Exception exception) when (exception is ArgumentException or JsonException)
                 {
                     throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
                 }
@@ -308,50 +339,37 @@ public sealed class EraWeaponService : IEraWeaponService
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
             }
         }
-        var equipment = await _weapons.GetReferencedWeaponsAsync(cancellationToken).ConfigureAwait(false);
-        var candidates = await _weapons.GetReferencedCandidatesAsync(cancellationToken).ConfigureAwait(false);
-        var slots = await _weapons.GetReferencedSlotsAsync(cancellationToken).ConfigureAwait(false);
-        var slotTypes = slots.ToDictionary(slot => (slot.EquipmentId, slot.SlotId), slot => slot.SlotTypeId);
-        if (slots.Any(slot => !types.Contains(slot.SlotTypeId)) ||
-            proposed.SlotConfigurations.SelectMany(configuration => configuration.Slots).Any(slot =>
-                slots.Any(saved => saved.SlotId == slot.Id && saved.SlotTypeId != slot.SlotTypeId)))
-            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-        var items = equipment.ToDictionary(row => row.Id);
-        if (equipment.Any(item => !templates.TryGetValue(item.DefinitionId, out var template) ||
-                item.EquippedSlot.HasValue && !template.CompatibleSlots.Contains(item.EquippedSlot.Value)) || candidates.Any(candidate =>
-            !modifications.TryGetValue(candidate.ModDefinitionId, out var modification) || !slotTypes.TryGetValue((candidate.EquipmentId, candidate.SlotId), out var typeId) || modification.SlotTypeId != typeId))
-            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-        foreach (var candidate in candidates)
+        // 计划保存在 JSON 中，只有潜在引用失效时才读取，校验其中受影响的装备。
+        foreach (var payload in await _weapons.GetPendingRewardPlansAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (!items.TryGetValue(candidate.EquipmentId, out var item))
-                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-            var template = templates[item.DefinitionId];
-            var modification = modifications[candidate.ModDefinitionId];
-            if (modification.Modifiers.Any(value =>
-                value.Stat == Void.Bot.Message.Enum.ERA.EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue ||
-                value.Stat == Void.Bot.Message.Enum.ERA.EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue))
-                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-        }
-        // 已接受、尚未发放的计划同样固定了候选，不能在容量不足等待期间删掉其引用。
-        var plans = await _weapons.GetPendingRewardPlansAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var payload in plans)
-        {
-            Void.Bot.Core.Services.ERA.Reward.Models.EraInventoryRewardPlan? plan;
-            try { plan = System.Text.Json.JsonSerializer.Deserialize<Void.Bot.Core.Services.ERA.Reward.Models.EraInventoryRewardPlan>(payload); }
-            catch (System.Text.Json.JsonException) { throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable); }
+            EraInventoryRewardPlan? plan;
+            try { plan = JsonSerializer.Deserialize<EraInventoryRewardPlan>(payload); }
+            catch (JsonException) { throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable); }
             if (plan?.Grants == null || plan.Grants.Any(grant => grant == null || grant.Equipment == null || grant.Equipment.Any(item => item == null)))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
-            foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment).Where(item => item.EquipmentType == Void.Bot.Message.Enum.ERA.EraEquipmentType.Weapon))
+            foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment).Where(item => item.EquipmentType == EraEquipmentType.Weapon))
             {
-                if (!templates.TryGetValue(item.DefinitionId, out var template) || !EraEquipmentItemRules.ValidWeapon(item.Weapon))
+                if (!EraEquipmentItemRules.ValidWeapon(item.Weapon))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-                foreach (var slot in item.Weapon!.Slots)
-                    foreach (var candidate in slot.Candidates)
-                        if (!modifications.TryGetValue(candidate.ModDefinitionId, out var modification) || !types.Contains(slot.SlotTypeId) || modification.SlotTypeId != slot.SlotTypeId ||
-                            modification.Modifiers.Any(value => value.Stat == Void.Bot.Message.Enum.ERA.EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue ||
-                                value.Stat == Void.Bot.Message.Enum.ERA.EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue))
-                            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
+                var affected = changes.TemplateIds.Contains(item.DefinitionId) || item.Weapon!.Slots.Any(slot =>
+                    changes.SlotTypeIds.Contains(slot.SlotTypeId) || changes.SlotIds.Contains(slot.SlotId) ||
+                    slot.Candidates.Any(candidate => changes.ModificationIds.Contains(candidate.ModDefinitionId)));
+                if (!affected) continue;
+                if (!templates.TryGetValue(item.DefinitionId, out var template))
+                    throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
+                CheckInstance(template, item.Weapon);
             }
+        }
+        void CheckInstance(EraWeaponTemplateDto template, EraWeaponInstanceDto? instance)
+        {
+            if (!EraEquipmentItemRules.ValidWeapon(instance) || instance!.Slots.Any(slot => !types.Contains(slot.SlotTypeId) ||
+                currentSlots.TryGetValue(slot.SlotId, out var current) && current.SlotTypeId != slot.SlotTypeId ||
+                slot.Candidates.Any(candidate => !modifications.TryGetValue(candidate.ModDefinitionId, out var modification) ||
+                    modification.SlotTypeId != slot.SlotTypeId ||
+                        modification.Modifiers.Any(modifier =>
+                            modifier.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue ||
+                            modifier.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue))))
+                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
         }
     }
 

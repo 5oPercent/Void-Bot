@@ -1,0 +1,14 @@
+using System.Text.Json.Serialization;
+
+namespace Void.Bot.Message.Dto.ERA;
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed class EraArmorConfigurationSlotDto
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public Guid SlotTypeId { get; set; }
+    public int CandidateCount { get; set; }
+    public int DisplayOrder { get; set; }
+    public List<EraArmorModPoolEntryDto> Pool { get; set; } = new();
+}

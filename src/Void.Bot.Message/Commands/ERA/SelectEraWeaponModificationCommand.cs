@@ -1,15 +1,13 @@
 using System.Text.Json.Serialization;
 using System.Data;
-using Mediator.Net.Contracts;
 using Void.Bot.Message.Attributes;
 using Void.Bot.Message.Dto.ERA;
-using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class SelectEraWeaponModificationCommand : ICommand, IRequireEraPlayer
+public sealed class SelectEraWeaponModificationCommand : IEraEquipmentModificationSelection
 {
     public Guid CharacterId { get; set; }
     public Guid EquipmentId { get; set; }

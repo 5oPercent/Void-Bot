@@ -41,6 +41,8 @@ public class EraEquipmentServiceFixture
         _players.GetCharacterByIdAsync(_character.Id, Arg.Any<CancellationToken>()).Returns(_character);
         _data.GetCharacterSnapshotAsync(_character.Id, _player.Id, Arg.Any<CancellationToken>()).Returns(_snapshot);
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(Configuration());
+        _data.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+            JsonSerializer.Deserialize<EraEquipmentManifestDto>(_data.GetConfigurationAsync(CancellationToken.None).GetAwaiter().GetResult()!.Payload)!.Armors);
     }
 
     private EraEquipmentService Service()
@@ -78,9 +80,9 @@ public class EraEquipmentServiceFixture
         invalid.ErrorCode.ShouldBe("era.equipment_invalid_type");
     }
 
-    private static EraArmorDefinitionDto Definition(Guid? id = null, EraEquipmentSlot slot = EraEquipmentSlot.Head)
+    private static EraArmorTemplateDto Definition(Guid? id = null, EraEquipmentSlot slot = EraEquipmentSlot.Head)
     {
-        return new EraArmorDefinitionDto
+        return new EraArmorTemplateDto
         {
             Id = id ?? Guid.Parse("10000000-0000-0000-0000-000000000001"),
             Name = "Same display name",
@@ -96,7 +98,7 @@ public class EraEquipmentServiceFixture
             Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto
             {
                 Version = 999,
-                Definitions = new List<EraArmorDefinitionDto> { Definition() },
+                Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { Definition() } },
                 InventoryCapacity = 999,
                 GenerationRules = new EraArmorGenerationRulesDto { Version = 999, MaximumDeviation = 999 }
             })
@@ -152,21 +154,21 @@ public class EraEquipmentServiceFixture
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
         {
-            Version = 1, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}"
+            Version = 1, Payload = "{\"SchemaVersion\":2}"
         });
 
         var response = await Service().GetManifestAsync(new GetEraEquipmentManifestRequest(), CancellationToken.None);
 
         response.Code.ShouldBe(HttpStatusCode.OK);
-        response.Data!.Definitions.ShouldBeEmpty();
+        response.Data!.Armors.Templates.ShouldBeEmpty();
         response.Data.GenerationRules.GradeBudgets.Count.ShouldBe(5);
     }
 
     [Theory]
     [InlineData("not json")]
     [InlineData("null")]
-    [InlineData("{\"SchemaVersion\":2,\"Definitions\":[]}")]
-    [InlineData("{\"SchemaVersion\":1,\"Definitions\":null}")]
+    [InlineData("{\"SchemaVersion\":1}")]
+    [InlineData("{\"SchemaVersion\":2,\"Armors\":null}")]
     public async Task Should_report_invalid_catalog_without_returning_fake_empty_success(string payload)
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 1, Payload = payload });
@@ -429,13 +431,13 @@ public class EraEquipmentServiceFixture
         var manifest = new EraEquipmentManifestDto
         {
             Version = 1,
-            Definitions = new List<EraArmorDefinitionDto> { Definition(), Definition() }
+            Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { Definition(), Definition() } }
         };
         Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(manifest));
 
-        manifest.Definitions[1].Id = Guid.NewGuid();
+        manifest.Armors.Templates[1].Id = Guid.NewGuid();
         Should.NotThrow(() => EraEquipmentConfigurationValidator.Validate(manifest));
-        manifest.Definitions[1].Id = Guid.Empty;
+        manifest.Armors.Templates[1].Id = Guid.Empty;
         Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(manifest));
     }
 
@@ -446,7 +448,7 @@ public class EraEquipmentServiceFixture
         definition.CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Body };
         Should.NotThrow(() => EraEquipmentConfigurationValidator.Validate(new EraEquipmentManifestDto
         {
-            Version = 1, Definitions = new List<EraArmorDefinitionDto> { definition }
+            Version = 1, Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { definition } }
         }));
     }
 
@@ -457,13 +459,13 @@ public class EraEquipmentServiceFixture
         _snapshot.Entries.Add(item);
         var configuration = Configuration();
         var manifest = JsonSerializer.Deserialize<EraEquipmentManifestDto>(configuration.Payload)!;
-        manifest.Definitions.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head, EraEquipmentSlot.Body };
+        manifest.Armors.Templates.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head, EraEquipmentSlot.Body };
         configuration.Payload = JsonSerializer.Serialize(manifest);
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(configuration);
         var request = new GetEraCharacterInventoryRequest { CharacterId = _character.Id, Slot = EraEquipmentSlot.Body };
         var compatible = await Service().GetInventoryAsync(request, CancellationToken.None);
         compatible.Data!.InventoryItems.Single().Id.ShouldBe(item.Equipment.Id);
-        manifest.Definitions.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head };
+        manifest.Armors.Templates.Single().CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Head };
         configuration.Payload = JsonSerializer.Serialize(manifest);
         (await Service().GetInventoryAsync(request, CancellationToken.None)).Data!.InventoryItems.ShouldBeEmpty();
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns((EraEquipmentConfiguration?)null);

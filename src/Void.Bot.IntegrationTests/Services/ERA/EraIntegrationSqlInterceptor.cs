@@ -20,6 +20,7 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     public bool PauseRewardSave { get; init; }
     public bool PauseRewardGrantSave { get; init; }
     public bool PauseDropSave { get; init; }
+    public bool WeaponConfigurationFailureInjected { get; private set; }
     public bool RewardFailureInjected { get; private set; }
     public bool WorldFailureInjected { get; private set; }
     public bool ReceiptFailureInjected { get; private set; }
@@ -99,6 +100,7 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     {
         if (FailWeaponConfigurationInsert && command.CommandText.Contains("INSERT INTO `era_weapon_configuration_slot`", StringComparison.OrdinalIgnoreCase))
         {
+            WeaponConfigurationFailureInjected = true;
             var failureAt = command.CommandText.IndexOf("INSERT INTO `era_weapon_configuration_slot`", StringComparison.OrdinalIgnoreCase);
             command.CommandText = command.CommandText[..failureAt] + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'ERA weapon configuration integration failure';";
         }

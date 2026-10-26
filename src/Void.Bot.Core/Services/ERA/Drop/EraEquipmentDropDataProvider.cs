@@ -34,6 +34,8 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
     private readonly IRepository<EraEquipmentShare> _eraEquipmentShareRepository;
     private readonly IRepository<EraWeaponModCandidate> _eraWeaponModCandidateRepository;
     private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
+    private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
+    private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
     private readonly IMapper _mapper;
 
     public EraEquipmentDropDataProvider(
@@ -47,6 +49,8 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         IRepository<EraEquipmentShare> eraEquipmentShareRepository,
         IRepository<EraWeaponModCandidate> eraWeaponModCandidateRepository,
         IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
+        IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
+        IRepository<EraArmorModSelection> eraArmorModSelectionRepository,
         IMapper mapper)
     {
         _eraWorldRepository = eraWorldRepository;
@@ -60,6 +64,8 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         _eraWeaponModCandidateRepository = eraWeaponModCandidateRepository;
         _eraWeaponModSelectionRepository = eraWeaponModSelectionRepository;
         _mapper = mapper;
+        _eraArmorModCandidateRepository = eraArmorModCandidateRepository;
+        _eraArmorModSelectionRepository = eraArmorModSelectionRepository;
     }
 
     public async Task<EraEquipmentDropReadSnapshot?> ReadVisibleAsync(Guid worldId, Guid playerId, CancellationToken cancellationToken)
@@ -89,6 +95,8 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
             return null;
         }
         var first = rows[0];
+        var armorInstances = await ReadArmorInstancesAsync(rows.Where(row => row.Armor != null).Select(row => row.Armor!.EquipmentId), cancellationToken).ConfigureAwait(false);
+        foreach (var row in rows.Where(row => row.Armor != null)) row.Armor!.Modifications = armorInstances[row.Armor.EquipmentId];
         var weapons = await ReadWeaponInstancesAsync(rows.Where(row => row.Equipment?.EquipmentType == EraEquipmentType.Weapon)
                 .Select(row => row.Equipment!.Id), cancellationToken).ConfigureAwait(false);
         return new EraEquipmentDropReadSnapshot(first.World, first.Member, first.Character, first.ActiveWorldId,
@@ -112,6 +120,8 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         var armor = await _eraArmorInstanceDataRepository.QuerySql(
             $"SELECT * FROM era_armor_instance_data WHERE equipment_id = {equipmentId.ToString()} FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var armorInstances = await ReadArmorInstancesAsync(armor.Select(row => row.EquipmentId), cancellationToken).ConfigureAwait(false);
+        foreach (var row in armor) row.Modifications = armorInstances[row.EquipmentId];
         var weapons = await ReadWeaponInstancesAsync(equipment.Where(row => row.EquipmentType == EraEquipmentType.Weapon).Select(row => row.Id), cancellationToken).ConfigureAwait(false);
         return equipment.Count == 0 ? null : new EraEquipmentReadEntry(equipment.Single(), armor.SingleOrDefault(), weapons.GetValueOrDefault(equipmentId));
     }
@@ -176,5 +186,16 @@ public sealed class EraEquipmentDropDataProvider : IEraEquipmentDropDataProvider
         var selections = await _eraWeaponModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
         return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
+    }
+
+    private async Task<Dictionary<Guid, EraArmorInstanceDto>> ReadArmorInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)
+    {
+        var ids = equipmentIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<Guid, EraArmorInstanceDto>();
+        var candidates = await _eraArmorModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var selections = await _eraArmorModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraArmorDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
 }

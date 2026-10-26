@@ -14,7 +14,7 @@ public static class EraRewardEquipmentGenerator
     {
         var result = new List<EraPlannedRewardEquipment>();
         var validator = new EraEquipmentRewardEntryValidator();
-        var definitions = manifest.Definitions.ToDictionary(item => item.Id);
+        var definitions = manifest.Armors.Templates.ToDictionary(item => item.Id);
         var templates = manifest.Weapons.Templates.ToDictionary(item => item.Id);
         var configurations = manifest.Weapons.SlotConfigurations.ToDictionary(item => item.Id);
         foreach (var entry in entries)
@@ -22,7 +22,7 @@ public static class EraRewardEquipmentGenerator
             if (entry == null || !validator.Validate(entry).IsValid || (long)result.Count + entry.Count > EraEquipmentRules.InventoryCapacity)
                 throw new ArgumentException("Reward entries are invalid.");
             var isWeapon = templates.TryGetValue(entry.DefinitionId, out var template);
-            if (isWeapon ? !template!.IsGenerationEnabled || weapons == null : !definitions.ContainsKey(entry.DefinitionId))
+            if (isWeapon ? !template!.IsGenerationEnabled || weapons == null : !definitions.TryGetValue(entry.DefinitionId, out var availableArmor) || !availableArmor.IsGenerationEnabled)
                 throw new ArgumentException("Reward template is unavailable.");
             for (var index = 0; index < entry.Count; index++)
             {
@@ -35,6 +35,9 @@ public static class EraRewardEquipmentGenerator
                 else
                 {
                     var generated = armor.Generate(entry.Grade);
+                    var armorTemplate = definitions[entry.DefinitionId];
+                    if (armorTemplate.SlotConfigurationId.HasValue)
+                        item.ArmorModifications = new EraArmorModificationGenerator().Generate(manifest.Armors.SlotConfigurations.Single(row => row.Id == armorTemplate.SlotConfigurationId.Value));
                     item.GenerationRuleVersion = generated.GenerationRuleVersion;
                     item.Attributes = generated.Attributes;
                 }

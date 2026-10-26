@@ -1,3 +1,6 @@
+using Void.Bot.Core.Services.ERA.Reward.Models;
+using AutoMapper;
+using Void.Bot.Core.Mappings;
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -199,7 +202,7 @@ public class EraWeaponFixture
     [Fact]
     public void Should_map_template_stats_without_mutating_the_instance_contract()
     {
-        var configuration = new AutoMapper.MapperConfiguration(mapping => mapping.AddProfile<Void.Bot.Core.Mappings.EraWeaponMapping>());
+        var configuration = new MapperConfiguration(mapping => mapping.AddProfile<EraWeaponMapping>());
         configuration.AssertConfigurationIsValid();
         var mapper = configuration.CreateMapper();
         var entity = new EraWeaponTemplate { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Damage = 55, LoadedCapacity = 30, Frequency = 5 };
@@ -293,38 +296,6 @@ public class EraWeaponFixture
     }
 
     [Fact]
-    public async Task Should_publish_once_and_protect_references_without_rewriting_instances()
-    {
-        var catalog = Catalog();
-        var weapons = Substitute.For<IEraWeaponDataProvider>();
-        var equipment = Substitute.For<IEraEquipmentDataProvider>();
-        var user = Substitute.For<ICurrentUser>();
-        user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 8, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}" };
-        weapons.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
-        weapons.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
-        weapons.GetReferencedWeaponsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
-        weapons.GetReferencedCandidatesAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModCandidate>());
-        weapons.GetReferencedSlotsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModSelection>());
-        weapons.GetPendingRewardPlansAsync(Arg.Any<CancellationToken>()).Returns(new List<string>());
-        var service = new EraWeaponService(weapons, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
-        catalog.Templates[0].BaseStats.Damage = 55;
-        var response = await service.SaveTemplateAsync(new SaveEraWeaponTemplateCommand
-        {
-            ExpectedManifestVersion = 8, Template = catalog.Templates[0]
-        }, CancellationToken.None);
-        response.Code.ShouldBe(HttpStatusCode.OK);
-        publication.Version.ShouldBe(9);
-        publication.LastModifiedBy.ShouldBe(user.Id);
-        await weapons.Received(1).ReplaceCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>());
-        await Should.ThrowAsync<EraWeaponException>(() => service.SaveTemplateAsync(new SaveEraWeaponTemplateCommand
-        {
-            ExpectedManifestVersion = 8, Template = catalog.Templates[0]
-        }, CancellationToken.None));
-        await weapons.Received(1).ReplaceCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
     public async Task Should_allow_switching_an_old_candidate_removed_from_the_current_template_pool()
     {
         var catalog = Catalog();
@@ -350,7 +321,7 @@ public class EraWeaponFixture
         context.RequireOwnedAsync(character.Id, true, Arg.Any<CancellationToken>()).Returns(character);
         data.LockConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
         {
-            Version = 8, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}"
+            Version = 8, Payload = "{\"SchemaVersion\":2}"
         });
         data.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         data.LockCharacterEquipmentAsync(character, Arg.Any<CancellationToken>()).Returns(snapshot);
@@ -477,18 +448,18 @@ public class EraWeaponFixture
         var current = new EraWeaponCatalogDto();
         var weapons = Substitute.For<IEraWeaponDataProvider>();
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":1,\"Definitions\":[]}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
         weapons.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         weapons.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
-        weapons.GetReferencedWeaponsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
-        weapons.GetReferencedSlotsAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModSelection>());
-        weapons.GetReferencedCandidatesAsync(Arg.Any<CancellationToken>()).Returns(new List<EraWeaponModCandidate>());
+        weapons.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
         weapons.GetPendingRewardPlansAsync(Arg.Any<CancellationToken>()).Returns(new List<string>());
-        weapons.ReplaceCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
+        weapons.SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
-            current = call.Arg<EraWeaponCatalogDto>(); return Task.CompletedTask;
+            current = call.ArgAt<EraWeaponCatalogDto>(1); return Task.CompletedTask;
         });
-        var service = new EraWeaponService(weapons, Substitute.For<IEraEquipmentDataProvider>(), user,
+        var equipment = Substitute.For<IEraEquipmentDataProvider>();
+        equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
+        var service = new EraWeaponService(weapons, equipment, user,
             Substitute.For<ILocalizationService>(), TimeProvider.System);
         var first = await service.SaveSlotTypeAsync(new SaveEraWeaponSlotTypeCommand
         {
@@ -560,4 +531,118 @@ public class EraWeaponFixture
         invalidSlot.Code.ShouldBe(HttpStatusCode.BadRequest);
         publication.Version.ShouldBe(13);
     }
+    [Fact]
+    public async Task Should_skip_asset_queries_for_display_edits_and_disable_without_mutating_the_previous_catalog()
+    {
+        var current = Catalog();
+        var data = Substitute.For<IEraWeaponDataProvider>();
+        var equipment = Substitute.For<IEraEquipmentDataProvider>();
+        equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
+        var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
+        data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
+        data.SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            current = call.ArgAt<EraWeaponCatalogDto>(1); return Task.CompletedTask;
+        });
+        var service = new EraWeaponService(data, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
+        var edited = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(current.Templates[0]))!;
+        edited.Name = "Renamed";
+        var saved = await service.SaveTemplateAsync(new SaveEraWeaponTemplateCommand
+        {
+            ExpectedManifestVersion = 7, Template = edited
+        }, CancellationToken.None);
+        saved.Code.ShouldBe(HttpStatusCode.OK);
+        saved.Data!.Version.ShouldBe(8);
+        publication.Version.ShouldBe(8);
+        publication.LastModifiedBy.ShouldBe(user.Id);
+        var conflict = await Should.ThrowAsync<EraWeaponException>(() => service.SaveTemplateAsync(new SaveEraWeaponTemplateCommand
+        {
+            ExpectedManifestVersion = 7, Template = edited
+        }, CancellationToken.None));
+        conflict.Code.ShouldBe(HttpStatusCode.Conflict);
+        await data.Received(1).SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>());
+        var beforeDisable = current;
+        var disabled = await service.DisableTemplateAsync(new DisableEraWeaponTemplateCommand
+        {
+            ExpectedManifestVersion = 8, Id = edited.Id
+        }, CancellationToken.None);
+        disabled.Data!.Configuration.Templates[0].IsGenerationEnabled.ShouldBeFalse();
+        beforeDisable.Templates[0].IsGenerationEnabled.ShouldBeTrue();
+        await data.DidNotReceive().GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>());
+        await data.DidNotReceive().GetInstancesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>());
+        await data.DidNotReceive().GetPendingRewardPlansAsync(Arg.Any<CancellationToken>());
+        await data.DidNotReceive().GetRewardConfigurationPayloadAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_check_only_the_template_whose_equipped_slot_was_removed()
+    {
+        var current = Catalog();
+        var data = Substitute.For<IEraWeaponDataProvider>();
+        var equipment = Substitute.For<IEraEquipmentDataProvider>();
+        equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
+        var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
+        data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
+        var templateId = current.Templates[0].Id;
+        var removedSlot = current.Templates[0].CompatibleSlots[1];
+        var item = new EraEquipmentInstance { Id = Guid.NewGuid(), DefinitionId = templateId, EquippedSlot = removedSlot };
+        data.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance> { item });
+        data.GetInstancesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, EraWeaponInstanceDto> { [item.Id] = new() });
+        var service = new EraWeaponService(data, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
+        var edited = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(current.Templates[0]))!;
+        edited.CompatibleSlots.Remove(removedSlot);
+        var error = await Should.ThrowAsync<EraWeaponException>(() => service.SaveTemplateAsync(new SaveEraWeaponTemplateCommand
+        {
+            ExpectedManifestVersion = 7, Template = edited
+        }, CancellationToken.None));
+        error.Code.ShouldBe(HttpStatusCode.Conflict);
+        await data.Received(1).GetReferencedWeaponsAsync(Arg.Is<EraEquipmentReferenceChanges>(changes =>
+            changes.TemplateIds.SetEquals(new[] { templateId }) && changes.ModificationIds.Count == 0 && changes.SlotTypeIds.Count == 0), Arg.Any<CancellationToken>());
+        await data.DidNotReceive().SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>());
+        publication.Version.ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task Should_protect_a_pending_candidate_even_after_its_slot_was_removed_from_the_current_scheme()
+    {
+        var current = Catalog();
+        var instance = EraWeaponGenerator.Generate(current.SlotConfigurations[0], _ => 0);
+        var referencedId = instance.Slots[0].Candidates[0].ModDefinitionId;
+        var proposed = JsonSerializer.Deserialize<EraWeaponCatalogDto>(JsonSerializer.Serialize(current))!;
+        proposed.SlotConfigurations[0].Slots.Clear();
+        proposed.Modifications.RemoveAll(row => row.Id == referencedId);
+        var plan = new EraInventoryRewardPlan { Grants = new()
+        {
+            new EraPlannedRewardGrant { Equipment = new()
+            {
+                new EraPlannedRewardEquipment { DefinitionId = current.Templates[0].Id,
+                    EquipmentType = EraEquipmentType.Weapon, Weapon = instance }
+            } }
+        } };
+        var data = Substitute.For<IEraWeaponDataProvider>();
+        var equipment = Substitute.For<IEraEquipmentDataProvider>();
+        equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
+        var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
+        data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
+        data.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
+        data.GetInstancesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, EraWeaponInstanceDto>());
+        data.GetPendingRewardPlansAsync(Arg.Any<CancellationToken>()).Returns(new List<string> { JsonSerializer.Serialize(plan) });
+        var service = new EraWeaponService(data, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
+        var error = await Should.ThrowAsync<EraWeaponException>(() => service.PublishConfigurationAsync(new PublishEraWeaponConfigurationCommand
+        {
+            ExpectedManifestVersion = 7, Configuration = proposed
+        }, CancellationToken.None));
+        error.Code.ShouldBe(HttpStatusCode.Conflict);
+        await data.Received(1).GetReferencedWeaponsAsync(Arg.Is<EraEquipmentReferenceChanges>(changes =>
+            changes.ModificationIds.SetEquals(new[] { referencedId }) && changes.TemplateIds.Count == 0), Arg.Any<CancellationToken>());
+        await data.DidNotReceive().SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>());
+        publication.Version.ShouldBe(7);
+    }
+
 }

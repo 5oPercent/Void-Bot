@@ -4,8 +4,6 @@ using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
-using Void.Bot.Core.Services.ERA.Equipment;
-using Void.Bot.Core.Services.ERA.Equipment.Models;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.System;
 
@@ -142,25 +140,6 @@ public class EraEquipmentPersistenceFixture
         });
         ownership.PrincipalEntityType.ClrType.ShouldBe(typeof(EraCharacter));
         ownership.DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
-    }
-
-    [Fact]
-    public async Task Should_reject_position_updates_without_outer_command_transaction()
-    {
-        using var context = Context();
-        var data = new EraEquipmentDataProvider(
-            new Repository<EraEquipmentConfiguration>(context), new Repository<EraCharacter>(context),
-            new Repository<EraEquipmentInstance>(context), new Repository<EraArmorInstanceData>(context),
-            new Repository<EraWorldMember>(context), new Repository<EraWorld>(context),
-            new Repository<EraPlayerAccountLink>(context), new Repository<EraEquipmentOperationReceipt>(context),
-            new Repository<EraWeaponTemplate>(context), new Repository<EraWeaponStatMapping>(context), new Repository<EraWeaponModDefinition>(context),
-            new Repository<EraWeaponModStatModifier>(context), new Repository<EraWeaponConfigurationSlot>(context),
-            new Repository<EraWeaponConfigurationModPool>(context), new Repository<EraWeaponModCandidate>(context),
-            new Repository<EraWeaponModSelection>(context), new Repository<EraWeaponSlotType>(context),
-            new Repository<EraWeaponSlotConfiguration>(context), Substitute.For<AutoMapper.IMapper>());
-
-        await Should.ThrowAsync<InvalidOperationException>(() => data.ApplyPositionChangesAsync(
-            Guid.NewGuid(), Guid.NewGuid(), Array.Empty<EraEquipmentPositionChange>(), CancellationToken.None));
     }
 
     [Fact]

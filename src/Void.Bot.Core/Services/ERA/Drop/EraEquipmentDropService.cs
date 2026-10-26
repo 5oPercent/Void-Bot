@@ -1,3 +1,4 @@
+using SystemEnum = System.Enum;
 using System.Linq.Expressions;
 using System.Net;
 using System.Text.Json;
@@ -117,9 +118,11 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
                 PrivateOwnerPlayerId = entry.Drop.PrivateOwnerPlayerId, DroppedByPlayerId = entry.Drop.DroppedByPlayerId,
                 ShareUntil = entry.Share?.ShareUntil,
                 DefinitionId = item.DefinitionId, DefinitionVersion = item.DefinitionVersion,
-                Definition = manifest?.Definitions.SingleOrDefault(definition => definition.Id == item.DefinitionId),
+                Definition = manifest?.Armors.Templates.SingleOrDefault(definition => definition.Id == item.DefinitionId),
                 Grade = item.Grade, CreatedAt = item.CreatedAt,
                 EquipmentType = item.EquipmentType, Weapon = entry.Weapon,
+                ArmorModifications = armor?.Modifications,
+                ArmorEffectiveAttributes = armor == null || manifest == null ? null : EraArmorModificationRules.Evaluate(armor, manifest.Armors),
                 WeaponTemplate = manifest?.Weapons.Templates.SingleOrDefault(template => template.Id == item.DefinitionId),
                 GenerationRuleVersion = armor?.GenerationRuleVersion ?? 0,
                 ArmorAttributes = armor == null ? new EraArmorAttributesDto() : new EraArmorAttributesDto
@@ -326,6 +329,6 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             item.Version > 0 && item.DefinitionVersion > 0 && item.DefinitionId != Guid.Empty && item.CreatedAt != default &&
             (!drop.DroppedByPlayerId.HasValue || entry.Share != null && entry.Share.EquipmentId == item.Id &&
                 entry.Share.ShareUntil - item.CreatedAt == TimeSpan.FromHours(1)) &&
-            System.Enum.IsDefined(item.Grade) && EraEquipmentItemRules.ValidPayload(new EraEquipmentReadEntry(item, armor, entry.Weapon));
+            SystemEnum.IsDefined(item.Grade) && EraEquipmentItemRules.ValidPayload(new EraEquipmentReadEntry(item, armor, entry.Weapon));
     }
 }

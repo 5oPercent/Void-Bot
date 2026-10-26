@@ -15,13 +15,17 @@ public sealed class EraEquipmentDropDto
     public DateTimeOffset? ShareUntil { get; set; }
     public Guid DefinitionId { get; set; }
     public long DefinitionVersion { get; set; }
-    public EraArmorDefinitionDto? Definition { get; set; }
+    public EraArmorTemplateDto? Definition { get; set; }
+    /// <summary>装备品阶；护甲用于确定随机六维预算，武器暂无品阶专属生成规则。</summary>
     public EraEquipmentGrade Grade { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public int GenerationRuleVersion { get; set; }
     public EraArmorAttributesDto ArmorAttributes { get; set; } = new EraArmorAttributesDto();
     public EraEquipmentDropPlacementDto Placement { get; set; } = new EraEquipmentDropPlacementDto();
+    /// <summary>装备本体类型，决定使用护甲或武器实例载荷。</summary>
     public EraEquipmentType EquipmentType { get; set; } = EraEquipmentType.Armor;
+    public EraArmorInstanceDto? ArmorModifications { get; set; }
+    public EraArmorAttributesDto? ArmorEffectiveAttributes { get; set; }
     public EraWeaponInstanceDto? Weapon { get; set; }
     public EraWeaponTemplateDto? WeaponTemplate { get; set; }
 }

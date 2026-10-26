@@ -300,16 +300,53 @@ public partial class EraIntegrationFixture
         await Should.ThrowAsync<EraWeaponException>(() => PublishWeaponsAsync(catalog, 8));
         catalog = JsonSerializer.Deserialize<EraWeaponCatalogDto>(originalCatalog)!;
         catalog.Templates[0].BaseStats.Damage = 99;
-        await Should.ThrowAsync<Exception>(() => PublishWeaponsAsync(catalog, 8,
-            new EraIntegrationSqlInterceptor { FailWeaponConfigurationInsert = true }));
+        catalog.SlotConfigurations[0].Slots[0].CandidateCount = 1;
+        catalog.SlotConfigurations[0].Slots[0].Pool[0].Weight = 99;
+        var interceptor = new EraIntegrationSqlInterceptor { FailWeaponConfigurationInsert = true };
+        await Should.ThrowAsync<Exception>(() => PublishWeaponsAsync(catalog, 8, interceptor));
+        interceptor.WeaponConfigurationFailureInjected.ShouldBeTrue();
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId)).Version.ShouldBe(8);
             (await context.Set<EraWeaponTemplate>().SingleAsync()).Damage.ShouldBe(50);
             (await context.Set<EraWeaponConfigurationModPool>().CountAsync()).ShouldBe(10);
+            (await context.Set<EraWeaponConfigurationModPool>().SumAsync(row => row.Weight)).ShouldBe(15);
             (await context.Set<EraWeaponConfigurationSlot>().ToListAsync()).ShouldAllBe(value => value.CandidateCount == 2);
         });
         (await GrantRewardAsync(eventId)).Data!.Grants.Single().EquipmentIds.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Weapon_template_edit_should_not_reinsert_unchanged_configuration_slots(bool rename)
+    {
+        await SeedAsync(0);
+        var catalog = WeaponCatalog();
+        await PublishWeaponsAsync(catalog);
+        string originalSlots = string.Empty;
+        string originalPools = string.Empty;
+        await ReadDatabaseAsync(async context =>
+        {
+            originalSlots = JsonSerializer.Serialize(await context.Set<EraWeaponConfigurationSlot>().OrderBy(row => row.Id).ToListAsync());
+            originalPools = JsonSerializer.Serialize(await context.Set<EraWeaponConfigurationModPool>()
+                .OrderBy(row => row.SlotId).ThenBy(row => row.ModDefinitionId).ToListAsync());
+        });
+        if (rename) catalog.Templates[0].Name = "Renamed";
+        else catalog.Templates[0].BaseStats.Damage = 99;
+        var interceptor = new EraIntegrationSqlInterceptor { FailWeaponConfigurationInsert = true };
+        var response = await PublishWeaponsAsync(catalog, 8, interceptor);
+        response.Data!.Version.ShouldBe(9);
+        interceptor.WeaponConfigurationFailureInjected.ShouldBeFalse();
+        await ReadDatabaseAsync(async context =>
+        {
+            var template = await context.Set<EraWeaponTemplate>().SingleAsync();
+            template.Damage.ShouldBe(catalog.Templates[0].BaseStats.Damage);
+            template.Name.ShouldBe(catalog.Templates[0].Name);
+            JsonSerializer.Serialize(await context.Set<EraWeaponConfigurationSlot>().OrderBy(row => row.Id).ToListAsync()).ShouldBe(originalSlots);
+            JsonSerializer.Serialize(await context.Set<EraWeaponConfigurationModPool>()
+                .OrderBy(row => row.SlotId).ThenBy(row => row.ModDefinitionId).ToListAsync()).ShouldBe(originalPools);
+        });
     }
 
     [Fact]

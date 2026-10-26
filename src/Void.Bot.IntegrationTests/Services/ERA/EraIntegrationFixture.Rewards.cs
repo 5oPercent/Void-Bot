@@ -84,6 +84,22 @@ public partial class EraIntegrationFixture
     public async Task Reward_batch_should_persist_all_players_equipment_attributes_links_and_receipts()
     {
         await SeedAsync(0);
+        var modification = new EraArmorModDefinition { Name = "Core", SlotTypeId = Guid.NewGuid() };
+        var slot = new EraArmorConfigurationSlot
+        {
+            Name = "Core", ConfigurationId = Guid.NewGuid(), SlotTypeId = modification.SlotTypeId,
+            CandidateCount = 1, DisplayOrder = 2
+        };
+        await ReadDatabaseAsync(async context =>
+        {
+            context.AddRange(
+                new EraArmorSlotType { Id = slot.SlotTypeId, Name = "Core" },
+                new EraArmorSlotConfiguration { Id = slot.ConfigurationId, Name = "Core" }, modification, slot,
+                new EraArmorConfigurationModPool { SlotId = slot.Id, ModDefinitionId = modification.Id, Weight = 1 });
+            var template = await context.Set<EraArmorTemplate>().SingleAsync(row => row.Id == Guid.Parse("10000000-0000-0000-0000-000000000001"));
+            template.SlotConfigurationId = slot.ConfigurationId;
+            await context.SaveChangesAsync();
+        });
         await ConfigureRewardsAsync(count: 2);
         var prepared = await PrepareRewardAsync(RewardCommand(includeOther: true));
         await ReadDatabaseAsync(async context =>
@@ -116,6 +132,24 @@ public partial class EraIntegrationFixture
             armor.Count.ShouldBe(4);
             armor.ShouldAllBe(row => row.GenerationRuleVersion == EraArmorGenerationRules.Version &&
                 row.Strength + row.Survival + row.Mobility + row.Focus + row.Efficiency + row.Resistance == 60);
+            var candidates = await context.Set<EraArmorModCandidate>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();
+            var selections = await context.Set<EraArmorModSelection>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();
+            candidates.Count.ShouldBe(4);
+            selections.Count.ShouldBe(4);
+            var plan = JsonSerializer.Deserialize<EraInventoryRewardPlan>(rewardEvent.PlanPayload)!;
+            foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment))
+            {
+                var expected = item.ArmorModifications.Slots.ShouldHaveSingleItem().Candidates.ShouldHaveSingleItem();
+                var candidate = candidates.Single(row => row.EquipmentId == item.EquipmentId && row.SlotId == slot.Id);
+                candidate.CandidateId.ShouldBe(expected.CandidateId);
+                candidate.ModDefinitionId.ShouldBe(modification.Id);
+                candidate.DisplayOrder.ShouldBe(expected.DisplayOrder);
+                var selection = selections.Single(row => row.EquipmentId == item.EquipmentId && row.SlotId == slot.Id);
+                selection.SelectedCandidateId.ShouldBe(candidate.CandidateId);
+                selection.Name.ShouldBe(slot.Name);
+                selection.SlotTypeId.ShouldBe(slot.SlotTypeId);
+                selection.DisplayOrder.ShouldBe(slot.DisplayOrder);
+            }
             (await context.Set<EraCharacter>().ToListAsync()).ShouldAllBe(character => character.EquipmentVersion == 4 && character.Version == 12);
         });
     }

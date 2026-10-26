@@ -47,8 +47,8 @@ public class EraEquipmentRewardFixture
     [Fact]
     public void Common_generation_should_consume_pool_results_or_direct_entries_without_new_definitions()
     {
-        var definition = new EraArmorDefinitionDto { Id = Guid.NewGuid() };
-        var manifest = new EraEquipmentManifestDto { Definitions = new List<EraArmorDefinitionDto> { definition } };
+        var definition = new EraArmorTemplateDto { Id = Guid.NewGuid() };
+        var manifest = new EraEquipmentManifestDto { Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { definition } } };
         var direct = new EraEquipmentRewardEntry { DefinitionId = definition.Id, Grade = EraEquipmentGrade.Reliable, Count = 2 };
         var generated = EraRewardEquipmentGenerator.Generate(new[] { direct }, manifest, new EraArmorGenerator(), null);
         generated.Count.ShouldBe(2);

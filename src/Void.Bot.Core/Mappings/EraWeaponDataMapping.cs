@@ -51,14 +51,17 @@ internal static class EraWeaponDataMapping
     internal static Dictionary<Guid, EraWeaponInstanceDto> CreateInstances(IReadOnlyCollection<EraWeaponModCandidate> candidates,
         IReadOnlyCollection<EraWeaponModSelection> selections, IMapper mapper, IEnumerable<Guid> equipmentIds)
     {
-        if (candidates.Any(candidate => !selections.Any(selection => selection.EquipmentId == candidate.EquipmentId && selection.SlotId == candidate.SlotId)))
+        var selectionKeys = selections.Select(row => (row.EquipmentId, row.SlotId)).ToHashSet();
+        var slotsByEquipment = selections.ToLookup(row => row.EquipmentId);
+        var candidatesBySlot = candidates.ToLookup(row => (row.EquipmentId, row.SlotId));
+        if (candidates.Any(candidate => !selectionKeys.Contains((candidate.EquipmentId, candidate.SlotId))))
             throw new ArgumentException("Weapon candidates have no corresponding selection.");
         return equipmentIds.Distinct().ToDictionary(id => id, id => new EraWeaponInstanceDto
         {
-            Slots = selections.Where(row => row.EquipmentId == id).OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).Select(row => new EraWeaponInstanceSlotDto
+            Slots = slotsByEquipment[id].OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).Select(row => new EraWeaponInstanceSlotDto
             {
                 SlotId = row.SlotId, Name = row.Name, SlotTypeId = row.SlotTypeId, DisplayOrder = row.DisplayOrder, SelectedCandidateId = row.SelectedCandidateId,
-                Candidates = mapper.Map<List<EraWeaponCandidateDto>>(candidates.Where(candidate => candidate.EquipmentId == id && candidate.SlotId == row.SlotId))
+                Candidates = mapper.Map<List<EraWeaponCandidateDto>>(candidatesBySlot[(id, row.SlotId)])
             }).ToList()
         });
     }

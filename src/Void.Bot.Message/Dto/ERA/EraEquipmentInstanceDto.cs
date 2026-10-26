@@ -12,7 +12,7 @@ public sealed class EraEquipmentInstanceDto
     /// <summary>首次生成时采用的目录版本；不是展示定义的当前版本。</summary>
     public long DefinitionVersion { get; set; }
     /// <summary>当前目录中的展示定义；缺失或目录不可用时为空，客户端按定义 ID 降级显示。</summary>
-    public EraArmorDefinitionDto? Definition { get; set; }
+    public EraArmorTemplateDto? Definition { get; set; }
     /// <summary>装备类型，决定护甲或武器载荷。</summary>
     public EraEquipmentType EquipmentType { get; set; }
     /// <summary>本件保存的品阶。</summary>
@@ -33,6 +33,9 @@ public sealed class EraEquipmentInstanceDto
     public int GenerationRuleVersion { get; set; }
     /// <summary>已保存的六维原值，不重新生成或按当前预算重新校验。</summary>
     public EraArmorAttributesDto ArmorAttributes { get; set; } = new EraArmorAttributesDto();
+    public EraArmorInstanceDto? ArmorModifications { get; set; }
+    /// <summary>当前改装后的六维，不覆盖首次生成原值；目录不可用时为空。</summary>
+    public EraArmorAttributesDto? ArmorEffectiveAttributes { get; set; }
     public EraWeaponInstanceDto? Weapon { get; set; }
     public EraWeaponTemplateDto? WeaponTemplate { get; set; }
 }

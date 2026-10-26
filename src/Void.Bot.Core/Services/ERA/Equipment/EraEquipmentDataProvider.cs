@@ -1,3 +1,4 @@
+using Void.Bot.Message.Constants.ERA;
 using AutoMapper;
 using Void.Bot.Core.Mappings;
 using Void.Bot.Core.Exceptions;
@@ -12,6 +13,7 @@ namespace Void.Bot.Core.Services.ERA.Equipment;
 
 public partial interface IEraEquipmentDataProvider : IScope
 {
+    Task<EraArmorCatalogDto> GetArmorCatalogAsync(CancellationToken cancellationToken);
     Task<EraWeaponCatalogDto> GetWeaponCatalogAsync(CancellationToken cancellationToken);
     Task<EraEquipmentConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken);
     Task<EraEquipmentReadSnapshot?> GetCharacterSnapshotAsync(
@@ -21,7 +23,7 @@ public partial interface IEraEquipmentDataProvider : IScope
 /// <summary>装备查询与位置变更的数据访问；Request 不产生写入，事务由工作单元提交。</summary>
 public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
 {
-    private static readonly Guid ConfigurationId = Void.Bot.Message.Constants.ERA.EraEquipmentConstants.ConfigurationId;
+    private static readonly Guid ConfigurationId = EraEquipmentConstants.ConfigurationId;
     private readonly IRepository<EraEquipmentConfiguration> _eraEquipmentConfigurationRepository;
     private readonly IRepository<EraCharacter> _eraCharacterRepository;
     private readonly IRepository<EraEquipmentInstance> _eraEquipmentInstanceRepository;
@@ -40,6 +42,15 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
     private readonly IRepository<EraWeaponSlotType> _eraWeaponSlotTypeRepository;
     private readonly IRepository<EraWeaponSlotConfiguration> _eraWeaponSlotConfigurationRepository;
+    private readonly IRepository<EraArmorTemplate> _eraArmorTemplateRepository;
+    private readonly IRepository<EraArmorModDefinition> _eraArmorModDefinitionRepository;
+    private readonly IRepository<EraArmorModStatModifier> _eraArmorModStatModifierRepository;
+    private readonly IRepository<EraArmorConfigurationSlot> _eraArmorConfigurationSlotRepository;
+    private readonly IRepository<EraArmorConfigurationModPool> _eraArmorConfigurationModPoolRepository;
+    private readonly IRepository<EraArmorSlotType> _eraArmorSlotTypeRepository;
+    private readonly IRepository<EraArmorSlotConfiguration> _eraArmorSlotConfigurationRepository;
+    private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
+    private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
     private readonly IMapper _mapper;
 
     public EraEquipmentDataProvider(
@@ -61,6 +72,15 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
         IRepository<EraWeaponSlotType> eraWeaponSlotTypeRepository,
         IRepository<EraWeaponSlotConfiguration> eraWeaponSlotConfigurationRepository,
+        IRepository<EraArmorTemplate> eraArmorTemplateRepository,
+        IRepository<EraArmorModDefinition> eraArmorModDefinitionRepository,
+        IRepository<EraArmorModStatModifier> eraArmorModStatModifierRepository,
+        IRepository<EraArmorConfigurationSlot> eraArmorConfigurationSlotRepository,
+        IRepository<EraArmorConfigurationModPool> eraArmorConfigurationModPoolRepository,
+        IRepository<EraArmorSlotType> eraArmorSlotTypeRepository,
+        IRepository<EraArmorSlotConfiguration> eraArmorSlotConfigurationRepository,
+        IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
+        IRepository<EraArmorModSelection> eraArmorModSelectionRepository,
         IMapper mapper)
     {
         _eraEquipmentConfigurationRepository = eraEquipmentConfigurationRepository;
@@ -82,6 +102,27 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         _eraWeaponSlotTypeRepository = eraWeaponSlotTypeRepository;
         _eraWeaponSlotConfigurationRepository = eraWeaponSlotConfigurationRepository;
         _mapper = mapper;
+        _eraArmorTemplateRepository = eraArmorTemplateRepository;
+        _eraArmorModDefinitionRepository = eraArmorModDefinitionRepository;
+        _eraArmorModStatModifierRepository = eraArmorModStatModifierRepository;
+        _eraArmorConfigurationSlotRepository = eraArmorConfigurationSlotRepository;
+        _eraArmorConfigurationModPoolRepository = eraArmorConfigurationModPoolRepository;
+        _eraArmorSlotTypeRepository = eraArmorSlotTypeRepository;
+        _eraArmorSlotConfigurationRepository = eraArmorSlotConfigurationRepository;
+        _eraArmorModCandidateRepository = eraArmorModCandidateRepository;
+        _eraArmorModSelectionRepository = eraArmorModSelectionRepository;
+    }
+
+    public async Task<EraArmorCatalogDto> GetArmorCatalogAsync(CancellationToken cancellationToken)
+    {
+        var templates = await _eraArmorTemplateRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var definitions = await _eraArmorModDefinitionRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var modifiers = await _eraArmorModStatModifierRepository.QueryNoTracking().OrderBy(row => row.Sequence).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var slots = await _eraArmorConfigurationSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var pools = await _eraArmorConfigurationModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var slotTypes = await _eraArmorSlotTypeRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var configurations = await _eraArmorSlotConfigurationRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraArmorDataMapping.CreateCatalog(slotTypes, configurations, templates, definitions, modifiers, slots, pools, _mapper);
     }
 
     public async Task<EraWeaponCatalogDto> GetWeaponCatalogAsync(CancellationToken cancellationToken)
@@ -142,6 +183,8 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         }
 
         var first = rows[0];
+        var armorInstances = await ReadArmorInstancesAsync(rows.Where(row => row.Armor != null).Select(row => row.Armor!.EquipmentId), cancellationToken).ConfigureAwait(false);
+        foreach (var row in rows.Where(row => row.Armor != null)) row.Armor!.Modifications = armorInstances[row.Armor.EquipmentId];
         var weaponInstances = await ReadWeaponInstancesAsync(rows.Where(row => row.Equipment?.EquipmentType == EraEquipmentType.Weapon)
                 .Select(row => row.Equipment!.Id), cancellationToken).ConfigureAwait(false);
         var currentVersion = await _eraCharacterRepository.QueryNoTracking().Where(row => row.Id == characterId)
@@ -172,5 +215,16 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         var selections = await _eraWeaponModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
         return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
+    }
+
+    private async Task<Dictionary<Guid, EraArmorInstanceDto>> ReadArmorInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)
+    {
+        var ids = equipmentIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<Guid, EraArmorInstanceDto>();
+        var candidates = await _eraArmorModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var selections = await _eraArmorModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+            .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraArmorDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
 }

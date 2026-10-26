@@ -14,5 +14,7 @@ public enum EraEquipmentOperation
     /// <summary>切换武器槽位实际使用的改装候选，由后端持久化；不表示背包界面的临时勾选。</summary>
     SelectWeaponModification = 5,
     /// <summary>原子销毁角色背包中的一批装备。</summary>
-    Destroy = 6
+    Destroy = 6,
+    /// <summary>切换护甲实例某槽位使用的固定候选，不改变随机六维。</summary>
+    SelectArmorModification = 7
 }
