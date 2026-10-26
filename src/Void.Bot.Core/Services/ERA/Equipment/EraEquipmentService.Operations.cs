@@ -142,7 +142,7 @@ public sealed partial class EraEquipmentService
 
         if (equip != null)
         {
-            var definition = manifest!.Definitions.SingleOrDefault(definition =>
+            var definition = manifest!.Armors.Templates.SingleOrDefault(definition =>
                 definition.Id == item.DefinitionId);
             var weapon = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == item.DefinitionId);
             if (item.EquipmentType == EraEquipmentType.Armor ? definition == null : weapon == null)

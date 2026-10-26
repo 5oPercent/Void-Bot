@@ -1,3 +1,4 @@
+using SystemEnum = System.Enum;
 using System.Linq.Expressions;
 using System.Net;
 using System.Text.Json;
@@ -32,6 +33,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
     private readonly IEraCharacterContext _characterContext;
     private readonly ILocalizationService _localizationService;
     private readonly IEraWeaponDataProvider? _weaponData;
+    private readonly IEraArmorDataProvider? _armorData;
     private readonly IEraEquipmentNotificationService? _notifications;
 
     public EraEquipmentService(
@@ -39,12 +41,13 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
         IEraCharacterContext characterContext,
         ILocalizationService localizationService,
         IEraWeaponDataProvider? weaponData = null,
-        IEraEquipmentNotificationService? notifications = null)
+        IEraEquipmentNotificationService? notifications = null, IEraArmorDataProvider? armorData = null)
     {
         _dataProvider = dataProvider;
         _characterContext = characterContext;
         _localizationService = localizationService;
         _weaponData = weaponData;
+        _armorData = armorData;
         _notifications = notifications;
     }
 
@@ -85,7 +88,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
         {
             return Error<T>(HttpStatusCode.BadRequest, "era.equipment_invalid_slot", text => text.InvalidSlot);
         }
-        if (equipmentType.HasValue && !System.Enum.IsDefined(equipmentType.Value))
+        if (equipmentType.HasValue && !SystemEnum.IsDefined(equipmentType.Value))
             return Error<T>(HttpStatusCode.BadRequest, "era.equipment_invalid_type", text => text.InvalidEquipmentType);
 
         EraEquipmentReadSnapshot? snapshot;
@@ -124,14 +127,14 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             return null;
         }
 
-        var definitions = manifest?.Definitions.ToDictionary(definition => definition.Id);
+        var definitions = manifest?.Armors.Templates.ToDictionary(definition => definition.Id);
         var items = new List<EraEquipmentInstanceDto>();
         foreach (var entry in snapshot.Entries)
         {
             var equipment = entry.Equipment;
             var armor = entry.Armor;
             if (equipment.Id == Guid.Empty || equipment.CharacterId != snapshot.CharacterId || equipment.OwnerPlayerId != snapshot.PlayerId ||
-                !EraEquipmentItemRules.ValidPayload(entry) || !System.Enum.IsDefined(equipment.Grade) ||
+                !EraEquipmentItemRules.ValidPayload(entry) || !SystemEnum.IsDefined(equipment.Grade) ||
                 equipment.Version < 1 || equipment.DefinitionVersion < 1 ||
                 equipment.DefinitionId == Guid.Empty || equipment.CreatedAt == default ||
                 equipment.Location is not (EraEquipmentLocation.Inventory or EraEquipmentLocation.Equipped) ||
@@ -141,7 +144,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 return null;
             }
 
-            EraArmorDefinitionDto? definition = null;
+            EraArmorTemplateDto? definition = null;
             definitions?.TryGetValue(equipment.DefinitionId, out definition);
             items.Add(new EraEquipmentInstanceDto
             {
@@ -158,6 +161,8 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 Version = equipment.Version,
                 CreatedAt = equipment.CreatedAt,
                 Weapon = entry.Weapon,
+                ArmorModifications = armor?.Modifications,
+                ArmorEffectiveAttributes = armor == null || manifest == null ? null : EraArmorModificationRules.Evaluate(armor, manifest.Armors),
                 WeaponTemplate = manifest?.Weapons.Templates.SingleOrDefault(template => template.Id == equipment.DefinitionId),
                 GenerationRuleVersion = armor?.GenerationRuleVersion ?? 0,
                 ArmorAttributes = armor == null ? new EraArmorAttributesDto() : new EraArmorAttributesDto
@@ -226,7 +231,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 Version = EraArmorGenerationRules.Version,
                 WeightsPercent = EraArmorGenerationRules.WeightsPercent.ToList(),
                 MaximumDeviation = EraArmorGenerationRules.MaximumDeviation,
-                GradeBudgets = System.Enum.GetValues<EraEquipmentGrade>().Select(grade => new EraArmorGradeBudgetDto
+                GradeBudgets = SystemEnum.GetValues<EraEquipmentGrade>().Select(grade => new EraArmorGradeBudgetDto
                 {
                     Grade = grade,
                     Budget = EraArmorGenerationRules.GetBudget(grade)
@@ -259,9 +264,11 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             {
                 result.Weapons = await provider.GetWeaponCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraWeaponCatalogDto();
                 EraWeaponConfigurationValidator.Validate(result.Weapons);
+                result.Armors = await provider.GetArmorCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraArmorCatalogDto();
+                EraArmorConfigurationValidator.Validate(result.Armors);
             }
             catch (Exception exception) when (exception is ArgumentException or JsonException) { return null; }
-            if (result.Definitions.Select(definition => definition.Id).Intersect(result.Weapons.Templates.Select(template => template.Id)).Any())
+            if (result.Armors.Templates.Select(definition => definition.Id).Intersect(result.Weapons.Templates.Select(template => template.Id)).Any())
                 return null;
             if (locked) return result;
             var after = await provider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);

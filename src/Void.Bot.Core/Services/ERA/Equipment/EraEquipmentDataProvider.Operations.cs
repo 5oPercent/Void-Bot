@@ -60,6 +60,8 @@ public sealed partial class EraEquipmentDataProvider
         var armor = await _eraArmorInstanceDataRepository.QuerySql(
                 $"SELECT armor.* FROM era_armor_instance_data AS armor INNER JOIN era_equipment_instance AS equipment ON armor.equipment_id = equipment.id WHERE equipment.character_id = {character.Id.ToString()} AND (equipment.location = {(int)EraEquipmentLocation.Inventory} OR equipment.location = {(int)EraEquipmentLocation.Equipped}) ORDER BY armor.equipment_id FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+        var armorInstances = await ReadArmorInstancesAsync(armor.Select(row => row.EquipmentId), cancellationToken).ConfigureAwait(false);
+        foreach (var row in armor) row.Modifications = armorInstances[row.EquipmentId];
         var armorById = armor.ToDictionary(item => item.EquipmentId);
         var weapons = await ReadWeaponInstancesAsync(equipment.Where(row => row.EquipmentType == EraEquipmentType.Weapon)
                 .Select(row => row.Id), cancellationToken).ConfigureAwait(false);

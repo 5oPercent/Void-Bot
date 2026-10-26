@@ -39,12 +39,12 @@ public class EraEquipmentOperationFixture
             Version = 7,
             Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto
             {
-                Definitions = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorDefinitionDto
+                Armors = new EraArmorCatalogDto { Templates = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorTemplateDto
                 {
                     Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
                     Name = "Test armor",
                     CompatibleSlots = new List<EraEquipmentSlot> { slot }
-                }).ToList()
+                }).ToList() }
             })
         };
         _user.Id.Returns(Guid.NewGuid());
@@ -52,6 +52,7 @@ public class EraEquipmentOperationFixture
         _players.LockCharacterAsync(_character.Id, Arg.Any<CancellationToken>()).Returns(_character);
         _data.LockConfigurationAsync(Arg.Any<CancellationToken>()).Returns(_configuration);
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(_configuration);
+        _data.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(JsonSerializer.Deserialize<EraEquipmentManifestDto>(_configuration.Payload)!.Armors);
         _data.LockCharacterEquipmentAsync(Arg.Any<EraCharacter>(), Arg.Any<CancellationToken>()).Returns(_ => Snapshot());
         _data.GetOperationReceiptAsync(_player.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => _receipts.SingleOrDefault(receipt => receipt.RequestId == call.ArgAt<Guid>(1)));

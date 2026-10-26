@@ -1,3 +1,4 @@
+using Void.Bot.Message.Constants.ERA;
 using Void.Bot.Core.Mappings;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
@@ -27,7 +28,7 @@ public interface IEraRewardDataProvider : IScope
 
 public sealed class EraRewardDataProvider : IEraRewardDataProvider
 {
-    private static readonly Guid ConfigurationId = Void.Bot.Message.Constants.ERA.EraRewardConstants.ConfigurationId;
+    private static readonly Guid ConfigurationId = EraRewardConstants.ConfigurationId;
     private readonly IRepository<EraRewardEvent> _eraRewardEventRepository;
     private readonly IRepository<EraRewardRequest> _eraRewardRequestRepository;
     private readonly IRepository<EraRewardConfiguration> _eraRewardConfigurationRepository;
@@ -38,6 +39,9 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
     private readonly IRepository<EraWeaponModCandidate> _eraWeaponModCandidateRepository;
     private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
 
+    private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
+    private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
+
     public EraRewardDataProvider(
         IRepository<EraRewardEvent> eraRewardEventRepository,
         IRepository<EraRewardRequest> eraRewardRequestRepository,
@@ -47,7 +51,9 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
         IRepository<EraArmorInstanceData> eraArmorInstanceDataRepository,
         IRepository<EraRewardGrantEquipment> eraRewardGrantEquipmentRepository,
         IRepository<EraWeaponModCandidate> eraWeaponModCandidateRepository,
-        IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository)
+        IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
+        IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
+        IRepository<EraArmorModSelection> eraArmorModSelectionRepository)
     {
         _eraRewardEventRepository = eraRewardEventRepository;
         _eraRewardRequestRepository = eraRewardRequestRepository;
@@ -58,6 +64,8 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
         _eraRewardGrantEquipmentRepository = eraRewardGrantEquipmentRepository;
         _eraWeaponModCandidateRepository = eraWeaponModCandidateRepository;
         _eraWeaponModSelectionRepository = eraWeaponModSelectionRepository;
+        _eraArmorModCandidateRepository = eraArmorModCandidateRepository;
+        _eraArmorModSelectionRepository = eraArmorModSelectionRepository;
     }
 
     public void AddWeaponInstances(IReadOnlyDictionary<Guid, EraWeaponInstanceDto> weapons)
@@ -148,7 +156,13 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
         var items = equipment.ToList();
         _eraRewardGrantRepository.Insert(grant);
         _eraEquipmentInstanceRepository.InsertMany(items);
-        _eraArmorInstanceDataRepository.InsertMany(armor);
+        var armorItems = armor.ToList();
+        _eraArmorInstanceDataRepository.InsertMany(armorItems);
+        foreach (var item in armorItems)
+        {
+            _eraArmorModCandidateRepository.InsertMany(EraArmorDataMapping.CreateCandidates(item.EquipmentId, item.Modifications));
+            _eraArmorModSelectionRepository.InsertMany(EraArmorDataMapping.CreateSelections(item.EquipmentId, item.Modifications));
+        }
         _eraRewardGrantEquipmentRepository.InsertMany(items.Select(item => new EraRewardGrantEquipment
         {
             GrantId = grant.Id, EquipmentId = item.Id

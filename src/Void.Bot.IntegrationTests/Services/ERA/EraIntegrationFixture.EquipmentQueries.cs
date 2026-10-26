@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
@@ -127,7 +126,9 @@ public partial class EraIntegrationFixture
         {
             var configuration = await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId);
             configuration.Version = 8;
-            configuration.Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto());
+            // 模拟模板关系记录缺失；正常管理发布会拒绝删除仍受实例引用的模板。
+            (await context.Set<EraArmorTemplate>().Where(row => row.Id == _inventory[0].DefinitionId)
+                .ExecuteDeleteAsync()).ShouldBe(1);
             await context.SaveChangesAsync();
         });
 

@@ -1,3 +1,4 @@
+using Void.Bot.Message.Dto.ERA;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Void.Bot.Message.Dto;
@@ -10,6 +11,8 @@ public sealed class EraArmorInstanceData : IEntityBase
 {
     [Key]
     public Guid EquipmentId { get; set; }
+    /// <summary>读取关系表后组装的固定候选与当前选择，不在六维表内重复保存。</summary>
+    [NotMapped] public EraArmorInstanceDto Modifications { get; set; } = new();
     public int GenerationRuleVersion { get; set; }
     public int Strength { get; set; }
     public int Survival { get; set; }

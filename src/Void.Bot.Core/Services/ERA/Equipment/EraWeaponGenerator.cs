@@ -19,26 +19,16 @@ public sealed class EraWeaponGenerator : IEraWeaponGenerator
         var result = new EraWeaponInstanceDto();
         foreach (var slot in configuration.Slots.OrderBy(value => value.DisplayOrder).ThenBy(value => value.Id))
         {
-            if (slot.CandidateCount < 1 || slot.CandidateCount > EraWeaponConstants.MaximumCandidatesPerSlot ||
-                slot.CandidateCount > slot.Pool.Count || slot.Pool.Any(value => value.Weight <= 0) ||
-                slot.Pool.Select(value => value.ModDefinitionId).Distinct().Count() != slot.Pool.Count)
-                throw new ArgumentException("Weapon candidate pool cannot satisfy CandidateCount.");
-            var available = slot.Pool.ToList();
-            var generated = new EraWeaponInstanceSlotDto { SlotId = slot.Id, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder };
-            for (var index = 0; index < slot.CandidateCount; index++)
+            var sampled = EraEquipmentModificationSampler.Sample(slot.Pool.Select(row => (row.ModDefinitionId, row.Weight)),
+                slot.CandidateCount, EraWeaponConstants.MaximumCandidatesPerSlot, next);
+            var generated = new EraWeaponInstanceSlotDto
             {
-                long total = available.Sum(value => (long)value.Weight);
-                if (total > int.MaxValue) throw new ArgumentException("Weapon pool total weight exceeds its limit.");
-                var roll = next((int)total);
-                if (roll < 0 || roll >= total) throw new ArgumentOutOfRangeException(nameof(next));
-                var selected = 0;
-                while (roll >= available[selected].Weight) roll -= available[selected++].Weight;
-                generated.Candidates.Add(new EraWeaponCandidateDto
+                SlotId = slot.Id, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder,
+                Candidates = sampled.Select((definitionId, index) => new EraWeaponCandidateDto
                 {
-                    CandidateId = Guid.NewGuid(), ModDefinitionId = available[selected].ModDefinitionId, DisplayOrder = index
-                });
-                available.RemoveAt(selected);
-            }
+                    CandidateId = Guid.NewGuid(), ModDefinitionId = definitionId, DisplayOrder = index
+                }).ToList()
+            };
             generated.SelectedCandidateId = generated.Candidates[0].CandidateId;
             result.Slots.Add(generated);
         }
