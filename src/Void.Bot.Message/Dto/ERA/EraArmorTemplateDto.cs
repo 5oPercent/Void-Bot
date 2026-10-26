@@ -12,6 +12,8 @@ public sealed class EraArmorTemplateDto
     public string Icon { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public bool IsGenerationEnabled { get; set; } = true;
+    /// <summary>必填的护甲表现关联键；当前仅保存关联，不驱动模型或换装表现。</summary>
+    public string PresentationKey { get; set; } = string.Empty;
     /// <summary>允许穿戴的角色装备部位，可多选；不是方案内的改装槽位。</summary>
     public List<EraEquipmentSlot> CompatibleSlots { get; set; } = new();
     public Guid? SlotConfigurationId { get; set; }

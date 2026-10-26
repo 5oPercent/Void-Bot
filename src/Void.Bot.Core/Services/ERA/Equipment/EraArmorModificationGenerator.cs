@@ -16,6 +16,7 @@ public sealed class EraArmorModificationGenerator : IEraArmorModificationGenerat
 
     internal static EraArmorInstanceDto Generate(EraArmorSlotConfigurationDto configuration, Func<int, int> next)
     {
+        if (configuration.Slots.Count < 1) throw new ArgumentException("Armor slot configuration must contain at least one slot.");
         var result = new EraArmorInstanceDto();
         foreach (var slot in configuration.Slots.OrderBy(value => value.DisplayOrder).ThenBy(value => value.Id))
         {

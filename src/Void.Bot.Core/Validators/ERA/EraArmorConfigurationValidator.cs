@@ -47,7 +47,7 @@ public static class EraArmorConfigurationValidator
             if (configuration.Id == Guid.Empty || !configurations.TryAdd(configuration.Id, configuration) ||
                 string.IsNullOrWhiteSpace(configuration.Name) || configuration.Name.Length > 128 ||
                 configuration.Note is not { Length: <= 2048 } || configuration.Slots == null ||
-                configuration.Slots.Count > EraArmorConstants.MaximumDefinitions || configuration.Slots.Any(slot => slot == null))
+                configuration.Slots.Count < 1 || configuration.Slots.Count > EraArmorConstants.MaximumDefinitions || configuration.Slots.Any(slot => slot == null))
                 throw new ArgumentException("Armor slot configuration is invalid.");
             if (configuration.Slots.Select(slot => slot.SlotTypeId).Distinct().Count() != configuration.Slots.Count)
                 throw new ArgumentException("Armor slot types must be unique within a scheme.");
@@ -74,6 +74,8 @@ public static class EraArmorConfigurationValidator
             var compatibleSlots = template.CompatibleSlots;
             if (template.Id == Guid.Empty || !ids.Add(template.Id) || string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 128 ||
                 template.Icon is not { Length: <= 256 } || template.Note is not { Length: <= 2048 } ||
+                template.PresentationKey is not { Length: >= 1 and <= 128 } ||
+                template.PresentationKey.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not ('.' or '_' or '-')) ||
                 (template.SlotConfigurationId.HasValue && !configurations.ContainsKey(template.SlotConfigurationId.Value)) ||
                 compatibleSlots == null || compatibleSlots.Count == 0 ||
                 compatibleSlots.Any(value => !EraEquipmentRules.ArmorSlots.Contains(value)) ||

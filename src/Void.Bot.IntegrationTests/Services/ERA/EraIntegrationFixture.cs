@@ -144,14 +144,14 @@ public partial class EraIntegrationFixture : IntegrationFixture
         {
             Armors = new EraArmorCatalogDto { Templates = EraEquipmentRules.ArmorSlots.Select(slot => new EraArmorTemplateDto
             {
-                Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), Name = "Test armor",
+                Id = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), Name = "Test armor", PresentationKey = $"armor_test_{(int)slot}",
                 CompatibleSlots = new List<EraEquipmentSlot> { slot }
             }).ToList() }
         };
         configuration.Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto());
         context.Set<EraArmorTemplate>().AddRange(armorManifest.Armors.Templates.Select(template => new EraArmorTemplate
         {
-            Id = template.Id, Name = template.Name, Icon = template.Icon, Note = template.Note, IsGenerationEnabled = true,
+            Id = template.Id, Name = template.Name, Icon = template.Icon, Note = template.Note, IsGenerationEnabled = true, PresentationKey = template.PresentationKey,
             CompatibleSlotsPayload = JsonSerializer.Serialize(template.CompatibleSlots)
         }));
 

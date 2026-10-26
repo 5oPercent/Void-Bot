@@ -12,6 +12,7 @@ public sealed class EraArmorTemplate : IEntity<Guid>
     [StringLength(256)] public string Icon { get; set; } = string.Empty;
     [StringLength(2048)] public string Note { get; set; } = string.Empty;
     public bool IsGenerationEnabled { get; set; }
+    [StringLength(128)] public string PresentationKey { get; set; } = string.Empty;
     public Guid? SlotConfigurationId { get; set; }
     [Column(TypeName = "text")] public string CompatibleSlotsPayload { get; set; } = string.Empty;
 }

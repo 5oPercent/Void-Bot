@@ -61,7 +61,7 @@ public static class EraWeaponConfigurationValidator
             if (configuration.Id == Guid.Empty || !configurations.TryAdd(configuration.Id, configuration) ||
                 string.IsNullOrWhiteSpace(configuration.Name) || configuration.Name.Length > 128 ||
                 configuration.Note is not { Length: <= 2048 } || configuration.Slots == null ||
-                configuration.Slots.Count > EraWeaponConstants.MaximumDefinitions || configuration.Slots.Any(slot => slot == null))
+                configuration.Slots.Count < 1 || configuration.Slots.Count > EraWeaponConstants.MaximumDefinitions || configuration.Slots.Any(slot => slot == null))
                 throw new ArgumentException("Weapon slot configuration is invalid.");
             foreach (var slot in configuration.Slots)
             {
@@ -87,13 +87,13 @@ public static class EraWeaponConfigurationValidator
             if (template.Id == Guid.Empty || !ids.Add(template.Id) || string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 128 ||
                 template.Icon is not { Length: <= 256 } || template.Note is not { Length: <= 2048 } ||
                 !ValidPresentationKey(template.PresentationKey) || !mappingIds.Contains(template.StatMappingId) ||
-                !configurations.TryGetValue(template.SlotConfigurationId, out var configuration) ||
+                (template.SlotConfigurationId.HasValue && !configurations.ContainsKey(template.SlotConfigurationId.Value)) ||
                 compatibleSlots == null || compatibleSlots.Count == 0 ||
                 compatibleSlots.Any(value => value < EraEquipmentSlot.Weapon1 || value > EraEquipmentSlot.Weapon3) ||
                 compatibleSlots.Distinct().Count() != compatibleSlots.Count)
                 throw new ArgumentException("Weapon template, configuration reference or equipment mapping is invalid.");
             ValidateStats(template.BaseStats, template.Behavior);
-            if (configuration.Slots.SelectMany(slot => slot.Pool).Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value =>
+            if (template.SlotConfigurationId.HasValue && configurations[template.SlotConfigurationId.Value].Slots.SelectMany(slot => slot.Pool).Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value =>
                 value.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue ||
                 value.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue)))
                 throw new ArgumentException("Weapon configuration uses an attribute unsupported by an associated template.");

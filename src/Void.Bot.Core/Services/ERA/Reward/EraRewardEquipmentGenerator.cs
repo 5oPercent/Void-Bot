@@ -31,7 +31,8 @@ public static class EraRewardEquipmentGenerator
                     EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = entry.Grade,
                     EquipmentType = isWeapon ? EraEquipmentType.Weapon : EraEquipmentType.Armor
                 };
-                if (isWeapon) item.Weapon = weapons!.Generate(configurations[template!.SlotConfigurationId]);
+                if (isWeapon) item.Weapon = template!.SlotConfigurationId is { } configurationId
+                    ? weapons!.Generate(configurations[configurationId]) : new EraWeaponInstanceDto();
                 else
                 {
                     var generated = armor.Generate(entry.Grade);

@@ -16,6 +16,7 @@ public sealed class EraWeaponGenerator : IEraWeaponGenerator
 
     internal static EraWeaponInstanceDto Generate(EraWeaponSlotConfigurationDto configuration, Func<int, int> next)
     {
+        if (configuration.Slots.Count < 1) throw new ArgumentException("Weapon slot configuration must contain at least one slot.");
         var result = new EraWeaponInstanceDto();
         foreach (var slot in configuration.Slots.OrderBy(value => value.DisplayOrder).ThenBy(value => value.Id))
         {
