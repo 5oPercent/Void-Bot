@@ -5,7 +5,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-/// <summary>从本人角色背包装入空槽或原子替换；成功回执与位置变化一起提交。</summary>
+/// <summary>从背包装配，或原子移动／互换已穿武器；成功回执与全部位置变化一起提交。</summary>
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 public sealed class EquipEraEquipmentCommand : IEraEquipmentOperation
 {
@@ -13,10 +13,12 @@ public sealed class EquipEraEquipmentCommand : IEraEquipmentOperation
     public Guid CharacterId { get; set; }
     /// <summary>玩家范围内的幂等标识，同一成功请求重试不能改参数。</summary>
     public Guid RequestId { get; set; }
-    /// <summary>当前角色背包中的候选实例 ID。</summary>
+    /// <summary>当前角色背包或已穿武器中的候选实例 ID。</summary>
     public Guid EquipmentId { get; set; }
     /// <summary>目标已穿槽位。</summary>
     public EraEquipmentSlot Slot { get; set; }
+    /// <summary>候选当前已穿位置；背包候选必须为 null。</summary>
+    public EraEquipmentSlot? ExpectedSourceSlot { get; set; }
     /// <summary>角色装备快照的预期版本。</summary>
     public long ExpectedEquipmentVersion { get; set; }
     /// <summary>候选实例的预期版本。</summary>

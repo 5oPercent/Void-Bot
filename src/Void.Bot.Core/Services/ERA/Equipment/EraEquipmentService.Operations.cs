@@ -39,7 +39,10 @@ public sealed partial class EraEquipmentService
             command.ExpectedEquipmentVersion < 0 || command.ExpectedItemVersion < 1 || !EraEquipmentRules.EquippedSlots.Contains(command.Slot) ||
             (equip != null && (equip.ExpectedManifestVersion < 1 ||
                 equip.ExpectedEquippedEquipmentId.HasValue != equip.ExpectedEquippedVersion.HasValue ||
-                equip.ExpectedEquippedEquipmentId == Guid.Empty || equip.ExpectedEquippedVersion is <= 0)))
+                equip.ExpectedEquippedEquipmentId == Guid.Empty || equip.ExpectedEquippedVersion is <= 0 ||
+                equip.ExpectedSourceSlot.HasValue && (equip.ExpectedSourceSlot.Value is not
+                    (EraEquipmentSlot.Weapon1 or EraEquipmentSlot.Weapon2 or EraEquipmentSlot.Weapon3) ||
+                    equip.ExpectedSourceSlot == command.Slot))))
         {
             return Error<T>(HttpStatusCode.BadRequest, "era.equipment_invalid_operation", text => text.InvalidOperation);
         }
@@ -59,6 +62,9 @@ public sealed partial class EraEquipmentService
             ExpectedEquippedVersion = equip?.ExpectedEquippedVersion,
             ExpectedManifestVersion = equip?.ExpectedManifestVersion
         });
+        // 旧背包请求保持原幂等指纹；只有新增的已穿移动意图追加来源位置。
+        if (equip?.ExpectedSourceSlot is { } expectedSource)
+            requestPayload = requestPayload[..^1] + ",\"ExpectedSourceSlot\":" + (int)expectedSource + "}";
         var receipt = await _dataProvider.GetOperationReceiptAsync(character.PlayerId, command.RequestId, cancellationToken)
             .ConfigureAwait(false);
         if (receipt != null)
@@ -133,7 +139,10 @@ public sealed partial class EraEquipmentService
         var current = snapshot.Entries.SingleOrDefault(entry => entry.Equipment.Location == EraEquipmentLocation.Equipped &&
             entry.Equipment.EquippedSlot == command.Slot)?.Equipment;
         if (item.Version != command.ExpectedItemVersion ||
-            (equip != null && (item.Location != EraEquipmentLocation.Inventory ||
+            (equip != null && ((equip.ExpectedSourceSlot.HasValue
+                ? item.EquipmentType != EraEquipmentType.Weapon || item.Location != EraEquipmentLocation.Equipped ||
+                    item.EquippedSlot != equip.ExpectedSourceSlot
+                : item.Location != EraEquipmentLocation.Inventory) ||
                 current?.Id != equip.ExpectedEquippedEquipmentId || current?.Version != equip.ExpectedEquippedVersion)) ||
             (equip == null && (item.Location != EraEquipmentLocation.Equipped || current?.Id != item.Id)))
         {
@@ -155,17 +164,23 @@ public sealed partial class EraEquipmentService
             {
                 return Error<T>(HttpStatusCode.BadRequest, "era.equipment_incompatible_slot", text => text.IncompatibleSlot);
             }
+            if (equip.ExpectedSourceSlot is { } source && current != null)
+            {
+                var returning = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == current.DefinitionId);
+                if (current.EquipmentType != EraEquipmentType.Weapon || returning == null || !returning.CompatibleSlots.Contains(source))
+                    return Error<T>(HttpStatusCode.BadRequest, "era.equipment_incompatible_slot", text => text.IncompatibleSlot);
+            }
         }
 
-        if (snapshot.EquippedOperationRestriction?.IsRestricted == true && current != null)
+        if (snapshot.EquippedOperationRestriction?.IsRestricted == true && (current != null || equip?.ExpectedSourceSlot != null))
         {
             return Error<T>(HttpStatusCode.Forbidden, "era.equipment_operations_restricted", text => text.OperationsRestricted);
         }
 
         // 检查事务完成后的背包总数；替换一出一进，不要求额外空格。
         var count = snapshot.Entries.Count(entry => entry.Equipment.Location == EraEquipmentLocation.Inventory);
-        if (equip != null) count--;
-        if (equip == null || current != null) count++;
+        if (equip != null && !equip.ExpectedSourceSlot.HasValue) count--;
+        if (equip == null || (current != null && !equip.ExpectedSourceSlot.HasValue)) count++;
         if (count > EraEquipmentRules.InventoryCapacity)
         {
             return Error<T>(HttpStatusCode.Conflict, "era.equipment_inventory_full", text => text.InventoryFull);
@@ -185,8 +200,8 @@ public sealed partial class EraEquipmentService
                 ExpectedVersion = current.Version,
                 PreviousLocation = current.Location,
                 PreviousEquippedSlot = current.EquippedSlot,
-                Location = EraEquipmentLocation.Inventory,
-                EquippedSlot = null
+                Location = equip.ExpectedSourceSlot.HasValue ? EraEquipmentLocation.Equipped : EraEquipmentLocation.Inventory,
+                EquippedSlot = equip.ExpectedSourceSlot
             });
         }
 

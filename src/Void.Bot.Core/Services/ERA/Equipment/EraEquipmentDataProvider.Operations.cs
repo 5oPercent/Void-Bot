@@ -88,14 +88,33 @@ public sealed partial class EraEquipmentDataProvider
         _eraEquipmentConfigurationRepository.RequireTransaction();
 
         var updatedAt = DateTimeOffset.UtcNow;
-        // 替换时调用方先传旧装备回包，再传候选穿上，避免同槽唯一索引的瞬时冲突。
+        // 同一事务内先释放所有移动武器的槽位，避免互换／轮换触发同槽唯一索引。
+        // 中间位置不提交、不生成回执、不增加版本；后续任一失败由外层工作单元整体回滚。
+        var moving = changes.Where(change => change.PreviousLocation == EraEquipmentLocation.Equipped &&
+            change.Location == EraEquipmentLocation.Equipped && change.PreviousEquippedSlot != change.EquippedSlot)
+            .Select(change => change.EquipmentId).ToHashSet();
+        foreach (var change in changes.Where(change => moving.Contains(change.EquipmentId)))
+        {
+            var affected = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(
+                equipment => equipment.Id == change.EquipmentId && equipment.CharacterId == characterId &&
+                    equipment.OwnerPlayerId == playerId && equipment.Version == change.ExpectedVersion &&
+                    equipment.Location == change.PreviousLocation && equipment.EquippedSlot == change.PreviousEquippedSlot,
+                setters => setters.SetProperty(equipment => equipment.Location, EraEquipmentLocation.Inventory)
+                    .SetProperty(equipment => equipment.EquippedSlot, (EraEquipmentSlot?)null), cancellationToken)
+                .ConfigureAwait(false);
+            if (affected != 1)
+                throw new EraEquipmentConcurrencyException("Equipment position changed during the operation.");
+        }
+        // 背包替换仍先释放旧装备；已穿移动使用上面已校验的事务内暂存位置。
         foreach (var change in changes)
         {
+            var previousLocation = moving.Contains(change.EquipmentId) ? EraEquipmentLocation.Inventory : change.PreviousLocation;
+            var previousSlot = moving.Contains(change.EquipmentId) ? null : change.PreviousEquippedSlot;
             var affected = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(
                 equipment => equipment.Id == change.EquipmentId &&
                     equipment.CharacterId == characterId && equipment.OwnerPlayerId == playerId &&
                     equipment.Version == change.ExpectedVersion &&
-                    equipment.Location == change.PreviousLocation && equipment.EquippedSlot == change.PreviousEquippedSlot,
+                    equipment.Location == previousLocation && equipment.EquippedSlot == previousSlot,
                 setters => setters
                     .SetProperty(equipment => equipment.Location, change.Location)
                     .SetProperty(equipment => equipment.EquippedSlot, change.EquippedSlot)
