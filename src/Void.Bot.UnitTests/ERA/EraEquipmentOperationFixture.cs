@@ -18,7 +18,7 @@ using Void.Bot.Message.Enum.ERA;
 namespace Void.Bot.UnitTest.ERA;
 
 /// <summary>业务层测试使用独立的持久化桩；真实 SQL 中途失败的事务回滚仍需数据库集成验证。</summary>
-public class EraEquipmentOperationFixture
+public partial class EraEquipmentOperationFixture
 {
     private readonly IEraEquipmentDataProvider _data = Substitute.For<IEraEquipmentDataProvider>();
     private readonly IEraDataProvider _players = Substitute.For<IEraDataProvider>();
