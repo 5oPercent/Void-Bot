@@ -16,5 +16,7 @@ public enum EraEquipmentOperation
     /// <summary>原子销毁角色背包中的一批装备。</summary>
     Destroy = 6,
     /// <summary>切换护甲实例某槽位使用的固定候选，不改变随机六维。</summary>
-    SelectArmorModification = 7
+    SelectArmorModification = 7,
+    /// <summary>原子销毁本人有拾取权限的地面装备。</summary>
+    DestroyGround = 8
 }

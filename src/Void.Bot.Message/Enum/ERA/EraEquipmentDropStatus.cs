@@ -8,5 +8,7 @@ public enum EraEquipmentDropStatus
     /// <summary>已被领取，不可再次拾取。</summary>
     PickedUp = 2,
     /// <summary>掉落已失效，不可再领取。</summary>
-    Invalidated = 3
+    Invalidated = 3,
+    /// <summary>被有拾取权限的玩家主动销毁。</summary>
+    Destroyed = 4
 }

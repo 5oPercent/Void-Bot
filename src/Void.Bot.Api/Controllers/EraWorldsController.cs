@@ -164,6 +164,17 @@ public sealed partial class EraWorldsController : ControllerBase
             new GetEraEquipmentDropsRequest { WorldInstanceId = worldInstanceId }, cancellationToken).ConfigureAwait(false));
     }
 
+    [HttpPost("{worldInstanceId:guid}/equipment-drops/destroy")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("DestroyEraEquipmentDrops")]
+    [ProducesResponseType(typeof(DestroyEraEquipmentDropsResponse), 200)]
+    public async Task<IActionResult> DestroyEquipmentDropsAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] DestroyEraEquipmentDropsCommand command, CancellationToken cancellationToken)
+    {
+        command.WorldInstanceId = worldInstanceId;
+        return Ok(await _mediator.SendAsync<DestroyEraEquipmentDropsCommand, DestroyEraEquipmentDropsResponse>(command, cancellationToken).ConfigureAwait(false));
+    }
+
     [HttpPost("{worldInstanceId:guid}/equipment-drops/{dropId:guid}/pickup")]
     [SkipPermissionCheck]
     [DescriptionLocalization("PickupEraEquipmentDrop")]

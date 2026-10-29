@@ -19,4 +19,6 @@ public sealed class EraEquipmentOperationReceiptDto
     public EraEquipmentDropPickupDto? Pickup { get; set; }
     /// <summary>仅背包丢出回执填写，旧回执保持为空。</summary>
     public EraEquipmentDropCreatedDto? Dropped { get; set; }
+    /// <summary>仅地面销毁回执填写，包含整批成功销毁的掉落。</summary>
+    public List<EraEquipmentDropDestroyedDto>? DestroyedDrops { get; set; }
 }
