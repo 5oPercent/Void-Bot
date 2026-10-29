@@ -5,6 +5,8 @@ using Void.Bot.Core.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Domain.Account;
+using System.Text.Json;
 using Void.Bot.Core.Services.ERA.Equipment.Models;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
@@ -18,6 +20,7 @@ public partial interface IEraEquipmentDataProvider : IScope
     Task<EraEquipmentConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken);
     Task<EraEquipmentReadSnapshot?> GetCharacterSnapshotAsync(
         Guid characterId, Guid playerId, CancellationToken cancellationToken);
+    Task<Dictionary<Guid, EraEquipmentShareDto>> ReadSharesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken);
 }
 
 /// <summary>装备查询与位置变更的数据访问；Request 不产生写入，事务由工作单元提交。</summary>
@@ -52,6 +55,8 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
     private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
     private readonly IMapper _mapper;
+    private readonly IRepository<EraEquipmentShare> _eraEquipmentShareRepository;
+    private readonly IRepository<UserAccount> _userAccountRepository;
 
     public EraEquipmentDataProvider(
         IRepository<EraEquipmentConfiguration> eraEquipmentConfigurationRepository,
@@ -81,7 +86,9 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         IRepository<EraArmorSlotConfiguration> eraArmorSlotConfigurationRepository,
         IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
         IRepository<EraArmorModSelection> eraArmorModSelectionRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IRepository<EraEquipmentShare> eraEquipmentShareRepository,
+        IRepository<UserAccount> userAccountRepository)
     {
         _eraEquipmentConfigurationRepository = eraEquipmentConfigurationRepository;
         _eraCharacterRepository = eraCharacterRepository;
@@ -102,6 +109,8 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         _eraWeaponSlotTypeRepository = eraWeaponSlotTypeRepository;
         _eraWeaponSlotConfigurationRepository = eraWeaponSlotConfigurationRepository;
         _mapper = mapper;
+        _eraEquipmentShareRepository = eraEquipmentShareRepository;
+        _userAccountRepository = userAccountRepository;
         _eraArmorTemplateRepository = eraArmorTemplateRepository;
         _eraArmorModDefinitionRepository = eraArmorModDefinitionRepository;
         _eraArmorModStatModifierRepository = eraArmorModStatModifierRepository;
@@ -183,6 +192,7 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         }
 
         var first = rows[0];
+        var shares = await ReadSharesAsync(rows.Where(row => row.Equipment != null).Select(row => row.Equipment!.Id), cancellationToken).ConfigureAwait(false);
         var armorInstances = await ReadArmorInstancesAsync(rows.Where(row => row.Armor != null).Select(row => row.Armor!.EquipmentId), cancellationToken).ConfigureAwait(false);
         foreach (var row in rows.Where(row => row.Armor != null)) row.Armor!.Modifications = armorInstances[row.Armor.EquipmentId];
         var weaponInstances = await ReadWeaponInstancesAsync(rows.Where(row => row.Equipment?.EquipmentType == EraEquipmentType.Weapon)
@@ -202,8 +212,45 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
                 RestrictionVersion = first.World.RestrictionVersion, IsRestricted = first.World.IsEquippedOperationsRestricted
             },
             Entries = rows.Where(row => row.Equipment != null)
-                .Select(row => new EraEquipmentReadEntry(row.Equipment!, row.Armor, weaponInstances.GetValueOrDefault(row.Equipment!.Id))).ToList()
+                .Select(row => new EraEquipmentReadEntry(row.Equipment!, row.Armor, weaponInstances.GetValueOrDefault(row.Equipment!.Id), shares.GetValueOrDefault(row.Equipment.Id))).ToList()
         };
+    }
+
+    public async Task<Dictionary<Guid, EraEquipmentShareDto>> ReadSharesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)
+    {
+        var ids = equipmentIds.Distinct().ToArray();
+        var result = new Dictionary<Guid, EraEquipmentShareDto>();
+        if (ids.Length == 0) return result;
+        var shares = await _eraEquipmentShareRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var share in shares)
+        {
+            try
+            {
+                var players = JsonSerializer.Deserialize<List<Guid>>(share.AllowedPlayerIdsPayload);
+                if (share.ShareUntil == default || players == null || players.Count == 0 || players.Contains(Guid.Empty) || players.Distinct().Count() != players.Count) continue;
+                result.Add(share.EquipmentId, new EraEquipmentShareDto
+                {
+                    ShareUntil = share.ShareUntil,
+                    Members = players.Select(id => new EraEquipmentShareMemberDto { PlayerId = id }).ToList()
+                });
+            }
+            catch (JsonException) { }
+        }
+        // 资格来自不可变原名单；账号改名或离队只影响展示，不扩大名单。
+        var playerIds = result.Values.SelectMany(share => share.Members).Select(member => member.PlayerId).Distinct().ToArray();
+        if (playerIds.Length == 0) return result;
+        var names = await (from link in _eraPlayerAccountLinkRepository.QueryNoTracking()
+            join account in _userAccountRepository.QueryNoTracking() on link.AccountId equals account.Id
+            where playerIds.Contains(link.PlayerId)
+            select new { link.PlayerId, account.Name, account.Suffix }).ToDictionaryAsync(row => row.PlayerId, cancellationToken).ConfigureAwait(false);
+        foreach (var member in result.Values.SelectMany(share => share.Members))
+            if (names.TryGetValue(member.PlayerId, out var name))
+            {
+                member.UserName = name.Name;
+                member.Suffix = name.Suffix;
+            }
+        return result;
     }
 
     private async Task<Dictionary<Guid, EraWeaponInstanceDto>> ReadWeaponInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)

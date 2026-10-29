@@ -233,7 +233,8 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         equipment.OwnerPlayerId = character.PlayerId;
         equipment.CharacterId = character.Id;
         equipment.Version++;
-        snapshot.Entries.Add(entry);
+        var shares = await _equipment.ReadSharesAsync(new[] { equipment.Id }, cancellationToken).ConfigureAwait(false);
+        snapshot.Entries.Add(entry with { Share = shares.GetValueOrDefault(equipment.Id) });
         snapshot.EquipmentVersion = character.EquipmentVersion + 1;
         var state = EraEquipmentService.CreateState(snapshot, manifest, null);
         if (state == null)

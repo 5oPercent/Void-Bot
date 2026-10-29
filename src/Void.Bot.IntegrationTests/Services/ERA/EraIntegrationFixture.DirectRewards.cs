@@ -7,11 +7,67 @@ using Void.Bot.Core.Exceptions;
 using Void.Bot.Message.Commands.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
+using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.IntegrationTest.Services.ERA;
 
 public partial class EraIntegrationFixture
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "ERADropIntegration")]
+    public async Task Direct_ground_rewards_should_preserve_selected_visibility_share_metadata_and_expired_recovery(bool isPublic)
+    {
+        await SeedAsync(0);
+        _worldTestClock = new EraWorldTestClock(DateTimeOffset.UtcNow);
+        await using var team = await CreateWorldTeamAsync(includeOther: true);
+        var world = await ReadyDropWorldAsync(team);
+        var authority = GroundCommand(world, team);
+        var command = new GrantEraGroundRewardCommand
+        {
+            WorldInstanceId = world.WorldInstanceId, RequestId = Guid.NewGuid(), CharacterId = _characterId,
+            MemberId = authority.MemberId, AuthorityEpoch = authority.AuthorityEpoch, Placement = authority.Placement,
+            IsPublic = isPublic,
+            Entries = new List<EraEquipmentRewardEntry>
+            {
+                new() { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
+            }
+        };
+        Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, token));
+        var first = await Send();
+        first.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
+        var drops = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops;
+        drops.Count.ShouldBe(2);
+        var otherDrops = (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops;
+        otherDrops.Count.ShouldBe(isPublic ? 2 : 0);
+        drops.ShouldAllBe(drop => isPublic
+            ? drop.PrivateOwnerPlayerId == null && drop.DroppedByPlayerId == _playerId
+            : drop.PrivateOwnerPlayerId == _playerId && drop.DroppedByPlayerId == null);
+        (await Send()).IsReplay.ShouldBeTrue();
+        command.IsPublic = !isPublic;
+        (await Should.ThrowAsync<EraRewardException>(() => Send())).ErrorCode.ShouldBe("era.drop_idempotency_conflict");
+        command.IsPublic = isPublic;
+        var pickup = PickupCommand(world, drops[0]);
+        if (isPublic) pickup.CharacterId = _otherCharacterId;
+        var picked = await PickupDropAsync(pickup, accountId: isPublic ? _otherAccountId : null);
+        var item = picked.Data!.State.InventoryItems.Single(row => row.Id == drops[0].EquipmentId);
+        item.Share.ShouldNotBeNull();
+        item.Share.ShareUntil.ShouldBe(item.CreatedAt.AddHours(1));
+        item.Share.Members.Select(member => member.PlayerId).OrderBy(id => id).ShouldBe(new[] { _playerId, _otherPlayerId }.OrderBy(id => id));
+        item.Share.Members.ShouldAllBe(member => !string.IsNullOrWhiteSpace(member.UserName));
+        var refreshed = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraCharacterEquipmentRequest, GetEraCharacterEquipmentResponse>(
+            new GetEraCharacterEquipmentRequest { CharacterId = pickup.CharacterId }, token), accountId: isPublic ? _otherAccountId : null);
+        var refreshedShare = refreshed.Data!.InventoryItems.Single(row => row.Id == item.Id).Share;
+        JsonSerializer.Serialize(refreshedShare).ShouldBe(JsonSerializer.Serialize(item.Share));
+        _worldTestClock!.Advance(TimeSpan.FromHours(1));
+        (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops.ShouldBeEmpty();
+        var remaining = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.Single();
+        remaining.EquipmentId.ShouldBe(drops[1].EquipmentId);
+        (await PickupDropAsync(PickupCommand(world, remaining, isPublic ? 3 : 4))).Code.ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     [Trait("Category", "ERADropIntegration")]
     public async Task Direct_ground_rewards_should_need_no_reward_configuration_and_replay_without_respawning_picked_equipment()

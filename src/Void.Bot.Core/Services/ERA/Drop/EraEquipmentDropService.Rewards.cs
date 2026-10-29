@@ -26,11 +26,11 @@ public sealed partial class EraEquipmentDropService
             WorldInstanceId = command.WorldInstanceId, RequestId = command.RequestId, MemberId = command.MemberId,
             AuthorityEpoch = command.AuthorityEpoch, SourceType = EraRewardSourceType.Internal,
             SourceInstanceId = command.RequestId, TriggerIndex = 1, Placement = command.Placement
-        }, command.Entries, command.CharacterId, cancellationToken);
+        }, command.Entries, command.CharacterId, cancellationToken, command.IsPublic);
     }
 
     private async Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command,
-        IReadOnlyList<EraEquipmentRewardEntry>? entries, Guid? characterId, CancellationToken cancellationToken)
+        IReadOnlyList<EraEquipmentRewardEntry>? entries, Guid? characterId, CancellationToken cancellationToken, bool isPublic = false)
     {
         if (command.WorldInstanceId == Guid.Empty || command.RequestId == Guid.Empty || command.MemberId == Guid.Empty ||
             command.AuthorityEpoch < 1 || entries == null && command.SourceType is not (EraRewardSourceType.Monster or EraRewardSourceType.Chest or EraRewardSourceType.Event) ||
@@ -49,7 +49,11 @@ public sealed partial class EraEquipmentDropService
         {
             throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
         }
-        var payload = entries != null ? JsonSerializer.Serialize(new
+        // 私人模式保留已有幂等载荷；公开模式明确纳入防重，不能用同一请求切换权限。
+        var payload = isPublic ? JsonSerializer.Serialize(new
+        {
+            SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement, IsPublic = true
+        }) : entries != null ? JsonSerializer.Serialize(new
         {
             SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement
         }) : JsonSerializer.Serialize(new
@@ -227,7 +231,8 @@ public sealed partial class EraEquipmentDropService
                 var drop = new EraEquipmentDrop
                 {
                     Id = Guid.NewGuid(), EquipmentId = item.Id, ActiveEquipmentId = item.Id, WorldInstanceId = context.World.Id,
-                    PrivateOwnerPlayerId = recipient.PlayerId, Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
+                    PrivateOwnerPlayerId = isPublic ? null : recipient.PlayerId, DroppedByPlayerId = isPublic ? recipient.PlayerId : null,
+                    Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
                     X = command.Placement.X, Y = command.Placement.Y, Z = command.Placement.Z, YawRadians = command.Placement.YawRadians
                 };
                 _drops.Add(drop, new EraEquipmentShare { EquipmentId = item.Id, AllowedPlayerIdsPayload = allowedPayload, ShareUntil = now.AddHours(1) });

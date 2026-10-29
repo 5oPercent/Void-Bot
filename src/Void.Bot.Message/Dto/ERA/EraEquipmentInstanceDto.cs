@@ -29,6 +29,7 @@ public sealed class EraEquipmentInstanceDto
     public long Version { get; set; }
     /// <summary>首次生成时间，不随位置变化刷新。</summary>
     public DateTimeOffset CreatedAt { get; set; }
+    public EraEquipmentShareDto? Share { get; set; }
     /// <summary>保存结果采用的生成规则版本，读取时不要求等于当前版本。</summary>
     public int GenerationRuleVersion { get; set; }
     /// <summary>已保存的六维原值，不重新生成或按当前预算重新校验。</summary>
