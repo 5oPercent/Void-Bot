@@ -8,7 +8,7 @@ namespace Void.Bot.Message.Commands.ERA;
 public class CreateEraTeamCommand : ICommand, IRequireEraPlayer
 {
     public EraTeamJoinMode JoinMode { get; set; } = EraTeamJoinMode.Public;
-    public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.HostOnly;
+    public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.AnyMember;
     public Guid RequestId { get; set; }
     public Guid CharacterId { get; set; }
 }

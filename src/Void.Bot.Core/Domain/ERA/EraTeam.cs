@@ -17,7 +17,7 @@ public class EraTeam
     public List<Guid> FailedHostMembers { get; set; } = [];
     public Guid CreationRequestId { get; set; }
     public EraTeamJoinMode JoinMode { get; set; } = EraTeamJoinMode.Public;
-    public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.HostOnly;
+    public EraTeamInvitationPermission InvitationPermission { get; set; } = EraTeamInvitationPermission.AnyMember;
     public long SocialVersion { get; set; }
     /// <summary>对端业务变化版本；心跳及端点续期不增加版本。</summary>
     public long PeersVersion { get; set; }

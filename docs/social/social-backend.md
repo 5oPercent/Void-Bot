@@ -49,7 +49,7 @@ JoinMode：Public=0、HostFriends=1、InvitationOnly=2、Solo=3。
 
 InvitationPermission：AnyMember=0、HostOnly=1，AnyMember 仅指本队有效成员。修改设置仅限当前主机，队伍迁移期间不可修改。多人时禁止切换 Solo。主机转让后按新主机账号判断主动加入资格。
 
-旧队伍缺少字段时默认 Public、HostOnly、SocialVersion=0。现有创建队伍接口也支持 joinMode、invitationPermission，省略时使用同样默认值。队伍码 lookup/join/switch 全部执行加入策略，不允许绕过 InvitationOnly/Solo。
+旧队伍缺少字段时默认 Public、AnyMember、SocialVersion=0。现有创建队伍接口也支持 joinMode、invitationPermission，省略时使用同样默认值；已有队伍明确保存的邀请权限保持不变。队伍码 lookup/join/switch 全部执行加入策略，不允许绕过 InvitationOnly/Solo。
 
 ## ERA HTTP
 
