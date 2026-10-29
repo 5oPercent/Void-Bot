@@ -40,6 +40,14 @@ public partial class EraIntegrationFixture
         first.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
         var drops = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops;
         drops.Count.ShouldBe(2);
+        foreach (var drop in drops)
+        {
+            drop.Share.ShouldNotBeNull();
+            drop.Share.ShareUntil.ShouldBe(drop.ShareUntil!.Value);
+            drop.Share.Members.Select(member => member.PlayerId).OrderBy(id => id)
+                .ShouldBe(new[] { _playerId, _otherPlayerId }.OrderBy(id => id));
+            drop.Share.Members.ShouldAllBe(member => !string.IsNullOrWhiteSpace(member.UserName));
+        }
         var otherDrops = (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops;
         otherDrops.Count.ShouldBe(isPublic ? 2 : 0);
         drops.ShouldAllBe(drop => isPublic
@@ -65,6 +73,7 @@ public partial class EraIntegrationFixture
         (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops.ShouldBeEmpty();
         var remaining = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.Single();
         remaining.EquipmentId.ShouldBe(drops[1].EquipmentId);
+        JsonSerializer.Serialize(remaining.Share).ShouldBe(JsonSerializer.Serialize(drops[1].Share));
         (await PickupDropAsync(PickupCommand(world, remaining, isPublic ? 3 : 4))).Code.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -106,6 +115,14 @@ public partial class EraIntegrationFixture
         weapons.Count.ShouldBe(2);
         weapons.ShouldAllBe(drop => drop.Grade == EraEquipmentGrade.Reliable && drop.DefinitionId == catalog.Templates[0].Id &&
             drop.Weapon!.Slots.Count == catalog.SlotConfigurations[0].Slots.Count);
+        foreach (var drop in drops)
+        {
+            drop.Share.ShouldNotBeNull();
+            drop.Share.ShareUntil.ShouldBe(drop.CreatedAt.AddHours(1));
+            drop.Share.Members.Select(member => member.PlayerId).OrderBy(id => id)
+                .ShouldBe(team.Team.Members.Select(member => member.PlayerId).OrderBy(id => id));
+            drop.Share.Members.ShouldAllBe(member => !string.IsNullOrWhiteSpace(member.UserName));
+        }
         var picked = weapons[0];
         (await PickupDropAsync(PickupCommand(world, picked))).Code.ShouldBe(HttpStatusCode.OK);
         var replay = await Send();

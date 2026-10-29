@@ -25,6 +25,7 @@ public interface IEraEquipmentDropService : IScope
     Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<GetEraEquipmentDropsResponse> GetAsync(GetEraEquipmentDropsRequest request, CancellationToken cancellationToken);
     Task<PickupEraEquipmentDropResponse> PickupAsync(PickupEraEquipmentDropCommand command, CancellationToken cancellationToken);
+    Task<DestroyEraEquipmentDropsResponse> DestroyAsync(DestroyEraEquipmentDropsCommand command, CancellationToken cancellationToken);
     Task<DropEraInventoryEquipmentResponse> DropAsync(DropEraInventoryEquipmentCommand command, CancellationToken cancellationToken);
 }
 
@@ -99,6 +100,9 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
             WorldInstanceId = snapshot.World.Id, WorldVersion = snapshot.World.Version,
             CharacterId = snapshot.Character.Id, EquipmentVersion = snapshot.Character.EquipmentVersion, ManifestVersion = manifest?.Version
         };
+        var shares = await _equipment.ReadSharesAsync(snapshot.Entries
+            .Where(entry => CanPickup(entry.Drop, entry.Share, player.Id, _clock.GetUtcNow()))
+            .Select(entry => entry.Drop.EquipmentId), cancellationToken).ConfigureAwait(false);
         var now = _clock.GetUtcNow();
         foreach (var entry in snapshot.Entries)
         {
@@ -117,6 +121,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
                 DropId = entry.Drop.Id, DropVersion = entry.Drop.Version, EquipmentId = item.Id, EquipmentVersion = item.Version,
                 PrivateOwnerPlayerId = entry.Drop.PrivateOwnerPlayerId, DroppedByPlayerId = entry.Drop.DroppedByPlayerId,
                 ShareUntil = entry.Share?.ShareUntil,
+                Share = shares.GetValueOrDefault(item.Id),
                 DefinitionId = item.DefinitionId, DefinitionVersion = item.DefinitionVersion,
                 Definition = manifest?.Armors.Templates.SingleOrDefault(definition => definition.Id == item.DefinitionId),
                 Grade = item.Grade, CreatedAt = item.CreatedAt,

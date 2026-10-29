@@ -13,6 +13,8 @@ public sealed class EraEquipmentDropDto
     public Guid? DroppedByPlayerId { get; set; }
     /// <summary>原分享期限，届满后分享条目仅本次丢出者可见；私人资格不受期限影响。</summary>
     public DateTimeOffset? ShareUntil { get; set; }
+    /// <summary>生成时固定的分享期限和原名单，名称仅供展示，不表示当前地面拾取资格。</summary>
+    public EraEquipmentShareDto? Share { get; set; }
     public Guid DefinitionId { get; set; }
     public long DefinitionVersion { get; set; }
     public EraArmorTemplateDto? Definition { get; set; }

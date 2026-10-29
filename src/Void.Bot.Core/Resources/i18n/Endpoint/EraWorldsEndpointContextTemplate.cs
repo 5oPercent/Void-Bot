@@ -20,4 +20,5 @@ public sealed class EraWorldsEndpointContextTemplate : IContextTemplate
     public string GrantEraGroundReward { get; set; } = "直接指定奖励条目生成私人地面装备";
     public string GetEraEquipmentDrops { get; set; } = "读取本人可领取的私人或分享地面掉落";
     public string PickupEraEquipmentDrop { get; set; } = "拾取本人世界中的私人或分享地面装备";
+    public string DestroyEraEquipmentDrops { get; set; } = "销毁本人有拾取权限的地面装备";
 }
