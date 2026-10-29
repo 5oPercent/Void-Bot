@@ -160,6 +160,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 EquippedSlot = equipment.EquippedSlot,
                 Version = equipment.Version,
                 CreatedAt = equipment.CreatedAt,
+                Share = entry.Share,
                 Weapon = entry.Weapon,
                 ArmorModifications = armor?.Modifications,
                 ArmorEffectiveAttributes = armor == null || manifest == null ? null : EraArmorModificationRules.Evaluate(armor, manifest.Armors),

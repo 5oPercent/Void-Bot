@@ -63,6 +63,7 @@ public sealed partial class EraEquipmentDataProvider
         var armorInstances = await ReadArmorInstancesAsync(armor.Select(row => row.EquipmentId), cancellationToken).ConfigureAwait(false);
         foreach (var row in armor) row.Modifications = armorInstances[row.EquipmentId];
         var armorById = armor.ToDictionary(item => item.EquipmentId);
+        var shares = await ReadSharesAsync(equipment.Select(item => item.Id), cancellationToken).ConfigureAwait(false);
         var weapons = await ReadWeaponInstancesAsync(equipment.Where(row => row.EquipmentType == EraEquipmentType.Weapon)
                 .Select(row => row.Id), cancellationToken).ConfigureAwait(false);
 
@@ -78,7 +79,7 @@ public sealed partial class EraEquipmentDataProvider
                 RestrictionVersion = world.RestrictionVersion, IsRestricted = world.IsEquippedOperationsRestricted
             },
             Entries = equipment.Select(item => new EraEquipmentReadEntry(item,
-                armorById.GetValueOrDefault(item.Id), weapons.GetValueOrDefault(item.Id))).ToList()
+                armorById.GetValueOrDefault(item.Id), weapons.GetValueOrDefault(item.Id), shares.GetValueOrDefault(item.Id))).ToList()
         };
     }
 
