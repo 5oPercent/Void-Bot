@@ -2,6 +2,7 @@ using SystemEnum = System.Enum;
 using System.Linq.Expressions;
 using System.Net;
 using System.Text.Json;
+using Serilog;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
 using Void.Bot.Core.Resources.i18n.ERA;
@@ -214,6 +215,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
     {
         if (record == null)
         {
+            Log.Error("ERA equipment configuration record is missing");
             return null;
         }
 
@@ -222,6 +224,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             var manifest = JsonSerializer.Deserialize<EraEquipmentManifestDto>(record.Payload);
             if (manifest == null)
             {
+                Log.Error("ERA equipment configuration payload decoded to null at version {ConfigurationVersion}", record.Version);
                 return null;
             }
 
@@ -241,12 +244,14 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             manifest.InventoryCapacity = EraEquipmentRules.InventoryCapacity;
             return manifest;
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
+            Log.Error(exception, "ERA equipment configuration payload could not be decoded at version {ConfigurationVersion}", record.Version);
             return null;
         }
-        catch (ArgumentException)
+        catch (ArgumentException exception)
         {
+            Log.Error(exception, "ERA equipment configuration metadata validation failed at version {ConfigurationVersion}", record.Version);
             return null;
         }
     }
@@ -261,20 +266,33 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 await provider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
             var result = DecodeConfiguration(row);
             if (result == null) return null;
+            var stage = "reading weapon catalog";
             try
             {
                 result.Weapons = await provider.GetWeaponCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraWeaponCatalogDto();
+                stage = "validating weapon catalog";
                 EraWeaponConfigurationValidator.Validate(result.Weapons);
+                stage = "reading armor catalog";
                 result.Armors = await provider.GetArmorCatalogAsync(cancellationToken).ConfigureAwait(false) ?? new EraArmorCatalogDto();
+                stage = "validating armor catalog";
                 EraArmorConfigurationValidator.Validate(result.Armors);
             }
-            catch (Exception exception) when (exception is ArgumentException or JsonException) { return null; }
-            if (result.Armors.Templates.Select(definition => definition.Id).Intersect(result.Weapons.Templates.Select(template => template.Id)).Any())
+            catch (Exception exception) when (exception is ArgumentException or JsonException)
+            {
+                Log.Error(exception, "ERA equipment configuration failed while {ConfigurationStage} at version {ConfigurationVersion}", stage, row!.Version);
                 return null;
+            }
+            if (result.Armors.Templates.Select(definition => definition.Id).Intersect(result.Weapons.Templates.Select(template => template.Id)).Any())
+            {
+                Log.Error("ERA equipment configuration contains shared armor and weapon template IDs at version {ConfigurationVersion}", row!.Version);
+                return null;
+            }
             if (locked) return result;
             var after = await provider.GetConfigurationAsync(cancellationToken).ConfigureAwait(false);
             if (after?.Version == row!.Version) return result;
+            Log.Warning("ERA equipment configuration version changed from {ConfigurationVersion} to {LatestConfigurationVersion} during read attempt {ReadAttempt}", row.Version, after?.Version, attempt + 1);
         }
+        Log.Error("ERA equipment configuration could not be read consistently after 3 attempts");
         return null;
     }
 
