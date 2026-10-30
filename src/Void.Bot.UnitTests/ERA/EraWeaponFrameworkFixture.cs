@@ -10,6 +10,7 @@ using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Validators.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
+using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.UnitTest.ERA;
 
@@ -54,13 +55,13 @@ public class EraWeaponFrameworkFixture
     }
 
     [Fact]
-    public void Should_reject_wrong_typed_capabilities_unknown_drivers_missing_effects_and_unknown_stat_id()
+    public void Should_reject_wrong_typed_capabilities_invalid_driver_keys_missing_effects_and_unknown_stat_id()
     {
         var catalog = EraWeaponFixture.Catalog();
         catalog.Frameworks[0].Capabilities[0].Recoil = new();
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog = EraWeaponFixture.Catalog();
-        catalog.Frameworks[0].PresentationDriverKey = "Unknown";
+        catalog.Frameworks[0].PresentationDriverKey = "invalid/key";
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog = EraWeaponFixture.Catalog();
         catalog.Templates[0].BaseStats.Single(entry => entry.Stat == EraWeaponStat.Accuracy).EffectAtZero = null;
@@ -76,23 +77,64 @@ public class EraWeaponFrameworkFixture
     }
 
     [Theory]
+    [InlineData("Firearm")]
     [InlineData("Bow")]
     [InlineData("Crossbow")]
-    public void Should_require_driver_specific_projectile_and_action_capabilities(string driver)
+    [InlineData("Melee")]
+    [InlineData("custom.rifle-v2")]
+    [InlineData("12345678901234567890123456789012")]
+    public void Should_allow_custom_driver_keys_without_inferring_capabilities(string driver)
     {
         var framework = EraWeaponFixture.Catalog().Frameworks[0];
         framework.PresentationDriverKey = driver;
-        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+        Should.NotThrow(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+        new GetEraWeaponFrameworksRequestValidator().Validate(new GetEraWeaponFrameworksRequest { PresentationDriverKey = driver, PageIndex = 1, PageSize = 10 }).IsValid.ShouldBeTrue();
         framework.Capabilities.RemoveAll(capability => capability.Kind == EraWeaponCapabilityKind.Hitscan);
         framework.Capabilities.Add(new() { Kind = EraWeaponCapabilityKind.Projectile, Projectile = new() { MaximumDistance = 30 } });
         framework.SupplementaryStats.Add(EraWeaponStat.ProjectileSpeed);
-        if (driver == "Bow")
-        {
-            framework.Capabilities.Add(new() { Kind = EraWeaponCapabilityKind.Charge, Charge = new() });
-            framework.SupplementaryStats.Add(EraWeaponStat.ChargeTime);
-            framework.Capabilities.Single(capability => capability.Kind == EraWeaponCapabilityKind.Firing).Firing!.Mode = EraWeaponFireMode.Charged;
-        }
         Should.NotThrow(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+        framework.Capabilities.Add(new() { Kind = EraWeaponCapabilityKind.MeleeHit, MeleeHit = new() });
+        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(" rifle")]
+    [InlineData("rifle ")]
+    [InlineData("rifle\n")]
+    [InlineData("rifle/key")]
+    [InlineData("枪械")]
+    [InlineData("123456789012345678901234567890123")]
+    public void Should_validate_driver_key_format_in_configuration_and_filters(string key)
+    {
+        var framework = EraWeaponFixture.Catalog().Frameworks[0];
+        framework.PresentationDriverKey = key;
+        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+        new GetEraWeaponFrameworksRequestValidator().Validate(new GetEraWeaponFrameworksRequest { PresentationDriverKey = key, PageIndex = 1, PageSize = 10 }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Should_allow_same_named_frameworks_in_different_weapon_categories()
+    {
+        var catalog = EraWeaponFixture.Catalog();
+        var framework = catalog.Frameworks[0];
+        framework.Category.ShouldBe("未分类");
+        framework.Name = "适配框架";
+        framework.Category = "自动步枪";
+        var other = JsonSerializer.Deserialize<EraWeaponFrameworkDto>(JsonSerializer.Serialize(framework))!;
+        other.Id = Guid.NewGuid();
+        other.Category = "脉冲步枪";
+        catalog.Frameworks.Add(other);
+        Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
+        foreach (var category in new[] { "自动步枪", "脉冲步枪", new string('字', 64) })
+            new GetEraWeaponFrameworksRequestValidator().Validate(new GetEraWeaponFrameworksRequest { Category = category, PageIndex = 1, PageSize = 10 }).IsValid.ShouldBeTrue();
+        foreach (var category in new[] { "", " ", " 自动步枪", "自动步枪 ", new string('字', 65) })
+        {
+            framework.Category = category;
+            Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.ValidateFramework(framework));
+            new GetEraWeaponFrameworksRequestValidator().Validate(new GetEraWeaponFrameworksRequest { Category = category, PageIndex = 1, PageSize = 10 }).IsValid.ShouldBeFalse();
+        }
     }
 
     [Fact]

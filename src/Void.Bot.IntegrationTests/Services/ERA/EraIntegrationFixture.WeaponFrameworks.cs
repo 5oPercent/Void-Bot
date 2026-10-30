@@ -16,12 +16,18 @@ public partial class EraIntegrationFixture
     {
         await SeedAsync(0);
         var catalog = WeaponCatalog();
+        catalog.Frameworks[0].Category = "测试步枪";
+        catalog.Frameworks[0].PresentationDriverKey = "rifle.custom-v2";
         await PublishWeaponsAsync(catalog);
         var id = catalog.Frameworks.Single().Id;
         var list = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponFrameworksRequest, GetEraWeaponFrameworksResponse>(
-            new GetEraWeaponFrameworksRequest { PageIndex = 1, PageSize = 10, PresentationDriverKey = "Firearm", IsEnabled = true }, token));
+            new GetEraWeaponFrameworksRequest { PageIndex = 1, PageSize = 10, Category = "测试步枪", PresentationDriverKey = "rifle.custom-v2", IsEnabled = true }, token));
         list.Version.ShouldBe(8);
         list.Data!.Items.Single().Id.ShouldBe(id);
+        list.Data.Items.Single().Category.ShouldBe("测试步枪");
+        var unmatched = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponFrameworksRequest, GetEraWeaponFrameworksResponse>(
+            new GetEraWeaponFrameworksRequest { PageIndex = 1, PageSize = 10, Category = "其他" }, token));
+        unmatched.Data!.Items.ShouldBeEmpty();
         var detail = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponFrameworkRequest, GetEraWeaponFrameworkResponse>(new GetEraWeaponFrameworkRequest { Id = id }, token));
         detail.TemplateIds.ShouldBe(new[] { catalog.Templates[0].Id });
         detail.Data!.Capabilities.Single(capability => capability.Kind == EraWeaponCapabilityKind.Hitscan).Hitscan!.MaximumDistance.ShouldBe(30);
@@ -37,6 +43,8 @@ public partial class EraIntegrationFixture
         {
             var framework = await context.Set<EraWeaponFramework>().SingleAsync();
             framework.IsEnabled.ShouldBeFalse();
+            framework.Category.ShouldBe("测试步枪");
+            framework.PresentationDriverKey.ShouldBe("rifle.custom-v2");
             (await context.Set<EraWeaponTemplate>().SingleAsync()).FrameworkId.ShouldBe(id);
             (await context.Set<EraWeaponTemplateStat>().CountAsync()).ShouldBe(9);
             var handling = await context.Set<EraWeaponTemplateStat>().SingleAsync(entry => entry.Stat == EraWeaponStat.Handling);
