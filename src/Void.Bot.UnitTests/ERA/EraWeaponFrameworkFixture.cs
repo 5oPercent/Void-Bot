@@ -17,6 +17,55 @@ namespace Void.Bot.UnitTest.ERA;
 public class EraWeaponFrameworkFixture
 {
     [Fact]
+    public async Task Should_filter_templates_by_framework_before_paging_and_combine_with_search()
+    {
+        var catalog = EraWeaponFixture.Catalog();
+        var framework = catalog.Frameworks[0];
+        framework.Category = "自动步枪";
+        var other = JsonSerializer.Deserialize<EraWeaponFrameworkDto>(JsonSerializer.Serialize(framework))!;
+        other.Id = Guid.NewGuid(); other.Category = "脉冲步枪"; other.IsEnabled = false;
+        catalog.Frameworks.Add(other);
+        var original = catalog.Templates[0];
+        original.FrameworkId = other.Id;
+        foreach (var name in new[] { "Rifle A", "Rifle B" })
+        {
+            var template = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(original))!;
+            template.Id = Guid.NewGuid(); template.Name = name; template.FrameworkId = framework.Id;
+            catalog.Templates.Add(template);
+        }
+        var equipment = Substitute.For<IEraEquipmentDataProvider>();
+        equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" });
+        equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
+        equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
+        var service = new EraWeaponService(Substitute.For<IEraWeaponDataProvider>(), equipment,
+            Substitute.For<ICurrentUser>(), Substitute.For<ILocalizationService>(), TimeProvider.System);
+        var page = await service.GetTemplatesAsync(new() { FrameworkId = framework.Id, PageIndex = 2, PageSize = 1 }, CancellationToken.None);
+        page.Version.ShouldBe(7);
+        page.Data!.Total.ShouldBe(2);
+        page.Data.TotalPages.ShouldBe(2);
+        page.Data.Items.Single().Name.ShouldBe("Rifle B");
+        var searched = await service.GetTemplatesAsync(new() { FrameworkId = framework.Id, Search = "rifle a", PageIndex = 1, PageSize = 20 }, CancellationToken.None);
+        searched.Data!.Items.Single().Name.ShouldBe("Rifle A");
+        var mismatch = await service.GetTemplatesAsync(new() { FrameworkId = other.Id, Search = "Rifle A", PageIndex = 1, PageSize = 20 }, CancellationToken.None);
+        mismatch.Data!.Total.ShouldBe(0);
+        var disabled = await service.GetTemplatesAsync(new() { FrameworkId = other.Id, Search = original.Id.ToString(), PageIndex = 1, PageSize = 20 }, CancellationToken.None);
+        disabled.Data!.Items.Single().Id.ShouldBe(original.Id);
+        var missing = await service.GetTemplatesAsync(new() { FrameworkId = Guid.NewGuid(), PageIndex = 1, PageSize = 20 }, CancellationToken.None);
+        missing.Data!.Total.ShouldBe(0);
+        var all = await service.GetTemplatesAsync(new() { PageIndex = 1, PageSize = 20 }, CancellationToken.None);
+        all.Data!.Total.ShouldBe(3);
+    }
+
+    [Fact]
+    public void Should_allow_an_omitted_framework_filter_and_reject_an_empty_framework_id()
+    {
+        var validator = new GetEraWeaponTemplatesRequestValidator();
+        validator.Validate(new GetEraWeaponTemplatesRequest { PageIndex = 1, PageSize = 20 }).IsValid.ShouldBeTrue();
+        validator.Validate(new GetEraWeaponTemplatesRequest { FrameworkId = Guid.NewGuid(), PageIndex = 1, PageSize = 20 }).IsValid.ShouldBeTrue();
+        validator.Validate(new GetEraWeaponTemplatesRequest { FrameworkId = Guid.Empty, PageIndex = 1, PageSize = 20 }).IsValid.ShouldBeFalse();
+    }
+
+    [Fact]
     public void Should_allow_melee_ammunition_and_infinite_reserve_and_penetration_without_gun_attributes()
     {
         var catalog = EraWeaponFixture.Catalog();
