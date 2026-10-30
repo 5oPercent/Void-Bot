@@ -22,7 +22,7 @@ public sealed partial class EraEquipmentDropService
         var items = command.Items.OrderBy(item => item.DropId).ToList();
         var payload = JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Operation = EraEquipmentOperation.DestroyGround, command.WorldInstanceId,
+            SchemaVersion = 2, Operation = EraEquipmentOperation.DestroyGround, command.WorldInstanceId,
             command.CharacterId, command.ExpectedEquipmentVersion, Items = items
         });
         var existing = await _equipment.GetOperationReceiptAsync(character.PlayerId, command.RequestId, cancellationToken).ConfigureAwait(false);
@@ -37,7 +37,7 @@ public sealed partial class EraEquipmentDropService
                 previous.Operation != EraEquipmentOperation.DestroyGround || previous.State.CharacterId != character.Id ||
                 previous.PreviousEquipmentVersion != command.ExpectedEquipmentVersion || previous.PreviousEquipmentVersion == long.MaxValue ||
                 previous.State.EquipmentVersion != previous.PreviousEquipmentVersion + 1 || previous.DestroyedDrops == null ||
-                previous.DestroyedDrops.Count != items.Count || previous.DestroyedDrops.Any(drop => drop == null || drop.EquipmentId == Guid.Empty ||
+                previous.DestroyedDrops.Count != items.Count || previous.DestroyedDrops.Any(drop => drop == null || drop.EquipmentInstanceId == Guid.Empty ||
                     drop.WorldInstanceId != command.WorldInstanceId) ||
                 previous.DestroyedDrops.Select(drop => drop.DropId).Distinct().Count() != items.Count ||
                 items.Any(item => item.ExpectedDropVersion == long.MaxValue ||
@@ -55,7 +55,7 @@ public sealed partial class EraEquipmentDropService
         foreach (var selected in items)
         {
             var drop = await _drops.LockDropAsync(selected.DropId, cancellationToken).ConfigureAwait(false);
-            var share = drop == null ? null : await _drops.LockShareAsync(drop.EquipmentId, cancellationToken).ConfigureAwait(false);
+            var share = drop == null ? null : await _drops.LockShareAsync(drop.EquipmentInstanceId, cancellationToken).ConfigureAwait(false);
             if (drop == null || drop.WorldInstanceId != world.Id || !CanPickup(drop, share, character.PlayerId, _clock.GetUtcNow()))
                 throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
             if (drop.Status != EraEquipmentDropStatus.Available || drop.Version != selected.ExpectedDropVersion)
@@ -67,7 +67,7 @@ public sealed partial class EraEquipmentDropService
         for (int index = 0; index < drops.Count; index++)
         {
             var (drop, share) = drops[index];
-            var entry = await _drops.LockEquipmentAsync(drop.EquipmentId, cancellationToken).ConfigureAwait(false);
+            var entry = await _drops.LockEquipmentAsync(drop.EquipmentInstanceId, cancellationToken).ConfigureAwait(false);
             if (entry == null || !IsValidEntry(new Models.EraEquipmentDropReadEntry(drop, entry.Equipment, entry.Armor, share, entry.Weapon)))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             if (entry.Equipment.Version != items[index].ExpectedItemVersion)
@@ -93,11 +93,11 @@ public sealed partial class EraEquipmentDropService
             equipment[index].Location = EraEquipmentLocation.Destroyed;
             equipment[index].Version++;
             drop.Status = EraEquipmentDropStatus.Destroyed;
-            drop.ActiveEquipmentId = null;
+            drop.ActiveEquipmentInstanceId = null;
             drop.Version++;
             destroyed.Add(new EraEquipmentDropDestroyedDto
             {
-                WorldInstanceId = world.Id, DropId = drop.Id, EquipmentId = drop.EquipmentId, DropVersion = drop.Version
+                WorldInstanceId = world.Id, DropId = drop.Id, EquipmentInstanceId = drop.EquipmentInstanceId, DropVersion = drop.Version
             });
         }
         var receipt = new EraEquipmentOperationReceiptDto

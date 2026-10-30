@@ -8,7 +8,7 @@ namespace Void.Bot.Core.Services.ERA.Equipment;
 /// <summary>原始六维与改装分开；先累计固定值，再累计百分比，逐属性四舍五入，角色最终上限由战斗层处理。</summary>
 public static class EraArmorModificationRules
 {
-    public static EraArmorAttributesDto Evaluate(EraArmorInstanceData armor, EraArmorCatalogDto catalog) => Evaluate(new EraArmorAttributesDto
+    public static EraArmorAttributesDto Evaluate(EraArmorInstance armor, EraArmorCatalogDto catalog) => Evaluate(new EraArmorAttributesDto
     {
         Strength = armor.Strength, Survival = armor.Survival, Mobility = armor.Mobility,
         Focus = armor.Focus, Efficiency = armor.Efficiency, Resistance = armor.Resistance

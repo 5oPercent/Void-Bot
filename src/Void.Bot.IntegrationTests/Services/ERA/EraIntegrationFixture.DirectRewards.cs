@@ -31,13 +31,13 @@ public partial class EraIntegrationFixture
             IsPublic = isPublic,
             Entries = new List<EraEquipmentRewardEntry>
             {
-                new() { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
+                new() { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
             }
         };
         Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
             mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, token));
         var first = await Send();
-        first.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
+        first.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(2);
         var drops = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops;
         drops.Count.ShouldBe(2);
         foreach (var drop in drops)
@@ -60,7 +60,7 @@ public partial class EraIntegrationFixture
         var pickup = PickupCommand(world, drops[0]);
         if (isPublic) pickup.CharacterId = _otherCharacterId;
         var picked = await PickupDropAsync(pickup, accountId: isPublic ? _otherAccountId : null);
-        var item = picked.Data!.State.InventoryItems.Single(row => row.Id == drops[0].EquipmentId);
+        var item = picked.Data!.State.InventoryItems.Single(row => row.Id == drops[0].EquipmentInstanceId);
         item.Share.ShouldNotBeNull();
         item.Share.ShareUntil.ShouldBe(item.CreatedAt.AddHours(1));
         item.Share.Members.Select(member => member.PlayerId).OrderBy(id => id).ShouldBe(new[] { _playerId, _otherPlayerId }.OrderBy(id => id));
@@ -72,7 +72,7 @@ public partial class EraIntegrationFixture
         _worldTestClock!.Advance(TimeSpan.FromHours(1));
         (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops.ShouldBeEmpty();
         var remaining = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.Single();
-        remaining.EquipmentId.ShouldBe(drops[1].EquipmentId);
+        remaining.EquipmentInstanceId.ShouldBe(drops[1].EquipmentInstanceId);
         JsonSerializer.Serialize(remaining.Share).ShouldBe(JsonSerializer.Serialize(drops[1].Share));
         (await PickupDropAsync(PickupCommand(world, remaining, isPublic ? 3 : 4))).Code.ShouldBe(HttpStatusCode.OK);
     }
@@ -98,8 +98,8 @@ public partial class EraIntegrationFixture
             AuthorityEpoch = authority.AuthorityEpoch, Placement = authority.Placement,
             Entries = new List<EraEquipmentRewardEntry>
             {
-                new EraEquipmentRewardEntry { DefinitionId = catalog.Templates[0].Id, Grade = EraEquipmentGrade.Reliable, Count = 2 },
-                new EraEquipmentRewardEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001") }
+                new EraEquipmentRewardEntry { TemplateId = catalog.Templates[0].Id, Grade = EraEquipmentGrade.Reliable, Count = 2 },
+                new EraEquipmentRewardEntry { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001") }
             }
         };
         Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
@@ -113,7 +113,7 @@ public partial class EraIntegrationFixture
         drops.Count.ShouldBe(3);
         var weapons = drops.Where(drop => drop.EquipmentType == EraEquipmentType.Weapon).ToList();
         weapons.Count.ShouldBe(2);
-        weapons.ShouldAllBe(drop => drop.Grade == EraEquipmentGrade.Reliable && drop.DefinitionId == catalog.Templates[0].Id &&
+        weapons.ShouldAllBe(drop => drop.Grade == EraEquipmentGrade.Reliable && drop.TemplateId == catalog.Templates[0].Id &&
             drop.Weapon!.Slots.Count == catalog.SlotConfigurations[0].Slots.Count);
         foreach (var drop in drops)
         {
@@ -138,7 +138,7 @@ public partial class EraIntegrationFixture
         {
             (await context.Set<EraRewardEvent>().CountAsync()).ShouldBe(1);
             (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(4);
-            (await context.Set<EraEquipmentInstance>().SingleAsync(item => item.Id == picked.EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
+            (await context.Set<EraEquipmentInstance>().SingleAsync(item => item.Id == picked.EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
         });
     }
 
@@ -157,8 +157,8 @@ public partial class EraIntegrationFixture
             AuthorityEpoch = authority.AuthorityEpoch, Placement = authority.Placement,
             Entries = new List<EraEquipmentRewardEntry>
             {
-                new EraEquipmentRewardEntry { DefinitionId = validId },
-                new EraEquipmentRewardEntry { DefinitionId = Guid.NewGuid() }
+                new EraEquipmentRewardEntry { TemplateId = validId },
+                new EraEquipmentRewardEntry { TemplateId = Guid.NewGuid() }
             }
         };
         Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
@@ -170,10 +170,10 @@ public partial class EraIntegrationFixture
             (await context.Set<EraEquipmentDrop>().CountAsync()).ShouldBe(0);
             (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(1); // 仅种子中的另一角色装备。
         });
-        command.Entries[1].DefinitionId = validId;
+        command.Entries[1].TemplateId = validId;
         var corrected = await Send();
         corrected.IsReplay.ShouldBeFalse();
-        corrected.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
+        corrected.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(2);
         (await Send()).IsReplay.ShouldBeTrue();
     }
 
@@ -191,7 +191,7 @@ public partial class EraIntegrationFixture
         command.SourceDefinitionId = command.RewardNodeId = string.Empty;
         command.Entries = new List<EraEquipmentRewardEntry>
         {
-            new EraEquipmentRewardEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
+            new EraEquipmentRewardEntry { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
         };
         var prepared = await PrepareRewardAsync(command);
         command.Entries[0].Count = 3;
@@ -199,7 +199,7 @@ public partial class EraIntegrationFixture
         command.Entries[0].Count = 2;
         (await PrepareRewardAsync(command)).IsReplay.ShouldBeTrue();
         var first = await GrantRewardAsync(prepared.Data);
-        first.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
+        first.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(2);
         var replay = await GrantRewardAsync(prepared.Data);
         replay.IsReplay.ShouldBeTrue();
         JsonSerializer.Serialize(replay.Data).ShouldBe(JsonSerializer.Serialize(first.Data));

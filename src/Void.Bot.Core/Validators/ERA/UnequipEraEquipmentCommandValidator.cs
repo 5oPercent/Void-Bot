@@ -10,7 +10,7 @@ public sealed class UnequipEraEquipmentCommandValidator : FluentMessageValidator
     {
         RuleFor(command => command.CharacterId).NotEmpty();
         RuleFor(command => command.RequestId).NotEmpty();
-        RuleFor(command => command.EquipmentId).NotEmpty();
+        RuleFor(command => command.EquipmentInstanceId).NotEmpty();
         RuleFor(command => command.ExpectedEquipmentVersion).GreaterThanOrEqualTo(0);
         RuleFor(command => command.ExpectedItemVersion).GreaterThan(0);
     }

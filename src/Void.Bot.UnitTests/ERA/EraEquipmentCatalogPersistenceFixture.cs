@@ -31,7 +31,7 @@ public class EraEquipmentCatalogPersistenceFixture
         var slots = Substitute.For<IRepository<EraArmorConfigurationSlot>>();
         var pools = Substitute.For<IRepository<EraArmorConfigurationModPool>>();
         var provider = new EraArmorDataProvider(templates, Substitute.For<IRepository<EraArmorModDefinition>>(), modifiers, slots, pools,
-            Substitute.For<IRepository<EraArmorModCandidate>>(), Substitute.For<IRepository<EraArmorModSelection>>(),
+            Substitute.For<IRepository<EraArmorInstanceModCandidate>>(), Substitute.For<IRepository<EraArmorInstanceModSelection>>(),
             Substitute.For<IRepository<EraEquipmentConfiguration>>(), Substitute.For<IRepository<EraEquipmentInstance>>(),
             Substitute.For<IRepository<EraRewardEvent>>(), Substitute.For<IRepository<EraRewardConfiguration>>(),
             Substitute.For<IRepository<EraArmorSlotType>>(), Substitute.For<IRepository<EraArmorSlotConfiguration>>(), Substitute.For<IMapper>());

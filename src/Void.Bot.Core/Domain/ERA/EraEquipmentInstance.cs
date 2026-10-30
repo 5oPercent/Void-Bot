@@ -11,9 +11,9 @@ public sealed class EraEquipmentInstance : IEntity<Guid>, IEntityCreated, IEntit
 {
     [Key]
     public Guid Id { get; set; }
-    public Guid DefinitionId { get; set; }
+    public Guid TemplateId { get; set; }
     /// <summary>首次生成采用的目录版本，展示目录升级不改写该值。</summary>
-    public long DefinitionVersion { get; set; }
+    public long GenerationManifestVersion { get; set; }
     public EraEquipmentType EquipmentType { get; set; }
     public EraEquipmentGrade Grade { get; set; }
     public Guid? OwnerPlayerId { get; set; }

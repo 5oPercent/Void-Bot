@@ -23,8 +23,8 @@ public sealed class EraEquipmentEntityConfiguration : IEntityTypeConfiguration<E
             .HasForeignKey(equipment => new { equipment.CharacterId, equipment.OwnerPlayerId })
             .HasPrincipalKey(character => new { character.Id, character.PlayerId })
             .OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<EraArmorInstanceData>().WithOne()
-            .HasForeignKey<EraArmorInstanceData>(armor => armor.EquipmentId)
+        builder.HasOne<EraArmorInstance>().WithOne()
+            .HasForeignKey<EraArmorInstance>(armor => armor.EquipmentInstanceId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

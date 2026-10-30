@@ -70,8 +70,8 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         // 与准备奖励相同：先奖励配置，再共享锁定装备目录，防止发布引用已删除的武器模板。
         var manifest = await EraEquipmentService.ReadConfigurationAsync(_equipment, true, cancellationToken).ConfigureAwait(false);
         if (manifest == null || command.Configuration.Pools.SelectMany(pool => pool.Entries).Any(entry =>
-            !manifest.Armors.Templates.Any(definition => definition.Id == entry.DefinitionId) &&
-            !manifest.Weapons.Templates.Any(template => template.Id == entry.DefinitionId)))
+            !manifest.Armors.Templates.Any(definition => definition.Id == entry.TemplateId) &&
+            !manifest.Weapons.Templates.Any(template => template.Id == entry.TemplateId)))
             throw Error(HttpStatusCode.Conflict, "era.reward_configuration_unavailable", text => text.ConfigurationUnavailable);
         // 只更新独立奖励配置版本，已有事件完全使用自己的快照；不提升任何缓存版本。
         row.Payload = JsonSerializer.Serialize(command.Configuration);
@@ -98,12 +98,12 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         var recipients = command.Recipients.OrderBy(recipient => recipient.PlayerId).ToList();
         var requestPayload = command.Entries != null ? JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
+            SchemaVersion = 2, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
             command.TriggerIndex, command.RewardNodeId, command.Entries,
             Recipients = recipients.Select(recipient => new { recipient.PlayerId, recipient.CharacterId }).ToList()
         }) : JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
+            SchemaVersion = 2, command.ScopeId, command.SourceType, command.SourceInstanceId, command.SourceDefinitionId,
             command.TriggerIndex, command.RewardNodeId,
             Recipients = recipients.Select(recipient => new { recipient.PlayerId, recipient.CharacterId }).ToList()
         });
@@ -146,7 +146,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
                 pool = rules.Pools.Single(item => item.Id == node.PoolId);
                 var definitions = manifest.Armors.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
                 var templates = manifest.Weapons.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
-                if (pool.Entries.Any(entry => !definitions.Contains(entry.DefinitionId) && !templates.Contains(entry.DefinitionId)) ||
+                if (pool.Entries.Any(entry => !definitions.Contains(entry.TemplateId) && !templates.Contains(entry.TemplateId)) ||
                     (long)pool.Entries.Max(entry => entry.Count) * node.Rolls > EraEquipmentRules.InventoryCapacity)
                     throw new ArgumentException("Reward pool is invalid.");
             }
@@ -220,10 +220,10 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
                     previous.Grants.Any(grant => grant == null) ||
                     previous.Grants.Select(grant => grant.GrantId).Distinct().Count() != plan.Grants.Count ||
                     previous.Grants.Any(grant => grant == null || !plan.Grants.Any(expected => expected.GrantId == grant.GrantId &&
-                        expected.PlayerId == grant.PlayerId && expected.CharacterId == grant.CharacterId && grant.EquipmentIds != null &&
+                        expected.PlayerId == grant.PlayerId && expected.CharacterId == grant.CharacterId && grant.EquipmentInstanceIds != null &&
                         grant.PreviousEquipmentVersion >= 0 && (expected.Equipment.Count == 0 || grant.PreviousEquipmentVersion < long.MaxValue) &&
                         grant.EquipmentVersion == grant.PreviousEquipmentVersion + (expected.Equipment.Count > 0 ? 1 : 0) &&
-                        expected.Equipment.Select(item => item.EquipmentId).SequenceEqual(grant.EquipmentIds))))
+                        expected.Equipment.Select(item => item.EquipmentInstanceId).SequenceEqual(grant.EquipmentInstanceIds))))
                     throw new ArgumentException("Reward receipt is invalid.");
                 return new GrantEraInventoryRewardResponse { Code = HttpStatusCode.OK, Data = previous, IsReplay = true };
             }
@@ -278,7 +278,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
                 GrantId = grant.GrantId, PlayerId = grant.PlayerId, CharacterId = grant.CharacterId,
                 PreviousEquipmentVersion = character.EquipmentVersion,
                 EquipmentVersion = character.EquipmentVersion + (grant.Equipment.Count > 0 ? 1 : 0),
-                EquipmentIds = grant.Equipment.Select(item => item.EquipmentId).ToList()
+                EquipmentInstanceIds = grant.Equipment.Select(item => item.EquipmentInstanceId).ToList()
             };
             _rewards.AddGrant(new EraRewardGrant
             {
@@ -286,18 +286,18 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
                 GrantedAt = result.GrantedAt, ResultPayload = JsonSerializer.Serialize(receipt)
             }, grant.Equipment.Select(item => new EraEquipmentInstance
             {
-                Id = item.EquipmentId, DefinitionId = item.DefinitionId, DefinitionVersion = plan.ManifestVersion,
+                Id = item.EquipmentInstanceId, TemplateId = item.TemplateId, GenerationManifestVersion = plan.ManifestVersion,
                 EquipmentType = item.EquipmentType, Grade = item.Grade, OwnerPlayerId = grant.PlayerId,
                 CharacterId = grant.CharacterId, Location = EraEquipmentLocation.Inventory,
                 Version = 1, CreatedAt = result.GrantedAt
-            }), grant.Equipment.Where(item => item.EquipmentType == EraEquipmentType.Armor).Select(item => new EraArmorInstanceData
+            }), grant.Equipment.Where(item => item.EquipmentType == EraEquipmentType.Armor).Select(item => new EraArmorInstance
             {
-                EquipmentId = item.EquipmentId, GenerationRuleVersion = item.GenerationRuleVersion, Modifications = item.ArmorModifications,
+                EquipmentInstanceId = item.EquipmentInstanceId, GenerationRuleVersion = item.GenerationRuleVersion, Modifications = item.ArmorModifications,
                 Strength = item.Attributes.Strength, Survival = item.Attributes.Survival, Mobility = item.Attributes.Mobility,
                 Focus = item.Attributes.Focus, Efficiency = item.Attributes.Efficiency, Resistance = item.Attributes.Resistance
             }));
             var weaponInstances = grant.Equipment.Where(item => item.EquipmentType == EraEquipmentType.Weapon)
-                .ToDictionary(item => item.EquipmentId, item => item.Weapon!);
+                .ToDictionary(item => item.EquipmentInstanceId, item => item.Weapon!);
             if (weaponInstances.Count > 0) _rewards.AddWeaponInstances(weaponInstances);
             character.EquipmentVersion = receipt.EquipmentVersion;
             if (grant.Equipment.Count > 0 && _notifications != null)
@@ -310,7 +310,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
 
     private static void ValidatePlan(EraInventoryRewardPlan plan, EraRewardEvent rewardEvent)
     {
-        if (plan.SchemaVersion != 1 || plan.EventId != rewardEvent.Id || plan.AcceptedAt != rewardEvent.AcceptedAt ||
+        if (plan.SchemaVersion != 2 || plan.EventId != rewardEvent.Id || plan.AcceptedAt != rewardEvent.AcceptedAt ||
             plan.ConfigurationVersion != rewardEvent.ConfigurationVersion || plan.ManifestVersion != rewardEvent.ManifestVersion ||
             plan.ConfigurationVersion < 0 || plan.ManifestVersion < 1 || plan.Grants == null || plan.Grants.Count == 0 ||
             (plan.Entries == null
@@ -329,8 +329,8 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         var equipmentIds = new HashSet<Guid>();
         foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment))
         {
-            if (item == null || item.EquipmentId == Guid.Empty || !equipmentIds.Add(item.EquipmentId) ||
-                item.DefinitionId == Guid.Empty ||
+            if (item == null || item.EquipmentInstanceId == Guid.Empty || !equipmentIds.Add(item.EquipmentInstanceId) ||
+                item.TemplateId == Guid.Empty ||
                 !SystemEnum.IsDefined(item.Grade) ||
                 (item.EquipmentType == EraEquipmentType.Weapon
                     ? !EraEquipmentItemRules.ValidWeapon(item.Weapon)

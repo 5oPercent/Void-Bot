@@ -30,11 +30,11 @@ public partial class EraIntegrationFixture
             var items = await context.Set<EraEquipmentInstance>().Where(row => row.CharacterId == _characterId).ToListAsync();
             items.Count.ShouldBe(3);
             items.Count(item => item.Location == EraEquipmentLocation.Equipped).ShouldBe(1);
-            var winner = items.Single(item => item.Id == first.EquipmentId);
+            var winner = items.Single(item => item.Id == first.EquipmentInstanceId);
             winner.Location.ShouldBe(EraEquipmentLocation.Equipped);
             winner.EquippedSlot.ShouldBe(EraEquipmentSlot.Head);
             winner.Version.ShouldBe(6);
-            var loser = items.Single(item => item.Id == second.EquipmentId);
+            var loser = items.Single(item => item.Id == second.EquipmentInstanceId);
             loser.Location.ShouldBe(EraEquipmentLocation.Inventory);
             loser.EquippedSlot.ShouldBeNull();
             loser.Version.ShouldBe(5);
@@ -61,14 +61,14 @@ public partial class EraIntegrationFixture
         {
             response.Data!.RequestId.ShouldBe(first.RequestId);
             response.Data.State.EquipmentVersion.ShouldBe(4);
-            response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(first.EquipmentId);
+            response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(first.EquipmentInstanceId);
         }
         await ReadDatabaseAsync(async context =>
         {
             var character = await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId);
             character.EquipmentVersion.ShouldBe(4);
             character.Version.ShouldBe(12);
-            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == first.EquipmentId);
+            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == first.EquipmentInstanceId);
             item.Location.ShouldBe(EraEquipmentLocation.Equipped);
             item.Version.ShouldBe(6);
             (await context.Set<EraEquipmentInstance>().CountAsync(row => row.CharacterId == _characterId)).ShouldBe(1);

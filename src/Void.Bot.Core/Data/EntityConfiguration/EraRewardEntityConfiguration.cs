@@ -33,6 +33,6 @@ public sealed class EraRewardEntityConfiguration : IEntityTypeConfiguration<EraR
     public void Configure(EntityTypeBuilder<EraRewardGrantEquipment> builder)
     {
         builder.HasOne<EraRewardGrant>().WithMany().HasForeignKey(row => row.GrantId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<EraEquipmentInstance>().WithMany().HasForeignKey(row => row.EquipmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<EraEquipmentInstance>().WithMany().HasForeignKey(row => row.EquipmentInstanceId).OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -20,7 +20,7 @@ public partial class EraIntegrationFixture
         {
             context.Set<EraEquipmentShare>().Add(new EraEquipmentShare
             {
-                EquipmentId = equipment.Id, ShareUntil = equipment.CreatedAt.AddHours(1),
+                EquipmentInstanceId = equipment.Id, ShareUntil = equipment.CreatedAt.AddHours(1),
                 AllowedPlayerIdsPayload = JsonSerializer.Serialize(players)
             });
             await context.SaveChangesAsync();
@@ -32,7 +32,7 @@ public partial class EraIntegrationFixture
     {
         return new DropEraInventoryEquipmentCommand
         {
-            WorldInstanceId = world.WorldInstanceId, CharacterId = characterId ?? _characterId, EquipmentId = equipmentId,
+            WorldInstanceId = world.WorldInstanceId, CharacterId = characterId ?? _characterId, EquipmentInstanceId = equipmentId,
             RequestId = Guid.NewGuid(), ExpectedEquipmentVersion = equipmentVersion, ExpectedItemVersion = itemVersion,
             Placement = new EraEquipmentDropPlacementDto { X = 8.5, Y = 1, Z = -3, YawRadians = 0.4 }
         };
@@ -74,7 +74,7 @@ public partial class EraIntegrationFixture
         var secondCommand = DropCommand(world, original.Id, 4, 7, _otherCharacterId);
         var second = await DropInventoryAsync(secondCommand, accountId: _otherAccountId);
         second.Data!.Dropped!.DropId.ShouldNotBe(first.Data.Dropped!.DropId);
-        second.Data.Dropped.EquipmentId.ShouldBe(original.Id);
+        second.Data.Dropped.EquipmentInstanceId.ShouldBe(original.Id);
         second.Data.Dropped.ShareUntil.ShouldBe(first.Data.Dropped.ShareUntil);
         _worldTestClock!.Advance(TimeSpan.FromMinutes(50)); // 恰好到原始一小时边界。
         (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.ShouldBeEmpty();
@@ -191,7 +191,7 @@ public partial class EraIntegrationFixture
             case "foreign":
                 await ReadDatabaseAsync(async context =>
                 {
-                    command.EquipmentId = (await context.Set<EraEquipmentInstance>()
+                    command.EquipmentInstanceId = (await context.Set<EraEquipmentInstance>()
                         .SingleAsync(row => row.OwnerPlayerId == _otherPlayerId)).Id;
                 });
                 expected = "era.drop_not_found";
@@ -255,7 +255,7 @@ public partial class EraIntegrationFixture
             saved.Status.ShouldBe(EraEquipmentDropStatus.Available);
             saved.Version.ShouldBe(1);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(1);
-            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId);
+            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId);
             item.Location.ShouldBe(EraEquipmentLocation.Ground);
             item.OwnerPlayerId.ShouldBeNull();
         });
@@ -271,8 +271,8 @@ public partial class EraIntegrationFixture
         });
         var reclaimed = await PickupDropAsync(PickupCommand(world, drop, 6));
         reclaimed.Data!.State.EquipmentVersion.ShouldBe(7);
-        reclaimed.Data.State.InventoryItems.Single(item => item.Id == drop.EquipmentId).Version.ShouldBe(7);
-        (await Should.ThrowAsync<EraRewardException>(() => DropInventoryAsync(DropCommand(world, drop.EquipmentId, 7, 7))))
+        reclaimed.Data.State.InventoryItems.Single(item => item.Id == drop.EquipmentInstanceId).Version.ShouldBe(7);
+        (await Should.ThrowAsync<EraRewardException>(() => DropInventoryAsync(DropCommand(world, drop.EquipmentInstanceId, 7, 7))))
             .ErrorCode.ShouldBe("era.drop_share_expired");
     }
 

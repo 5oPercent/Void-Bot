@@ -4,10 +4,10 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.ERA;
 
-[Table("era_armor_mod_selection")]
-public sealed class EraArmorModSelection : IEntityBase
+[Table("era_armor_instance_mod_selection")]
+public sealed class EraArmorInstanceModSelection : IEntityBase
 {
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     public Guid SlotId { get; set; }
     [StringLength(128)] public string Name { get; set; } = string.Empty;
     public Guid SlotTypeId { get; set; }

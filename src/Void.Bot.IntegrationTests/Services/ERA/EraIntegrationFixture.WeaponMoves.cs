@@ -29,7 +29,7 @@ public partial class EraIntegrationFixture
         {
             context.Set<EraEquipmentInstance>().AddRange(ids.Select((id, index) => new EraEquipmentInstance
             {
-                Id = id, DefinitionId = catalog.Templates[0].Id, DefinitionVersion = 1,
+                Id = id, TemplateId = catalog.Templates[0].Id, GenerationManifestVersion = 1,
                 EquipmentType = EraEquipmentType.Weapon, Grade = EraEquipmentGrade.Common,
                 CharacterId = _characterId, OwnerPlayerId = _playerId, Version = 5,
                 Location = EraEquipmentLocation.Equipped,
@@ -40,10 +40,10 @@ public partial class EraIntegrationFixture
         });
         var command = new EquipEraEquipmentCommand
         {
-            CharacterId = _characterId, RequestId = Guid.NewGuid(), EquipmentId = ids[0],
+            CharacterId = _characterId, RequestId = Guid.NewGuid(), EquipmentInstanceId = ids[0],
             Slot = EraEquipmentSlot.Weapon2, ExpectedSourceSlot = EraEquipmentSlot.Weapon1,
             ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5, ExpectedManifestVersion = 8,
-            ExpectedEquippedEquipmentId = ids[1], ExpectedEquippedVersion = 5
+            ExpectedEquippedEquipmentInstanceId = ids[1], ExpectedEquippedVersion = 5
         };
         var interceptor = new EraIntegrationSqlInterceptor
             { ForceZeroRowsOnUpdate = failingUpdate, FailReceiptInsert = failingReceipt };

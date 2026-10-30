@@ -12,11 +12,11 @@ public interface IEraEquipmentOperation : ICommand, IRequireEraPlayer
     /// <summary>当前玩家全部装备写操作范围内唯一的请求标识，超时重试复用。</summary>
     Guid RequestId { get; set; }
     /// <summary>装入候选或需要卸下的实际装备实例 ID。</summary>
-    Guid EquipmentId { get; set; }
+    Guid EquipmentInstanceId { get; set; }
     /// <summary>目标已穿槽位。</summary>
     EraEquipmentSlot Slot { get; set; }
     /// <summary>读取快照的 EquipmentVersion，不是角色资料版本。</summary>
     long ExpectedEquipmentVersion { get; set; }
-    /// <summary>EquipmentId 对应实例的预期版本。</summary>
+    /// <summary>EquipmentInstanceId 对应实例的预期版本。</summary>
     long ExpectedItemVersion { get; set; }
 }

@@ -14,7 +14,7 @@ public sealed class DestroyEraInventoryEquipmentCommandValidator : FluentMessage
         RuleFor(command => command.ExpectedEquipmentVersion).GreaterThanOrEqualTo(0);
         RuleFor(command => command.Items).NotNull().Must(items => items != null &&
             items.Count is > 0 and <= EraEquipmentRules.InventoryCapacity &&
-            items.All(item => item != null && item.EquipmentId != Guid.Empty && item.ExpectedItemVersion > 0) &&
-            items.Select(item => item.EquipmentId).Distinct().Count() == items.Count);
+            items.All(item => item != null && item.EquipmentInstanceId != Guid.Empty && item.ExpectedItemVersion > 0) &&
+            items.Select(item => item.EquipmentInstanceId).Distinct().Count() == items.Count);
     }
 }

@@ -88,7 +88,7 @@ public partial class EraIntegrationFixture
         {
             var configuration = await context.Set<EraRewardConfiguration>().SingleAsync(row => row.Id == RewardConfigurationId);
             var rules = JsonSerializer.Deserialize<EraRewardRules>(configuration.Payload)!;
-            rules.Pools[0].Entries[0].DefinitionId = (await context.Set<EraWeaponTemplate>().SingleAsync()).Id;
+            rules.Pools[0].Entries[0].TemplateId = (await context.Set<EraWeaponTemplate>().SingleAsync()).Id;
             configuration.Payload = JsonSerializer.Serialize(rules);
             await context.SaveChangesAsync();
         });
@@ -208,7 +208,7 @@ public partial class EraIntegrationFixture
         (await PublishWeaponsAsync(catalog)).Data!.Version.ShouldBe(8);
         var eventId = await PrepareWeaponRewardAsync();
         var grant = await GrantRewardAsync(eventId);
-        var itemId = grant.Data!.Grants.Single().EquipmentIds.Single();
+        var itemId = grant.Data!.Grants.Single().EquipmentInstanceIds.Single();
         var first = (await ReadWeaponEquipmentAsync()).Data!;
         var item = first.InventoryItems.Single();
         item.Id.ShouldBe(itemId);
@@ -217,7 +217,7 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = itemId, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
+            CharacterId = _characterId, EquipmentInstanceId = itemId, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = slot.Candidates.Single(candidate => candidate.CandidateId != slot.SelectedCandidateId).CandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
@@ -236,7 +236,7 @@ public partial class EraIntegrationFixture
         updatedManifest.Data.Weapons.Templates.Single().StatMappingId.ShouldBe(catalog.StatMappings[0].Id);
         item = current.InventoryItems.Single();
         item.Version.ShouldBe(2);
-        item.DefinitionVersion.ShouldBe(8);
+        item.GenerationManifestVersion.ShouldBe(8);
         item.WeaponTemplate!.BaseStats.Damage.ShouldBe(55);
         JsonSerializer.Serialize(item.Weapon!.Slots.Select(value => value.Candidates)).ShouldBe(before);
         item.Weapon.Slots[0].SelectedCandidateId.ShouldBe(command.CandidateId);
@@ -254,8 +254,8 @@ public partial class EraIntegrationFixture
                 new DeleteEraWeaponTemplateCommand { Id = catalog.Templates[0].Id, ExpectedManifestVersion = 10 }, token)));
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraWeaponModCandidate>().CountAsync(row => row.EquipmentId == itemId)).ShouldBe(10);
-            (await context.Set<EraArmorInstanceData>().AnyAsync(row => row.EquipmentId == itemId)).ShouldBeFalse();
+            (await context.Set<EraWeaponInstanceModCandidate>().CountAsync(row => row.EquipmentInstanceId == itemId)).ShouldBe(10);
+            (await context.Set<EraArmorInstance>().AnyAsync(row => row.EquipmentInstanceId == itemId)).ShouldBeFalse();
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync(row => row.RequestId == command.RequestId)).ShouldBe(1);
         });
     }
@@ -270,7 +270,7 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon!.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
+            CharacterId = _characterId, EquipmentInstanceId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = slot.Candidates.Single(candidate => candidate.CandidateId != slot.SelectedCandidateId).CandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
@@ -313,7 +313,7 @@ public partial class EraIntegrationFixture
             (await context.Set<EraWeaponConfigurationModPool>().SumAsync(row => row.Weight)).ShouldBe(15);
             (await context.Set<EraWeaponConfigurationSlot>().ToListAsync()).ShouldAllBe(value => value.CandidateCount == 2);
         });
-        (await GrantRewardAsync(eventId)).Data!.Grants.Single().EquipmentIds.Count.ShouldBe(1);
+        (await GrantRewardAsync(eventId)).Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(1);
     }
 
     [Theory]
@@ -359,7 +359,7 @@ public partial class EraIntegrationFixture
         var slot = item.Weapon!.Slots[0];
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
+            CharacterId = _characterId, EquipmentInstanceId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId,
             CandidateId = item.Weapon.Slots[1].SelectedCandidateId,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         };
@@ -385,7 +385,7 @@ public partial class EraIntegrationFixture
         var candidate = slot.Candidates.Single(value => value.CandidateId != slot.SelectedCandidateId).CandidateId;
         var commands = Enumerable.Range(0, 2).Select(_ => new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId, CandidateId = candidate,
+            CharacterId = _characterId, EquipmentInstanceId = item.Id, RequestId = Guid.NewGuid(), SlotId = slot.SlotId, CandidateId = candidate,
             ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 4, ExpectedItemVersion = 1
         }).ToList();
         var responses = await Task.WhenAll(commands.Select(command => SelectWeaponAsync(command)));
@@ -407,11 +407,11 @@ public partial class EraIntegrationFixture
         if (otherWeapon) await GrantRewardAsync(await PrepareWeaponRewardAsync());
         await ReadDatabaseAsync(async context =>
         {
-            var selections = await context.Set<EraWeaponModSelection>().OrderBy(value => value.SlotId).ToListAsync();
+            var selections = await context.Set<EraWeaponInstanceModSelection>().OrderBy(value => value.SlotId).ToListAsync();
             var first = selections[0];
             first.SelectedCandidateId = otherWeapon
-                ? selections.First(value => value.EquipmentId != first.EquipmentId && value.SlotId == first.SlotId).SelectedCandidateId
-                : selections.First(value => value.EquipmentId == first.EquipmentId && value.SlotId != first.SlotId).SelectedCandidateId;
+                ? selections.First(value => value.EquipmentInstanceId != first.EquipmentInstanceId && value.SlotId == first.SlotId).SelectedCandidateId
+                : selections.First(value => value.EquipmentInstanceId == first.EquipmentInstanceId && value.SlotId != first.SlotId).SelectedCandidateId;
             await Should.ThrowAsync<DbUpdateException>(() => context.SaveChangesAsync());
         });
         (await ReadWeaponEquipmentAsync()).Code.ShouldBe(HttpStatusCode.OK);
@@ -456,7 +456,7 @@ public partial class EraIntegrationFixture
         var candidateId = removed.Candidates.Single(candidate => candidate.CandidateId != removed.SelectedCandidateId).CandidateId;
         var selected = await SelectWeaponAsync(new SelectEraWeaponModificationCommand
         {
-            CharacterId = _characterId, EquipmentId = old.Id, RequestId = Guid.NewGuid(), SlotId = removed.SlotId,
+            CharacterId = _characterId, EquipmentInstanceId = old.Id, RequestId = Guid.NewGuid(), SlotId = removed.SlotId,
             CandidateId = candidateId, ExpectedManifestVersion = 9, ExpectedEquipmentVersion = state.EquipmentVersion,
             ExpectedItemVersion = old.Version
         });

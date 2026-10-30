@@ -48,13 +48,13 @@ internal static class EraWeaponDataMapping
         return result;
     }
 
-    internal static Dictionary<Guid, EraWeaponInstanceDto> CreateInstances(IReadOnlyCollection<EraWeaponModCandidate> candidates,
-        IReadOnlyCollection<EraWeaponModSelection> selections, IMapper mapper, IEnumerable<Guid> equipmentIds)
+    internal static Dictionary<Guid, EraWeaponInstanceDto> CreateInstances(IReadOnlyCollection<EraWeaponInstanceModCandidate> candidates,
+        IReadOnlyCollection<EraWeaponInstanceModSelection> selections, IMapper mapper, IEnumerable<Guid> equipmentIds)
     {
-        var selectionKeys = selections.Select(row => (row.EquipmentId, row.SlotId)).ToHashSet();
-        var slotsByEquipment = selections.ToLookup(row => row.EquipmentId);
-        var candidatesBySlot = candidates.ToLookup(row => (row.EquipmentId, row.SlotId));
-        if (candidates.Any(candidate => !selectionKeys.Contains((candidate.EquipmentId, candidate.SlotId))))
+        var selectionKeys = selections.Select(row => (row.EquipmentInstanceId, row.SlotId)).ToHashSet();
+        var slotsByEquipment = selections.ToLookup(row => row.EquipmentInstanceId);
+        var candidatesBySlot = candidates.ToLookup(row => (row.EquipmentInstanceId, row.SlotId));
+        if (candidates.Any(candidate => !selectionKeys.Contains((candidate.EquipmentInstanceId, candidate.SlotId))))
             throw new ArgumentException("Weapon candidates have no corresponding selection.");
         return equipmentIds.Distinct().ToDictionary(id => id, id => new EraWeaponInstanceDto
         {
@@ -66,16 +66,16 @@ internal static class EraWeaponDataMapping
         });
     }
 
-    internal static IEnumerable<EraWeaponModCandidate> CreateCandidates(Guid equipmentId, EraWeaponInstanceDto instance) =>
-        instance.Slots.SelectMany(slot => slot.Candidates.Select(candidate => new EraWeaponModCandidate
+    internal static IEnumerable<EraWeaponInstanceModCandidate> CreateCandidates(Guid equipmentId, EraWeaponInstanceDto instance) =>
+        instance.Slots.SelectMany(slot => slot.Candidates.Select(candidate => new EraWeaponInstanceModCandidate
         {
-            CandidateId = candidate.CandidateId, EquipmentId = equipmentId, SlotId = slot.SlotId,
+            CandidateId = candidate.CandidateId, EquipmentInstanceId = equipmentId, SlotId = slot.SlotId,
             ModDefinitionId = candidate.ModDefinitionId, DisplayOrder = candidate.DisplayOrder
         }));
 
-    internal static IEnumerable<EraWeaponModSelection> CreateSelections(Guid equipmentId, EraWeaponInstanceDto instance) =>
-        instance.Slots.Select(slot => new EraWeaponModSelection
+    internal static IEnumerable<EraWeaponInstanceModSelection> CreateSelections(Guid equipmentId, EraWeaponInstanceDto instance) =>
+        instance.Slots.Select(slot => new EraWeaponInstanceModSelection
         {
-            EquipmentId = equipmentId, SlotId = slot.SlotId, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder, SelectedCandidateId = slot.SelectedCandidateId
+            EquipmentInstanceId = equipmentId, SlotId = slot.SlotId, Name = slot.Name, SlotTypeId = slot.SlotTypeId, DisplayOrder = slot.DisplayOrder, SelectedCandidateId = slot.SelectedCandidateId
         });
 }

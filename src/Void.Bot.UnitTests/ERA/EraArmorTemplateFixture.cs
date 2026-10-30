@@ -28,7 +28,7 @@ public class EraArmorTemplateFixture
         characters.RequireOwnedAsync(character.Id, true, Arg.Any<CancellationToken>()).Returns(character);
         var command = new SelectEraArmorModificationCommand
         {
-            CharacterId = character.Id, EquipmentId = Guid.NewGuid(), RequestId = Guid.NewGuid(),
+            CharacterId = character.Id, EquipmentInstanceId = Guid.NewGuid(), RequestId = Guid.NewGuid(),
             SlotId = Guid.NewGuid(), CandidateId = Guid.NewGuid(), ExpectedManifestVersion = 2,
             ExpectedEquipmentVersion = 3, ExpectedItemVersion = 1
         };
@@ -177,7 +177,7 @@ public class EraArmorTemplateFixture
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         var templateId = current.Templates[0].Id;
         var removedSlot = current.Templates[0].CompatibleSlots[1];
-        var item = new EraEquipmentInstance { Id = Guid.NewGuid(), DefinitionId = templateId, EquippedSlot = removedSlot };
+        var item = new EraEquipmentInstance { Id = Guid.NewGuid(), TemplateId = templateId, EquippedSlot = removedSlot };
         data.GetReferencedArmorsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance> { item });
         data.GetInstancesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, EraArmorInstanceDto> { [item.Id] = new() });
         var service = new EraArmorService(data, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
@@ -220,7 +220,7 @@ public class EraArmorTemplateFixture
         {
             new EraPlannedRewardGrant { Equipment = new()
             {
-                new EraPlannedRewardEquipment { DefinitionId = current.Templates[0].Id,
+                new EraPlannedRewardEquipment { TemplateId = current.Templates[0].Id,
                     EquipmentType = EraEquipmentType.Armor, ArmorModifications = instance }
             } }
         } };

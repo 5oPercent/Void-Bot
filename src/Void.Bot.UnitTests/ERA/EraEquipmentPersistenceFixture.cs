@@ -2,10 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using Shouldly;
+using System.Text.Json;
 using Void.Bot.Core.Data;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Settings.System;
+using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.UnitTest.ERA;
 
@@ -19,12 +21,45 @@ public class EraEquipmentPersistenceFixture
         return new VoidBotDbContext(new ConnectionStringSetting(configuration), Substitute.For<ICurrentUser>());
     }
 
+    [Theory]
+    [InlineData(typeof(EraArmorInstance), "era_armor_instance")]
+    [InlineData(typeof(EraArmorInstanceModCandidate), "era_armor_instance_mod_candidate")]
+    [InlineData(typeof(EraArmorInstanceModSelection), "era_armor_instance_mod_selection")]
+    [InlineData(typeof(EraWeaponInstanceModCandidate), "era_weapon_instance_mod_candidate")]
+    [InlineData(typeof(EraWeaponInstanceModSelection), "era_weapon_instance_mod_selection")]
+    public void Should_map_instance_extensions_and_children_to_explicit_instance_tables(Type type, string table)
+    {
+        using var context = Context();
+        var entity = context.Model.FindEntityType(type)!;
+        entity.GetTableName().ShouldBe(table);
+        entity.FindProperty("EquipmentInstanceId")!.GetColumnName().ShouldBe("equipment_instance_id");
+    }
+
+    [Fact]
+    public void Should_distinguish_instance_identity_template_reference_and_generation_directory_in_storage_and_payload()
+    {
+        using var context = Context();
+        var entity = context.Model.FindEntityType(typeof(EraEquipmentInstance))!;
+        entity.GetTableName().ShouldBe("era_equipment_instance");
+        entity.FindProperty(nameof(EraEquipmentInstance.TemplateId))!.GetColumnName().ShouldBe("template_id");
+        entity.FindProperty(nameof(EraEquipmentInstance.GenerationManifestVersion))!.GetColumnName().ShouldBe("generation_manifest_version");
+        var asset = new EraEquipmentInstanceDto { Id = Guid.NewGuid(), TemplateId = Guid.NewGuid(), GenerationManifestVersion = 7,
+            ArmorTemplate = new EraArmorTemplateDto() };
+        var payload = JsonSerializer.SerializeToElement(asset);
+        payload.GetProperty("Id").GetGuid().ShouldBe(asset.Id);
+        payload.GetProperty("TemplateId").GetGuid().ShouldBe(asset.TemplateId);
+        payload.GetProperty("GenerationManifestVersion").GetInt64().ShouldBe(7);
+        payload.GetProperty("ArmorTemplate").ValueKind.ShouldBe(JsonValueKind.Object);
+        payload.TryGetProperty("DefinitionId", out _).ShouldBeFalse();
+        payload.TryGetProperty("Definition", out _).ShouldBeFalse();
+    }
+
     [Fact]
     public void Should_constrain_weapon_selections_to_candidates_of_the_same_instance_and_slot()
     {
         using var context = Context();
         var types = new[] { typeof(EraWeaponSlotType), typeof(EraWeaponSlotConfiguration), typeof(EraWeaponTemplate), typeof(EraWeaponConfigurationSlot), typeof(EraWeaponModDefinition),
-            typeof(EraWeaponModStatModifier), typeof(EraWeaponConfigurationModPool), typeof(EraWeaponModCandidate), typeof(EraWeaponModSelection) };
+            typeof(EraWeaponModStatModifier), typeof(EraWeaponConfigurationModPool), typeof(EraWeaponInstanceModCandidate), typeof(EraWeaponInstanceModSelection) };
         foreach (var type in types)
         {
             var entity = context.Model.FindEntityType(type);
@@ -33,13 +68,13 @@ public class EraEquipmentPersistenceFixture
         }
         foreach (var type in new[] { typeof(EraWeaponTemplate), typeof(EraWeaponModDefinition) })
             context.Model.FindEntityType(type)!.FindProperty("Id")!.ClrType.ShouldBe(typeof(Guid));
-        context.Model.FindEntityType(typeof(EraEquipmentInstance))!.FindProperty(nameof(EraEquipmentInstance.DefinitionId))!
+        context.Model.FindEntityType(typeof(EraEquipmentInstance))!.FindProperty(nameof(EraEquipmentInstance.TemplateId))!
             .ClrType.ShouldBe(typeof(Guid));
-        var selection = context.Model.FindEntityType(typeof(EraWeaponModSelection))!;
-        var reference = selection.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(EraWeaponModCandidate));
-        reference.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentId", "SlotId", "SelectedCandidateId" });
-        reference.PrincipalKey.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentId", "SlotId", "CandidateId" });
-        var candidate = context.Model.FindEntityType(typeof(EraWeaponModCandidate))!;
+        var selection = context.Model.FindEntityType(typeof(EraWeaponInstanceModSelection))!;
+        var reference = selection.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(EraWeaponInstanceModCandidate));
+        reference.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentInstanceId", "SlotId", "SelectedCandidateId" });
+        reference.PrincipalKey.Properties.Select(property => property.Name).ShouldBe(new[] { "EquipmentInstanceId", "SlotId", "CandidateId" });
+        var candidate = context.Model.FindEntityType(typeof(EraWeaponInstanceModCandidate))!;
         candidate.GetForeignKeys().Any(key => key.PrincipalEntityType.ClrType == typeof(EraWeaponConfigurationModPool)).ShouldBeFalse();
         candidate.FindProperty("Damage").ShouldBeNull();
         selection.FindProperty("Damage").ShouldBeNull();
@@ -60,10 +95,10 @@ public class EraEquipmentPersistenceFixture
         drop.GetForeignKeys().Count(key => key.PrincipalEntityType.ClrType == typeof(EraPlayer)).ShouldBe(2);
         drop.GetForeignKeys().All(key => key.DeleteBehavior == DeleteBehavior.Restrict).ShouldBeTrue();
         drop.GetIndexes().Any(index => index.IsUnique && index.Properties.Select(property => property.Name)
-            .SequenceEqual(new[] { nameof(EraEquipmentDrop.ActiveEquipmentId) })).ShouldBeTrue();
-        drop.FindProperty(nameof(EraEquipmentDrop.ActiveEquipmentId))!.IsNullable.ShouldBeTrue();
+            .SequenceEqual(new[] { nameof(EraEquipmentDrop.ActiveEquipmentInstanceId) })).ShouldBeTrue();
+        drop.FindProperty(nameof(EraEquipmentDrop.ActiveEquipmentInstanceId))!.IsNullable.ShouldBeTrue();
         var share = context.Model.FindEntityType(typeof(EraEquipmentShare))!;
-        share.FindPrimaryKey()!.Properties.Single().Name.ShouldBe(nameof(EraEquipmentShare.EquipmentId));
+        share.FindPrimaryKey()!.Properties.Single().Name.ShouldBe(nameof(EraEquipmentShare.EquipmentInstanceId));
         share.GetForeignKeys().Single().DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
         var reward = context.Model.FindEntityType(typeof(EraRewardEvent))!;
         reward.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(EraWorld)).DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
@@ -76,9 +111,9 @@ public class EraEquipmentPersistenceFixture
         using var context = Context();
         context.Model.FindEntityType(typeof(EraEquipmentConfiguration)).ShouldNotBeNull();
         context.Model.FindEntityType(typeof(EraEquipmentInstance)).ShouldNotBeNull();
-        var armor = context.Model.FindEntityType(typeof(EraArmorInstanceData))!;
+        var armor = context.Model.FindEntityType(typeof(EraArmorInstance))!;
 
-        armor.FindPrimaryKey()!.Properties.Select(property => property.Name).ShouldBe(new[] { nameof(EraArmorInstanceData.EquipmentId) });
+        armor.FindPrimaryKey()!.Properties.Select(property => property.Name).ShouldBe(new[] { nameof(EraArmorInstance.EquipmentInstanceId) });
         armor.GetForeignKeys().Single().PrincipalEntityType.ClrType.ShouldBe(typeof(EraEquipmentInstance));
         armor.GetForeignKeys().Single().DeleteBehavior.ShouldBe(DeleteBehavior.Restrict);
     }

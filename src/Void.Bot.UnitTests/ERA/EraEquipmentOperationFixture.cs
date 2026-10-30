@@ -62,7 +62,7 @@ public partial class EraEquipmentOperationFixture
             _lastChanges = call.ArgAt<IReadOnlyList<EraEquipmentPositionChange>>(2);
             foreach (var change in _lastChanges)
             {
-                var equipment = _stored.Single(entry => entry.Equipment.Id == change.EquipmentId).Equipment;
+                var equipment = _stored.Single(entry => entry.Equipment.Id == change.EquipmentInstanceId).Equipment;
                 equipment.Location = change.Location;
                 equipment.EquippedSlot = change.EquippedSlot;
                 equipment.Version = change.ExpectedVersion + 1;
@@ -106,16 +106,16 @@ public partial class EraEquipmentOperationFixture
     {
         var equipment = new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), DefinitionVersion = 1,
+            Id = Guid.NewGuid(), TemplateId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"), GenerationManifestVersion = 1,
             EquipmentType = EraEquipmentType.Armor, Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = _player.Id, CharacterId = _character.Id,
             Location = location,
             EquippedSlot = location == EraEquipmentLocation.Equipped ? slot : null,
             Version = 5, CreatedAt = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero)
         };
-        _stored.Add(new EraEquipmentReadEntry(equipment, new EraArmorInstanceData
+        _stored.Add(new EraEquipmentReadEntry(equipment, new EraArmorInstance
         {
-            EquipmentId = equipment.Id, GenerationRuleVersion = 42,
+            EquipmentInstanceId = equipment.Id, GenerationRuleVersion = 42,
             Strength = 120, Survival = 15, Mobility = 9, Focus = 6, Efficiency = 6, Resistance = 3
         }));
         return equipment;
@@ -127,10 +127,10 @@ public partial class EraEquipmentOperationFixture
             entry.Equipment.EquippedSlot == slot)?.Equipment;
         return new EquipEraEquipmentCommand
         {
-            CharacterId = _character.Id, RequestId = Guid.NewGuid(), EquipmentId = item.Id, Slot = slot,
+            CharacterId = _character.Id, RequestId = Guid.NewGuid(), EquipmentInstanceId = item.Id, Slot = slot,
             ExpectedEquipmentVersion = _character.EquipmentVersion, ExpectedItemVersion = item.Version,
             ExpectedManifestVersion = _configuration.Version,
-            ExpectedEquippedEquipmentId = current?.Id, ExpectedEquippedVersion = current?.Version
+            ExpectedEquippedEquipmentInstanceId = current?.Id, ExpectedEquippedVersion = current?.Version
         };
     }
 
@@ -138,7 +138,7 @@ public partial class EraEquipmentOperationFixture
     {
         return new UnequipEraEquipmentCommand
         {
-            CharacterId = _character.Id, RequestId = Guid.NewGuid(), EquipmentId = item.Id,
+            CharacterId = _character.Id, RequestId = Guid.NewGuid(), EquipmentInstanceId = item.Id,
             Slot = item.EquippedSlot!.Value,
             ExpectedEquipmentVersion = _character.EquipmentVersion, ExpectedItemVersion = item.Version
         };
@@ -149,7 +149,7 @@ public partial class EraEquipmentOperationFixture
         return new DestroyEraInventoryEquipmentCommand
         {
             CharacterId = _character.Id, RequestId = Guid.NewGuid(), ExpectedEquipmentVersion = _character.EquipmentVersion,
-            Items = items.Select(item => new EraEquipmentDestructionItemDto { EquipmentId = item.Id, ExpectedItemVersion = item.Version }).ToList()
+            Items = items.Select(item => new EraEquipmentDestructionItemDto { EquipmentInstanceId = item.Id, ExpectedItemVersion = item.Version }).ToList()
         };
     }
 
@@ -190,9 +190,9 @@ public partial class EraEquipmentOperationFixture
         var command = Destroy(first, equipped);
         var service = Service();
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
-        command.Items[1].EquipmentId = Guid.NewGuid();
+        command.Items[1].EquipmentInstanceId = Guid.NewGuid();
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_not_found");
-        command.Items[1].EquipmentId = AddItem().Id;
+        command.Items[1].EquipmentInstanceId = AddItem().Id;
         command.Items[1].ExpectedItemVersion = 4;
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
         command.ExpectedEquipmentVersion = 2;
@@ -244,7 +244,7 @@ public partial class EraEquipmentOperationFixture
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
         command.Items = null!;
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
-        command.Items = Enumerable.Range(0, 121).Select(_ => new EraEquipmentDestructionItemDto { EquipmentId = Guid.NewGuid(), ExpectedItemVersion = 1 }).ToList();
+        command.Items = Enumerable.Range(0, 121).Select(_ => new EraEquipmentDestructionItemDto { EquipmentInstanceId = Guid.NewGuid(), ExpectedItemVersion = 1 }).ToList();
         (await service.DestroyInventoryAsync(command, CancellationToken.None)).Code.ShouldBe(HttpStatusCode.BadRequest);
         _lastChanges.ShouldBeNull();
         _receipts.ShouldBeEmpty();
@@ -335,7 +335,7 @@ public partial class EraEquipmentOperationFixture
         response.Data!.State.TotalInventoryCount.ShouldBe(120);
         response.Data.State.InventoryItems.Any(item => item.Id == old.Id).ShouldBeTrue();
         response.Data.State.InventoryItems.Any(item => item.Id == candidate.Id).ShouldBeFalse();
-        _lastChanges!.Select(change => change.EquipmentId).ShouldBe(new[] { old.Id, candidate.Id });
+        _lastChanges!.Select(change => change.EquipmentInstanceId).ShouldBe(new[] { old.Id, candidate.Id });
         if (_lastChanges != null)
         {
             _lastChanges[0].Location.ShouldBe(EraEquipmentLocation.Inventory);
@@ -504,7 +504,7 @@ public partial class EraEquipmentOperationFixture
         command.ExpectedEquippedVersion = 4;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
         command.ExpectedEquippedVersion = 5;
-        command.ExpectedEquippedEquipmentId = Guid.NewGuid();
+        command.ExpectedEquippedEquipmentInstanceId = Guid.NewGuid();
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_version_conflict");
 
         _lastChanges.ShouldBeNull();
@@ -535,7 +535,7 @@ public partial class EraEquipmentOperationFixture
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_config_version_conflict");
         command.ExpectedManifestVersion = 7;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_incompatible_slot");
-        item.DefinitionId = Guid.NewGuid();
+        item.TemplateId = Guid.NewGuid();
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_definition_unavailable");
 
         _lastChanges.ShouldBeNull();
@@ -602,9 +602,9 @@ public partial class EraEquipmentOperationFixture
         var item = AddItem();
         var command = Equip(item);
         var service = Service();
-        command.ExpectedEquippedEquipmentId = Guid.NewGuid();
+        command.ExpectedEquippedEquipmentInstanceId = Guid.NewGuid();
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_invalid_operation");
-        command.ExpectedEquippedEquipmentId = null;
+        command.ExpectedEquippedEquipmentInstanceId = null;
         command.Slot = (EraEquipmentSlot)0;
         (await service.EquipAsync(command, CancellationToken.None)).ErrorCode.ShouldBe("era.equipment_invalid_operation");
 

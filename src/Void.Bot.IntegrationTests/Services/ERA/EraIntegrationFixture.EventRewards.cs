@@ -24,7 +24,7 @@ public partial class EraIntegrationFixture
         {
             var row = await context.Set<EraRewardConfiguration>().SingleAsync();
             var rules = JsonSerializer.Deserialize<EraRewardRules>(row.Payload)!;
-            rules.Pools[0].Entries.Single().DefinitionId = catalog.Templates[0].Id;
+            rules.Pools[0].Entries.Single().TemplateId = catalog.Templates[0].Id;
             row.Payload = JsonSerializer.Serialize(rules);
             await context.SaveChangesAsync();
         });
@@ -34,14 +34,14 @@ public partial class EraIntegrationFixture
         command.SourceType = EraRewardSourceType.Event;
         var first = await SubmitGroundAsync(command);
         first.Code.ShouldBe(HttpStatusCode.OK);
-        first.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(expectedCount);
+        first.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(expectedCount);
         var visible = (await QueryDropsAsync(world.WorldInstanceId)).Data!;
         visible.Drops.Count.ShouldBe(expectedCount);
         if (expectedCount == 1)
         {
             var drop = visible.Drops.Single();
             drop.EquipmentType.ShouldBe(EraEquipmentType.Weapon);
-            drop.DefinitionId.ShouldBe(catalog.Templates[0].Id);
+            drop.TemplateId.ShouldBe(catalog.Templates[0].Id);
             drop.Weapon!.Slots.Count.ShouldBe(catalog.SlotConfigurations[0].Slots.Count);
             drop.Weapon.Slots.Sum(slot => slot.Candidates.Count).ShouldBe(catalog.SlotConfigurations[0].Slots.Sum(slot => slot.CandidateCount));
             (await PickupDropAsync(PickupCommand(world, drop))).Code.ShouldBe(HttpStatusCode.OK);

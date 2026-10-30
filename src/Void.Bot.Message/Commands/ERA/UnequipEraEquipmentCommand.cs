@@ -14,7 +14,7 @@ public sealed class UnequipEraEquipmentCommand : IEraEquipmentOperation
     /// <summary>玩家范围内的幂等标识，同一成功请求重试不能改参数。</summary>
     public Guid RequestId { get; set; }
     /// <summary>目标槽位当前已穿实例 ID。</summary>
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     /// <summary>需要卸下的已穿槽位。</summary>
     public EraEquipmentSlot Slot { get; set; }
     /// <summary>角色装备快照的预期版本。</summary>

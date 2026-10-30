@@ -274,7 +274,7 @@ public class EraWeaponFixture
         var player = Guid.NewGuid();
         var equipment = new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = template.Id, DefinitionVersion = 2, EquipmentType = EraEquipmentType.Weapon,
+            Id = Guid.NewGuid(), TemplateId = template.Id, GenerationManifestVersion = 2, EquipmentType = EraEquipmentType.Weapon,
             Grade = EraEquipmentGrade.Common, OwnerPlayerId = player, CharacterId = character, Location = EraEquipmentLocation.Inventory,
             Version = 3, CreatedAt = DateTimeOffset.UtcNow
         };
@@ -290,7 +290,7 @@ public class EraWeaponFixture
         state.ShouldNotBeNull();
         state.InventoryItems.Single().WeaponTemplate!.BaseStats.Damage.ShouldBe(55);
         state.InventoryItems.Single().Version.ShouldBe(3);
-        state.InventoryItems.Single().DefinitionVersion.ShouldBe(2);
+        state.InventoryItems.Single().GenerationManifestVersion.ShouldBe(2);
         JsonSerializer.Serialize(state.InventoryItems.Single().Weapon).ShouldBe(before);
         instance.Slots.All(slot => slot.Candidates.Count == 2).ShouldBeTrue();
     }
@@ -306,7 +306,7 @@ public class EraWeaponFixture
         var character = new EraCharacter { Id = Guid.NewGuid(), PlayerId = Guid.NewGuid(), EquipmentVersion = 3 };
         var item = new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = template.Id, DefinitionVersion = 2, EquipmentType = EraEquipmentType.Weapon,
+            Id = Guid.NewGuid(), TemplateId = template.Id, GenerationManifestVersion = 2, EquipmentType = EraEquipmentType.Weapon,
             Grade = EraEquipmentGrade.Common, CharacterId = character.Id, OwnerPlayerId = character.PlayerId,
             Location = EraEquipmentLocation.Inventory, Version = 5, CreatedAt = DateTimeOffset.UtcNow
         };
@@ -327,7 +327,7 @@ public class EraWeaponFixture
         data.LockCharacterEquipmentAsync(character, Arg.Any<CancellationToken>()).Returns(snapshot);
         var command = new SelectEraWeaponModificationCommand
         {
-            CharacterId = character.Id, EquipmentId = item.Id, RequestId = Guid.NewGuid(),
+            CharacterId = character.Id, EquipmentInstanceId = item.Id, RequestId = Guid.NewGuid(),
             SlotId = instance.Slots[0].SlotId, CandidateId = chosen, ExpectedManifestVersion = 8, ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5
         };
         var response = await new EraEquipmentService(data, context, Substitute.For<ILocalizationService>(), weapons)
@@ -595,7 +595,7 @@ public class EraWeaponFixture
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         var templateId = current.Templates[0].Id;
         var removedSlot = current.Templates[0].CompatibleSlots[1];
-        var item = new EraEquipmentInstance { Id = Guid.NewGuid(), DefinitionId = templateId, EquippedSlot = removedSlot };
+        var item = new EraEquipmentInstance { Id = Guid.NewGuid(), TemplateId = templateId, EquippedSlot = removedSlot };
         data.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance> { item });
         data.GetInstancesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, EraWeaponInstanceDto> { [item.Id] = new() });
         var service = new EraWeaponService(data, equipment, user, Substitute.For<ILocalizationService>(), TimeProvider.System);
@@ -626,7 +626,7 @@ public class EraWeaponFixture
         {
             new EraPlannedRewardGrant { Equipment = new()
             {
-                new EraPlannedRewardEquipment { DefinitionId = current.Templates[0].Id,
+                new EraPlannedRewardEquipment { TemplateId = current.Templates[0].Id,
                     EquipmentType = EraEquipmentType.Weapon, Weapon = instance }
             } }
         } };

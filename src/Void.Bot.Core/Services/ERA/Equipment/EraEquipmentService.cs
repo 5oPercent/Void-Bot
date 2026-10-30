@@ -135,8 +135,8 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             var armor = entry.Armor;
             if (equipment.Id == Guid.Empty || equipment.CharacterId != snapshot.CharacterId || equipment.OwnerPlayerId != snapshot.PlayerId ||
                 !EraEquipmentItemRules.ValidPayload(entry) || !SystemEnum.IsDefined(equipment.Grade) ||
-                equipment.Version < 1 || equipment.DefinitionVersion < 1 ||
-                equipment.DefinitionId == Guid.Empty || equipment.CreatedAt == default ||
+                equipment.Version < 1 || equipment.GenerationManifestVersion < 1 ||
+                equipment.TemplateId == Guid.Empty || equipment.CreatedAt == default ||
                 equipment.Location is not (EraEquipmentLocation.Inventory or EraEquipmentLocation.Equipped) ||
                 (equipment.Location == EraEquipmentLocation.Equipped) != equipment.EquippedSlot.HasValue ||
                 (equipment.EquippedSlot.HasValue && !slots.Contains(equipment.EquippedSlot.Value)))
@@ -145,13 +145,13 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             }
 
             EraArmorTemplateDto? definition = null;
-            definitions?.TryGetValue(equipment.DefinitionId, out definition);
+            definitions?.TryGetValue(equipment.TemplateId, out definition);
             items.Add(new EraEquipmentInstanceDto
             {
                 Id = equipment.Id,
-                DefinitionId = equipment.DefinitionId,
-                DefinitionVersion = equipment.DefinitionVersion,
-                Definition = definition,
+                TemplateId = equipment.TemplateId,
+                GenerationManifestVersion = equipment.GenerationManifestVersion,
+                ArmorTemplate = definition,
                 EquipmentType = equipment.EquipmentType,
                 Grade = equipment.Grade,
                 OwnerPlayerId = snapshot.PlayerId,
@@ -164,7 +164,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
                 Weapon = entry.Weapon,
                 ArmorModifications = armor?.Modifications,
                 ArmorEffectiveAttributes = armor == null || manifest == null ? null : EraArmorModificationRules.Evaluate(armor, manifest.Armors),
-                WeaponTemplate = manifest?.Weapons.Templates.SingleOrDefault(template => template.Id == equipment.DefinitionId),
+                WeaponTemplate = manifest?.Weapons.Templates.SingleOrDefault(template => template.Id == equipment.TemplateId),
                 GenerationRuleVersion = armor?.GenerationRuleVersion ?? 0,
                 ArmorAttributes = armor == null ? new EraArmorAttributesDto() : new EraArmorAttributesDto
                 {
@@ -200,7 +200,7 @@ public sealed partial class EraEquipmentService : IEraEquipmentService
             TotalInventoryCount = inventory.Count,
             InventoryItems = inventory.Where(item => !equipmentType.HasValue || item.EquipmentType == equipmentType.Value)
                 .Where(item => !slot.HasValue || (item.EquipmentType == EraEquipmentType.Armor
-                    ? item.Definition?.CompatibleSlots.Contains(slot.Value) == true
+                    ? item.ArmorTemplate?.CompatibleSlots.Contains(slot.Value) == true
                     : item.WeaponTemplate?.CompatibleSlots.Contains(slot.Value) == true)).ToList(),
             EquippedSlots = slots.Select(equippedSlot => new EraEquippedArmorSlotDto
             {

@@ -35,11 +35,11 @@ public sealed partial class EraEquipmentService
         where T : EraEquipmentOperationResponse, new()
     {
         var equip = command as EquipEraEquipmentCommand;
-        if (command.RequestId == Guid.Empty || command.CharacterId == Guid.Empty || command.EquipmentId == Guid.Empty ||
+        if (command.RequestId == Guid.Empty || command.CharacterId == Guid.Empty || command.EquipmentInstanceId == Guid.Empty ||
             command.ExpectedEquipmentVersion < 0 || command.ExpectedItemVersion < 1 || !EraEquipmentRules.EquippedSlots.Contains(command.Slot) ||
             (equip != null && (equip.ExpectedManifestVersion < 1 ||
-                equip.ExpectedEquippedEquipmentId.HasValue != equip.ExpectedEquippedVersion.HasValue ||
-                equip.ExpectedEquippedEquipmentId == Guid.Empty || equip.ExpectedEquippedVersion is <= 0 ||
+                equip.ExpectedEquippedEquipmentInstanceId.HasValue != equip.ExpectedEquippedVersion.HasValue ||
+                equip.ExpectedEquippedEquipmentInstanceId == Guid.Empty || equip.ExpectedEquippedVersion is <= 0 ||
                 equip.ExpectedSourceSlot.HasValue && (equip.ExpectedSourceSlot.Value is not
                     (EraEquipmentSlot.Weapon1 or EraEquipmentSlot.Weapon2 or EraEquipmentSlot.Weapon3) ||
                     equip.ExpectedSourceSlot == command.Slot))))
@@ -51,14 +51,14 @@ public sealed partial class EraEquipmentService
         var character = await _characterContext.RequireOwnedAsync(command.CharacterId, true, cancellationToken).ConfigureAwait(false);
         var requestPayload = JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1,
+            SchemaVersion = 2,
             Operation = operation,
             command.CharacterId,
-            command.EquipmentId,
+            command.EquipmentInstanceId,
             command.Slot,
             command.ExpectedEquipmentVersion,
             command.ExpectedItemVersion,
-            ExpectedEquippedEquipmentId = equip?.ExpectedEquippedEquipmentId,
+            ExpectedEquippedEquipmentInstanceId = equip?.ExpectedEquippedEquipmentInstanceId,
             ExpectedEquippedVersion = equip?.ExpectedEquippedVersion,
             ExpectedManifestVersion = equip?.ExpectedManifestVersion
         });
@@ -130,7 +130,7 @@ public sealed partial class EraEquipmentService
             return Error<T>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
         }
 
-        var item = snapshot.Entries.SingleOrDefault(entry => entry.Equipment.Id == command.EquipmentId)?.Equipment;
+        var item = snapshot.Entries.SingleOrDefault(entry => entry.Equipment.Id == command.EquipmentInstanceId)?.Equipment;
         if (item == null)
         {
             return Error<T>(HttpStatusCode.NotFound, "era.equipment_not_found", text => text.EquipmentNotFound);
@@ -143,7 +143,7 @@ public sealed partial class EraEquipmentService
                 ? item.EquipmentType != EraEquipmentType.Weapon || item.Location != EraEquipmentLocation.Equipped ||
                     item.EquippedSlot != equip.ExpectedSourceSlot
                 : item.Location != EraEquipmentLocation.Inventory) ||
-                current?.Id != equip.ExpectedEquippedEquipmentId || current?.Version != equip.ExpectedEquippedVersion)) ||
+                current?.Id != equip.ExpectedEquippedEquipmentInstanceId || current?.Version != equip.ExpectedEquippedVersion)) ||
             (equip == null && (item.Location != EraEquipmentLocation.Equipped || current?.Id != item.Id)))
         {
             return Error<T>(HttpStatusCode.Conflict, "era.equipment_version_conflict", text => text.VersionConflict);
@@ -152,8 +152,8 @@ public sealed partial class EraEquipmentService
         if (equip != null)
         {
             var definition = manifest!.Armors.Templates.SingleOrDefault(definition =>
-                definition.Id == item.DefinitionId);
-            var weapon = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == item.DefinitionId);
+                definition.Id == item.TemplateId);
+            var weapon = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == item.TemplateId);
             if (item.EquipmentType == EraEquipmentType.Armor ? definition == null : weapon == null)
             {
                 return Error<T>(HttpStatusCode.Conflict, "era.equipment_definition_unavailable", text => text.DefinitionUnavailable);
@@ -166,7 +166,7 @@ public sealed partial class EraEquipmentService
             }
             if (equip.ExpectedSourceSlot is { } source && current != null)
             {
-                var returning = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == current.DefinitionId);
+                var returning = manifest.Weapons.Templates.SingleOrDefault(template => template.Id == current.TemplateId);
                 if (current.EquipmentType != EraEquipmentType.Weapon || returning == null || !returning.CompatibleSlots.Contains(source))
                     return Error<T>(HttpStatusCode.BadRequest, "era.equipment_incompatible_slot", text => text.IncompatibleSlot);
             }
@@ -196,7 +196,7 @@ public sealed partial class EraEquipmentService
         {
             changes.Add(new EraEquipmentPositionChange
             {
-                EquipmentId = current.Id,
+                EquipmentInstanceId = current.Id,
                 ExpectedVersion = current.Version,
                 PreviousLocation = current.Location,
                 PreviousEquippedSlot = current.EquippedSlot,
@@ -207,7 +207,7 @@ public sealed partial class EraEquipmentService
 
         changes.Add(new EraEquipmentPositionChange
         {
-            EquipmentId = item.Id,
+            EquipmentInstanceId = item.Id,
             ExpectedVersion = item.Version,
             PreviousLocation = item.Location,
             PreviousEquippedSlot = item.EquippedSlot,
@@ -218,7 +218,7 @@ public sealed partial class EraEquipmentService
         // 快照实例为 AsNoTracking 读取，只在内存中预先建立完整成功结果；此时还没有数据库写入。
         foreach (var change in changes)
         {
-            var changed = snapshot.Entries.Single(entry => entry.Equipment.Id == change.EquipmentId).Equipment;
+            var changed = snapshot.Entries.Single(entry => entry.Equipment.Id == change.EquipmentInstanceId).Equipment;
             changed.Location = change.Location;
             changed.EquippedSlot = change.EquippedSlot;
             changed.Version = change.ExpectedVersion + 1;

@@ -216,7 +216,7 @@ public partial class EraIntegrationFixture
         {
             var drop = await context.Set<EraEquipmentDrop>().SingleAsync();
             drop.Status.ShouldBe(EraEquipmentDropStatus.Invalidated);
-            drop.ActiveEquipmentId.ShouldBeNull();
+            drop.ActiveEquipmentInstanceId.ShouldBeNull();
             drop.Version.ShouldBe(2);
             var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == _inventory[0].Id);
             item.Location.ShouldBe(EraEquipmentLocation.Destroyed);

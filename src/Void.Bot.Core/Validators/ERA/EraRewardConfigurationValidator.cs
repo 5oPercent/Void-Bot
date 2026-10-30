@@ -8,7 +8,7 @@ public static class EraRewardConfigurationValidator
 {
     public static void Validate(EraRewardRules configuration)
     {
-        if (configuration == null || configuration.SchemaVersion != 1 || configuration.Nodes == null || configuration.Nodes.Count > 10000 ||
+        if (configuration == null || configuration.SchemaVersion != 2 || configuration.Nodes == null || configuration.Nodes.Count > 10000 ||
             configuration.Pools == null || configuration.Pools.Count > 1000 ||
             configuration.Nodes.Any(node => node == null) || configuration.Pools.Any(pool => pool == null))
             throw new ArgumentException("Reward configuration schema is invalid.");
@@ -23,7 +23,7 @@ public static class EraRewardConfigurationValidator
                 throw new ArgumentException("Reward pool is invalid.");
             foreach (var entry in entries)
             {
-                if (entry.DefinitionId == Guid.Empty || !System.Enum.IsDefined(entry.Grade) ||
+                if (entry.TemplateId == Guid.Empty || !System.Enum.IsDefined(entry.Grade) ||
                     entry.Count < 1 || entry.Count > EraEquipmentRules.InventoryCapacity || entry.Weight is < 1 or > 1000000)
                     throw new ArgumentException("Reward pool entry is invalid.");
             }

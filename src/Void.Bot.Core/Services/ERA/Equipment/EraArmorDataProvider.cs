@@ -32,8 +32,8 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
     private readonly IRepository<EraArmorModStatModifier> _eraArmorModStatModifierRepository;
     private readonly IRepository<EraArmorConfigurationSlot> _eraArmorConfigurationSlotRepository;
     private readonly IRepository<EraArmorConfigurationModPool> _eraArmorConfigurationModPoolRepository;
-    private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
-    private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
+    private readonly IRepository<EraArmorInstanceModCandidate> _eraArmorInstanceModCandidateRepository;
+    private readonly IRepository<EraArmorInstanceModSelection> _eraArmorInstanceModSelectionRepository;
     private readonly IRepository<EraEquipmentConfiguration> _eraEquipmentConfigurationRepository;
     private readonly IRepository<EraEquipmentInstance> _eraEquipmentInstanceRepository;
     private readonly IRepository<EraRewardEvent> _eraRewardEventRepository;
@@ -48,8 +48,8 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
         IRepository<EraArmorModStatModifier> eraArmorModStatModifierRepository,
         IRepository<EraArmorConfigurationSlot> eraArmorConfigurationSlotRepository,
         IRepository<EraArmorConfigurationModPool> eraArmorConfigurationModPoolRepository,
-        IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
-        IRepository<EraArmorModSelection> eraArmorModSelectionRepository,
+        IRepository<EraArmorInstanceModCandidate> eraArmorInstanceModCandidateRepository,
+        IRepository<EraArmorInstanceModSelection> eraArmorInstanceModSelectionRepository,
         IRepository<EraEquipmentConfiguration> eraEquipmentConfigurationRepository,
         IRepository<EraEquipmentInstance> eraEquipmentInstanceRepository,
         IRepository<EraRewardEvent> eraRewardEventRepository,
@@ -63,8 +63,8 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
         _eraArmorModStatModifierRepository = eraArmorModStatModifierRepository;
         _eraArmorConfigurationSlotRepository = eraArmorConfigurationSlotRepository;
         _eraArmorConfigurationModPoolRepository = eraArmorConfigurationModPoolRepository;
-        _eraArmorModCandidateRepository = eraArmorModCandidateRepository;
-        _eraArmorModSelectionRepository = eraArmorModSelectionRepository;
+        _eraArmorInstanceModCandidateRepository = eraArmorInstanceModCandidateRepository;
+        _eraArmorInstanceModSelectionRepository = eraArmorInstanceModSelectionRepository;
         _eraEquipmentConfigurationRepository = eraEquipmentConfigurationRepository;
         _eraEquipmentInstanceRepository = eraEquipmentInstanceRepository;
         _eraRewardEventRepository = eraRewardEventRepository;
@@ -90,9 +90,9 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
     {
         var ids = equipmentIds.Distinct().ToArray();
         if (ids.Length == 0) return new Dictionary<Guid, EraArmorInstanceDto>();
-        var candidates = await _eraArmorModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+        var candidates = await _eraArmorInstanceModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentInstanceId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var selections = await _eraArmorModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+        var selections = await _eraArmorInstanceModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentInstanceId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
         return EraArmorDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
@@ -109,13 +109,13 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
 
     public Task<List<EraEquipmentInstance>> GetReferencedArmorsAsync(EraEquipmentReferenceChanges changes, CancellationToken cancellationToken)
     {
-        var candidates = _eraArmorModCandidateRepository.QueryNoTracking();
-        var slots = _eraArmorModSelectionRepository.QueryNoTracking();
+        var candidates = _eraArmorInstanceModCandidateRepository.QueryNoTracking();
+        var slots = _eraArmorInstanceModSelectionRepository.QueryNoTracking();
         return _eraEquipmentInstanceRepository.QueryNoTracking().Where(row => row.EquipmentType == EraEquipmentType.Armor &&
-            (changes.TemplateIds.Contains(row.DefinitionId) ||
-                candidates.Any(candidate => candidate.EquipmentId == row.Id &&
+            (changes.TemplateIds.Contains(row.TemplateId) ||
+                candidates.Any(candidate => candidate.EquipmentInstanceId == row.Id &&
                     changes.ModificationIds.Contains(candidate.ModDefinitionId)) ||
-                slots.Any(slot => slot.EquipmentId == row.Id &&
+                slots.Any(slot => slot.EquipmentInstanceId == row.Id &&
                     (changes.SlotTypeIds.Contains(slot.SlotTypeId) || changes.SlotIds.Contains(slot.SlotId)))))
             .ToListAsync(cancellationToken);
     }
@@ -229,15 +229,15 @@ public sealed class EraArmorDataProvider : IEraArmorDataProvider
 
     public void AddInstance(Guid equipmentId, EraArmorInstanceDto instance)
     {
-        _eraArmorModCandidateRepository.InsertMany(EraArmorDataMapping.CreateCandidates(equipmentId, instance));
-        _eraArmorModSelectionRepository.InsertMany(EraArmorDataMapping.CreateSelections(equipmentId, instance));
+        _eraArmorInstanceModCandidateRepository.InsertMany(EraArmorDataMapping.CreateCandidates(equipmentId, instance));
+        _eraArmorInstanceModSelectionRepository.InsertMany(EraArmorDataMapping.CreateSelections(equipmentId, instance));
     }
 
     public async Task UpdateSelectionAsync(Guid equipmentId, Guid slotId, Guid previous, Guid candidate, long expectedItemVersion, CancellationToken cancellationToken)
     {
         _eraArmorTemplateRepository.RequireTransaction();
-        var changed = await _eraArmorModSelectionRepository.ExecuteUpdateAsync(
-            row => row.EquipmentId == equipmentId && row.SlotId == slotId && row.SelectedCandidateId == previous,
+        var changed = await _eraArmorInstanceModSelectionRepository.ExecuteUpdateAsync(
+            row => row.EquipmentInstanceId == equipmentId && row.SlotId == slotId && row.SelectedCandidateId == previous,
             setters => setters.SetProperty(row => row.SelectedCandidateId, candidate), cancellationToken).ConfigureAwait(false);
         if (changed != 1) throw new EraEquipmentConcurrencyException("Armor selection changed during the operation.");
         var touched = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(

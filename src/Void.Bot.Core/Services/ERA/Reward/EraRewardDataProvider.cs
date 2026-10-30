@@ -23,7 +23,7 @@ public interface IEraRewardDataProvider : IScope
     void AddEvent(EraRewardEvent rewardEvent);
     void AddRequest(EraRewardRequest request);
     void AddGrant(EraRewardGrant grant, IEnumerable<EraEquipmentInstance> equipment,
-        IEnumerable<EraArmorInstanceData> armor);
+        IEnumerable<EraArmorInstance> armor);
 }
 
 public sealed class EraRewardDataProvider : IEraRewardDataProvider
@@ -34,13 +34,13 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
     private readonly IRepository<EraRewardConfiguration> _eraRewardConfigurationRepository;
     private readonly IRepository<EraEquipmentInstance> _eraEquipmentInstanceRepository;
     private readonly IRepository<EraRewardGrant> _eraRewardGrantRepository;
-    private readonly IRepository<EraArmorInstanceData> _eraArmorInstanceDataRepository;
+    private readonly IRepository<EraArmorInstance> _eraArmorInstanceRepository;
     private readonly IRepository<EraRewardGrantEquipment> _eraRewardGrantEquipmentRepository;
-    private readonly IRepository<EraWeaponModCandidate> _eraWeaponModCandidateRepository;
-    private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
+    private readonly IRepository<EraWeaponInstanceModCandidate> _eraWeaponInstanceModCandidateRepository;
+    private readonly IRepository<EraWeaponInstanceModSelection> _eraWeaponInstanceModSelectionRepository;
 
-    private readonly IRepository<EraArmorModCandidate> _eraArmorModCandidateRepository;
-    private readonly IRepository<EraArmorModSelection> _eraArmorModSelectionRepository;
+    private readonly IRepository<EraArmorInstanceModCandidate> _eraArmorInstanceModCandidateRepository;
+    private readonly IRepository<EraArmorInstanceModSelection> _eraArmorInstanceModSelectionRepository;
 
     public EraRewardDataProvider(
         IRepository<EraRewardEvent> eraRewardEventRepository,
@@ -48,32 +48,32 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
         IRepository<EraRewardConfiguration> eraRewardConfigurationRepository,
         IRepository<EraEquipmentInstance> eraEquipmentInstanceRepository,
         IRepository<EraRewardGrant> eraRewardGrantRepository,
-        IRepository<EraArmorInstanceData> eraArmorInstanceDataRepository,
+        IRepository<EraArmorInstance> eraArmorInstanceRepository,
         IRepository<EraRewardGrantEquipment> eraRewardGrantEquipmentRepository,
-        IRepository<EraWeaponModCandidate> eraWeaponModCandidateRepository,
-        IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
-        IRepository<EraArmorModCandidate> eraArmorModCandidateRepository,
-        IRepository<EraArmorModSelection> eraArmorModSelectionRepository)
+        IRepository<EraWeaponInstanceModCandidate> eraWeaponInstanceModCandidateRepository,
+        IRepository<EraWeaponInstanceModSelection> eraWeaponInstanceModSelectionRepository,
+        IRepository<EraArmorInstanceModCandidate> eraArmorInstanceModCandidateRepository,
+        IRepository<EraArmorInstanceModSelection> eraArmorInstanceModSelectionRepository)
     {
         _eraRewardEventRepository = eraRewardEventRepository;
         _eraRewardRequestRepository = eraRewardRequestRepository;
         _eraRewardConfigurationRepository = eraRewardConfigurationRepository;
         _eraEquipmentInstanceRepository = eraEquipmentInstanceRepository;
         _eraRewardGrantRepository = eraRewardGrantRepository;
-        _eraArmorInstanceDataRepository = eraArmorInstanceDataRepository;
+        _eraArmorInstanceRepository = eraArmorInstanceRepository;
         _eraRewardGrantEquipmentRepository = eraRewardGrantEquipmentRepository;
-        _eraWeaponModCandidateRepository = eraWeaponModCandidateRepository;
-        _eraWeaponModSelectionRepository = eraWeaponModSelectionRepository;
-        _eraArmorModCandidateRepository = eraArmorModCandidateRepository;
-        _eraArmorModSelectionRepository = eraArmorModSelectionRepository;
+        _eraWeaponInstanceModCandidateRepository = eraWeaponInstanceModCandidateRepository;
+        _eraWeaponInstanceModSelectionRepository = eraWeaponInstanceModSelectionRepository;
+        _eraArmorInstanceModCandidateRepository = eraArmorInstanceModCandidateRepository;
+        _eraArmorInstanceModSelectionRepository = eraArmorInstanceModSelectionRepository;
     }
 
     public void AddWeaponInstances(IReadOnlyDictionary<Guid, EraWeaponInstanceDto> weapons)
     {
         foreach (var pair in weapons)
         {
-            _eraWeaponModCandidateRepository.InsertMany(EraWeaponDataMapping.CreateCandidates(pair.Key, pair.Value));
-            _eraWeaponModSelectionRepository.InsertMany(EraWeaponDataMapping.CreateSelections(pair.Key, pair.Value));
+            _eraWeaponInstanceModCandidateRepository.InsertMany(EraWeaponDataMapping.CreateCandidates(pair.Key, pair.Value));
+            _eraWeaponInstanceModSelectionRepository.InsertMany(EraWeaponDataMapping.CreateSelections(pair.Key, pair.Value));
         }
     }
 
@@ -151,21 +151,21 @@ public sealed class EraRewardDataProvider : IEraRewardDataProvider
         return items.Count;
     }
 
-    public void AddGrant(EraRewardGrant grant, IEnumerable<EraEquipmentInstance> equipment, IEnumerable<EraArmorInstanceData> armor)
+    public void AddGrant(EraRewardGrant grant, IEnumerable<EraEquipmentInstance> equipment, IEnumerable<EraArmorInstance> armor)
     {
         var items = equipment.ToList();
         _eraRewardGrantRepository.Insert(grant);
         _eraEquipmentInstanceRepository.InsertMany(items);
         var armorItems = armor.ToList();
-        _eraArmorInstanceDataRepository.InsertMany(armorItems);
+        _eraArmorInstanceRepository.InsertMany(armorItems);
         foreach (var item in armorItems)
         {
-            _eraArmorModCandidateRepository.InsertMany(EraArmorDataMapping.CreateCandidates(item.EquipmentId, item.Modifications));
-            _eraArmorModSelectionRepository.InsertMany(EraArmorDataMapping.CreateSelections(item.EquipmentId, item.Modifications));
+            _eraArmorInstanceModCandidateRepository.InsertMany(EraArmorDataMapping.CreateCandidates(item.EquipmentInstanceId, item.Modifications));
+            _eraArmorInstanceModSelectionRepository.InsertMany(EraArmorDataMapping.CreateSelections(item.EquipmentInstanceId, item.Modifications));
         }
         _eraRewardGrantEquipmentRepository.InsertMany(items.Select(item => new EraRewardGrantEquipment
         {
-            GrantId = grant.Id, EquipmentId = item.Id
+            GrantId = grant.Id, EquipmentInstanceId = item.Id
         }));
     }
 }

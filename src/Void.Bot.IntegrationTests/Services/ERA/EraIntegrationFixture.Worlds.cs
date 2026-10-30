@@ -166,7 +166,7 @@ public partial class EraIntegrationFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.State.EquippedOperationRestriction!.IsRestricted.ShouldBeTrue();
         (await SendEquipAsync(command)).IsReplay.ShouldBeTrue();
-        (await SendUnequipAsync(command.EquipmentId, 4, 6)).ErrorCode.ShouldBe("era.equipment_operations_restricted");
+        (await SendUnequipAsync(command.EquipmentInstanceId, 4, 6)).ErrorCode.ShouldBe("era.equipment_operations_restricted");
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(4);

@@ -6,7 +6,7 @@ namespace Void.Bot.Core.Data.EntityConfiguration;
 
 public sealed class EraWeaponEntityConfiguration : IEntityTypeConfiguration<EraWeaponConfigurationSlot>,
     IEntityTypeConfiguration<EraWeaponModStatModifier>, IEntityTypeConfiguration<EraWeaponConfigurationModPool>,
-    IEntityTypeConfiguration<EraWeaponModCandidate>, IEntityTypeConfiguration<EraWeaponModSelection>,
+    IEntityTypeConfiguration<EraWeaponInstanceModCandidate>, IEntityTypeConfiguration<EraWeaponInstanceModSelection>,
     IEntityTypeConfiguration<EraWeaponTemplate>, IEntityTypeConfiguration<EraWeaponModDefinition>
 {
     public void Configure(EntityTypeBuilder<EraWeaponTemplate> builder)
@@ -39,20 +39,20 @@ public sealed class EraWeaponEntityConfiguration : IEntityTypeConfiguration<EraW
         builder.HasOne<EraWeaponModDefinition>().WithMany().HasForeignKey(row => row.ModDefinitionId).OnDelete(DeleteBehavior.Restrict);
     }
 
-    public void Configure(EntityTypeBuilder<EraWeaponModCandidate> builder)
+    public void Configure(EntityTypeBuilder<EraWeaponInstanceModCandidate> builder)
     {
-        builder.HasAlternateKey(row => new { row.EquipmentId, row.SlotId, row.CandidateId });
-        builder.HasIndex(row => new { row.EquipmentId, row.SlotId, row.ModDefinitionId }).IsUnique();
-        builder.HasOne<EraEquipmentInstance>().WithMany().HasForeignKey(row => row.EquipmentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasAlternateKey(row => new { row.EquipmentInstanceId, row.SlotId, row.CandidateId });
+        builder.HasIndex(row => new { row.EquipmentInstanceId, row.SlotId, row.ModDefinitionId }).IsUnique();
+        builder.HasOne<EraEquipmentInstance>().WithMany().HasForeignKey(row => row.EquipmentInstanceId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<EraWeaponModDefinition>().WithMany().HasForeignKey(row => row.ModDefinitionId).OnDelete(DeleteBehavior.Restrict);
     }
 
-    public void Configure(EntityTypeBuilder<EraWeaponModSelection> builder)
+    public void Configure(EntityTypeBuilder<EraWeaponInstanceModSelection> builder)
     {
-        builder.HasKey(row => new { row.EquipmentId, row.SlotId });
+        builder.HasKey(row => new { row.EquipmentInstanceId, row.SlotId });
         builder.HasOne<EraWeaponSlotType>().WithMany().HasForeignKey(row => row.SlotTypeId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<EraWeaponModCandidate>().WithMany()
-            .HasForeignKey(row => new { row.EquipmentId, row.SlotId, CandidateId = row.SelectedCandidateId })
-            .HasPrincipalKey(row => new { row.EquipmentId, row.SlotId, row.CandidateId }).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<EraWeaponInstanceModCandidate>().WithMany()
+            .HasForeignKey(row => new { row.EquipmentInstanceId, row.SlotId, CandidateId = row.SelectedCandidateId })
+            .HasPrincipalKey(row => new { row.EquipmentInstanceId, row.SlotId, row.CandidateId }).OnDelete(DeleteBehavior.Restrict);
     }
 }

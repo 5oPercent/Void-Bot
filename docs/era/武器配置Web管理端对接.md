@@ -2,6 +2,8 @@
 
 更新日期：2026-10-25。面向 Web 后台开发，以当前 Controller、DTO、Validator 和 Service 源码为准；本文未进行部署环境 HTTP 联调。
 
+2026-10-30 的武器模板／武器框架调整见[专项设计](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器框架与属性配置设计.md)与[专项 TODO](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器框架与属性配置TODO.md)。框架管理、适用属性表单和类型化能力配置尚待实施；下文记录现有接口，不能视为新框架契约。后端暂无实际业务数据，实施时直接准备结构迁移，不增加旧字段兼容流程。
+
 范围：武器模板、槽位类型、整套槽位方案、公共改装定义、共享属性映射配置、预检和发布。玩家实例、背包、装备操作及战斗执行不在本文范围。
 
 槽位相关契约使用 `slotTypes`、`slotConfigurations`、`slotConfigurationId`、`slotTypeId`；Script0040 按空武器业务表升级结构，不执行旧数据转换。完整规则见 [武器改装槽位方案](武器改装槽位方案.md)。

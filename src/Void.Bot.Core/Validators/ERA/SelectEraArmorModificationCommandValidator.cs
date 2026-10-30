@@ -9,7 +9,7 @@ public sealed class SelectEraArmorModificationCommandValidator : FluentMessageVa
     public SelectEraArmorModificationCommandValidator()
     {
         RuleFor(command => command.CharacterId).NotEmpty();
-        RuleFor(command => command.EquipmentId).NotEmpty();
+        RuleFor(command => command.EquipmentInstanceId).NotEmpty();
         RuleFor(command => command.RequestId).NotEmpty();
         RuleFor(command => command.CandidateId).NotEmpty();
         RuleFor(command => command.SlotId).NotEmpty();

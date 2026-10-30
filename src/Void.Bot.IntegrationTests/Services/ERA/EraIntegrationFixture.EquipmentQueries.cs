@@ -37,7 +37,7 @@ public partial class EraIntegrationFixture
         {
             // 只有准备的另一玩家装备；GET 连无归属的额外资产也不能创建。
             (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(1);
-            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(1);
+            (await context.Set<EraArmorInstance>().CountAsync()).ShouldBe(1);
         });
     }
 
@@ -70,7 +70,7 @@ public partial class EraIntegrationFixture
             item.Location.ShouldBe(EraEquipmentLocation.Inventory);
             item.ArmorAttributes.Strength.ShouldBe(120);
             item.GenerationRuleVersion.ShouldBe(42);
-            item.Definition.ShouldNotBeNull();
+            item.ArmorTemplate.ShouldNotBeNull();
         }
         await AssertOriginalStateAsync();
     }
@@ -97,7 +97,7 @@ public partial class EraIntegrationFixture
         await SeedAsync();
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraArmorInstanceData>().Where(row => row.EquipmentId == _inventory[0].Id)
+            (await context.Set<EraArmorInstance>().Where(row => row.EquipmentInstanceId == _inventory[0].Id)
                 .ExecuteDeleteAsync()).ShouldBe(1);
         });
 
@@ -111,7 +111,7 @@ public partial class EraIntegrationFixture
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraEquipmentInstance>().CountAsync(row => row.Id == _inventory[0].Id)).ShouldBe(1);
-            (await context.Set<EraArmorInstanceData>().CountAsync(row => row.EquipmentId == _inventory[0].Id)).ShouldBe(0);
+            (await context.Set<EraArmorInstance>().CountAsync(row => row.EquipmentInstanceId == _inventory[0].Id)).ShouldBe(0);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(0);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(3);
         });
@@ -127,7 +127,7 @@ public partial class EraIntegrationFixture
             var configuration = await context.Set<EraEquipmentConfiguration>().SingleAsync(row => row.Id == ConfigurationId);
             configuration.Version = 8;
             // 模拟模板关系记录缺失；正常管理发布会拒绝删除仍受实例引用的模板。
-            (await context.Set<EraArmorTemplate>().Where(row => row.Id == _inventory[0].DefinitionId)
+            (await context.Set<EraArmorTemplate>().Where(row => row.Id == _inventory[0].TemplateId)
                 .ExecuteDeleteAsync()).ShouldBe(1);
             await context.SaveChangesAsync();
         });
@@ -140,9 +140,9 @@ public partial class EraIntegrationFixture
         response.Data!.ManifestVersion.ShouldBe(8);
         var item = response.Data.InventoryItems.ShouldHaveSingleItem();
         item.Id.ShouldBe(_inventory[0].Id);
-        item.Definition.ShouldBeNull();
-        item.DefinitionId.ShouldBe(Guid.Parse("10000000-0000-0000-0000-000000000001"));
-        item.DefinitionVersion.ShouldBe(1);
+        item.ArmorTemplate.ShouldBeNull();
+        item.TemplateId.ShouldBe(Guid.Parse("10000000-0000-0000-0000-000000000001"));
+        item.GenerationManifestVersion.ShouldBe(1);
         item.GenerationRuleVersion.ShouldBe(42);
         item.ArmorAttributes.Strength.ShouldBe(120);
         await AssertOriginalStateAsync();

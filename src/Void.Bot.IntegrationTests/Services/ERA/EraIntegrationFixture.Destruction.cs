@@ -19,7 +19,7 @@ public partial class EraIntegrationFixture
             CharacterId = _characterId, RequestId = Guid.NewGuid(), ExpectedEquipmentVersion = 3,
             Items = _inventory.Select(item => new EraEquipmentDestructionItemDto
             {
-                EquipmentId = item.Id, ExpectedItemVersion = item.Version
+                EquipmentInstanceId = item.Id, ExpectedItemVersion = item.Version
             }).ToList()
         };
     }
@@ -50,7 +50,7 @@ public partial class EraIntegrationFixture
                 item.EquippedSlot.ShouldBeNull();
                 item.Version.ShouldBe(6);
             }
-            (await context.Set<EraArmorInstanceData>().CountAsync(row => ids.Contains(row.EquipmentId))).ShouldBe(2);
+            (await context.Set<EraArmorInstance>().CountAsync(row => ids.Contains(row.EquipmentInstanceId))).ShouldBe(2);
             (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == _equipped!.Id)).Location.ShouldBe(EraEquipmentLocation.Equipped);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(4);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync(row => row.PlayerId == _playerId)).ShouldBe(1);

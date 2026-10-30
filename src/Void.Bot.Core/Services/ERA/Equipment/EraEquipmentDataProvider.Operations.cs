@@ -57,12 +57,12 @@ public sealed partial class EraEquipmentDataProvider
         var equipment = await _eraEquipmentInstanceRepository.QuerySql(
                 $"SELECT * FROM era_equipment_instance WHERE character_id = {character.Id.ToString()} AND (location = {(int)EraEquipmentLocation.Inventory} OR location = {(int)EraEquipmentLocation.Equipped}) ORDER BY id FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
-        var armor = await _eraArmorInstanceDataRepository.QuerySql(
-                $"SELECT armor.* FROM era_armor_instance_data AS armor INNER JOIN era_equipment_instance AS equipment ON armor.equipment_id = equipment.id WHERE equipment.character_id = {character.Id.ToString()} AND (equipment.location = {(int)EraEquipmentLocation.Inventory} OR equipment.location = {(int)EraEquipmentLocation.Equipped}) ORDER BY armor.equipment_id FOR UPDATE")
+        var armor = await _eraArmorInstanceRepository.QuerySql(
+                $"SELECT armor.* FROM era_armor_instance AS armor INNER JOIN era_equipment_instance AS equipment ON armor.equipment_instance_id = equipment.id WHERE equipment.character_id = {character.Id.ToString()} AND (equipment.location = {(int)EraEquipmentLocation.Inventory} OR equipment.location = {(int)EraEquipmentLocation.Equipped}) ORDER BY armor.equipment_instance_id FOR UPDATE")
             .AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
-        var armorInstances = await ReadArmorInstancesAsync(armor.Select(row => row.EquipmentId), cancellationToken).ConfigureAwait(false);
-        foreach (var row in armor) row.Modifications = armorInstances[row.EquipmentId];
-        var armorById = armor.ToDictionary(item => item.EquipmentId);
+        var armorInstances = await ReadArmorInstancesAsync(armor.Select(row => row.EquipmentInstanceId), cancellationToken).ConfigureAwait(false);
+        foreach (var row in armor) row.Modifications = armorInstances[row.EquipmentInstanceId];
+        var armorById = armor.ToDictionary(item => item.EquipmentInstanceId);
         var shares = await ReadSharesAsync(equipment.Select(item => item.Id), cancellationToken).ConfigureAwait(false);
         var weapons = await ReadWeaponInstancesAsync(equipment.Where(row => row.EquipmentType == EraEquipmentType.Weapon)
                 .Select(row => row.Id), cancellationToken).ConfigureAwait(false);
@@ -93,11 +93,11 @@ public sealed partial class EraEquipmentDataProvider
         // 中间位置不提交、不生成回执、不增加版本；后续任一失败由外层工作单元整体回滚。
         var moving = changes.Where(change => change.PreviousLocation == EraEquipmentLocation.Equipped &&
             change.Location == EraEquipmentLocation.Equipped && change.PreviousEquippedSlot != change.EquippedSlot)
-            .Select(change => change.EquipmentId).ToHashSet();
-        foreach (var change in changes.Where(change => moving.Contains(change.EquipmentId)))
+            .Select(change => change.EquipmentInstanceId).ToHashSet();
+        foreach (var change in changes.Where(change => moving.Contains(change.EquipmentInstanceId)))
         {
             var affected = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(
-                equipment => equipment.Id == change.EquipmentId && equipment.CharacterId == characterId &&
+                equipment => equipment.Id == change.EquipmentInstanceId && equipment.CharacterId == characterId &&
                     equipment.OwnerPlayerId == playerId && equipment.Version == change.ExpectedVersion &&
                     equipment.Location == change.PreviousLocation && equipment.EquippedSlot == change.PreviousEquippedSlot,
                 setters => setters.SetProperty(equipment => equipment.Location, EraEquipmentLocation.Inventory)
@@ -109,10 +109,10 @@ public sealed partial class EraEquipmentDataProvider
         // 背包替换仍先释放旧装备；已穿移动使用上面已校验的事务内暂存位置。
         foreach (var change in changes)
         {
-            var previousLocation = moving.Contains(change.EquipmentId) ? EraEquipmentLocation.Inventory : change.PreviousLocation;
-            var previousSlot = moving.Contains(change.EquipmentId) ? null : change.PreviousEquippedSlot;
+            var previousLocation = moving.Contains(change.EquipmentInstanceId) ? EraEquipmentLocation.Inventory : change.PreviousLocation;
+            var previousSlot = moving.Contains(change.EquipmentInstanceId) ? null : change.PreviousEquippedSlot;
             var affected = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(
-                equipment => equipment.Id == change.EquipmentId &&
+                equipment => equipment.Id == change.EquipmentInstanceId &&
                     equipment.CharacterId == characterId && equipment.OwnerPlayerId == playerId &&
                     equipment.Version == change.ExpectedVersion &&
                     equipment.Location == previousLocation && equipment.EquippedSlot == previousSlot,

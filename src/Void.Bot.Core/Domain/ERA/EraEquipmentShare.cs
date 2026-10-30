@@ -8,7 +8,7 @@ namespace Void.Bot.Core.Domain.ERA;
 public sealed class EraEquipmentShare : IEntityBase
 {
     [Key]
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     [Column(TypeName = "text")]
     public string AllowedPlayerIdsPayload { get; set; } = string.Empty;
     public DateTimeOffset ShareUntil { get; set; }

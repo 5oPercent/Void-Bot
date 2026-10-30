@@ -314,7 +314,7 @@ public sealed class EraWeaponService : IEraWeaponService
         var instances = await _weapons.GetInstancesAsync(items.Select(row => row.Id), cancellationToken).ConfigureAwait(false);
         foreach (var item in items)
         {
-            if (!templates.TryGetValue(item.DefinitionId, out var template) ||
+            if (!templates.TryGetValue(item.TemplateId, out var template) ||
                 item.EquippedSlot.HasValue && !template.CompatibleSlots.Contains(item.EquippedSlot.Value) ||
                 !instances.TryGetValue(item.Id, out var instance))
                 throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
@@ -335,7 +335,7 @@ public sealed class EraWeaponService : IEraWeaponService
                 {
                     throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
                 }
-                if (rewards.Pools.SelectMany(pool => pool.Entries).Any(entry => removedTemplates.Contains(entry.DefinitionId)))
+                if (rewards.Pools.SelectMany(pool => pool.Entries).Any(entry => removedTemplates.Contains(entry.TemplateId)))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
             }
         }
@@ -351,11 +351,11 @@ public sealed class EraWeaponService : IEraWeaponService
             {
                 if (!EraEquipmentItemRules.ValidWeapon(item.Weapon))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-                var affected = changes.TemplateIds.Contains(item.DefinitionId) || item.Weapon!.Slots.Any(slot =>
+                var affected = changes.TemplateIds.Contains(item.TemplateId) || item.Weapon!.Slots.Any(slot =>
                     changes.SlotTypeIds.Contains(slot.SlotTypeId) || changes.SlotIds.Contains(slot.SlotId) ||
                     slot.Candidates.Any(candidate => changes.ModificationIds.Contains(candidate.ModDefinitionId)));
                 if (!affected) continue;
-                if (!templates.TryGetValue(item.DefinitionId, out var template))
+                if (!templates.TryGetValue(item.TemplateId, out var template))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
                 CheckInstance(template, item.Weapon);
             }

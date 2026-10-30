@@ -49,7 +49,7 @@ public partial class EraIntegrationFixture
         var granted = await GrantRewardAsync(plan.Data);
         granted.Code.ShouldBe(HttpStatusCode.OK);
         granted.Data!.Grants.Count.ShouldBe(count);
-        granted.Data.Grants.ShouldAllBe(grant => grant.EquipmentIds.Count == 1 && grant.EquipmentVersion == 4);
+        granted.Data.Grants.ShouldAllBe(grant => grant.EquipmentInstanceIds.Count == 1 && grant.EquipmentVersion == 4);
         (await GrantRewardAsync(plan.Data)).IsReplay.ShouldBeTrue();
         _worldTestMaxMembers = 2;
         command.SourceInstanceId = Guid.NewGuid();
