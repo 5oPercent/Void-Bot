@@ -20,6 +20,7 @@ public sealed partial class EraWeaponService
     {
         var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
         var items = manifest.Weapons.Frameworks.Where(row => (!request.IsEnabled.HasValue || row.IsEnabled == request.IsEnabled) &&
+            (request.Category == null || string.Equals(row.Category, request.Category, StringComparison.Ordinal)) &&
             (request.PresentationDriverKey == null || row.PresentationDriverKey == request.PresentationDriverKey) &&
             (string.IsNullOrWhiteSpace(request.Search) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase) ||
                 row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase))).ToList();

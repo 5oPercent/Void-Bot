@@ -12,6 +12,8 @@ public sealed class GetEraWeaponFrameworksRequestValidator : FluentMessageValida
         RuleFor(request => request.PageIndex).GreaterThanOrEqualTo(1);
         RuleFor(request => request.PageSize).InclusiveBetween(1, EraWeaponConstants.MaximumPageSize);
         RuleFor(request => request.Search).MaximumLength(128);
-        RuleFor(request => request.PresentationDriverKey).Must(value => value == null || value is "Firearm" or "Bow" or "Crossbow" or "Melee");
+        RuleFor(request => request.Category).Must(value => value == null ||
+            !string.IsNullOrWhiteSpace(value) && value.Length <= 64 && value == value.Trim());
+        RuleFor(request => request.PresentationDriverKey).Must(value => value == null || EraWeaponConfigurationValidator.IsValidPresentationDriverKey(value));
     }
 }

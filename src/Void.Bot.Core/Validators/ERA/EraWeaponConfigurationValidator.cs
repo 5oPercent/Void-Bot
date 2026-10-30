@@ -147,7 +147,8 @@ public static class EraWeaponConfigurationValidator
     public static void ValidateFramework(EraWeaponFrameworkDto framework)
     {
         if (framework == null || string.IsNullOrWhiteSpace(framework.Name) || framework.Name.Length > 128 ||
-            framework.Note is not { Length: <= 2048 } || framework.PresentationDriverKey is not ("Firearm" or "Bow" or "Crossbow" or "Melee") ||
+            string.IsNullOrWhiteSpace(framework.Category) || framework.Category.Length > 64 || framework.Category != framework.Category.Trim() ||
+            framework.Note is not { Length: <= 2048 } || !IsValidPresentationDriverKey(framework.PresentationDriverKey) ||
             framework.SupplementaryStats == null || framework.Capabilities == null || framework.Capabilities.Count > 8 ||
             framework.Capabilities.Any(capability => capability == null) ||
             framework.Capabilities.Select(capability => capability.Kind).Distinct().Count() != framework.Capabilities.Count ||
@@ -192,16 +193,16 @@ public static class EraWeaponConfigurationValidator
         }
         if (!supplementary.SetEquals(framework.SupplementaryStats))
             throw new ArgumentException("Framework attributes do not match its capabilities.");
-        if (framework.PresentationDriverKey == "Melee")
+        if (kinds.Contains(EraWeaponCapabilityKind.MeleeHit))
         {
-            if (!kinds.Contains(EraWeaponCapabilityKind.MeleeHit) ||
-                kinds.Except(new[] { EraWeaponCapabilityKind.MeleeHit, EraWeaponCapabilityKind.Reload, EraWeaponCapabilityKind.Charge }).Any())
-                throw new ArgumentException("Melee driver capabilities are invalid.");
+            if (kinds.Except(new[] { EraWeaponCapabilityKind.MeleeHit, EraWeaponCapabilityKind.Reload, EraWeaponCapabilityKind.Charge }).Any())
+                throw new ArgumentException("Melee hit capabilities are invalid.");
         }
-        else if (!kinds.Contains(EraWeaponCapabilityKind.Firing) || kinds.Contains(EraWeaponCapabilityKind.MeleeHit) ||
-            kinds.Contains(EraWeaponCapabilityKind.Projectile) == kinds.Contains(EraWeaponCapabilityKind.Hitscan) ||
-            framework.PresentationDriverKey == "Bow" && (!kinds.Contains(EraWeaponCapabilityKind.Projectile) || !kinds.Contains(EraWeaponCapabilityKind.Charge)) ||
-            framework.PresentationDriverKey == "Crossbow" && (!kinds.Contains(EraWeaponCapabilityKind.Projectile) || !kinds.Contains(EraWeaponCapabilityKind.Reload)))
-            throw new ArgumentException("Ranged driver capabilities are invalid.");
+        else if (!kinds.Contains(EraWeaponCapabilityKind.Firing) ||
+            kinds.Contains(EraWeaponCapabilityKind.Projectile) == kinds.Contains(EraWeaponCapabilityKind.Hitscan))
+            throw new ArgumentException("Ranged hit capabilities require firing and exactly one hit method.");
     }
+
+    public static bool IsValidPresentationDriverKey(string? key) => key is { Length: >= 1 and <= 32 } &&
+        key.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-');
 }
