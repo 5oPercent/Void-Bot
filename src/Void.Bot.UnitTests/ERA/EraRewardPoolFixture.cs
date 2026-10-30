@@ -31,7 +31,7 @@ public class EraRewardPoolFixture
         var node = new EraRewardNode { ChanceBasisPoints = 10000, Rolls = 2 };
         var result = new EraRewardPoolRoller().Roll(node, Pool(), new TicketRandom(0, ticket));
         result.Count.ShouldBe(2);
-        result.ShouldAllBe(entry => entry.DefinitionId == Guid.Parse(definition)); // 有放回抽取，同一项允许再次命中。
+        result.ShouldAllBe(entry => entry.TemplateId == Guid.Parse(definition)); // 有放回抽取，同一项允许再次命中。
     }
 
     [Fact]
@@ -110,8 +110,8 @@ public class EraRewardPoolFixture
         {
             Id = "pool", Entries = new List<EraRewardPoolEntry>
             {
-                new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = 1, Weight = 2 },
-                new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002"), Grade = EraEquipmentGrade.Reliable, Count = 1, Weight = 5 }
+                new EraRewardPoolEntry { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = 1, Weight = 2 },
+                new EraRewardPoolEntry { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000002"), Grade = EraEquipmentGrade.Reliable, Count = 1, Weight = 5 }
             }
         };
     }

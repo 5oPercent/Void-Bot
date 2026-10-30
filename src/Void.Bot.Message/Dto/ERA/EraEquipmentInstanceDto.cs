@@ -2,17 +2,17 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Dto.ERA;
 
-/// <summary>后端已保存的装备实例与适用的当前展示定义。</summary>
+/// <summary>后端已保存的装备实例与适用的当前模板。</summary>
 public sealed class EraEquipmentInstanceDto
 {
     /// <summary>装备唯一身份，转移、拾取和丢出不改变。</summary>
     public Guid Id { get; set; }
-    /// <summary>实例引用的稳定定义 ID。</summary>
-    public Guid DefinitionId { get; set; }
-    /// <summary>首次生成时采用的目录版本；不是展示定义的当前版本。</summary>
-    public long DefinitionVersion { get; set; }
-    /// <summary>当前目录中的展示定义；缺失或目录不可用时为空，客户端按定义 ID 降级显示。</summary>
-    public EraArmorTemplateDto? Definition { get; set; }
+    /// <summary>实例引用的稳定模板 ID。</summary>
+    public Guid TemplateId { get; set; }
+    /// <summary>首次生成时采用的目录版本；不是模板独立版本。</summary>
+    public long GenerationManifestVersion { get; set; }
+    /// <summary>当前目录中的护甲模板；缺失或目录不可用时为空，客户端按模板 ID 降级显示。</summary>
+    public EraArmorTemplateDto? ArmorTemplate { get; set; }
     /// <summary>装备类型，决定护甲或武器载荷。</summary>
     public EraEquipmentType EquipmentType { get; set; }
     /// <summary>本件保存的品阶。</summary>

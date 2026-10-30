@@ -176,7 +176,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
     {
         return new EraEquipmentInstance
         {
-            Id = Guid.NewGuid(), DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), DefinitionVersion = 1,
+            Id = Guid.NewGuid(), TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), GenerationManifestVersion = 1,
             EquipmentType = EraEquipmentType.Armor, Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = location == EraEquipmentLocation.Ground ? null : playerId ?? _playerId,
             CharacterId = location is EraEquipmentLocation.Inventory or EraEquipmentLocation.Equipped
@@ -192,9 +192,9 @@ public partial class EraIntegrationFixture : IntegrationFixture
         foreach (var item in items)
         {
             context.Set<EraEquipmentInstance>().Add(item);
-            context.Set<EraArmorInstanceData>().Add(new EraArmorInstanceData
+            context.Set<EraArmorInstance>().Add(new EraArmorInstance
             {
-                EquipmentId = item.Id, GenerationRuleVersion = 42,
+                EquipmentInstanceId = item.Id, GenerationRuleVersion = 42,
                 Strength = 120, Survival = 15, Mobility = 9, Focus = 6, Efficiency = 6, Resistance = 3
             });
         }
@@ -205,9 +205,9 @@ public partial class EraIntegrationFixture : IntegrationFixture
         return new EquipEraEquipmentCommand
         {
             CharacterId = _characterId, RequestId = requestId ?? Guid.NewGuid(),
-            EquipmentId = candidate.Id, Slot = EraEquipmentSlot.Head,
+            EquipmentInstanceId = candidate.Id, Slot = EraEquipmentSlot.Head,
             ExpectedEquipmentVersion = 3, ExpectedItemVersion = 5, ExpectedManifestVersion = 7,
-            ExpectedEquippedEquipmentId = _equipped?.Id, ExpectedEquippedVersion = _equipped?.Version
+            ExpectedEquippedEquipmentInstanceId = _equipped?.Id, ExpectedEquippedVersion = _equipped?.Version
         };
     }
 
@@ -223,7 +223,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
         return RequestAsync((mediator, token) => mediator.SendAsync<UnequipEraEquipmentCommand, UnequipEraEquipmentResponse>(
             new UnequipEraEquipmentCommand
             {
-                CharacterId = _characterId, RequestId = Guid.NewGuid(), EquipmentId = equipmentId,
+                CharacterId = _characterId, RequestId = Guid.NewGuid(), EquipmentInstanceId = equipmentId,
                 Slot = EraEquipmentSlot.Head, ExpectedEquipmentVersion = equipmentVersion, ExpectedItemVersion = itemVersion
             }, token));
     }
@@ -249,7 +249,7 @@ public partial class EraIntegrationFixture : IntegrationFixture
                 item.EquippedSlot.ShouldBe(original.EquippedSlot);
                 item.Version.ShouldBe(original.Version);
                 item.CreatedAt.ShouldBe(original.CreatedAt);
-                var armor = await context.Set<EraArmorInstanceData>().AsNoTracking().SingleAsync(row => row.EquipmentId == item.Id);
+                var armor = await context.Set<EraArmorInstance>().AsNoTracking().SingleAsync(row => row.EquipmentInstanceId == item.Id);
                 armor.Strength.ShouldBe(120);
                 armor.GenerationRuleVersion.ShouldBe(42);
             }

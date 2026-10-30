@@ -13,13 +13,13 @@ public sealed class EraWeaponMapping : VoidBotMappingProfile
         CreateMap<EraWeaponSlotConfiguration, EraWeaponSlotConfigurationDto>()
             .ForMember(row => row.Slots, option => option.Ignore());
         CreateMap<EraWeaponSlotConfigurationDto, EraWeaponSlotConfiguration>(MemberList.None);
-        CreateMap<EraWeaponStatMapping, EraWeaponStatMappingDto>();
-        CreateMap<EraWeaponStatMappingDto, EraWeaponStatMapping>(MemberList.None);
-        CreateMap<EraWeaponTemplate, EraWeaponStatsDto>();
-        CreateMap<EraWeaponStatsDto, EraWeaponTemplate>(MemberList.None);
+        CreateMap<EraWeaponFramework, EraWeaponFrameworkDto>()
+            .ForMember(row => row.SupplementaryStats, option => option.Ignore())
+            .ForMember(row => row.Capabilities, option => option.Ignore());
+        CreateMap<EraWeaponFrameworkDto, EraWeaponFramework>(MemberList.None);
+        CreateMap<EraWeaponTemplateStat, EraWeaponStatValueDto>();
         CreateMap<EraWeaponTemplate, EraWeaponTemplateDto>()
-            .ForMember(row => row.BaseStats, option => option.MapFrom(row => row))
-            .ForMember(row => row.Behavior, option => option.Ignore())
+            .ForMember(row => row.BaseStats, option => option.Ignore())
             .ForMember(row => row.CompatibleSlots, option => option.Ignore());
         CreateMap<EraWeaponModDefinition, EraWeaponModDefinitionDto>()
             .ForMember(row => row.Modifiers, option => option.Ignore());
@@ -27,6 +27,6 @@ public sealed class EraWeaponMapping : VoidBotMappingProfile
         CreateMap<EraWeaponConfigurationModPool, EraWeaponModPoolEntryDto>();
         CreateMap<EraWeaponConfigurationSlot, EraWeaponConfigurationSlotDto>()
             .ForMember(row => row.Pool, option => option.Ignore());
-        CreateMap<EraWeaponModCandidate, EraWeaponCandidateDto>();
+        CreateMap<EraWeaponInstanceModCandidate, EraWeaponCandidateDto>();
     }
 }

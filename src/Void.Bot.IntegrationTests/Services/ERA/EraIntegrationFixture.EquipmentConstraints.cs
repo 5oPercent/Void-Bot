@@ -33,9 +33,9 @@ public partial class EraIntegrationFixture
 
         var error = await Should.ThrowAsync<DbUpdateException>(() => ReadDatabaseAsync(async context =>
         {
-            context.Set<EraArmorInstanceData>().Add(new EraArmorInstanceData
+            context.Set<EraArmorInstance>().Add(new EraArmorInstance
             {
-                EquipmentId = _inventory[0].Id, GenerationRuleVersion = 1, Strength = 1
+                EquipmentInstanceId = _inventory[0].Id, GenerationRuleVersion = 1, Strength = 1
             });
             await context.SaveChangesAsync();
         }));

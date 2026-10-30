@@ -5,7 +5,7 @@ namespace Void.Bot.Core.Services.ERA.Reward.Models;
 /// <summary>首次接受即保存的计划；不是正式装备或成功回执，重试不重新生成属性。</summary>
 public sealed class EraInventoryRewardPlan
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public Guid EventId { get; set; }
     public long ConfigurationVersion { get; set; }
     public long ManifestVersion { get; set; }

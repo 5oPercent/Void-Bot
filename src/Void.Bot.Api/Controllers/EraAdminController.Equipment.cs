@@ -101,53 +101,6 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
-    [HttpGet("equipment/weapon-stat-mappings")]
-    [DescriptionLocalization("GetEraWeaponStatMappings")]
-    [ProducesResponseType(typeof(GetEraWeaponStatMappingsResponse), 200)]
-    public async Task<IActionResult> GetWeaponStatMappingsAsync([FromQuery] GetEraWeaponStatMappingsRequest request, CancellationToken cancellationToken)
-    {
-        var response = await _mediator.RequestAsync<GetEraWeaponStatMappingsRequest, GetEraWeaponStatMappingsResponse>(request, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
-    }
-
-    [HttpGet("equipment/weapon-stat-mappings/{id:guid}")]
-    [DescriptionLocalization("GetEraWeaponStatMapping")]
-    [ProducesResponseType(typeof(GetEraWeaponStatMappingResponse), 200)]
-    public async Task<IActionResult> GetWeaponStatMappingAsync([FromRoute] Guid id, CancellationToken cancellationToken)
-    {
-        var response = await _mediator.RequestAsync<GetEraWeaponStatMappingRequest, GetEraWeaponStatMappingResponse>(new GetEraWeaponStatMappingRequest { Id = id }, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
-    }
-
-    [HttpPost("equipment/weapon-stat-mappings")]
-    [DescriptionLocalization("SaveEraWeaponStatMapping")]
-    [ProducesResponseType(typeof(SaveEraWeaponStatMappingResponse), 200)]
-    public async Task<IActionResult> CreateWeaponStatMappingAsync([FromBody] SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken)
-    {
-        var response = await _mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(command, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
-    }
-
-    [HttpPost("equipment/weapon-stat-mappings/{id:guid}")]
-    [DescriptionLocalization("SaveEraWeaponStatMapping")]
-    [ProducesResponseType(typeof(SaveEraWeaponStatMappingResponse), 200)]
-    public async Task<IActionResult> SaveWeaponStatMappingAsync([FromRoute] Guid id, [FromBody] SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken)
-    {
-        if (command.StatMapping != null) command.StatMapping.Id = id;
-        var response = await _mediator.SendAsync<SaveEraWeaponStatMappingCommand, SaveEraWeaponStatMappingResponse>(command, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
-    }
-
-    [HttpPost("equipment/weapon-stat-mappings/{id:guid}/delete")]
-    [DescriptionLocalization("DeleteEraWeaponStatMapping")]
-    [ProducesResponseType(typeof(DeleteEraWeaponStatMappingResponse), 200)]
-    public async Task<IActionResult> DeleteWeaponStatMappingAsync([FromRoute] Guid id, [FromBody] DeleteEraWeaponStatMappingCommand command, CancellationToken cancellationToken)
-    {
-        command.Id = id;
-        var response = await _mediator.SendAsync<DeleteEraWeaponStatMappingCommand, DeleteEraWeaponStatMappingResponse>(command, cancellationToken).ConfigureAwait(false);
-        return Ok(response);
-    }
-
     [HttpPost("equipment/weapon-templates/{id:guid}/disable")]
     [DescriptionLocalization("DisableEraWeaponTemplate")]
     [ProducesResponseType(typeof(DisableEraWeaponTemplateResponse), 200)]

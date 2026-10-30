@@ -5,6 +5,11 @@ namespace Void.Bot.Core.Resources.i18n.Endpoint;
 [Language("Endpoint", "EraAdmin")]
 public sealed class EraAdminEndpointContextTemplate : IContextTemplate
 {
+    public string GetEraWeaponFrameworks { get; set; } = "分页查询武器框架";
+    public string GetEraWeaponFramework { get; set; } = "读取武器框架及模板引用";
+    public string SaveEraWeaponFramework { get; set; } = "原子保存并发布武器框架";
+    public string DisableEraWeaponFramework { get; set; } = "停用武器框架的新引用";
+    public string DeleteEraWeaponFramework { get; set; } = "删除未引用的武器框架";
     public string GetEraWeaponTemplates { get; set; } = "分页查询武器模板";
     public string GetEraWeaponTemplate { get; set; } = "读取武器模板与各槽候选数量";
     public string SaveEraWeaponTemplate { get; set; } = "原子保存并发布武器模板与候选池";
@@ -14,16 +19,12 @@ public sealed class EraAdminEndpointContextTemplate : IContextTemplate
     public string GetEraWeaponModification { get; set; } = "读取武器改装及属性修正规则";
     public string SaveEraWeaponModification { get; set; } = "原子保存并发布公共武器改装";
     public string DeleteEraWeaponModification { get; set; } = "删除未引用的公共武器改装";
-    public string GetEraWeaponStatMappings { get; set; } = "分页查询共享武器属性映射配置";
     public string GetEraWeaponSlotConfigurations { get; set; } = "分页查询武器改装槽位方案";
     public string GetEraWeaponSlotTypes { get; set; } = "分页查询武器改装槽类型";
-    public string GetEraWeaponStatMapping { get; set; } = "读取共享武器属性映射配置";
     public string GetEraWeaponSlotConfiguration { get; set; } = "读取武器改装槽位方案";
     public string GetEraWeaponSlotType { get; set; } = "读取武器改装槽类型";
-    public string SaveEraWeaponStatMapping { get; set; } = "原子保存并发布共享武器属性映射配置";
     public string SaveEraWeaponSlotConfiguration { get; set; } = "原子保存并发布武器改装槽位方案";
     public string SaveEraWeaponSlotType { get; set; } = "原子保存并发布武器改装槽类型";
-    public string DeleteEraWeaponStatMapping { get; set; } = "删除未引用的共享武器属性映射配置";
     public string DeleteEraWeaponSlotConfiguration { get; set; } = "删除未引用的武器改装槽位方案";
     public string DeleteEraWeaponSlotType { get; set; } = "删除未引用的武器改装槽类型";
     public string ValidateEraWeaponConfiguration { get; set; } = "校验拟发布武器配置";

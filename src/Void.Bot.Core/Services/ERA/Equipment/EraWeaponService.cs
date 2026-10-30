@@ -14,27 +14,23 @@ using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Core.Services.ERA.Equipment;
 
-public interface IEraWeaponService : IScope
+public partial interface IEraWeaponService : IScope
 {
     Task<GetEraWeaponTemplatesResponse> GetTemplatesAsync(GetEraWeaponTemplatesRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponTemplateResponse> GetTemplateAsync(GetEraWeaponTemplateRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponModificationsResponse> GetModificationsAsync(GetEraWeaponModificationsRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponModificationResponse> GetModificationAsync(GetEraWeaponModificationRequest request, CancellationToken cancellationToken);
-    Task<GetEraWeaponStatMappingsResponse> GetStatMappingsAsync(GetEraWeaponStatMappingsRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponSlotConfigurationsResponse> GetSlotConfigurationsAsync(GetEraWeaponSlotConfigurationsRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponSlotTypesResponse> GetSlotTypesAsync(GetEraWeaponSlotTypesRequest request, CancellationToken cancellationToken);
-    Task<GetEraWeaponStatMappingResponse> GetStatMappingAsync(GetEraWeaponStatMappingRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponSlotConfigurationResponse> GetSlotConfigurationAsync(GetEraWeaponSlotConfigurationRequest request, CancellationToken cancellationToken);
     Task<GetEraWeaponSlotTypeResponse> GetSlotTypeAsync(GetEraWeaponSlotTypeRequest request, CancellationToken cancellationToken);
     Task<SaveEraWeaponTemplateResponse> SaveTemplateAsync(SaveEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<SaveEraWeaponModificationResponse> SaveModificationAsync(SaveEraWeaponModificationCommand command, CancellationToken cancellationToken);
-    Task<SaveEraWeaponStatMappingResponse> SaveStatMappingAsync(SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken);
     Task<SaveEraWeaponSlotConfigurationResponse> SaveSlotConfigurationAsync(SaveEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken);
     Task<SaveEraWeaponSlotTypeResponse> SaveSlotTypeAsync(SaveEraWeaponSlotTypeCommand command, CancellationToken cancellationToken);
     Task<DisableEraWeaponTemplateResponse> DisableTemplateAsync(DisableEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponTemplateResponse> DeleteTemplateAsync(DeleteEraWeaponTemplateCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponModificationResponse> DeleteModificationAsync(DeleteEraWeaponModificationCommand command, CancellationToken cancellationToken);
-    Task<DeleteEraWeaponStatMappingResponse> DeleteStatMappingAsync(DeleteEraWeaponStatMappingCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponSlotConfigurationResponse> DeleteSlotConfigurationAsync(DeleteEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponSlotTypeResponse> DeleteSlotTypeAsync(DeleteEraWeaponSlotTypeCommand command, CancellationToken cancellationToken);
     Task<PublishEraWeaponConfigurationResponse> PublishConfigurationAsync(PublishEraWeaponConfigurationCommand command, CancellationToken cancellationToken);
@@ -42,7 +38,7 @@ public interface IEraWeaponService : IScope
 }
 
 /// <summary>Admin 配置用例；HTTP 管理权限由现有 Security 管道校验，配置事务由 Mediator 提交。</summary>
-public sealed class EraWeaponService : IEraWeaponService
+public sealed partial class EraWeaponService : IEraWeaponService
 {
     private readonly IEraWeaponDataProvider _weapons;
     private readonly IEraEquipmentDataProvider _equipment;
@@ -89,14 +85,6 @@ public sealed class EraWeaponService : IEraWeaponService
                 throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound) };
     }
 
-    public async Task<GetEraWeaponStatMappingsResponse> GetStatMappingsAsync(GetEraWeaponStatMappingsRequest request, CancellationToken cancellationToken)
-    {
-        var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        var items = manifest.Weapons.StatMappings.Where(row => string.IsNullOrWhiteSpace(request.Search) ||
-            row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase)).ToList();
-        return new GetEraWeaponStatMappingsResponse { Code = HttpStatusCode.OK, Version = manifest.Version, Data = Page(items, request.PageIndex, request.PageSize) };
-    }
-
     public async Task<GetEraWeaponSlotConfigurationsResponse> GetSlotConfigurationsAsync(GetEraWeaponSlotConfigurationsRequest request, CancellationToken cancellationToken)
     {
         var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
@@ -111,14 +99,6 @@ public sealed class EraWeaponService : IEraWeaponService
         var items = manifest.Weapons.SlotTypes.Where(row => string.IsNullOrWhiteSpace(request.Search) ||
             row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase)).ToList();
         return new GetEraWeaponSlotTypesResponse { Code = HttpStatusCode.OK, Version = manifest.Version, Data = Page(items, request.PageIndex, request.PageSize) };
-    }
-
-    public async Task<GetEraWeaponStatMappingResponse> GetStatMappingAsync(GetEraWeaponStatMappingRequest request, CancellationToken cancellationToken)
-    {
-        var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        return new GetEraWeaponStatMappingResponse { Code = HttpStatusCode.OK, Version = manifest.Version,
-            Data = manifest.Weapons.StatMappings.SingleOrDefault(row => row.Id == request.Id) ??
-                throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound) };
     }
 
     public async Task<GetEraWeaponSlotConfigurationResponse> GetSlotConfigurationAsync(GetEraWeaponSlotConfigurationRequest request, CancellationToken cancellationToken)
@@ -152,14 +132,6 @@ public sealed class EraWeaponService : IEraWeaponService
             catalog.Modifications.Add(command.Modification);
             return catalog;
         }, cancellationToken, () => command.Modification.Id);
-
-    public Task<SaveEraWeaponStatMappingResponse> SaveStatMappingAsync(SaveEraWeaponStatMappingCommand command, CancellationToken cancellationToken) =>
-        WriteAsync<SaveEraWeaponStatMappingResponse>(command.ExpectedManifestVersion, catalog =>
-        {
-            catalog.StatMappings.RemoveAll(row => row.Id == command.StatMapping.Id);
-            catalog.StatMappings.Add(command.StatMapping);
-            return catalog;
-        }, cancellationToken, () => command.StatMapping.Id);
 
     public Task<SaveEraWeaponSlotConfigurationResponse> SaveSlotConfigurationAsync(SaveEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken) =>
         WriteAsync<SaveEraWeaponSlotConfigurationResponse>(command.ExpectedManifestVersion, catalog =>
@@ -201,17 +173,6 @@ public sealed class EraWeaponService : IEraWeaponService
         {
             if (catalog.Modifications.RemoveAll(row => row.Id == command.Id) != 1)
                 throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound);
-            return catalog;
-        }, cancellationToken);
-
-    public Task<DeleteEraWeaponStatMappingResponse> DeleteStatMappingAsync(DeleteEraWeaponStatMappingCommand command, CancellationToken cancellationToken) =>
-        WriteAsync<DeleteEraWeaponStatMappingResponse>(command.ExpectedManifestVersion, catalog =>
-        {
-            if (!catalog.StatMappings.Any(row => row.Id == command.Id))
-                throw Error(HttpStatusCode.NotFound, "era.weapon_not_found", value => value.NotFound);
-            if (catalog.Templates.Any(row => row.StatMappingId == command.Id))
-                throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-            catalog.StatMappings.RemoveAll(row => row.Id == command.Id);
             return catalog;
         }, cancellationToken);
 
@@ -269,8 +230,7 @@ public sealed class EraWeaponService : IEraWeaponService
         manifest.Armors = await _equipment.GetArmorCatalogAsync(cancellationToken).ConfigureAwait(false);
         var proposed = apply(new EraWeaponCatalogDto
         {
-            Templates = manifest.Weapons.Templates.ToList(), Modifications = manifest.Weapons.Modifications.ToList(),
-            StatMappings = manifest.Weapons.StatMappings.ToList(),
+            Frameworks = manifest.Weapons.Frameworks.ToList(), Templates = manifest.Weapons.Templates.ToList(), Modifications = manifest.Weapons.Modifications.ToList(),
             SlotTypes = manifest.Weapons.SlotTypes.ToList(), SlotConfigurations = manifest.Weapons.SlotConfigurations.ToList()
         });
         try { EraWeaponConfigurationValidator.Validate(proposed); }
@@ -287,6 +247,11 @@ public sealed class EraWeaponService : IEraWeaponService
     {
         if (proposed.Templates.Any(template => manifest.Armors.Templates.Any(other => other.Id == template.Id)))
             throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
+        var frameworks = proposed.Frameworks.ToDictionary(row => row.Id);
+        var oldFrameworks = manifest.Weapons.Frameworks.ToDictionary(row => row.Id);
+        if (proposed.Templates.Any(template => !frameworks[template.FrameworkId].IsEnabled &&
+            !manifest.Weapons.Templates.Any(old => old.Id == template.Id && old.FrameworkId == template.FrameworkId)))
+            throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
         var templates = proposed.Templates.ToDictionary(row => row.Id);
         var types = proposed.SlotTypes.Select(row => row.Id).ToHashSet();
         var modifications = proposed.Modifications.ToDictionary(row => row.Id);
@@ -299,12 +264,14 @@ public sealed class EraWeaponService : IEraWeaponService
         {
             TemplateIds = manifest.Weapons.Templates.Where(old => !templates.TryGetValue(old.Id, out var current) ||
                 old.CompatibleSlots.Except(current.CompatibleSlots).Any() ||
-                old.BaseStats.ChargeTime.HasValue && !current.BaseStats.ChargeTime.HasValue ||
-                old.BaseStats.ProjectileSpeed.HasValue && !current.BaseStats.ProjectileSpeed.HasValue).Select(row => row.Id).ToHashSet(),
+                System.Enum.GetValues<EraWeaponStat>().Any(stat => EraWeaponConfigurationValidator.SupportsStat(old.BaseStats, stat) &&
+                    !EraWeaponConfigurationValidator.SupportsStat(current.BaseStats, stat)) || old.FrameworkId != current.FrameworkId ||
+                oldFrameworks[old.FrameworkId].PresentationDriverKey != frameworks[current.FrameworkId].PresentationDriverKey ||
+                !oldFrameworks[old.FrameworkId].Capabilities.Select(capability => capability.Kind).ToHashSet()
+                    .SetEquals(frameworks[current.FrameworkId].Capabilities.Select(capability => capability.Kind))).Select(row => row.Id).ToHashSet(),
             ModificationIds = manifest.Weapons.Modifications.Where(old => !modifications.TryGetValue(old.Id, out var current) ||
                 old.SlotTypeId != current.SlotTypeId ||
-                current.Modifiers.Any(modifier => (modifier.Stat is EraWeaponStat.ChargeTime or EraWeaponStat.ProjectileSpeed) &&
-                    !old.Modifiers.Any(previous => previous.Stat == modifier.Stat))).Select(row => row.Id).ToHashSet(),
+                current.Modifiers.Any(modifier => !old.Modifiers.Any(previous => previous.Stat == modifier.Stat))).Select(row => row.Id).ToHashSet(),
             SlotTypeIds = manifest.Weapons.SlotTypes.Select(row => row.Id).Except(types).ToHashSet(),
             SlotIds = currentSlots.Keys.Except(oldSlots.Keys).ToHashSet()
         };
@@ -314,7 +281,7 @@ public sealed class EraWeaponService : IEraWeaponService
         var instances = await _weapons.GetInstancesAsync(items.Select(row => row.Id), cancellationToken).ConfigureAwait(false);
         foreach (var item in items)
         {
-            if (!templates.TryGetValue(item.DefinitionId, out var template) ||
+            if (!templates.TryGetValue(item.TemplateId, out var template) ||
                 item.EquippedSlot.HasValue && !template.CompatibleSlots.Contains(item.EquippedSlot.Value) ||
                 !instances.TryGetValue(item.Id, out var instance))
                 throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
@@ -335,7 +302,7 @@ public sealed class EraWeaponService : IEraWeaponService
                 {
                     throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
                 }
-                if (rewards.Pools.SelectMany(pool => pool.Entries).Any(entry => removedTemplates.Contains(entry.DefinitionId)))
+                if (rewards.Pools.SelectMany(pool => pool.Entries).Any(entry => removedTemplates.Contains(entry.TemplateId)))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
             }
         }
@@ -351,11 +318,11 @@ public sealed class EraWeaponService : IEraWeaponService
             {
                 if (!EraEquipmentItemRules.ValidWeapon(item.Weapon))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
-                var affected = changes.TemplateIds.Contains(item.DefinitionId) || item.Weapon!.Slots.Any(slot =>
+                var affected = changes.TemplateIds.Contains(item.TemplateId) || item.Weapon!.Slots.Any(slot =>
                     changes.SlotTypeIds.Contains(slot.SlotTypeId) || changes.SlotIds.Contains(slot.SlotId) ||
                     slot.Candidates.Any(candidate => changes.ModificationIds.Contains(candidate.ModDefinitionId)));
                 if (!affected) continue;
-                if (!templates.TryGetValue(item.DefinitionId, out var template))
+                if (!templates.TryGetValue(item.TemplateId, out var template))
                     throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
                 CheckInstance(template, item.Weapon);
             }
@@ -367,8 +334,7 @@ public sealed class EraWeaponService : IEraWeaponService
                 slot.Candidates.Any(candidate => !modifications.TryGetValue(candidate.ModDefinitionId, out var modification) ||
                     modification.SlotTypeId != slot.SlotTypeId ||
                         modification.Modifiers.Any(modifier =>
-                            modifier.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue ||
-                            modifier.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue))))
+                            !EraWeaponConfigurationValidator.SupportsStat(template.BaseStats, modifier.Stat)))))
                 throw Error(HttpStatusCode.Conflict, "era.weapon_reference_conflict", value => value.ReferenceConflict);
         }
     }

@@ -27,7 +27,7 @@ public sealed partial class EraEquipmentService
         where T : EraEquipmentOperationResponse, new()
     {
         var operation = armor ? EraEquipmentOperation.SelectArmorModification : EraEquipmentOperation.SelectWeaponModification;
-        if (command.CharacterId == Guid.Empty || command.EquipmentId == Guid.Empty || command.RequestId == Guid.Empty ||
+        if (command.CharacterId == Guid.Empty || command.EquipmentInstanceId == Guid.Empty || command.RequestId == Guid.Empty ||
             command.CandidateId == Guid.Empty || command.SlotId == Guid.Empty || command.ExpectedManifestVersion < 1 ||
             command.ExpectedEquipmentVersion < 0 || command.ExpectedEquipmentVersion == long.MaxValue ||
             command.ExpectedItemVersion < 1 || command.ExpectedItemVersion == long.MaxValue)
@@ -63,7 +63,7 @@ public sealed partial class EraEquipmentService
         if (snapshot.CharacterId != character.Id || snapshot.PlayerId != character.PlayerId ||
             snapshot.EquipmentVersion != character.EquipmentVersion || CreateState(snapshot, manifest, null) == null)
             return Error<T>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
-        var entry = snapshot.Entries.SingleOrDefault(row => row.Equipment.Id == command.EquipmentId);
+        var entry = snapshot.Entries.SingleOrDefault(row => row.Equipment.Id == command.EquipmentInstanceId);
         if (entry == null || (armor
                 ? entry.Equipment.EquipmentType != EraEquipmentType.Armor || entry.Armor == null
                 : entry.Equipment.EquipmentType != EraEquipmentType.Weapon || entry.Weapon == null))

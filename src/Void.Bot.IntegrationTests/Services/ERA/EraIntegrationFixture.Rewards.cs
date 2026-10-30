@@ -44,7 +44,7 @@ public partial class EraIntegrationFixture
                     {
                         Id = "test.pool", Entries = new List<EraRewardPoolEntry>
                         {
-                            new EraRewardPoolEntry { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = count, Weight = 1 }
+                            new EraRewardPoolEntry { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Grade = EraEquipmentGrade.Common, Count = count, Weight = 1 }
                         }
                     }
                 }
@@ -112,7 +112,7 @@ public partial class EraIntegrationFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.IsReplay.ShouldBeFalse();
         response.Data!.Grants.Count.ShouldBe(2);
-        response.Data.Grants.ShouldAllBe(grant => grant.EquipmentIds.Count == 2 && grant.PreviousEquipmentVersion == 3 && grant.EquipmentVersion == 4);
+        response.Data.Grants.ShouldAllBe(grant => grant.EquipmentInstanceIds.Count == 2 && grant.PreviousEquipmentVersion == 3 && grant.EquipmentVersion == 4);
         await ReadDatabaseAsync(async context =>
         {
             var rewardEvent = await context.Set<EraRewardEvent>().SingleAsync();
@@ -121,30 +121,30 @@ public partial class EraIntegrationFixture
             rewardEvent.ResultPayload.ShouldBe(JsonSerializer.Serialize(response.Data));
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(2);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(4);
-            var ids = response.Data.Grants.SelectMany(grant => grant.EquipmentIds).ToArray();
+            var ids = response.Data.Grants.SelectMany(grant => grant.EquipmentInstanceIds).ToArray();
             var items = await context.Set<EraEquipmentInstance>().Where(item => ids.Contains(item.Id)).ToListAsync();
             items.Count.ShouldBe(4);
             items.ShouldAllBe(item => item.Location == EraEquipmentLocation.Inventory && item.Version == 1 &&
-                item.DefinitionVersion == 7 && item.EquippedSlot == null && item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
+                item.GenerationManifestVersion == 7 && item.EquippedSlot == null && item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
             foreach (var grant in response.Data.Grants)
-                items.Where(item => grant.EquipmentIds.Contains(item.Id)).ShouldAllBe(item => item.OwnerPlayerId == grant.PlayerId && item.CharacterId == grant.CharacterId);
-            var armor = await context.Set<EraArmorInstanceData>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();
+                items.Where(item => grant.EquipmentInstanceIds.Contains(item.Id)).ShouldAllBe(item => item.OwnerPlayerId == grant.PlayerId && item.CharacterId == grant.CharacterId);
+            var armor = await context.Set<EraArmorInstance>().Where(row => ids.Contains(row.EquipmentInstanceId)).ToListAsync();
             armor.Count.ShouldBe(4);
             armor.ShouldAllBe(row => row.GenerationRuleVersion == EraArmorGenerationRules.Version &&
                 row.Strength + row.Survival + row.Mobility + row.Focus + row.Efficiency + row.Resistance == 60);
-            var candidates = await context.Set<EraArmorModCandidate>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();
-            var selections = await context.Set<EraArmorModSelection>().Where(row => ids.Contains(row.EquipmentId)).ToListAsync();
+            var candidates = await context.Set<EraArmorInstanceModCandidate>().Where(row => ids.Contains(row.EquipmentInstanceId)).ToListAsync();
+            var selections = await context.Set<EraArmorInstanceModSelection>().Where(row => ids.Contains(row.EquipmentInstanceId)).ToListAsync();
             candidates.Count.ShouldBe(4);
             selections.Count.ShouldBe(4);
             var plan = JsonSerializer.Deserialize<EraInventoryRewardPlan>(rewardEvent.PlanPayload)!;
             foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment))
             {
                 var expected = item.ArmorModifications.Slots.ShouldHaveSingleItem().Candidates.ShouldHaveSingleItem();
-                var candidate = candidates.Single(row => row.EquipmentId == item.EquipmentId && row.SlotId == slot.Id);
+                var candidate = candidates.Single(row => row.EquipmentInstanceId == item.EquipmentInstanceId && row.SlotId == slot.Id);
                 candidate.CandidateId.ShouldBe(expected.CandidateId);
                 candidate.ModDefinitionId.ShouldBe(modification.Id);
                 candidate.DisplayOrder.ShouldBe(expected.DisplayOrder);
-                var selection = selections.Single(row => row.EquipmentId == item.EquipmentId && row.SlotId == slot.Id);
+                var selection = selections.Single(row => row.EquipmentInstanceId == item.EquipmentInstanceId && row.SlotId == slot.Id);
                 selection.SelectedCandidateId.ShouldBe(candidate.CandidateId);
                 selection.Name.ShouldBe(slot.Name);
                 selection.SlotTypeId.ShouldBe(slot.SlotTypeId);
@@ -202,7 +202,7 @@ public partial class EraIntegrationFixture
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(0);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(0);
             (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(121);
-            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(121);
+            (await context.Set<EraArmorInstance>().CountAsync()).ShouldBe(121);
             (await context.Set<EraCharacter>().ToListAsync()).ShouldAllBe(character => character.EquipmentVersion == 3);
             var configuration = await context.Set<EraRewardConfiguration>().SingleAsync();
             configuration.Version = 12;
@@ -223,16 +223,16 @@ public partial class EraIntegrationFixture
         (await PrepareRewardAsync(command)).Data.ShouldBe(prepared.Data);
         var granted = await GrantRewardAsync(prepared.Data);
         var plan = JsonSerializer.Deserialize<EraInventoryRewardPlan>(planPayload)!;
-        granted.Data!.Grants.SelectMany(grant => grant.EquipmentIds).ShouldBe(plan.Grants.SelectMany(grant => grant.Equipment).Select(item => item.EquipmentId));
+        granted.Data!.Grants.SelectMany(grant => grant.EquipmentInstanceIds).ShouldBe(plan.Grants.SelectMany(grant => grant.Equipment).Select(item => item.EquipmentInstanceId));
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraRewardEvent>().SingleAsync()).PlanPayload.ShouldBe(planPayload);
             foreach (var item in plan.Grants.SelectMany(grant => grant.Equipment))
             {
-                var saved = await context.Set<EraArmorInstanceData>().SingleAsync(row => row.EquipmentId == item.EquipmentId);
+                var saved = await context.Set<EraArmorInstance>().SingleAsync(row => row.EquipmentInstanceId == item.EquipmentInstanceId);
                 saved.Strength.ShouldBe(item.Attributes.Strength);
                 saved.Resistance.ShouldBe(item.Attributes.Resistance);
-                (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == item.EquipmentId)).DefinitionVersion.ShouldBe(7);
+                (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == item.EquipmentInstanceId)).GenerationManifestVersion.ShouldBe(7);
             }
             (await context.Set<EraEquipmentInstance>().CountAsync(item => item.CharacterId == _characterId && item.Location == EraEquipmentLocation.Inventory)).ShouldBe(120);
         });
@@ -246,7 +246,7 @@ public partial class EraIntegrationFixture
         await ConfigureRewardsAsync();
         var prepared = await PrepareRewardAsync(RewardCommand());
         var first = await GrantRewardAsync(prepared.Data);
-        var equipmentId = first.Data!.Grants.Single().EquipmentIds.Single();
+        var equipmentId = first.Data!.Grants.Single().EquipmentInstanceIds.Single();
         await ReadDatabaseAsync(async context =>
         {
             var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == equipmentId);
@@ -280,7 +280,7 @@ public partial class EraIntegrationFixture
         await ConfigureRewardsAsync(chance: 10000);
         (await PrepareRewardAsync(command)).Data.ShouldBe(prepared.Data);
         var granted = await GrantRewardAsync(prepared.Data);
-        granted.Data!.Grants.Single().EquipmentIds.ShouldBeEmpty();
+        granted.Data!.Grants.Single().EquipmentInstanceIds.ShouldBeEmpty();
         granted.Data.Grants.Single().EquipmentVersion.ShouldBe(3);
         (await GrantRewardAsync(prepared.Data)).IsReplay.ShouldBeTrue();
         await ReadDatabaseAsync(async context =>
@@ -302,7 +302,7 @@ public partial class EraIntegrationFixture
         await SeedAsync(0);
         await ConfigureRewardsAsync(source: source);
         var prepared = await PrepareRewardAsync(RewardCommand(source: source));
-        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Single().EquipmentIds.Count.ShouldBe(1);
+        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(1);
     }
 
     [Fact]
@@ -339,10 +339,10 @@ public partial class EraIntegrationFixture
             (await context.Set<EraRewardGrant>().CountAsync()).ShouldBe(0);
             (await context.Set<EraRewardGrantEquipment>().CountAsync()).ShouldBe(0);
             (await context.Set<EraEquipmentInstance>().CountAsync()).ShouldBe(1);
-            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(1);
+            (await context.Set<EraArmorInstance>().CountAsync()).ShouldBe(1);
             (await context.Set<EraCharacter>().ToListAsync()).ShouldAllBe(character => character.EquipmentVersion == 3);
         });
-        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Sum(grant => grant.EquipmentIds.Count).ShouldBe(4);
+        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Sum(grant => grant.EquipmentInstanceIds.Count).ShouldBe(4);
     }
 
     [Fact]
@@ -366,8 +366,8 @@ public partial class EraIntegrationFixture
             mediator.SendAsync<PublishEraRewardConfigurationCommand, PublishEraRewardConfigurationResponse>(publish, token))))
             .ErrorCode.ShouldBe("era.reward_configuration_version_conflict");
         var newEvent = await PrepareRewardAsync(RewardCommand());
-        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Single().EquipmentIds.Count.ShouldBe(1);
-        (await GrantRewardAsync(newEvent.Data)).Data!.Grants.Single().EquipmentIds.ShouldBeEmpty();
+        (await GrantRewardAsync(prepared.Data)).Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(1);
+        (await GrantRewardAsync(newEvent.Data)).Data!.Grants.Single().EquipmentInstanceIds.ShouldBeEmpty();
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraRewardConfiguration>().SingleAsync()).Version.ShouldBe(12);

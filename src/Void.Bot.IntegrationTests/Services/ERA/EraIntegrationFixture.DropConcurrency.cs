@@ -175,7 +175,7 @@ public partial class EraIntegrationFixture
         }
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
+            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
             (await context.Set<EraEquipmentDrop>().CountAsync(row => row.Status == EraEquipmentDropStatus.Available)).ShouldBe(0);
         });
     }

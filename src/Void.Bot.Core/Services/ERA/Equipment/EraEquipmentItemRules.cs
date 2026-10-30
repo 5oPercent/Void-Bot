@@ -48,7 +48,7 @@ public static class EraEquipmentItemRules
         var armor = entry.Armor;
         return item.EquipmentType == EraEquipmentType.Armor && entry.Weapon == null &&
             (!item.EquippedSlot.HasValue || EraEquipmentRules.ArmorSlots.Contains(item.EquippedSlot.Value)) &&
-            armor != null && ValidArmor(armor.Modifications) && armor.EquipmentId == item.Id && armor.GenerationRuleVersion > 0 &&
+            armor != null && ValidArmor(armor.Modifications) && armor.EquipmentInstanceId == item.Id && armor.GenerationRuleVersion > 0 &&
             armor.Strength >= 0 && armor.Survival >= 0 && armor.Mobility >= 0 && armor.Focus >= 0 && armor.Efficiency >= 0 && armor.Resistance >= 0;
     }
 }

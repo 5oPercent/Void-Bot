@@ -7,5 +7,5 @@ public sealed class EraInventoryRewardGrantReceipt
     public Guid CharacterId { get; set; }
     public long PreviousEquipmentVersion { get; set; }
     public long EquipmentVersion { get; set; }
-    public List<Guid> EquipmentIds { get; set; } = new List<Guid>();
+    public List<Guid> EquipmentInstanceIds { get; set; } = new List<Guid>();
 }

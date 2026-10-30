@@ -4,9 +4,9 @@ using Void.Bot.Message.Commands.ERA;
 
 namespace Void.Bot.Core.Validators.ERA;
 
-public sealed class DeleteEraWeaponStatMappingCommandValidator : FluentMessageValidator<DeleteEraWeaponStatMappingCommand>
+public sealed class DeleteEraWeaponFrameworkCommandValidator : FluentMessageValidator<DeleteEraWeaponFrameworkCommand>
 {
-    public DeleteEraWeaponStatMappingCommandValidator()
+    public DeleteEraWeaponFrameworkCommandValidator()
     {
         RuleFor(command => command.ExpectedManifestVersion).GreaterThan(0).LessThan(long.MaxValue);
         RuleFor(command => command.Id).NotEmpty();

@@ -13,7 +13,7 @@ public sealed partial class EraEquipmentDropService
 {
     public async Task<DropEraInventoryEquipmentResponse> DropAsync(DropEraInventoryEquipmentCommand command, CancellationToken cancellationToken)
     {
-        if (command.WorldInstanceId == Guid.Empty || command.CharacterId == Guid.Empty || command.EquipmentId == Guid.Empty ||
+        if (command.WorldInstanceId == Guid.Empty || command.CharacterId == Guid.Empty || command.EquipmentInstanceId == Guid.Empty ||
             command.RequestId == Guid.Empty || command.ExpectedEquipmentVersion < 0 || command.ExpectedItemVersion < 1 ||
             command.Placement == null || !double.IsFinite(command.Placement.X) || !double.IsFinite(command.Placement.Y) ||
             !double.IsFinite(command.Placement.Z) || !double.IsFinite(command.Placement.YawRadians))
@@ -23,7 +23,7 @@ public sealed partial class EraEquipmentDropService
         var character = await _characterContext.RequireOwnedAsync(command.CharacterId, true, cancellationToken).ConfigureAwait(false);
         var payload = JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Operation = EraEquipmentOperation.Drop, command.WorldInstanceId, command.CharacterId, command.EquipmentId,
+            SchemaVersion = 2, Operation = EraEquipmentOperation.Drop, command.WorldInstanceId, command.CharacterId, command.EquipmentInstanceId,
             command.ExpectedEquipmentVersion, command.ExpectedItemVersion, command.Placement
         });
         var existing = await _equipment.GetOperationReceiptAsync(character.PlayerId, command.RequestId, cancellationToken).ConfigureAwait(false);
@@ -46,10 +46,10 @@ public sealed partial class EraEquipmentDropService
                 previous.Operation != EraEquipmentOperation.Drop || previous.State == null || previous.State.CharacterId != character.Id ||
                 previous.PreviousEquipmentVersion != command.ExpectedEquipmentVersion || previous.PreviousEquipmentVersion == long.MaxValue ||
                 previous.State.EquipmentVersion != previous.PreviousEquipmentVersion + 1 || previous.Dropped == null ||
-                previous.Dropped.WorldInstanceId != command.WorldInstanceId || previous.Dropped.EquipmentId != command.EquipmentId ||
+                previous.Dropped.WorldInstanceId != command.WorldInstanceId || previous.Dropped.EquipmentInstanceId != command.EquipmentInstanceId ||
                 previous.Dropped.DropId == Guid.Empty || previous.Dropped.DropVersion != 1 || command.ExpectedItemVersion == long.MaxValue ||
                 previous.Dropped.EquipmentVersion != command.ExpectedItemVersion + 1 || previous.State.InventoryItems == null ||
-                previous.State.InventoryItems.Any(item => item.Id == command.EquipmentId))
+                previous.State.InventoryItems.Any(item => item.Id == command.EquipmentInstanceId))
             {
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             }
@@ -66,11 +66,11 @@ public sealed partial class EraEquipmentDropService
         var world = await LockActiveWorldAsync(command.WorldInstanceId, character, cancellationToken).ConfigureAwait(false);
         var snapshot = await _equipment.LockCharacterEquipmentAsync(character, cancellationToken).ConfigureAwait(false);
         // 先在本人快照中确定候选，不能持有世界锁后尝试锁其他玩家的物品。
-        if (!snapshot.Entries.Any(entry => entry.Equipment.Id == command.EquipmentId && entry.Equipment.Location == EraEquipmentLocation.Inventory))
+        if (!snapshot.Entries.Any(entry => entry.Equipment.Id == command.EquipmentInstanceId && entry.Equipment.Location == EraEquipmentLocation.Inventory))
         {
             throw Error(HttpStatusCode.NotFound, "era.drop_not_found", text => text.NotFound);
         }
-        var item = await _drops.LockEquipmentAsync(command.EquipmentId, cancellationToken).ConfigureAwait(false);
+        var item = await _drops.LockEquipmentAsync(command.EquipmentInstanceId, cancellationToken).ConfigureAwait(false);
         if (item == null || item.Equipment.Location != EraEquipmentLocation.Inventory || item.Equipment.OwnerPlayerId != character.PlayerId ||
             item.Equipment.CharacterId != character.Id || item.Equipment.EquippedSlot.HasValue)
         {
@@ -103,7 +103,7 @@ public sealed partial class EraEquipmentDropService
         var now = new DateTimeOffset(clockNow.UtcTicks - clockNow.UtcTicks % 10, TimeSpan.Zero);
         var drop = new EraEquipmentDrop
         {
-            Id = Guid.NewGuid(), EquipmentId = equipment.Id, ActiveEquipmentId = equipment.Id, WorldInstanceId = world.Id,
+            Id = Guid.NewGuid(), EquipmentInstanceId = equipment.Id, ActiveEquipmentInstanceId = equipment.Id, WorldInstanceId = world.Id,
             DroppedByPlayerId = character.PlayerId, Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
             X = command.Placement.X, Y = command.Placement.Y, Z = command.Placement.Z, YawRadians = command.Placement.YawRadians
         };
@@ -130,7 +130,7 @@ public sealed partial class EraEquipmentDropService
             PreviousEquipmentVersion = character.EquipmentVersion, State = state,
             Dropped = new EraEquipmentDropCreatedDto
             {
-                WorldInstanceId = world.Id, EquipmentId = equipment.Id, EquipmentVersion = equipment.Version, DropId = drop.Id,
+                WorldInstanceId = world.Id, EquipmentInstanceId = equipment.Id, EquipmentVersion = equipment.Version, DropId = drop.Id,
                 DropVersion = drop.Version, CreatedAt = now, ShareUntil = share.ShareUntil,
                 Placement = new EraEquipmentDropPlacementDto { X = drop.X, Y = drop.Y, Z = drop.Z, YawRadians = drop.YawRadians }
             }

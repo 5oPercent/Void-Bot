@@ -9,7 +9,7 @@ public sealed class DropEraInventoryEquipmentCommandValidator : FluentMessageVal
     public DropEraInventoryEquipmentCommandValidator()
     {
         RuleFor(command => command.CharacterId).NotEmpty();
-        RuleFor(command => command.EquipmentId).NotEmpty();
+        RuleFor(command => command.EquipmentInstanceId).NotEmpty();
         RuleFor(command => command.WorldInstanceId).NotEmpty();
         RuleFor(command => command.RequestId).NotEmpty();
         RuleFor(command => command.ExpectedEquipmentVersion).GreaterThanOrEqualTo(0);

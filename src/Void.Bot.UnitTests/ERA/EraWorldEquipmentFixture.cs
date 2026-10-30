@@ -70,7 +70,7 @@ public class EraWorldEquipmentFixture
         });
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
-            { Version = 8, Payload = "{\"SchemaVersion\":2}" });
+            { Version = 8, Payload = "{\"SchemaVersion\":3}" });
         var catalog = EraWeaponFixture.Catalog();
         var configuration = catalog.SlotConfigurations.Single(item => item.Id == catalog.Templates[0].SlotConfigurationId);
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
@@ -79,8 +79,8 @@ public class EraWorldEquipmentFixture
         {
             var item = new EraEquipmentInstance
             {
-                Id = Guid.NewGuid(), OwnerPlayerId = player.Id, CharacterId = character, DefinitionId = catalog.Templates[0].Id,
-                DefinitionVersion = 8, EquipmentType = EraEquipmentType.Weapon, Grade = EraEquipmentGrade.Common,
+                Id = Guid.NewGuid(), OwnerPlayerId = player.Id, CharacterId = character, TemplateId = catalog.Templates[0].Id,
+                GenerationManifestVersion = 8, EquipmentType = EraEquipmentType.Weapon, Grade = EraEquipmentGrade.Common,
                 Location = equipped ? EraEquipmentLocation.Equipped : EraEquipmentLocation.Inventory,
                 EquippedSlot = equipped ? EraEquipmentSlot.Weapon1 : null, Version = 1, CreatedAt = DateTimeOffset.UtcNow
             };

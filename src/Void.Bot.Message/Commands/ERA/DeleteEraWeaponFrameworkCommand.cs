@@ -8,13 +8,13 @@ namespace Void.Bot.Message.Commands.ERA;
 
 [TransactionIsolation(IsolationLevel.ReadCommitted)]
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class DeleteEraWeaponStatMappingCommand : ICommand
+public sealed class DeleteEraWeaponFrameworkCommand : ICommand
 {
     public long ExpectedManifestVersion { get; set; }
     public Guid Id { get; set; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed class DeleteEraWeaponStatMappingResponse : EraResponse<EraWeaponConfigurationResultDto>
+public sealed class DeleteEraWeaponFrameworkResponse : EraResponse<EraWeaponConfigurationResultDto>
 {
 }

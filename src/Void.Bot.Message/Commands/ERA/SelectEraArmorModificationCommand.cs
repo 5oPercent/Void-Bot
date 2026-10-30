@@ -10,7 +10,7 @@ namespace Void.Bot.Message.Commands.ERA;
 public sealed class SelectEraArmorModificationCommand : IEraEquipmentModificationSelection
 {
     public Guid CharacterId { get; set; }
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     public Guid RequestId { get; set; }
     public Guid SlotId { get; set; }
     public Guid CandidateId { get; set; }

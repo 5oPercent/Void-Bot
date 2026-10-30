@@ -8,35 +8,28 @@ public static class EraWeaponConfigurationValidator
 {
     public static void Validate(EraWeaponCatalogDto catalog)
     {
-        if (catalog == null || catalog.Templates == null || catalog.Modifications == null || catalog.StatMappings == null ||
-            catalog.SlotTypes == null || catalog.SlotConfigurations == null ||
-            new[] { catalog.Templates.Count, catalog.Modifications.Count, catalog.StatMappings.Count,
-                catalog.SlotTypes.Count, catalog.SlotConfigurations.Count }.Any(count => count > EraWeaponConstants.MaximumDefinitions))
+        if (catalog == null || catalog.Templates == null || catalog.Modifications == null ||
+            catalog.SlotTypes == null || catalog.SlotConfigurations == null || catalog.Frameworks == null ||
+            new[] { catalog.Templates.Count, catalog.Modifications.Count,
+                catalog.SlotTypes.Count, catalog.SlotConfigurations.Count, catalog.Frameworks.Count }.Any(count => count > EraWeaponConstants.MaximumDefinitions))
             throw new ArgumentException("Weapon catalog size is invalid.");
         if (catalog.Templates.Any(value => value == null) || catalog.Modifications.Any(value => value == null) ||
-            catalog.StatMappings.Any(value => value == null) || catalog.SlotTypes.Any(value => value == null) ||
-            catalog.SlotConfigurations.Any(value => value == null))
+            catalog.SlotTypes.Any(value => value == null) ||
+            catalog.SlotConfigurations.Any(value => value == null) || catalog.Frameworks.Any(value => value == null))
             throw new ArgumentException("Weapon catalog definitions cannot be null.");
+
+        var frameworks = new Dictionary<Guid, EraWeaponFrameworkDto>();
+        foreach (var framework in catalog.Frameworks)
+        {
+            if (framework.Id == Guid.Empty || !frameworks.TryAdd(framework.Id, framework))
+                throw new ArgumentException("Weapon framework identity is invalid.");
+            ValidateFramework(framework);
+        }
 
         var typeIds = new HashSet<Guid>();
         foreach (var type in catalog.SlotTypes)
             if (type.Id == Guid.Empty || !typeIds.Add(type.Id) || string.IsNullOrWhiteSpace(type.Name) || type.Name.Length > 128)
                 throw new ArgumentException("Weapon slot type identity or name is invalid.");
-        var mappingIds = new HashSet<Guid>();
-        foreach (var mapping in catalog.StatMappings)
-        {
-            if (mapping.Id == Guid.Empty || !mappingIds.Add(mapping.Id) || string.IsNullOrWhiteSpace(mapping.Name) || mapping.Name.Length > 128)
-                throw new ArgumentException("Weapon stat mapping identity is invalid.");
-            foreach (var (zero, hundred) in new[] { (mapping.SpreadDegreesAtZero, mapping.SpreadDegreesAtHundred),
-                (mapping.RecoilDegreesAtZero, mapping.RecoilDegreesAtHundred) })
-                if (!double.IsFinite(zero) || !double.IsFinite(hundred) || zero < hundred || zero > 180 || hundred < 0)
-                    throw new ArgumentException("Weapon angle effect endpoints are invalid.");
-            foreach (var (zero, hundred) in new[] { (mapping.ReadySecondsAtZero, mapping.ReadySecondsAtHundred),
-                (mapping.AimSecondsAtZero, mapping.AimSecondsAtHundred) })
-                if (!double.IsFinite(zero) || !double.IsFinite(hundred) || zero < hundred || zero > 3600 || hundred <= 0)
-                    throw new ArgumentException("Weapon action effect endpoints are invalid.");
-        }
-
         var modifications = new Dictionary<Guid, EraWeaponModDefinitionDto>();
         foreach (var modification in catalog.Modifications)
         {
@@ -86,16 +79,17 @@ public static class EraWeaponConfigurationValidator
             var compatibleSlots = template.CompatibleSlots;
             if (template.Id == Guid.Empty || !ids.Add(template.Id) || string.IsNullOrWhiteSpace(template.Name) || template.Name.Length > 128 ||
                 template.Icon is not { Length: <= 256 } || template.Note is not { Length: <= 2048 } ||
-                !ValidPresentationKey(template.PresentationKey) || !mappingIds.Contains(template.StatMappingId) ||
+                !ValidPresentationKey(template.PresentationKey) ||
+                !frameworks.ContainsKey(template.FrameworkId) ||
                 (template.SlotConfigurationId.HasValue && !configurations.ContainsKey(template.SlotConfigurationId.Value)) ||
                 compatibleSlots == null || compatibleSlots.Count == 0 ||
                 compatibleSlots.Any(value => value < EraEquipmentSlot.Weapon1 || value > EraEquipmentSlot.Weapon3) ||
                 compatibleSlots.Distinct().Count() != compatibleSlots.Count)
                 throw new ArgumentException("Weapon template, configuration reference or equipment mapping is invalid.");
-            ValidateStats(template.BaseStats, template.Behavior);
-            if (template.SlotConfigurationId.HasValue && configurations[template.SlotConfigurationId.Value].Slots.SelectMany(slot => slot.Pool).Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value =>
-                value.Stat == EraWeaponStat.ProjectileSpeed && !template.BaseStats.ProjectileSpeed.HasValue ||
-                value.Stat == EraWeaponStat.ChargeTime && !template.BaseStats.ChargeTime.HasValue)))
+            var framework = frameworks[template.FrameworkId];
+            ValidateStats(template.BaseStats, framework);
+            if (template.SlotConfigurationId.HasValue && configurations[template.SlotConfigurationId.Value].Slots.SelectMany(slot => slot.Pool)
+                .Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value => !SupportsStat(template.BaseStats, value.Stat))))
                 throw new ArgumentException("Weapon configuration uses an attribute unsupported by an associated template.");
         }
         if (System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(catalog).Length > EraWeaponConstants.MaximumCatalogBytes)
@@ -105,18 +99,109 @@ public static class EraWeaponConfigurationValidator
     private static bool ValidPresentationKey(string? key) => !string.IsNullOrWhiteSpace(key) && key.Length <= 128 && key == key.Trim() &&
         key.All(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-');
 
-    public static void ValidateStats(EraWeaponStatsDto stats, EraWeaponBehaviorDto behavior)
+    public static bool SupportsStat(IReadOnlyCollection<EraWeaponStatValueDto> stats, EraWeaponStat stat) =>
+        stats.Any(value => value.Stat == stat);
+
+    public static void ValidateStats(IReadOnlyCollection<EraWeaponStatValueDto> stats, EraWeaponFrameworkDto framework)
     {
-        if (stats == null || behavior == null || new[] { stats.Damage, stats.Frequency, stats.ReloadSpeed, stats.Range }.Any(value => !double.IsFinite(value) || value <= 0 || value > 1000000) ||
-            stats.LoadedCapacity < 1 || stats.LoadedCapacity > 1000000 || stats.ReserveCapacity < 0 || stats.ReserveCapacity > 1000000 ||
-            new[] { stats.Accuracy, stats.Stability, stats.Handling }.Any(value => !double.IsFinite(value) || value < 0 || value > 100) ||
-            !System.Enum.IsDefined(behavior.FireMode) || !System.Enum.IsDefined(behavior.HitMode) || !System.Enum.IsDefined(behavior.ReloadMode) ||
-            !double.IsFinite(behavior.BaseReloadSeconds) || behavior.BaseReloadSeconds <= 0 || behavior.BaseReloadSeconds > 3600 ||
-            behavior.BurstCount < 1 || behavior.BurstCount > 64 ||
-            (behavior.HitMode == EraWeaponHitMode.Projectile) != stats.ProjectileSpeed.HasValue ||
-            stats.ProjectileSpeed.HasValue && (!double.IsFinite(stats.ProjectileSpeed.Value) || stats.ProjectileSpeed.Value <= 0 || stats.ProjectileSpeed.Value > 1000000) ||
-            (behavior.FireMode == EraWeaponFireMode.Charged) != stats.ChargeTime.HasValue ||
-            stats.ChargeTime.HasValue && (!double.IsFinite(stats.ChargeTime.Value) || stats.ChargeTime.Value <= 0 || stats.ChargeTime.Value > 3600))
-            throw new ArgumentException("Weapon base stats or typed behavior parameters are invalid.");
+        if (stats == null || stats.Count > 11 || stats.Any(value => value == null) ||
+            stats.Select(value => value.Stat).Distinct().Count() != stats.Count)
+            throw new ArgumentException("Weapon base stat entries are invalid.");
+        var required = new HashSet<EraWeaponStat>
+        {
+            EraWeaponStat.Damage, EraWeaponStat.Frequency, EraWeaponStat.Handling,
+            EraWeaponStat.LoadedCapacity, EraWeaponStat.ReserveCapacity, EraWeaponStat.Penetration
+        };
+        required.UnionWith(framework.SupplementaryStats);
+        if (!required.SetEquals(stats.Select(value => value.Stat)))
+            throw new ArgumentException("Weapon values must exactly match its framework's applicable attributes.");
+        foreach (var entry in stats)
+        {
+            var value = entry.Value;
+            var valid = entry.Stat switch
+            {
+                EraWeaponStat.Damage => value >= 0 && value <= 1000000,
+                EraWeaponStat.Frequency or EraWeaponStat.ReloadSpeed or EraWeaponStat.ProjectileSpeed => value > 0 && value <= 1000000,
+                EraWeaponStat.Handling or EraWeaponStat.Accuracy or EraWeaponStat.Stability => value >= 0 && value <= 100,
+                EraWeaponStat.LoadedCapacity => value >= 1 && value <= 1000000 && value == Math.Truncate(value),
+                EraWeaponStat.ReserveCapacity or EraWeaponStat.Penetration => value >= -1 && value <= 1000000 && value == Math.Truncate(value),
+                EraWeaponStat.ChargeTime => value > 0 && value <= 3600,
+                _ => false
+            };
+            if (!double.IsFinite(value) || !valid)
+                throw new ArgumentException("Weapon base stat value is invalid.");
+            if (entry.Stat is EraWeaponStat.Accuracy or EraWeaponStat.Stability or EraWeaponStat.Handling)
+            {
+                var zero = entry.EffectAtZero;
+                var hundred = entry.EffectAtHundred;
+                var maximum = entry.Stat == EraWeaponStat.Handling ? 3600 : 180;
+                if (!zero.HasValue || !hundred.HasValue || !double.IsFinite(zero.Value) || !double.IsFinite(hundred.Value) ||
+                    zero < hundred || zero > maximum || (entry.Stat == EraWeaponStat.Handling ? hundred <= 0 : hundred < 0))
+                    throw new ArgumentException("Weapon score effect endpoints are invalid.");
+            }
+            else if (entry.EffectAtZero.HasValue || entry.EffectAtHundred.HasValue)
+                throw new ArgumentException("Direct weapon attributes cannot contain score effect endpoints.");
+        }
+    }
+
+    public static void ValidateFramework(EraWeaponFrameworkDto framework)
+    {
+        if (framework == null || string.IsNullOrWhiteSpace(framework.Name) || framework.Name.Length > 128 ||
+            framework.Note is not { Length: <= 2048 } || framework.PresentationDriverKey is not ("Firearm" or "Bow" or "Crossbow" or "Melee") ||
+            framework.SupplementaryStats == null || framework.Capabilities == null || framework.Capabilities.Count > 8 ||
+            framework.Capabilities.Any(capability => capability == null) ||
+            framework.Capabilities.Select(capability => capability.Kind).Distinct().Count() != framework.Capabilities.Count ||
+            framework.SupplementaryStats.Distinct().Count() != framework.SupplementaryStats.Count)
+            throw new ArgumentException("Weapon framework identity, driver or capabilities are invalid.");
+        var kinds = framework.Capabilities.Select(capability => capability.Kind).ToHashSet();
+        var supplementary = new HashSet<EraWeaponStat>();
+        foreach (var capability in framework.Capabilities)
+        {
+            var configurations = new Dictionary<EraWeaponCapabilityKind, object?>
+            {
+                [EraWeaponCapabilityKind.Aim] = capability.Aim, [EraWeaponCapabilityKind.Recoil] = capability.Recoil,
+                [EraWeaponCapabilityKind.Reload] = capability.Reload, [EraWeaponCapabilityKind.Charge] = capability.Charge,
+                [EraWeaponCapabilityKind.Projectile] = capability.Projectile, [EraWeaponCapabilityKind.MeleeHit] = capability.MeleeHit,
+                [EraWeaponCapabilityKind.Firing] = capability.Firing, [EraWeaponCapabilityKind.Hitscan] = capability.Hitscan
+            };
+            if (!configurations.TryGetValue(capability.Kind, out var configuration) || configuration == null ||
+                configurations.Count(pair => pair.Value != null) != 1)
+                throw new ArgumentException("A weapon capability requires exactly its own typed configuration.");
+            switch (capability.Kind)
+            {
+                case EraWeaponCapabilityKind.Aim: supplementary.Add(EraWeaponStat.Accuracy); break;
+                case EraWeaponCapabilityKind.Recoil: supplementary.Add(EraWeaponStat.Stability); break;
+                case EraWeaponCapabilityKind.Reload:
+                    supplementary.Add(EraWeaponStat.ReloadSpeed);
+                    if (!System.Enum.IsDefined(capability.Reload!.Mode) || !double.IsFinite(capability.Reload.BaseSeconds) ||
+                        capability.Reload.BaseSeconds <= 0 || capability.Reload.BaseSeconds > 3600)
+                        throw new ArgumentException("Weapon reload configuration is invalid.");
+                    break;
+                case EraWeaponCapabilityKind.Charge: supplementary.Add(EraWeaponStat.ChargeTime); break;
+                case EraWeaponCapabilityKind.Projectile: supplementary.Add(EraWeaponStat.ProjectileSpeed); break;
+                case EraWeaponCapabilityKind.Firing:
+                    if (!System.Enum.IsDefined(capability.Firing!.Mode) || capability.Firing.BurstCount < 1 || capability.Firing.BurstCount > 64 ||
+                        capability.Firing.Mode != EraWeaponFireMode.Burst && capability.Firing.BurstCount != 1 ||
+                        (capability.Firing.Mode == EraWeaponFireMode.Charged) != kinds.Contains(EraWeaponCapabilityKind.Charge))
+                        throw new ArgumentException("Weapon firing configuration is invalid.");
+                    break;
+            }
+            var distance = capability.Projectile?.MaximumDistance ?? capability.Hitscan?.MaximumDistance;
+            if (distance.HasValue && (!double.IsFinite(distance.Value) || distance <= 0 || distance > 1000000))
+                throw new ArgumentException("Weapon maximum travel/detection distance is invalid.");
+        }
+        if (!supplementary.SetEquals(framework.SupplementaryStats))
+            throw new ArgumentException("Framework attributes do not match its capabilities.");
+        if (framework.PresentationDriverKey == "Melee")
+        {
+            if (!kinds.Contains(EraWeaponCapabilityKind.MeleeHit) ||
+                kinds.Except(new[] { EraWeaponCapabilityKind.MeleeHit, EraWeaponCapabilityKind.Reload, EraWeaponCapabilityKind.Charge }).Any())
+                throw new ArgumentException("Melee driver capabilities are invalid.");
+        }
+        else if (!kinds.Contains(EraWeaponCapabilityKind.Firing) || kinds.Contains(EraWeaponCapabilityKind.MeleeHit) ||
+            kinds.Contains(EraWeaponCapabilityKind.Projectile) == kinds.Contains(EraWeaponCapabilityKind.Hitscan) ||
+            framework.PresentationDriverKey == "Bow" && (!kinds.Contains(EraWeaponCapabilityKind.Projectile) || !kinds.Contains(EraWeaponCapabilityKind.Charge)) ||
+            framework.PresentationDriverKey == "Crossbow" && (!kinds.Contains(EraWeaponCapabilityKind.Projectile) || !kinds.Contains(EraWeaponCapabilityKind.Reload)))
+            throw new ArgumentException("Ranged driver capabilities are invalid.");
     }
 }

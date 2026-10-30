@@ -14,7 +14,7 @@ public sealed class EquipEraEquipmentCommand : IEraEquipmentOperation
     /// <summary>玩家范围内的幂等标识，同一成功请求重试不能改参数。</summary>
     public Guid RequestId { get; set; }
     /// <summary>当前角色背包或已穿武器中的候选实例 ID。</summary>
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     /// <summary>目标已穿槽位。</summary>
     public EraEquipmentSlot Slot { get; set; }
     /// <summary>候选当前已穿位置；背包候选必须为 null。</summary>
@@ -24,7 +24,7 @@ public sealed class EquipEraEquipmentCommand : IEraEquipmentOperation
     /// <summary>候选实例的预期版本。</summary>
     public long ExpectedItemVersion { get; set; }
     /// <summary>目标槽位原装备；空槽必须为 null。</summary>
-    public Guid? ExpectedEquippedEquipmentId { get; set; }
+    public Guid? ExpectedEquippedEquipmentInstanceId { get; set; }
     /// <summary>原装备预期版本；空槽必须为 null。</summary>
     public long? ExpectedEquippedVersion { get; set; }
     /// <summary>选取候选时使用的装备目录发布版本。</summary>

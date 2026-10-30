@@ -21,14 +21,14 @@ public static class EraRewardEquipmentGenerator
         {
             if (entry == null || !validator.Validate(entry).IsValid || (long)result.Count + entry.Count > EraEquipmentRules.InventoryCapacity)
                 throw new ArgumentException("Reward entries are invalid.");
-            var isWeapon = templates.TryGetValue(entry.DefinitionId, out var template);
-            if (isWeapon ? !template!.IsGenerationEnabled || weapons == null : !definitions.TryGetValue(entry.DefinitionId, out var availableArmor) || !availableArmor.IsGenerationEnabled)
+            var isWeapon = templates.TryGetValue(entry.TemplateId, out var template);
+            if (isWeapon ? !template!.IsGenerationEnabled || weapons == null : !definitions.TryGetValue(entry.TemplateId, out var availableArmor) || !availableArmor.IsGenerationEnabled)
                 throw new ArgumentException("Reward template is unavailable.");
             for (var index = 0; index < entry.Count; index++)
             {
                 var item = new EraPlannedRewardEquipment
                 {
-                    EquipmentId = Guid.NewGuid(), DefinitionId = entry.DefinitionId, Grade = entry.Grade,
+                    EquipmentInstanceId = Guid.NewGuid(), TemplateId = entry.TemplateId, Grade = entry.Grade,
                     EquipmentType = isWeapon ? EraEquipmentType.Weapon : EraEquipmentType.Armor
                 };
                 if (isWeapon) item.Weapon = template!.SlotConfigurationId is { } configurationId
@@ -36,7 +36,7 @@ public static class EraRewardEquipmentGenerator
                 else
                 {
                     var generated = armor.Generate(entry.Grade);
-                    var armorTemplate = definitions[entry.DefinitionId];
+                    var armorTemplate = definitions[entry.TemplateId];
                     if (armorTemplate.SlotConfigurationId.HasValue)
                         item.ArmorModifications = new EraArmorModificationGenerator().Generate(manifest.Armors.SlotConfigurations.Single(row => row.Id == armorTemplate.SlotConfigurationId.Value));
                     item.GenerationRuleVersion = generated.GenerationRuleVersion;

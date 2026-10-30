@@ -65,8 +65,8 @@ public partial class EraIntegrationFixture
         {
             var ids = drops.Select(drop => drop.DropId).ToArray();
             var saved = await context.Set<EraEquipmentDrop>().Where(drop => ids.Contains(drop.Id)).ToListAsync();
-            saved.ShouldAllBe(drop => drop.Status == EraEquipmentDropStatus.Destroyed && drop.ActiveEquipmentId == null && drop.Version == 2);
-            var equipmentIds = drops.Select(drop => drop.EquipmentId).ToArray();
+            saved.ShouldAllBe(drop => drop.Status == EraEquipmentDropStatus.Destroyed && drop.ActiveEquipmentInstanceId == null && drop.Version == 2);
+            var equipmentIds = drops.Select(drop => drop.EquipmentInstanceId).ToArray();
             (await context.Set<EraEquipmentInstance>().Where(item => equipmentIds.Contains(item.Id)).ToListAsync())
                 .ShouldAllBe(item => item.Location == EraEquipmentLocation.Destroyed && item.Version == 2 &&
                     item.OwnerPlayerId == null && item.CharacterId == null);
@@ -112,7 +112,7 @@ public partial class EraIntegrationFixture
             MemberId = authority.MemberId, AuthorityEpoch = authority.AuthorityEpoch, Placement = authority.Placement, IsPublic = true,
             Entries = new List<EraEquipmentRewardEntry>
             {
-                new() { DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
+                new() { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001"), Count = 2 }
             }
         };
         await RequestAsync((mediator, token) => mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(grant, token));
@@ -147,7 +147,7 @@ public partial class EraIntegrationFixture
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraEquipmentDrop>().ToListAsync()).ShouldAllBe(drop =>
-                drop.Status == EraEquipmentDropStatus.Available && drop.ActiveEquipmentId == drop.EquipmentId && drop.Version == 1);
+                drop.Status == EraEquipmentDropStatus.Available && drop.ActiveEquipmentInstanceId == drop.EquipmentInstanceId && drop.Version == 1);
             (await context.Set<EraEquipmentInstance>().Where(item => item.Location == EraEquipmentLocation.Ground).CountAsync()).ShouldBe(2);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(3);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(0);
@@ -202,7 +202,7 @@ public partial class EraIntegrationFixture
         {
             var savedDrop = await context.Set<EraEquipmentDrop>().SingleAsync(row => row.Id == drop.DropId);
             savedDrop.Status.ShouldBe(destroyFirst ? EraEquipmentDropStatus.Destroyed : EraEquipmentDropStatus.PickedUp);
-            var savedItem = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId);
+            var savedItem = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId);
             savedItem.Location.ShouldBe(destroyFirst ? EraEquipmentLocation.Destroyed : EraEquipmentLocation.Inventory);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(2); // 丢出与唯一成功的消费。
         });

@@ -2,6 +2,10 @@
 
 更新日期：2026-10-25。
 
+2026-10-30 新设计见[武器框架与属性配置设计](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器框架与属性配置设计.md)，增量实施见[专项 TODO](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器框架与属性配置TODO.md)。本轮统一使用“武器模板／武器框架”，新增可配置框架、调整十一项属性及储备／穿透的 -1 语义。用户确认后端已有模板数据、没有装备实例数据；新增结构迁移需保留模板与配置引用，无需旧实例载荷转换或兼容路径。下文勾选是旧实现记录，不代表专项已实施；旧“不新增框架表”、Range 及固定八端点结构由专项替代。后端框架配置、管理接口与 Script0045 已接入源码，最新契约见[武器框架与属性配置接口](武器框架与属性配置接口.md)；Script0044／0045 均未执行，Web／Godot 与运行验收仍待完成。
+
+装备命名调整见[装备表命名与模板实例边界](C:/Users/Feng/Documents/GodotProjects/ERA/docs/装备表命名与模板实例边界.md)：公共实例本体保持 era_equipment_instance，类型模板保持独立，护甲扩展改为 era_armor_instance，护甲／武器实例候选和选择表显式增加 instance。实体、SQL、消息字段和 ERA 客户端引用已同步，Script0044 结构迁移已准备但未执行；未编译或运行测试。武器框架功能尚待专项 TODO 实施。
+
 目标项目：`C:/Users/Feng/Documents/Projects/Void-Bot/Void.Bot.sln`。
 
 共同设计：[武器属性、改装与模型表现](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器属性与改装模型设计.md)。客户端清单：[武器属性与改装客户端 TODO](C:/Users/Feng/Documents/GodotProjects/ERA/docs/武器属性与改装客户端TODO.md)。既有资产能力：[角色装备与奖励后端 TODO](角色装备与奖励后端TODO.md)。

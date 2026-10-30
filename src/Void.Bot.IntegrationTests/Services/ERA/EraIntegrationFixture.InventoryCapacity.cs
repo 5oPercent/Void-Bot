@@ -45,7 +45,7 @@ public partial class EraIntegrationFixture
         {
             foreach (var item in await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId).ToListAsync())
             {
-                item.DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002");
+                item.TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000002");
             }
             await context.SaveChangesAsync();
         });
@@ -58,8 +58,8 @@ public partial class EraIntegrationFixture
         var picked = await PickupDropAsync(PickupCommand(world, drops[0]));
 
         picked.Data!.State.TotalInventoryCount.ShouldBe(120);
-        picked.Data.State.InventoryItems.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(119);
-        picked.Data.State.InventoryItems.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(1);
+        picked.Data.State.InventoryItems.Count(item => item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(119);
+        picked.Data.State.InventoryItems.Count(item => item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(1);
         var second = PickupCommand(world, drops[1], picked.Data.State.EquipmentVersion);
         (await Should.ThrowAsync<EraRewardException>(() => PickupDropAsync(second))).ErrorCode.ShouldBe("era.drop_inventory_full");
         await ReadDatabaseAsync(async context =>
@@ -80,7 +80,7 @@ public partial class EraIntegrationFixture
         {
             foreach (var item in await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId).ToListAsync())
             {
-                item.DefinitionId = Guid.Parse("10000000-0000-0000-0000-000000000002");
+                item.TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000002");
             }
             await context.SaveChangesAsync();
         });
@@ -101,14 +101,14 @@ public partial class EraIntegrationFixture
             await context.SaveChangesAsync();
         });
         var granted = await GrantRewardAsync(prepared.Data);
-        granted.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(2);
+        granted.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(2);
         await ReadDatabaseAsync(async context =>
         {
             var items = await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId &&
                 item.Location == EraEquipmentLocation.Inventory).ToListAsync();
             items.Count.ShouldBe(120);
-            items.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(118);
-            items.Count(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(2);
+            items.Count(item => item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000002")).ShouldBe(118);
+            items.Count(item => item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000001")).ShouldBe(2);
         });
     }
 
@@ -124,13 +124,13 @@ public partial class EraIntegrationFixture
 
         var granted = await GrantRewardAsync(prepared.Data);
 
-        granted.Data!.Grants.Single().EquipmentIds.Count.ShouldBe(count);
+        granted.Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(count);
         await ReadDatabaseAsync(async context =>
         {
             var items = await context.Set<EraEquipmentInstance>().Where(item => item.CharacterId == _characterId &&
                 item.Location == EraEquipmentLocation.Inventory).ToListAsync();
             items.Count.ShouldBe(count);
-            items.ShouldAllBe(item => item.DefinitionId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
+            items.ShouldAllBe(item => item.TemplateId == Guid.Parse("10000000-0000-0000-0000-000000000001"));
         });
         (await GrantRewardAsync(prepared.Data)).IsReplay.ShouldBeTrue();
     }

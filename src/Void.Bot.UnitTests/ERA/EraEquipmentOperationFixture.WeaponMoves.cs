@@ -27,7 +27,7 @@ public partial class EraEquipmentOperationFixture
         {
             _stored.Add(new EraEquipmentReadEntry(new EraEquipmentInstance
             {
-                Id = Guid.NewGuid(), DefinitionId = catalog.Templates[index].Id, DefinitionVersion = 1,
+                Id = Guid.NewGuid(), TemplateId = catalog.Templates[index].Id, GenerationManifestVersion = 1,
                 EquipmentType = EraEquipmentType.Weapon, Grade = EraEquipmentGrade.Common,
                 OwnerPlayerId = _player.Id, CharacterId = _character.Id, Location = EraEquipmentLocation.Equipped,
                 EquippedSlot = index == 0 ? EraEquipmentSlot.Weapon1 : EraEquipmentSlot.Weapon2,

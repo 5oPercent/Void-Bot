@@ -27,75 +27,88 @@ public interface IEraWeaponDataProvider : IScope
 public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
 {
     private readonly IRepository<EraWeaponTemplate> _eraWeaponTemplateRepository;
-    private readonly IRepository<EraWeaponStatMapping> _eraWeaponStatMappingRepository;
+    private readonly IRepository<EraWeaponTemplateStat> _eraWeaponTemplateStatRepository;
     private readonly IRepository<EraWeaponModDefinition> _eraWeaponModDefinitionRepository;
     private readonly IRepository<EraWeaponModStatModifier> _eraWeaponModStatModifierRepository;
     private readonly IRepository<EraWeaponConfigurationSlot> _eraWeaponConfigurationSlotRepository;
     private readonly IRepository<EraWeaponConfigurationModPool> _eraWeaponConfigurationModPoolRepository;
-    private readonly IRepository<EraWeaponModCandidate> _eraWeaponModCandidateRepository;
-    private readonly IRepository<EraWeaponModSelection> _eraWeaponModSelectionRepository;
+    private readonly IRepository<EraWeaponInstanceModCandidate> _eraWeaponInstanceModCandidateRepository;
+    private readonly IRepository<EraWeaponInstanceModSelection> _eraWeaponInstanceModSelectionRepository;
     private readonly IRepository<EraEquipmentConfiguration> _eraEquipmentConfigurationRepository;
     private readonly IRepository<EraEquipmentInstance> _eraEquipmentInstanceRepository;
     private readonly IRepository<EraRewardEvent> _eraRewardEventRepository;
     private readonly IRepository<EraRewardConfiguration> _eraRewardConfigurationRepository;
     private readonly IRepository<EraWeaponSlotType> _eraWeaponSlotTypeRepository;
     private readonly IRepository<EraWeaponSlotConfiguration> _eraWeaponSlotConfigurationRepository;
+    private readonly IRepository<EraWeaponFramework> _eraWeaponFrameworkRepository;
+    private readonly IRepository<EraWeaponFrameworkStat> _eraWeaponFrameworkStatRepository;
+    private readonly IRepository<EraWeaponFrameworkCapability> _eraWeaponFrameworkCapabilityRepository;
     private readonly IMapper _mapper;
 
     public EraWeaponDataProvider(
         IRepository<EraWeaponTemplate> eraWeaponTemplateRepository,
-        IRepository<EraWeaponStatMapping> eraWeaponStatMappingRepository,
+        IRepository<EraWeaponTemplateStat> eraWeaponTemplateStatRepository,
         IRepository<EraWeaponModDefinition> eraWeaponModDefinitionRepository,
         IRepository<EraWeaponModStatModifier> eraWeaponModStatModifierRepository,
         IRepository<EraWeaponConfigurationSlot> eraWeaponConfigurationSlotRepository,
         IRepository<EraWeaponConfigurationModPool> eraWeaponConfigurationModPoolRepository,
-        IRepository<EraWeaponModCandidate> eraWeaponModCandidateRepository,
-        IRepository<EraWeaponModSelection> eraWeaponModSelectionRepository,
+        IRepository<EraWeaponInstanceModCandidate> eraWeaponInstanceModCandidateRepository,
+        IRepository<EraWeaponInstanceModSelection> eraWeaponInstanceModSelectionRepository,
         IRepository<EraEquipmentConfiguration> eraEquipmentConfigurationRepository,
         IRepository<EraEquipmentInstance> eraEquipmentInstanceRepository,
         IRepository<EraRewardEvent> eraRewardEventRepository,
         IRepository<EraRewardConfiguration> eraRewardConfigurationRepository,
         IRepository<EraWeaponSlotType> eraWeaponSlotTypeRepository,
         IRepository<EraWeaponSlotConfiguration> eraWeaponSlotConfigurationRepository,
+        IRepository<EraWeaponFramework> eraWeaponFrameworkRepository,
+        IRepository<EraWeaponFrameworkStat> eraWeaponFrameworkStatRepository,
+        IRepository<EraWeaponFrameworkCapability> eraWeaponFrameworkCapabilityRepository,
         IMapper mapper)
     {
         _eraWeaponTemplateRepository = eraWeaponTemplateRepository;
-        _eraWeaponStatMappingRepository = eraWeaponStatMappingRepository;
+        _eraWeaponTemplateStatRepository = eraWeaponTemplateStatRepository;
         _eraWeaponModDefinitionRepository = eraWeaponModDefinitionRepository;
         _eraWeaponModStatModifierRepository = eraWeaponModStatModifierRepository;
         _eraWeaponConfigurationSlotRepository = eraWeaponConfigurationSlotRepository;
         _eraWeaponConfigurationModPoolRepository = eraWeaponConfigurationModPoolRepository;
-        _eraWeaponModCandidateRepository = eraWeaponModCandidateRepository;
-        _eraWeaponModSelectionRepository = eraWeaponModSelectionRepository;
+        _eraWeaponInstanceModCandidateRepository = eraWeaponInstanceModCandidateRepository;
+        _eraWeaponInstanceModSelectionRepository = eraWeaponInstanceModSelectionRepository;
         _eraEquipmentConfigurationRepository = eraEquipmentConfigurationRepository;
         _eraEquipmentInstanceRepository = eraEquipmentInstanceRepository;
         _eraRewardEventRepository = eraRewardEventRepository;
         _eraRewardConfigurationRepository = eraRewardConfigurationRepository;
         _eraWeaponSlotTypeRepository = eraWeaponSlotTypeRepository;
         _eraWeaponSlotConfigurationRepository = eraWeaponSlotConfigurationRepository;
+        _eraWeaponFrameworkRepository = eraWeaponFrameworkRepository;
+        _eraWeaponFrameworkStatRepository = eraWeaponFrameworkStatRepository;
+        _eraWeaponFrameworkCapabilityRepository = eraWeaponFrameworkCapabilityRepository;
         _mapper = mapper;
     }
 
     public async Task<EraWeaponCatalogDto> GetCatalogAsync(CancellationToken cancellationToken)
     {
         var templates = await _eraWeaponTemplateRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var statMappings = await _eraWeaponStatMappingRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var templateStats = await _eraWeaponTemplateStatRepository.QueryNoTracking().OrderBy(row => row.Stat).ToListAsync(cancellationToken).ConfigureAwait(false);
         var definitions = await _eraWeaponModDefinitionRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var modifiers = await _eraWeaponModStatModifierRepository.QueryNoTracking().OrderBy(row => row.Sequence).ToListAsync(cancellationToken).ConfigureAwait(false);
         var slots = await _eraWeaponConfigurationSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var pools = await _eraWeaponConfigurationModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
         var slotTypes = await _eraWeaponSlotTypeRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var configurations = await _eraWeaponSlotConfigurationRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateCatalog(slotTypes, configurations, templates, statMappings, definitions, modifiers, slots, pools, _mapper);
+        var frameworks = await _eraWeaponFrameworkRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var frameworkStats = await _eraWeaponFrameworkStatRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Stat).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var capabilities = await _eraWeaponFrameworkCapabilityRepository.QueryNoTracking().OrderBy(row => row.CapabilityKind).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraWeaponDataMapping.CreateCatalog(slotTypes, configurations, templates, definitions, modifiers, slots, pools,
+            frameworks, frameworkStats, capabilities, templateStats, _mapper);
     }
 
     public async Task<Dictionary<Guid, EraWeaponInstanceDto>> GetInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken)
     {
         var ids = equipmentIds.Distinct().ToArray();
         if (ids.Length == 0) return new Dictionary<Guid, EraWeaponInstanceDto>();
-        var candidates = await _eraWeaponModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+        var candidates = await _eraWeaponInstanceModCandidateRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentInstanceId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.CandidateId).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var selections = await _eraWeaponModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentId))
+        var selections = await _eraWeaponInstanceModSelectionRepository.QueryNoTracking().Where(row => ids.Contains(row.EquipmentInstanceId))
             .OrderBy(row => row.DisplayOrder).ThenBy(row => row.SlotId).ToListAsync(cancellationToken).ConfigureAwait(false);
         return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
@@ -112,13 +125,13 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
 
     public Task<List<EraEquipmentInstance>> GetReferencedWeaponsAsync(EraEquipmentReferenceChanges changes, CancellationToken cancellationToken)
     {
-        var candidates = _eraWeaponModCandidateRepository.QueryNoTracking();
-        var slots = _eraWeaponModSelectionRepository.QueryNoTracking();
+        var candidates = _eraWeaponInstanceModCandidateRepository.QueryNoTracking();
+        var slots = _eraWeaponInstanceModSelectionRepository.QueryNoTracking();
         return _eraEquipmentInstanceRepository.QueryNoTracking().Where(row => row.EquipmentType == EraEquipmentType.Weapon &&
-            (changes.TemplateIds.Contains(row.DefinitionId) ||
-                candidates.Any(candidate => candidate.EquipmentId == row.Id &&
+            (changes.TemplateIds.Contains(row.TemplateId) ||
+                candidates.Any(candidate => candidate.EquipmentInstanceId == row.Id &&
                     changes.ModificationIds.Contains(candidate.ModDefinitionId)) ||
-                slots.Any(slot => slot.EquipmentId == row.Id &&
+                slots.Any(slot => slot.EquipmentInstanceId == row.Id &&
                     (changes.SlotTypeIds.Contains(slot.SlotTypeId) || changes.SlotIds.Contains(slot.SlotId)))))
             .ToListAsync(cancellationToken);
     }
@@ -135,9 +148,44 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
     public async Task SaveCatalogAsync(EraWeaponCatalogDto previous, EraWeaponCatalogDto catalog, CancellationToken cancellationToken)
     {
         _eraWeaponTemplateRepository.RequireTransaction();
+        var changedFrameworks = EraEquipmentCatalogChanges.ChangedIds(previous.Frameworks, catalog.Frameworks, row => row.Id);
+        var changedFrameworkStats = EraEquipmentCatalogChanges.ChangedIds(previous.Frameworks, catalog.Frameworks, row => row.Id, row => row.SupplementaryStats);
+        var changedCapabilities = EraEquipmentCatalogChanges.ChangedIds(previous.Frameworks, catalog.Frameworks, row => row.Id, row => row.Capabilities);
+        if (changedFrameworkStats.Count > 0)
+            await _eraWeaponFrameworkStatRepository.ExecuteDeleteAsync(row => changedFrameworkStats.Contains(row.FrameworkId), cancellationToken).ConfigureAwait(false);
+        if (changedCapabilities.Count > 0)
+            await _eraWeaponFrameworkCapabilityRepository.ExecuteDeleteAsync(row => changedCapabilities.Contains(row.FrameworkId), cancellationToken).ConfigureAwait(false);
+        var frameworks = changedFrameworks.Count == 0 ? new Dictionary<Guid, EraWeaponFramework>() :
+            await _eraWeaponFrameworkRepository.Query().Where(row => changedFrameworks.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
+        foreach (var entity in frameworks.Values.Where(row => !catalog.Frameworks.Any(framework => framework.Id == row.Id)))
+            _eraWeaponFrameworkRepository.Delete(entity);
+        foreach (var framework in catalog.Frameworks.Where(row => changedFrameworks.Contains(row.Id)))
+        {
+            if (!frameworks.TryGetValue(framework.Id, out var entity))
+            {
+                entity = new EraWeaponFramework { Id = framework.Id };
+                _eraWeaponFrameworkRepository.Insert(entity);
+            }
+            _mapper.Map(framework, entity);
+            if (changedFrameworkStats.Contains(framework.Id))
+                for (var index = 0; index < framework.SupplementaryStats.Count; index++)
+                    _eraWeaponFrameworkStatRepository.Insert(new EraWeaponFrameworkStat
+                    {
+                        FrameworkId = framework.Id, Stat = framework.SupplementaryStats[index], DisplayOrder = index
+                    });
+            if (changedCapabilities.Contains(framework.Id))
+                foreach (var capability in framework.Capabilities)
+                    _eraWeaponFrameworkCapabilityRepository.Insert(new EraWeaponFrameworkCapability
+                    {
+                        FrameworkId = framework.Id, CapabilityKind = capability.Kind, ConfigurationPayload = JsonSerializer.Serialize(capability)
+                    });
+        }
         var changedTypes = EraEquipmentCatalogChanges.ChangedIds(previous.SlotTypes, catalog.SlotTypes, row => row.Id);
         var changedConfigurations = EraEquipmentCatalogChanges.ChangedIds(previous.SlotConfigurations, catalog.SlotConfigurations, row => row.Id);
         var changedTemplates = EraEquipmentCatalogChanges.ChangedIds(previous.Templates, catalog.Templates, row => row.Id);
+        var changedTemplateStats = EraEquipmentCatalogChanges.ChangedIds(previous.Templates, catalog.Templates, row => row.Id, row => row.BaseStats);
+        if (changedTemplateStats.Count > 0)
+            await _eraWeaponTemplateStatRepository.ExecuteDeleteAsync(row => changedTemplateStats.Contains(row.TemplateId), cancellationToken).ConfigureAwait(false);
         var changedModifications = EraEquipmentCatalogChanges.ChangedIds(previous.Modifications, catalog.Modifications, row => row.Id);
         var changedModifiers = EraEquipmentCatalogChanges.ChangedIds(previous.Modifications, catalog.Modifications, row => row.Id, row => row.Modifiers);
         var previousSlots = previous.SlotConfigurations.SelectMany(configuration => configuration.Slots.Select(slot => new { configuration.Id, Slot = slot })).ToList();
@@ -151,7 +199,6 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
         }
         if (changedModifiers.Count > 0)
             await _eraWeaponModStatModifierRepository.ExecuteDeleteAsync(row => changedModifiers.Contains(row.ModDefinitionId), cancellationToken).ConfigureAwait(false);
-        var changedMappings = EraEquipmentCatalogChanges.ChangedIds(previous.StatMappings, catalog.StatMappings, row => row.Id);
         var types = changedTypes.Count == 0 ? new Dictionary<Guid, EraWeaponSlotType>() :
             await _eraWeaponSlotTypeRepository.Query().Where(row => changedTypes.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
         var configurations = changedConfigurations.Count == 0 ? new Dictionary<Guid, EraWeaponSlotConfiguration>() :
@@ -196,19 +243,6 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
             await _eraWeaponTemplateRepository.Query().Where(row => changedTemplates.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
         var modifications = changedModifications.Count == 0 ? new Dictionary<Guid, EraWeaponModDefinition>() :
             await _eraWeaponModDefinitionRepository.Query().Where(row => changedModifications.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
-        var statMappings = changedMappings.Count == 0 ? new Dictionary<Guid, EraWeaponStatMapping>() :
-            await _eraWeaponStatMappingRepository.Query().Where(row => changedMappings.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
-        foreach (var entity in statMappings.Values.Where(row => !catalog.StatMappings.Any(mapping => mapping.Id == row.Id)))
-            _eraWeaponStatMappingRepository.Delete(entity);
-        foreach (var mapping in catalog.StatMappings.Where(row => changedMappings.Contains(row.Id)))
-        {
-            if (!statMappings.TryGetValue(mapping.Id, out var entity))
-            {
-                entity = new EraWeaponStatMapping { Id = mapping.Id };
-                _eraWeaponStatMappingRepository.Insert(entity);
-            }
-            _mapper.Map(mapping, entity);
-        }
         foreach (var entity in templates.Values.Where(row => !catalog.Templates.Any(template => template.Id == row.Id))) _eraWeaponTemplateRepository.Delete(entity);
         foreach (var entity in modifications.Values.Where(row => !catalog.Modifications.Any(modification => modification.Id == row.Id))) _eraWeaponModDefinitionRepository.Delete(entity);
         foreach (var template in catalog.Templates.Where(row => changedTemplates.Contains(row.Id)))
@@ -220,10 +254,15 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
             }
             entity.Name = template.Name; entity.Icon = template.Icon; entity.Note = template.Note;
             entity.IsGenerationEnabled = template.IsGenerationEnabled; entity.PresentationKey = template.PresentationKey;
-            entity.StatMappingId = template.StatMappingId;
+            entity.FrameworkId = template.FrameworkId;
             entity.SlotConfigurationId = template.SlotConfigurationId;
-            _mapper.Map(template.BaseStats, entity);
-            entity.BehaviorPayload = JsonSerializer.Serialize(template.Behavior);
+            if (changedTemplateStats.Contains(template.Id))
+                foreach (var stat in template.BaseStats)
+                    _eraWeaponTemplateStatRepository.Insert(new EraWeaponTemplateStat
+                    {
+                        TemplateId = template.Id, Stat = stat.Stat, Value = stat.Value,
+                        EffectAtZero = stat.EffectAtZero, EffectAtHundred = stat.EffectAtHundred
+                    });
             entity.CompatibleSlotsPayload = JsonSerializer.Serialize(template.CompatibleSlots);
         }
         foreach (var modification in catalog.Modifications.Where(row => changedModifications.Contains(row.Id)))
@@ -248,15 +287,15 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
 
     public void AddInstance(Guid equipmentId, EraWeaponInstanceDto instance)
     {
-        _eraWeaponModCandidateRepository.InsertMany(EraWeaponDataMapping.CreateCandidates(equipmentId, instance));
-        _eraWeaponModSelectionRepository.InsertMany(EraWeaponDataMapping.CreateSelections(equipmentId, instance));
+        _eraWeaponInstanceModCandidateRepository.InsertMany(EraWeaponDataMapping.CreateCandidates(equipmentId, instance));
+        _eraWeaponInstanceModSelectionRepository.InsertMany(EraWeaponDataMapping.CreateSelections(equipmentId, instance));
     }
 
     public async Task UpdateSelectionAsync(Guid equipmentId, Guid slotId, Guid previous, Guid candidate, long expectedItemVersion, CancellationToken cancellationToken)
     {
         _eraWeaponTemplateRepository.RequireTransaction();
-        var changed = await _eraWeaponModSelectionRepository.ExecuteUpdateAsync(
-            row => row.EquipmentId == equipmentId && row.SlotId == slotId && row.SelectedCandidateId == previous,
+        var changed = await _eraWeaponInstanceModSelectionRepository.ExecuteUpdateAsync(
+            row => row.EquipmentInstanceId == equipmentId && row.SlotId == slotId && row.SelectedCandidateId == previous,
             setters => setters.SetProperty(row => row.SelectedCandidateId, candidate), cancellationToken).ConfigureAwait(false);
         if (changed != 1) throw new EraEquipmentConcurrencyException("Weapon selection changed during the operation.");
         var touched = await _eraEquipmentInstanceRepository.ExecuteUpdateAsync(

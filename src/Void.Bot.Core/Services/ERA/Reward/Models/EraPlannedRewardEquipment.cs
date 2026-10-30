@@ -5,8 +5,8 @@ namespace Void.Bot.Core.Services.ERA.Reward.Models;
 
 public sealed class EraPlannedRewardEquipment
 {
-    public Guid EquipmentId { get; set; }
-    public Guid DefinitionId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
+    public Guid TemplateId { get; set; }
     /// <summary>装备品阶；护甲用于确定随机六维预算，武器暂无品阶专属生成规则。</summary>
     public EraEquipmentGrade Grade { get; set; }
     public int GenerationRuleVersion { get; set; }

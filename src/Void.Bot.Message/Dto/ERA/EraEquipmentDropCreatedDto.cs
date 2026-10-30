@@ -5,7 +5,7 @@ public sealed class EraEquipmentDropCreatedDto
 {
     public Guid WorldInstanceId { get; set; }
     public Guid DropId { get; set; }
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     public long DropVersion { get; set; }
     public long EquipmentVersion { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

@@ -23,7 +23,7 @@ public partial class EraIntegrationFixture
         response.IsReplay.ShouldBeFalse();
         response.Data!.State.EquipmentVersion.ShouldBe(4);
         response.Data.State.TotalInventoryCount.ShouldBe(120);
-        response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(command.EquipmentId);
+        response.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(command.EquipmentInstanceId);
         await ReadDatabaseAsync(async context =>
         {
             var character = await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId);
@@ -32,7 +32,7 @@ public partial class EraIntegrationFixture
             var items = await context.Set<EraEquipmentInstance>().Where(row => row.CharacterId == _characterId).ToListAsync();
             items.Count.ShouldBe(121);
             items.Count(item => item.Location == EraEquipmentLocation.Inventory).ShouldBe(120);
-            var candidate = items.Single(item => item.Id == command.EquipmentId);
+            var candidate = items.Single(item => item.Id == command.EquipmentInstanceId);
             candidate.Location.ShouldBe(EraEquipmentLocation.Equipped);
             candidate.EquippedSlot.ShouldBe(EraEquipmentSlot.Head);
             candidate.Version.ShouldBe(6);
@@ -45,7 +45,7 @@ public partial class EraIntegrationFixture
                 var item = items.Single(row => row.Id == original.Id);
                 item.OwnerPlayerId.ShouldBe(original.OwnerPlayerId);
                 item.CreatedAt.ShouldBe(original.CreatedAt);
-                var armor = await context.Set<EraArmorInstanceData>().SingleAsync(row => row.EquipmentId == item.Id);
+                var armor = await context.Set<EraArmorInstance>().SingleAsync(row => row.EquipmentInstanceId == item.Id);
                 armor.Strength.ShouldBe(120);
                 armor.Survival.ShouldBe(15);
                 armor.Mobility.ShouldBe(9);
@@ -81,7 +81,7 @@ public partial class EraIntegrationFixture
         await SeedAsync();
         var command = Equip(_inventory[0]);
         (await SendEquipAsync(command)).Code.ShouldBe(HttpStatusCode.OK);
-        var unequip = await SendUnequipAsync(command.EquipmentId, equipmentVersion: 4, itemVersion: 6);
+        var unequip = await SendUnequipAsync(command.EquipmentInstanceId, equipmentVersion: 4, itemVersion: 6);
         unequip.Code.ShouldBe(HttpStatusCode.OK);
         unequip.Data!.State.EquipmentVersion.ShouldBe(5);
 
@@ -90,11 +90,11 @@ public partial class EraIntegrationFixture
         replay.Code.ShouldBe(HttpStatusCode.OK);
         replay.IsReplay.ShouldBeTrue();
         replay.Data!.State.EquipmentVersion.ShouldBe(4);
-        replay.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(command.EquipmentId);
+        replay.Data.State.EquippedSlots.Single(slot => slot.Slot == EraEquipmentSlot.Head).Equipment!.Id.ShouldBe(command.EquipmentInstanceId);
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(5);
-            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == command.EquipmentId);
+            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == command.EquipmentInstanceId);
             item.Location.ShouldBe(EraEquipmentLocation.Inventory);
             item.EquippedSlot.ShouldBeNull();
             item.Version.ShouldBe(7);

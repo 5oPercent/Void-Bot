@@ -22,18 +22,18 @@ public sealed partial class EraEquipmentService
     {
         if (command.RequestId == Guid.Empty || command.CharacterId == Guid.Empty || command.ExpectedEquipmentVersion < 0 ||
             command.Items == null || command.Items.Count is < 1 or > EraEquipmentRules.InventoryCapacity ||
-            command.Items.Any(item => item == null || item.EquipmentId == Guid.Empty || item.ExpectedItemVersion < 1) ||
-            command.Items.Select(item => item.EquipmentId).Distinct().Count() != command.Items.Count)
+            command.Items.Any(item => item == null || item.EquipmentInstanceId == Guid.Empty || item.ExpectedItemVersion < 1) ||
+            command.Items.Select(item => item.EquipmentInstanceId).Distinct().Count() != command.Items.Count)
         {
             return Error<DestroyEraInventoryEquipmentResponse>(HttpStatusCode.BadRequest, "era.equipment_invalid_operation", text => text.InvalidOperation);
         }
 
         var character = await _characterContext.RequireOwnedAsync(command.CharacterId, true, cancellationToken).ConfigureAwait(false);
         // 选择顺序不影响请求身份，重试仍必须保留同一批实例与版本。
-        var items = command.Items.OrderBy(item => item.EquipmentId).ToList();
+        var items = command.Items.OrderBy(item => item.EquipmentInstanceId).ToList();
         var requestPayload = JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Operation = EraEquipmentOperation.Destroy,
+            SchemaVersion = 2, Operation = EraEquipmentOperation.Destroy,
             command.CharacterId, command.ExpectedEquipmentVersion, Items = items
         });
         var receipt = await _dataProvider.GetOperationReceiptAsync(character.PlayerId, command.RequestId, cancellationToken).ConfigureAwait(false);
@@ -70,7 +70,7 @@ public sealed partial class EraEquipmentService
         var changes = new List<EraEquipmentPositionChange>();
         foreach (var selected in items)
         {
-            var item = snapshot.Entries.SingleOrDefault(entry => entry.Equipment.Id == selected.EquipmentId)?.Equipment;
+            var item = snapshot.Entries.SingleOrDefault(entry => entry.Equipment.Id == selected.EquipmentInstanceId)?.Equipment;
             if (item == null)
                 return Error<DestroyEraInventoryEquipmentResponse>(HttpStatusCode.NotFound, "era.equipment_not_found", text => text.EquipmentNotFound);
             if (item.Location != EraEquipmentLocation.Inventory || item.Version != selected.ExpectedItemVersion)
@@ -79,13 +79,13 @@ public sealed partial class EraEquipmentService
                 return Error<DestroyEraInventoryEquipmentResponse>(HttpStatusCode.ServiceUnavailable, "era.equipment_data_unavailable", text => text.DataUnavailable);
             changes.Add(new EraEquipmentPositionChange
             {
-                EquipmentId = item.Id, ExpectedVersion = item.Version,
+                EquipmentInstanceId = item.Id, ExpectedVersion = item.Version,
                 PreviousLocation = item.Location, PreviousEquippedSlot = item.EquippedSlot,
                 Location = EraEquipmentLocation.Destroyed, EquippedSlot = null
             });
         }
 
-        var destroyedIds = items.Select(item => item.EquipmentId).ToHashSet();
+        var destroyedIds = items.Select(item => item.EquipmentInstanceId).ToHashSet();
         snapshot.Entries.RemoveAll(entry => destroyedIds.Contains(entry.Equipment.Id));
         snapshot.EquipmentVersion = character.EquipmentVersion + 1;
         var state = CreateState(snapshot, manifest, null);

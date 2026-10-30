@@ -7,7 +7,7 @@ namespace Void.Bot.Message.Commands.ERA;
 public interface IEraEquipmentModificationSelection : ICommand, IRequireEraPlayer
 {
     Guid CharacterId { get; set; }
-    Guid EquipmentId { get; set; }
+    Guid EquipmentInstanceId { get; set; }
     Guid RequestId { get; set; }
     Guid SlotId { get; set; }
     Guid CandidateId { get; set; }

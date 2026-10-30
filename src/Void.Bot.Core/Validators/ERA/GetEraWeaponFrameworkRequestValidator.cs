@@ -4,9 +4,9 @@ using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Core.Validators.ERA;
 
-public sealed class GetEraWeaponStatMappingRequestValidator : FluentMessageValidator<GetEraWeaponStatMappingRequest>
+public sealed class GetEraWeaponFrameworkRequestValidator : FluentMessageValidator<GetEraWeaponFrameworkRequest>
 {
-    public GetEraWeaponStatMappingRequestValidator()
+    public GetEraWeaponFrameworkRequestValidator()
     {
         RuleFor(request => request.Id).NotEmpty();
     }

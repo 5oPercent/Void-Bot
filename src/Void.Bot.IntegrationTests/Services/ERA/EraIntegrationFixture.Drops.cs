@@ -96,7 +96,7 @@ public partial class EraIntegrationFixture
         own.Drops.Count.ShouldBe(1);
         other.Drops.Count.ShouldBe(1);
         own.Drops.Single().DropId.ShouldNotBe(other.Drops.Single().DropId);
-        own.Drops.Single().EquipmentId.ShouldBe(generated.Data.Grants.Single(grant => grant.PlayerId == _playerId).EquipmentIds.Single());
+        own.Drops.Single().EquipmentInstanceId.ShouldBe(generated.Data.Grants.Single(grant => grant.PlayerId == _playerId).EquipmentInstanceIds.Single());
         own.Drops.Single().Placement.X.ShouldBe(command.Placement.X);
         own.Drops.Single().Placement.YawRadians.ShouldBe(command.Placement.YawRadians);
         (await Should.ThrowAsync<EraRewardException>(() => PickupDropAsync(PickupCommand(world, other.Drops.Single()))))
@@ -104,7 +104,7 @@ public partial class EraIntegrationFixture
         var picked = await PickupDropAsync(PickupCommand(world, own.Drops.Single()));
         picked.Data!.State.EquipmentVersion.ShouldBe(4);
         var savedItem = picked.Data.State.InventoryItems.Single();
-        savedItem.Id.ShouldBe(own.Drops.Single().EquipmentId);
+        savedItem.Id.ShouldBe(own.Drops.Single().EquipmentInstanceId);
         JsonSerializer.Serialize(savedItem.ArmorAttributes).ShouldBe(JsonSerializer.Serialize(own.Drops.Single().ArmorAttributes));
         savedItem.Version.ShouldBe(2);
         (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops.ShouldBeEmpty();
@@ -113,9 +113,9 @@ public partial class EraIntegrationFixture
         {
             var drop = await context.Set<EraEquipmentDrop>().SingleAsync(row => row.Id == own.Drops.Single().DropId);
             drop.Status.ShouldBe(EraEquipmentDropStatus.PickedUp);
-            drop.ActiveEquipmentId.ShouldBeNull();
+            drop.ActiveEquipmentInstanceId.ShouldBeNull();
             drop.Version.ShouldBe(2);
-            var share = await context.Set<EraEquipmentShare>().SingleAsync(row => row.EquipmentId == savedItem.Id);
+            var share = await context.Set<EraEquipmentShare>().SingleAsync(row => row.EquipmentInstanceId == savedItem.Id);
             share.ShareUntil.ShouldBe(savedItem.CreatedAt.AddHours(1));
             JsonSerializer.Deserialize<List<Guid>>(share.AllowedPlayerIdsPayload)!.OrderBy(id => id)
                 .ShouldBe(new[] { _playerId, _otherPlayerId }.OrderBy(id => id));
@@ -183,7 +183,7 @@ public partial class EraIntegrationFixture
         (await PickupDropAsync(command)).IsReplay.ShouldBeTrue();
         await ReadDatabaseAsync(async context =>
         {
-            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId);
+            var item = await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId);
             item.CreatedAt.ShouldBe(drop.CreatedAt);
             (await context.Set<EraEquipmentShare>().SingleAsync()).ShareUntil.ShouldBe(drop.CreatedAt.AddHours(1));
         });
@@ -228,12 +228,12 @@ public partial class EraIntegrationFixture
         (await EndDropWorldAsync(world, generation.MemberId)).Data!.State.ShouldBe(EraWorldState.Ended);
         await ReadDatabaseAsync(async context =>
         {
-            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drops[0].EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
-            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drops[1].EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Destroyed);
+            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drops[0].EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Inventory);
+            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drops[1].EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Destroyed);
             var expired = await context.Set<EraEquipmentDrop>().SingleAsync(row => row.Id == drops[1].DropId);
             expired.Status.ShouldBe(EraEquipmentDropStatus.Invalidated);
-            expired.ActiveEquipmentId.ShouldBeNull();
-            (await context.Set<EraArmorInstanceData>().CountAsync()).ShouldBe(3);
+            expired.ActiveEquipmentInstanceId.ShouldBeNull();
+            (await context.Set<EraArmorInstance>().CountAsync()).ShouldBe(3);
             (await context.Set<EraEquipmentShare>().CountAsync()).ShouldBe(2);
         });
         JsonSerializer.Serialize((await SubmitGroundAsync(generation)).Data).ShouldBe(JsonSerializer.Serialize(original.Data));
@@ -292,7 +292,7 @@ public partial class EraIntegrationFixture
         await ReadDatabaseAsync(async context =>
         {
             (await context.Set<EraEquipmentDrop>().SingleAsync()).Status.ShouldBe(EraEquipmentDropStatus.Available);
-            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Ground);
+            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Ground);
             (await context.Set<EraCharacter>().SingleAsync(row => row.Id == _characterId)).EquipmentVersion.ShouldBe(3);
             (await context.Set<EraEquipmentOperationReceipt>().CountAsync()).ShouldBe(0);
         });
@@ -391,8 +391,8 @@ public partial class EraIntegrationFixture
         {
             var drop = await context.Set<EraEquipmentDrop>().SingleAsync();
             drop.Status.ShouldBe(EraEquipmentDropStatus.Invalidated);
-            drop.ActiveEquipmentId.ShouldBeNull();
-            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentId)).Location.ShouldBe(EraEquipmentLocation.Destroyed);
+            drop.ActiveEquipmentInstanceId.ShouldBeNull();
+            (await context.Set<EraEquipmentInstance>().SingleAsync(row => row.Id == drop.EquipmentInstanceId)).Location.ShouldBe(EraEquipmentLocation.Destroyed);
         });
     }
 
@@ -432,10 +432,10 @@ public partial class EraIntegrationFixture
         });
         var query = (await QueryDropsAsync(world.WorldInstanceId)).Data!;
         query.ManifestVersion.ShouldBeNull();
-        query.Drops.Single().Definition.ShouldBeNull();
+        query.Drops.Single().ArmorTemplate.ShouldBeNull();
         JsonSerializer.Serialize(query.Drops.Single().ArmorAttributes).ShouldBe(JsonSerializer.Serialize(original.ArmorAttributes));
         var picked = await PickupDropAsync(PickupCommand(world, query.Drops.Single()));
-        picked.Data!.State.InventoryItems.Single().Id.ShouldBe(original.EquipmentId);
+        picked.Data!.State.InventoryItems.Single().Id.ShouldBe(original.EquipmentInstanceId);
         JsonSerializer.Serialize(picked.Data.State.InventoryItems.Single().ArmorAttributes).ShouldBe(JsonSerializer.Serialize(original.ArmorAttributes));
     }
 

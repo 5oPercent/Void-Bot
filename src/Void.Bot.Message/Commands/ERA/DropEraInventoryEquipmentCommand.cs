@@ -13,7 +13,7 @@ public sealed class DropEraInventoryEquipmentCommand : ICommand, IRequireEraPlay
     /// <summary>由路由覆盖的本人角色 ID。</summary>
     public Guid CharacterId { get; set; }
     /// <summary>由路由覆盖的背包装备 ID。</summary>
-    public Guid EquipmentId { get; set; }
+    public Guid EquipmentInstanceId { get; set; }
     public Guid WorldInstanceId { get; set; }
     /// <summary>与装配、卸下、拾取共用玩家范围的成功请求标识。</summary>
     public Guid RequestId { get; set; }

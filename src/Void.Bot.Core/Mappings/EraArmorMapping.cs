@@ -21,6 +21,6 @@ public sealed class EraArmorMapping : VoidBotMappingProfile
         CreateMap<EraArmorConfigurationModPool, EraArmorModPoolEntryDto>();
         CreateMap<EraArmorConfigurationSlot, EraArmorConfigurationSlotDto>()
             .ForMember(row => row.Pool, option => option.Ignore());
-        CreateMap<EraArmorModCandidate, EraArmorCandidateDto>();
+        CreateMap<EraArmorInstanceModCandidate, EraArmorCandidateDto>();
     }
 }

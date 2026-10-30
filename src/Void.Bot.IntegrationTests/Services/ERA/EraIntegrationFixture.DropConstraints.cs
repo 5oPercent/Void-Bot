@@ -22,7 +22,7 @@ public partial class EraIntegrationFixture
             var original = await context.Set<EraEquipmentDrop>().AsNoTracking().SingleAsync();
             context.Set<EraEquipmentDrop>().Add(new EraEquipmentDrop
             {
-                Id = Guid.NewGuid(), EquipmentId = original.EquipmentId, ActiveEquipmentId = original.EquipmentId,
+                Id = Guid.NewGuid(), EquipmentInstanceId = original.EquipmentInstanceId, ActiveEquipmentInstanceId = original.EquipmentInstanceId,
                 WorldInstanceId = original.WorldInstanceId, PrivateOwnerPlayerId = original.PrivateOwnerPlayerId,
                 Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = original.CreatedAt
             });

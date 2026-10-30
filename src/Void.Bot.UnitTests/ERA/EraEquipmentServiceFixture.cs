@@ -60,7 +60,7 @@ public class EraEquipmentServiceFixture
         _snapshot.Entries.Add(Entry());
         var weapon = Entry().Equipment;
         weapon.EquipmentType = EraEquipmentType.Weapon;
-        weapon.DefinitionId = catalog.Templates[0].Id;
+        weapon.TemplateId = catalog.Templates[0].Id;
         _snapshot.Entries.Add(new EraEquipmentReadEntry(weapon, null, EraWeaponGenerator.Generate(configuration, _ => 0)));
         var unfiltered = await Service().GetInventoryAsync(new GetEraCharacterInventoryRequest { CharacterId = _character.Id }, CancellationToken.None);
         unfiltered.Data!.InventoryItems.Count.ShouldBe(2);
@@ -80,7 +80,7 @@ public class EraEquipmentServiceFixture
         invalid.ErrorCode.ShouldBe("era.equipment_invalid_type");
     }
 
-    private static EraArmorTemplateDto Definition(Guid? id = null, EraEquipmentSlot slot = EraEquipmentSlot.Head)
+    private static EraArmorTemplateDto ArmorTemplate(Guid? id = null, EraEquipmentSlot slot = EraEquipmentSlot.Head)
     {
         return new EraArmorTemplateDto
         {
@@ -98,7 +98,7 @@ public class EraEquipmentServiceFixture
             Payload = JsonSerializer.Serialize(new EraEquipmentManifestDto
             {
                 Version = 999,
-                Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { Definition() } },
+                Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { ArmorTemplate() } },
                 InventoryCapacity = 999,
                 GenerationRules = new EraArmorGenerationRulesDto { Version = 999, MaximumDeviation = 999 }
             })
@@ -111,8 +111,8 @@ public class EraEquipmentServiceFixture
         var equipment = new EraEquipmentInstance
         {
             Id = Guid.NewGuid(),
-            DefinitionId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
-            DefinitionVersion = 2,
+            TemplateId = Guid.Parse($"10000000-0000-0000-0000-{(int)slot:000000000000}"),
+            GenerationManifestVersion = 2,
             EquipmentType = EraEquipmentType.Armor,
             Grade = EraEquipmentGrade.Common,
             OwnerPlayerId = _player.Id,
@@ -122,9 +122,9 @@ public class EraEquipmentServiceFixture
             Version = 5,
             CreatedAt = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero)
         };
-        return new EraEquipmentReadEntry(equipment, new EraArmorInstanceData
+        return new EraEquipmentReadEntry(equipment, new EraArmorInstance
         {
-            EquipmentId = equipment.Id,
+            EquipmentInstanceId = equipment.Id,
             GenerationRuleVersion = 42,
             Strength = 120,
             Survival = 15,
@@ -154,7 +154,7 @@ public class EraEquipmentServiceFixture
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
         {
-            Version = 1, Payload = "{\"SchemaVersion\":2}"
+            Version = 1, Payload = "{\"SchemaVersion\":3}"
         });
 
         var response = await Service().GetManifestAsync(new GetEraEquipmentManifestRequest(), CancellationToken.None);
@@ -168,7 +168,7 @@ public class EraEquipmentServiceFixture
     [InlineData("not json")]
     [InlineData("null")]
     [InlineData("{\"SchemaVersion\":1}")]
-    [InlineData("{\"SchemaVersion\":2,\"Armors\":null}")]
+    [InlineData("{\"SchemaVersion\":3,\"Armors\":null}")]
     public async Task Should_report_invalid_catalog_without_returning_fake_empty_success(string payload)
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 1, Payload = payload });
@@ -230,9 +230,9 @@ public class EraEquipmentServiceFixture
 
         response.Data!.InventoryItems.Count.ShouldBe(2);
         response.Data.InventoryItems.Select(item => item.Id).Distinct().Count().ShouldBe(2);
-        response.Data.InventoryItems.All(item => item.Definition!.Name == "Same display name").ShouldBeTrue();
+        response.Data.InventoryItems.All(item => item.ArmorTemplate!.Name == "Same display name").ShouldBeTrue();
         response.Data.InventoryItems.All(item => item.ArmorAttributes.Strength == 120).ShouldBeTrue();
-        response.Data.InventoryItems.All(item => item.GenerationRuleVersion == 42 && item.DefinitionVersion == 2 && item.Version == 5).ShouldBeTrue();
+        response.Data.InventoryItems.All(item => item.GenerationRuleVersion == 42 && item.GenerationManifestVersion == 2 && item.Version == 5).ShouldBeTrue();
         response.Data.ManifestVersion.ShouldBe(7);
         first.Armor!.Strength.ShouldBe(120);
     }
@@ -316,7 +316,7 @@ public class EraEquipmentServiceFixture
         response.Code.ShouldBe(HttpStatusCode.OK);
         response.Data!.ManifestVersion.ShouldBeNull();
         response.Data.InventoryItems.Single().Id.ShouldBe(entry.Equipment.Id);
-        response.Data.InventoryItems.Single().Definition.ShouldBeNull();
+        response.Data.InventoryItems.Single().ArmorTemplate.ShouldBeNull();
         response.Data.InventoryItems.Single().ArmorAttributes.Strength.ShouldBe(120);
     }
 
@@ -431,7 +431,7 @@ public class EraEquipmentServiceFixture
         var manifest = new EraEquipmentManifestDto
         {
             Version = 1,
-            Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { Definition(), Definition() } }
+            Armors = new EraArmorCatalogDto { Templates = new List<EraArmorTemplateDto> { ArmorTemplate(), ArmorTemplate() } }
         };
         Should.Throw<ArgumentException>(() => EraEquipmentConfigurationValidator.Validate(manifest));
 
@@ -444,7 +444,7 @@ public class EraEquipmentServiceFixture
     [Fact]
     public void Should_allow_any_valid_armor_compatible_slots_without_a_stored_inventory_classification()
     {
-        var definition = Definition();
+        var definition = ArmorTemplate();
         definition.CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Body };
         Should.NotThrow(() => EraEquipmentConfigurationValidator.Validate(new EraEquipmentManifestDto
         {

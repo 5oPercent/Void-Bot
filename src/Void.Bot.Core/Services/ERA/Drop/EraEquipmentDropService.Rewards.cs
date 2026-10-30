@@ -52,13 +52,13 @@ public sealed partial class EraEquipmentDropService
         // 私人模式保留已有幂等载荷；公开模式明确纳入防重，不能用同一请求切换权限。
         var payload = isPublic ? JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement, IsPublic = true
+            SchemaVersion = 2, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement, IsPublic = true
         }) : entries != null ? JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement
+            SchemaVersion = 2, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, CharacterId = characterId, Entries = entries, command.Placement
         }) : JsonSerializer.Serialize(new
         {
-            SchemaVersion = 1, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, command.SourceType,
+            SchemaVersion = 2, Delivery = EraRewardDelivery.Ground, command.WorldInstanceId, command.SourceType,
             command.SourceDefinitionId, command.SourceInstanceId, command.TriggerIndex, command.RewardNodeId, command.Placement
         });
         await _rewards.LockScopeAsync(command.WorldInstanceId, cancellationToken).ConfigureAwait(false);
@@ -103,10 +103,10 @@ public sealed partial class EraEquipmentDropService
             if (receipt == null || receipt.EventId != previous.Id || receipt.WorldInstanceId != command.WorldInstanceId || receipt.Grants == null ||
                 receipt.ConfigurationVersion != previous.ConfigurationVersion || receipt.ManifestVersion != previous.ManifestVersion ||
                 receipt.CreatedAt != previous.AcceptedAt || receipt.Grants.Count == 0 ||
-                receipt.Grants.Any(grant => grant == null || grant.EquipmentIds == null || grant.DropIds == null ||
-                    grant.EquipmentIds.Count != grant.DropIds.Count || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty || grant.CharacterId == Guid.Empty) ||
+                receipt.Grants.Any(grant => grant == null || grant.EquipmentInstanceIds == null || grant.DropIds == null ||
+                    grant.EquipmentInstanceIds.Count != grant.DropIds.Count || grant.GrantId == Guid.Empty || grant.PlayerId == Guid.Empty || grant.CharacterId == Guid.Empty) ||
                 characterId != null && (receipt.Grants.Count != 1 || receipt.Grants[0].CharacterId != characterId ||
-                    receipt.Grants[0].EquipmentIds.Count != entries!.Sum(entry => entry.Count)))
+                    receipt.Grants[0].EquipmentInstanceIds.Count != entries!.Sum(entry => entry.Count)))
             {
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_data_unavailable", text => text.DataUnavailable);
             }
@@ -173,7 +173,7 @@ public sealed partial class EraEquipmentDropService
             configurationVersion = configuration!.Version;
             var definitions = manifest.Armors.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
             var templates = manifest.Weapons.Templates.Where(item => item.IsGenerationEnabled).Select(item => item.Id).ToHashSet();
-            if (pool.Entries.Any(entry => !definitions.Contains(entry.DefinitionId) && !templates.Contains(entry.DefinitionId)))
+            if (pool.Entries.Any(entry => !definitions.Contains(entry.TemplateId) && !templates.Contains(entry.TemplateId)))
                 throw Error(HttpStatusCode.ServiceUnavailable, "era.drop_configuration_unavailable", text => text.ConfigurationUnavailable);
         }
         var result = new EraGroundRewardReceiptDto
@@ -199,7 +199,7 @@ public sealed partial class EraEquipmentDropService
         {
             var grant = new EraGroundRewardGrantReceiptDto { GrantId = Guid.NewGuid(), PlayerId = recipient.PlayerId, CharacterId = recipient.CharacterId };
             var items = new List<EraEquipmentInstance>();
-            var armor = new List<EraArmorInstanceData>();
+            var armor = new List<EraArmorInstance>();
             var weaponInstances = new Dictionary<Guid, EraWeaponInstanceDto>();
             List<EraPlannedRewardEquipment> generated;
             try
@@ -216,27 +216,27 @@ public sealed partial class EraEquipmentDropService
             {
                 var item = new EraEquipmentInstance
                 {
-                    Id = equipment.EquipmentId, DefinitionId = equipment.DefinitionId, DefinitionVersion = manifest.Version,
+                    Id = equipment.EquipmentInstanceId, TemplateId = equipment.TemplateId, GenerationManifestVersion = manifest.Version,
                     EquipmentType = equipment.EquipmentType, Grade = equipment.Grade,
                     Location = EraEquipmentLocation.Ground, Version = 1, CreatedAt = now
                 };
                 items.Add(item);
                 if (equipment.EquipmentType == EraEquipmentType.Weapon) weaponInstances.Add(item.Id, equipment.Weapon!);
-                else armor.Add(new EraArmorInstanceData
+                else armor.Add(new EraArmorInstance
                 {
-                    EquipmentId = item.Id, GenerationRuleVersion = equipment.GenerationRuleVersion, Modifications = equipment.ArmorModifications,
+                    EquipmentInstanceId = item.Id, GenerationRuleVersion = equipment.GenerationRuleVersion, Modifications = equipment.ArmorModifications,
                     Strength = equipment.Attributes.Strength, Survival = equipment.Attributes.Survival, Mobility = equipment.Attributes.Mobility,
                     Focus = equipment.Attributes.Focus, Efficiency = equipment.Attributes.Efficiency, Resistance = equipment.Attributes.Resistance
                 });
                 var drop = new EraEquipmentDrop
                 {
-                    Id = Guid.NewGuid(), EquipmentId = item.Id, ActiveEquipmentId = item.Id, WorldInstanceId = context.World.Id,
+                    Id = Guid.NewGuid(), EquipmentInstanceId = item.Id, ActiveEquipmentInstanceId = item.Id, WorldInstanceId = context.World.Id,
                     PrivateOwnerPlayerId = isPublic ? null : recipient.PlayerId, DroppedByPlayerId = isPublic ? recipient.PlayerId : null,
                     Status = EraEquipmentDropStatus.Available, Version = 1, CreatedAt = now,
                     X = command.Placement.X, Y = command.Placement.Y, Z = command.Placement.Z, YawRadians = command.Placement.YawRadians
                 };
-                _drops.Add(drop, new EraEquipmentShare { EquipmentId = item.Id, AllowedPlayerIdsPayload = allowedPayload, ShareUntil = now.AddHours(1) });
-                grant.EquipmentIds.Add(item.Id);
+                _drops.Add(drop, new EraEquipmentShare { EquipmentInstanceId = item.Id, AllowedPlayerIdsPayload = allowedPayload, ShareUntil = now.AddHours(1) });
+                grant.EquipmentInstanceIds.Add(item.Id);
                 grant.DropIds.Add(drop.Id);
             }
             _rewards.AddGrant(new EraRewardGrant
