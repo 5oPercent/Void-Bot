@@ -55,8 +55,9 @@ public sealed partial class EraWeaponService : IEraWeaponService
     public async Task<GetEraWeaponTemplatesResponse> GetTemplatesAsync(GetEraWeaponTemplatesRequest request, CancellationToken cancellationToken)
     {
         var manifest = await ReadAsync(cancellationToken).ConfigureAwait(false);
-        var items = manifest.Weapons.Templates.Where(row => string.IsNullOrWhiteSpace(request.Search) ||
-            row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase)).ToList();
+        var items = manifest.Weapons.Templates.Where(row => (!request.FrameworkId.HasValue || row.FrameworkId == request.FrameworkId) &&
+            (string.IsNullOrWhiteSpace(request.Search) ||
+            row.Id.ToString().Contains(request.Search, StringComparison.OrdinalIgnoreCase) || row.Name.Contains(request.Search, StringComparison.OrdinalIgnoreCase))).ToList();
         return new GetEraWeaponTemplatesResponse { Code = HttpStatusCode.OK, Version = manifest.Version, Data = Page(items, request.PageIndex, request.PageSize) };
     }
 

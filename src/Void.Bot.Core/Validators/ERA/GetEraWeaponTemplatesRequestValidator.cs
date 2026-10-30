@@ -12,5 +12,6 @@ public sealed class GetEraWeaponTemplatesRequestValidator : FluentMessageValidat
         RuleFor(request => request.PageIndex).GreaterThanOrEqualTo(1);
         RuleFor(request => request.PageSize).InclusiveBetween(1, EraWeaponConstants.MaximumPageSize);
         RuleFor(request => request.Search).MaximumLength(128);
+        RuleFor(request => request.FrameworkId).Must(value => !value.HasValue || value.Value != Guid.Empty);
     }
 }
