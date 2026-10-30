@@ -58,7 +58,7 @@ public class EraEquipmentPersistenceFixture
     public void Should_constrain_weapon_selections_to_candidates_of_the_same_instance_and_slot()
     {
         using var context = Context();
-        var types = new[] { typeof(EraWeaponSlotType), typeof(EraWeaponSlotConfiguration), typeof(EraWeaponTemplate), typeof(EraWeaponConfigurationSlot), typeof(EraWeaponModDefinition),
+        var types = new[] { typeof(EraWeaponTemplateStat), typeof(EraWeaponFramework), typeof(EraWeaponFrameworkStat), typeof(EraWeaponFrameworkCapability), typeof(EraWeaponSlotType), typeof(EraWeaponSlotConfiguration), typeof(EraWeaponTemplate), typeof(EraWeaponConfigurationSlot), typeof(EraWeaponModDefinition),
             typeof(EraWeaponModStatModifier), typeof(EraWeaponConfigurationModPool), typeof(EraWeaponInstanceModCandidate), typeof(EraWeaponInstanceModSelection) };
         foreach (var type in types)
         {
@@ -156,6 +156,32 @@ public class EraEquipmentPersistenceFixture
         equipment.FindProperty(nameof(EraEquipmentInstance.Version))!.IsConcurrencyToken.ShouldBeTrue();
         context.Model.FindEntityType(typeof(EraCharacter))!
             .FindProperty(nameof(EraCharacter.EquipmentVersion))!.IsConcurrencyToken.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Should_map_framework_children_and_template_reference_without_cascade_deletes()
+    {
+        using var context = Context();
+        var template = context.Model.FindEntityType(typeof(EraWeaponTemplate))!;
+        template.GetForeignKeys().Single(key => key.PrincipalEntityType.ClrType == typeof(EraWeaponFramework))
+            .Properties.Single().Name.ShouldBe(nameof(EraWeaponTemplate.FrameworkId));
+        template.FindProperty("StatMappingId").ShouldBeNull();
+        context.Model.FindEntityType(typeof(EraWeaponFramework))!.FindProperty("StatMappingId").ShouldBeNull();
+        context.Model.FindEntityType(typeof(EraWeaponFramework))!.GetForeignKeys().ShouldBeEmpty();
+        template.FindProperty("Range").ShouldBeNull();
+        template.FindProperty("BehaviorPayload").ShouldBeNull();
+        foreach (var name in System.Enum.GetNames<Void.Bot.Message.Enum.ERA.EraWeaponStat>())
+            template.FindProperty(name).ShouldBeNull();
+        var templateStat = context.Model.FindEntityType(typeof(EraWeaponTemplateStat))!;
+        templateStat.FindPrimaryKey()!.Properties.Select(property => property.Name).ShouldBe(new[] { "TemplateId", "Stat" });
+        templateStat.GetForeignKeys().Single().PrincipalEntityType.ClrType.ShouldBe(typeof(EraWeaponTemplate));
+        templateStat.FindProperty(nameof(EraWeaponTemplateStat.Value))!.IsNullable.ShouldBeFalse();
+        context.Model.FindEntityType(typeof(EraWeaponFrameworkStat))!.FindPrimaryKey()!.Properties.Select(property => property.Name)
+            .ShouldBe(new[] { "FrameworkId", "Stat" });
+        context.Model.FindEntityType(typeof(EraWeaponFrameworkCapability))!.FindPrimaryKey()!.Properties.Select(property => property.Name)
+            .ShouldBe(new[] { "FrameworkId", "CapabilityKind" });
+        templateStat.FindProperty(nameof(EraWeaponTemplateStat.EffectAtZero))!.IsNullable.ShouldBeTrue();
+        templateStat.FindProperty(nameof(EraWeaponTemplateStat.EffectAtHundred))!.IsNullable.ShouldBeTrue();
     }
 
     [Fact]

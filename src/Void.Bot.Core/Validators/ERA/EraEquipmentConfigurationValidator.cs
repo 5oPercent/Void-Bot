@@ -7,7 +7,7 @@ public static class EraEquipmentConfigurationValidator
 {
     public static void Validate(EraEquipmentManifestDto configuration)
     {
-        if (configuration == null || configuration.SchemaVersion != 2 || configuration.Version < 1)
+        if (configuration == null || configuration.SchemaVersion != 3 || configuration.Version < 1)
             throw new ArgumentException("Equipment configuration schema or version is invalid.");
         EraArmorConfigurationValidator.Validate(configuration.Armors);
     }

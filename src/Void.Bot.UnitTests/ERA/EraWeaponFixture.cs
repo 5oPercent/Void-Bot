@@ -25,28 +25,37 @@ public class EraWeaponFixture
     internal static EraWeaponCatalogDto Catalog()
     {
         var catalog = new EraWeaponCatalogDto();
-        catalog.StatMappings.Add(new EraWeaponStatMappingDto
+        catalog.Frameworks.Add(new EraWeaponFrameworkDto
         {
-            Id = Guid.Parse("40000000-0000-0000-0000-000000000001"), Name = "Test rifle effects",
-            SpreadDegreesAtZero = 3, SpreadDegreesAtHundred = 1, RecoilDegreesAtZero = 2, RecoilDegreesAtHundred = .5,
-            ReadySecondsAtZero = 1, ReadySecondsAtHundred = .35, AimSecondsAtZero = .5, AimSecondsAtHundred = .15
+            Name = "Rifle framework", PresentationDriverKey = "Firearm",
+            SupplementaryStats = new() { EraWeaponStat.Accuracy, EraWeaponStat.Stability, EraWeaponStat.ReloadSpeed },
+            Capabilities = new()
+            {
+                new() { Kind = EraWeaponCapabilityKind.Aim, Aim = new() },
+                new() { Kind = EraWeaponCapabilityKind.Recoil, Recoil = new() },
+                new() { Kind = EraWeaponCapabilityKind.Reload, Reload = new() { Mode = EraWeaponReloadMode.Magazine, BaseSeconds = 2.4 } },
+                new() { Kind = EraWeaponCapabilityKind.Firing, Firing = new() { Mode = EraWeaponFireMode.Automatic } },
+                new() { Kind = EraWeaponCapabilityKind.Hitscan, Hitscan = new() { MaximumDistance = 30 } }
+            }
         });
         var configuration = new EraWeaponSlotConfigurationDto { Id = Guid.NewGuid(), Name = "Rifle slots" };
         catalog.SlotConfigurations.Add(configuration);
         var template = new EraWeaponTemplateDto
         {
             Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Test rifle", PresentationKey = "scifi_rifle",
-            StatMappingId = catalog.StatMappings[0].Id, SlotConfigurationId = configuration.Id,
+            SlotConfigurationId = configuration.Id, FrameworkId = catalog.Frameworks[0].Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
-            BaseStats = new EraWeaponStatsDto
+            BaseStats = new()
             {
-                Damage = 50, Frequency = 5, LoadedCapacity = 30, ReserveCapacity = 120, ReloadSpeed = 1,
-                Range = 30, Accuracy = 50, Stability = 50, Handling = 50
-            },
-            Behavior = new EraWeaponBehaviorDto
-            {
-                FireMode = EraWeaponFireMode.Automatic, HitMode = EraWeaponHitMode.Hitscan, ReloadMode = EraWeaponReloadMode.Magazine,
-                BaseReloadSeconds = 2.4
+                new() { Stat = EraWeaponStat.Damage, Value = 50 },
+                new() { Stat = EraWeaponStat.Frequency, Value = 5 },
+                new() { Stat = EraWeaponStat.LoadedCapacity, Value = 30 },
+                new() { Stat = EraWeaponStat.ReserveCapacity, Value = 120 },
+                new() { Stat = EraWeaponStat.ReloadSpeed, Value = 1 },
+                new() { Stat = EraWeaponStat.Penetration, Value = 0 },
+                new() { Stat = EraWeaponStat.Accuracy, Value = 50, EffectAtZero = 3, EffectAtHundred = 1 },
+                new() { Stat = EraWeaponStat.Stability, Value = 50, EffectAtZero = 2, EffectAtHundred = .5 },
+                new() { Stat = EraWeaponStat.Handling, Value = 50, EffectAtZero = 1, EffectAtHundred = .35 }
             }
         };
         foreach (var slot in Enumerable.Range(1, 5))
@@ -113,13 +122,13 @@ public class EraWeaponFixture
     public void Should_reject_obsolete_score_effect_baselines_and_keep_reload_duration(string property)
     {
         var catalog = Catalog();
-        var behavior = catalog.Templates[0].Behavior;
+        var behavior = catalog.Frameworks[0].Capabilities.Single(capability => capability.Kind == EraWeaponCapabilityKind.Reload).Reload!;
         Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
-        var restored = JsonSerializer.Deserialize<EraWeaponBehaviorDto>(JsonSerializer.Serialize(behavior))!;
-        restored.BaseReloadSeconds.ShouldBe(2.4);
+        var restored = JsonSerializer.Deserialize<EraWeaponReloadCapabilityDto>(JsonSerializer.Serialize(behavior))!;
+        restored.BaseSeconds.ShouldBe(2.4);
         var payload = JsonNode.Parse(JsonSerializer.Serialize(behavior))!;
         payload[property] = 1;
-        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EraWeaponBehaviorDto>(payload.ToJsonString()));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EraWeaponReloadCapabilityDto>(payload.ToJsonString()));
     }
 
     [Theory]
@@ -131,19 +140,19 @@ public class EraWeaponFixture
     public void Should_reject_invalid_score_effect_endpoints(double zero, double hundred)
     {
         var catalog = Catalog();
-        catalog.StatMappings[0].SpreadDegreesAtZero = zero;
-        catalog.StatMappings[0].SpreadDegreesAtHundred = hundred;
+        catalog.Templates[0].BaseStats.Single(entry => entry.Stat == EraWeaponStat.Accuracy).EffectAtZero = zero;
+        catalog.Templates[0].BaseStats.Single(entry => entry.Stat == EraWeaponStat.Accuracy).EffectAtHundred = hundred;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 
     [Fact]
-    public void Should_require_referenced_stat_mapping_and_positive_action_duration()
+    public void Should_require_complete_handling_endpoints_and_positive_draw_duration()
     {
         var catalog = Catalog();
-        catalog.StatMappings[0].ReadySecondsAtHundred = 0;
+        catalog.Templates[0].BaseStats.Single(entry => entry.Stat == EraWeaponStat.Handling).EffectAtHundred = 0;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog = Catalog();
-        catalog.StatMappings.Clear();
+        catalog.Templates[0].BaseStats.Single(entry => entry.Stat == EraWeaponStat.Handling).EffectAtZero = null;
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
     }
 
@@ -154,8 +163,6 @@ public class EraWeaponFixture
     [InlineData("Modifications.0")]
     [InlineData("Modifications.0.Modifiers")]
     [InlineData("Modifications.0.Modifiers.0")]
-    [InlineData("StatMappings")]
-    [InlineData("StatMappings.0")]
     [InlineData("SlotTypes")]
     [InlineData("SlotTypes.0")]
     [InlineData("SlotConfigurations")]
@@ -166,7 +173,12 @@ public class EraWeaponFixture
     [InlineData("SlotConfigurations.0.Slots.0.Pool")]
     [InlineData("SlotConfigurations.0.Slots.0.Pool.0")]
     [InlineData("Templates.0.BaseStats")]
-    [InlineData("Templates.0.Behavior")]
+    [InlineData("Templates.0.BaseStats.0")]
+    [InlineData("Frameworks")]
+    [InlineData("Frameworks.0")]
+    [InlineData("Frameworks.0.Capabilities")]
+    [InlineData("Frameworks.0.Capabilities.0")]
+    [InlineData("Frameworks.0.SupplementaryStats")]
     public void Should_reject_null_json_members_before_enumerating_or_reading_them(string path)
     {
         var document = JsonNode.Parse(JsonSerializer.Serialize(Catalog()))!;
@@ -200,18 +212,18 @@ public class EraWeaponFixture
     }
 
     [Fact]
-    public void Should_map_template_stats_without_mutating_the_instance_contract()
+    public void Should_map_template_and_stat_records_without_embedding_stats_in_the_template_entity()
     {
         var configuration = new MapperConfiguration(mapping => mapping.AddProfile<EraWeaponMapping>());
         configuration.AssertConfigurationIsValid();
         var mapper = configuration.CreateMapper();
-        var entity = new EraWeaponTemplate { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Damage = 55, LoadedCapacity = 30, Frequency = 5 };
+        var entity = new EraWeaponTemplate { Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Sword" };
         var dto = mapper.Map<EraWeaponTemplateDto>(entity);
-        dto.BaseStats.Damage.ShouldBe(55);
-        dto.BaseStats.LoadedCapacity.ShouldBe(30);
-        mapper.Map(new EraWeaponStatsDto { Damage = 60, LoadedCapacity = 40 }, entity);
-        entity.Id.ShouldBe(Guid.Parse("20000000-0000-0000-0000-000000000001"));
-        entity.Damage.ShouldBe(60);
+        dto.Id.ShouldBe(entity.Id);
+        dto.BaseStats.ShouldBeEmpty();
+        var stat = mapper.Map<EraWeaponStatValueDto>(new EraWeaponTemplateStat { TemplateId = entity.Id, Stat = EraWeaponStat.Damage, Value = 55 });
+        stat.Stat.ShouldBe(EraWeaponStat.Damage);
+        stat.Value.ShouldBe(55);
     }
 
     [Fact]
@@ -278,7 +290,7 @@ public class EraWeaponFixture
             Grade = EraEquipmentGrade.Common, OwnerPlayerId = player, CharacterId = character, Location = EraEquipmentLocation.Inventory,
             Version = 3, CreatedAt = DateTimeOffset.UtcNow
         };
-        template.BaseStats.Damage = 55;
+        template.BaseStats.Single(value => value.Stat == EraWeaponStat.Damage).Value = 55;
         foreach (var slot in catalog.SlotConfigurations[0].Slots) { slot.Pool.RemoveAt(0); slot.CandidateCount = 1; }
         EraWeaponConfigurationValidator.Validate(catalog);
         var snapshot = new EraEquipmentReadSnapshot
@@ -288,7 +300,7 @@ public class EraWeaponFixture
         };
         var state = EraEquipmentService.CreateState(snapshot, new EraEquipmentManifestDto { Version = 9, Weapons = catalog }, null);
         state.ShouldNotBeNull();
-        state.InventoryItems.Single().WeaponTemplate!.BaseStats.Damage.ShouldBe(55);
+        state.InventoryItems.Single().WeaponTemplate!.BaseStats.Single(value => value.Stat == EraWeaponStat.Damage).Value.ShouldBe(55);
         state.InventoryItems.Single().Version.ShouldBe(3);
         state.InventoryItems.Single().GenerationManifestVersion.ShouldBe(2);
         JsonSerializer.Serialize(state.InventoryItems.Single().Weapon).ShouldBe(before);
@@ -321,7 +333,7 @@ public class EraWeaponFixture
         context.RequireOwnedAsync(character.Id, true, Arg.Any<CancellationToken>()).Returns(character);
         data.LockConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
         {
-            Version = 8, Payload = "{\"SchemaVersion\":2}"
+            Version = 8, Payload = "{\"SchemaVersion\":3}"
         });
         data.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         data.LockCharacterEquipmentAsync(character, Arg.Any<CancellationToken>()).Returns(snapshot);
@@ -376,11 +388,16 @@ public class EraWeaponFixture
     {
         var catalog = Catalog();
         catalog.Modifications[0].Modifiers[0].Stat = EraWeaponStat.ProjectileSpeed;
-        catalog.Templates[0].Behavior.HitMode = EraWeaponHitMode.Projectile;
-        catalog.Templates[0].BaseStats.ProjectileSpeed = 100;
+        var hitscanFramework = JsonSerializer.Deserialize<EraWeaponFrameworkDto>(JsonSerializer.Serialize(catalog.Frameworks[0]))!;
+        hitscanFramework.Id = Guid.NewGuid();
+        catalog.Frameworks.Add(hitscanFramework);
+        catalog.Frameworks[0].Capabilities.RemoveAll(capability => capability.Kind == EraWeaponCapabilityKind.Hitscan);
+        catalog.Frameworks[0].Capabilities.Add(new() { Kind = EraWeaponCapabilityKind.Projectile, Projectile = new() { MaximumDistance = 30 } });
+        catalog.Frameworks[0].SupplementaryStats.Add(EraWeaponStat.ProjectileSpeed);
+        catalog.Templates[0].BaseStats.Add(new() { Stat = EraWeaponStat.ProjectileSpeed, Value = 100 });
         Should.NotThrow(() => EraWeaponConfigurationValidator.Validate(catalog));
         var other = JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(catalog.Templates[0]))!;
-        other.Id = Guid.NewGuid(); other.Behavior.HitMode = EraWeaponHitMode.Hitscan; other.BaseStats.ProjectileSpeed = null;
+        other.Id = Guid.NewGuid(); other.FrameworkId = hitscanFramework.Id; other.BaseStats.RemoveAll(value => value.Stat == EraWeaponStat.ProjectileSpeed);
         catalog.Templates.Add(other);
         Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
         catalog.Templates.Remove(other);
@@ -398,7 +415,6 @@ public class EraWeaponFixture
         {
             JsonSerializer.Deserialize<EraWeaponTemplateDto>("{}")!.Id,
             JsonSerializer.Deserialize<EraWeaponModDefinitionDto>("{}")!.Id,
-            JsonSerializer.Deserialize<EraWeaponStatMappingDto>("{}")!.Id,
             JsonSerializer.Deserialize<EraWeaponSlotTypeDto>("{}")!.Id,
             JsonSerializer.Deserialize<EraWeaponSlotConfigurationDto>("{}")!.Id,
             JsonSerializer.Deserialize<EraWeaponConfigurationSlotDto>("{}")!.Id
@@ -415,10 +431,6 @@ public class EraWeaponFixture
             new SaveEraWeaponModificationCommandValidator().Validate(new SaveEraWeaponModificationCommand
             {
                 ExpectedManifestVersion = 7, Modification = new EraWeaponModDefinitionDto { Id = Guid.Empty }
-            }),
-            new SaveEraWeaponStatMappingCommandValidator().Validate(new SaveEraWeaponStatMappingCommand
-            {
-                ExpectedManifestVersion = 7, StatMapping = new EraWeaponStatMappingDto { Id = Guid.Empty }
             }),
             new SaveEraWeaponSlotTypeCommandValidator().Validate(new SaveEraWeaponSlotTypeCommand
             {
@@ -454,7 +466,7 @@ public class EraWeaponFixture
         var current = new EraWeaponCatalogDto();
         var weapons = Substitute.For<IEraWeaponDataProvider>();
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         weapons.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         weapons.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
         weapons.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());
@@ -545,7 +557,7 @@ public class EraWeaponFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
         data.SaveCatalogAsync(Arg.Any<EraWeaponCatalogDto>(), Arg.Any<EraWeaponCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -590,7 +602,7 @@ public class EraWeaponFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         var templateId = current.Templates[0].Id;
@@ -634,7 +646,7 @@ public class EraWeaponFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         data.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());

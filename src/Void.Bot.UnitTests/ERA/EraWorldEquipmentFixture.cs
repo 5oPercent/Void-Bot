@@ -70,7 +70,7 @@ public class EraWorldEquipmentFixture
         });
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
-            { Version = 8, Payload = "{\"SchemaVersion\":2}" });
+            { Version = 8, Payload = "{\"SchemaVersion\":3}" });
         var catalog = EraWeaponFixture.Catalog();
         var configuration = catalog.SlotConfigurations.Single(item => item.Id == catalog.Templates[0].SlotConfigurationId);
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);

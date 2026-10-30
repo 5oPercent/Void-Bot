@@ -133,7 +133,7 @@ public class EraArmorTemplateFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraWeaponCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(_ => Task.FromResult(current));
         data.SaveCatalogAsync(Arg.Any<EraArmorCatalogDto>(), Arg.Any<EraArmorCatalogDto>(), Arg.Any<CancellationToken>()).Returns(call =>
@@ -172,7 +172,7 @@ public class EraArmorTemplateFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraWeaponCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         var templateId = current.Templates[0].Id;
@@ -228,7 +228,7 @@ public class EraArmorTemplateFixture
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraWeaponCatalogDto());
         var user = Substitute.For<ICurrentUser>(); user.Id.Returns(Guid.NewGuid());
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":2}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
         data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(publication);
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(current);
         data.GetReferencedArmorsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(new List<EraEquipmentInstance>());

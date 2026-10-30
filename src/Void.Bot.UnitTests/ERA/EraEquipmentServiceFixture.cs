@@ -154,7 +154,7 @@ public class EraEquipmentServiceFixture
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration
         {
-            Version = 1, Payload = "{\"SchemaVersion\":2}"
+            Version = 1, Payload = "{\"SchemaVersion\":3}"
         });
 
         var response = await Service().GetManifestAsync(new GetEraEquipmentManifestRequest(), CancellationToken.None);
@@ -168,7 +168,7 @@ public class EraEquipmentServiceFixture
     [InlineData("not json")]
     [InlineData("null")]
     [InlineData("{\"SchemaVersion\":1}")]
-    [InlineData("{\"SchemaVersion\":2,\"Armors\":null}")]
+    [InlineData("{\"SchemaVersion\":3,\"Armors\":null}")]
     public async Task Should_report_invalid_catalog_without_returning_fake_empty_success(string payload)
     {
         _data.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 1, Payload = payload });

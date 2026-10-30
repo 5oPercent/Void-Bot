@@ -14,6 +14,7 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
     public int ForceZeroRowsOnUpdate { get; init; }
     public bool FailReceiptInsert { get; init; }
     public bool FailWeaponConfigurationInsert { get; init; }
+    public bool FailWeaponTemplateStatInsert { get; init; }
     public bool PauseWorldSave { get; init; }
     public bool FailWorldSave { get; init; }
     public bool FailRewardLinkInsert { get; init; }
@@ -98,6 +99,8 @@ internal sealed class EraIntegrationSqlInterceptor : DbCommandInterceptor
         DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
+        if (FailWeaponTemplateStatInsert && command.CommandText.Contains("INSERT INTO `era_weapon_template_stat`", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Unchanged weapon attribute rows must not be reinserted.");
         if (FailWeaponConfigurationInsert && command.CommandText.Contains("INSERT INTO `era_weapon_configuration_slot`", StringComparison.OrdinalIgnoreCase))
         {
             WeaponConfigurationFailureInjected = true;

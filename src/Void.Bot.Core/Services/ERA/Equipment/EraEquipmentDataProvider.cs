@@ -36,7 +36,7 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     private readonly IRepository<EraPlayerAccountLink> _eraPlayerAccountLinkRepository;
     private readonly IRepository<EraEquipmentOperationReceipt> _eraEquipmentOperationReceiptRepository;
     private readonly IRepository<EraWeaponTemplate> _eraWeaponTemplateRepository;
-    private readonly IRepository<EraWeaponStatMapping> _eraWeaponStatMappingRepository;
+    private readonly IRepository<EraWeaponTemplateStat> _eraWeaponTemplateStatRepository;
     private readonly IRepository<EraWeaponModDefinition> _eraWeaponModDefinitionRepository;
     private readonly IRepository<EraWeaponModStatModifier> _eraWeaponModStatModifierRepository;
     private readonly IRepository<EraWeaponConfigurationSlot> _eraWeaponConfigurationSlotRepository;
@@ -54,6 +54,9 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     private readonly IRepository<EraArmorSlotConfiguration> _eraArmorSlotConfigurationRepository;
     private readonly IRepository<EraArmorInstanceModCandidate> _eraArmorInstanceModCandidateRepository;
     private readonly IRepository<EraArmorInstanceModSelection> _eraArmorInstanceModSelectionRepository;
+    private readonly IRepository<EraWeaponFramework> _eraWeaponFrameworkRepository;
+    private readonly IRepository<EraWeaponFrameworkStat> _eraWeaponFrameworkStatRepository;
+    private readonly IRepository<EraWeaponFrameworkCapability> _eraWeaponFrameworkCapabilityRepository;
     private readonly IMapper _mapper;
     private readonly IRepository<EraEquipmentShare> _eraEquipmentShareRepository;
     private readonly IRepository<UserAccount> _userAccountRepository;
@@ -68,7 +71,7 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         IRepository<EraPlayerAccountLink> eraPlayerAccountLinkRepository,
         IRepository<EraEquipmentOperationReceipt> eraEquipmentOperationReceiptRepository,
         IRepository<EraWeaponTemplate> eraWeaponTemplateRepository,
-        IRepository<EraWeaponStatMapping> eraWeaponStatMappingRepository,
+        IRepository<EraWeaponTemplateStat> eraWeaponTemplateStatRepository,
         IRepository<EraWeaponModDefinition> eraWeaponModDefinitionRepository,
         IRepository<EraWeaponModStatModifier> eraWeaponModStatModifierRepository,
         IRepository<EraWeaponConfigurationSlot> eraWeaponConfigurationSlotRepository,
@@ -86,6 +89,9 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         IRepository<EraArmorSlotConfiguration> eraArmorSlotConfigurationRepository,
         IRepository<EraArmorInstanceModCandidate> eraArmorInstanceModCandidateRepository,
         IRepository<EraArmorInstanceModSelection> eraArmorInstanceModSelectionRepository,
+        IRepository<EraWeaponFramework> eraWeaponFrameworkRepository,
+        IRepository<EraWeaponFrameworkStat> eraWeaponFrameworkStatRepository,
+        IRepository<EraWeaponFrameworkCapability> eraWeaponFrameworkCapabilityRepository,
         IMapper mapper,
         IRepository<EraEquipmentShare> eraEquipmentShareRepository,
         IRepository<UserAccount> userAccountRepository)
@@ -99,7 +105,7 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         _eraPlayerAccountLinkRepository = eraPlayerAccountLinkRepository;
         _eraEquipmentOperationReceiptRepository = eraEquipmentOperationReceiptRepository;
         _eraWeaponTemplateRepository = eraWeaponTemplateRepository;
-        _eraWeaponStatMappingRepository = eraWeaponStatMappingRepository;
+        _eraWeaponTemplateStatRepository = eraWeaponTemplateStatRepository;
         _eraWeaponModDefinitionRepository = eraWeaponModDefinitionRepository;
         _eraWeaponModStatModifierRepository = eraWeaponModStatModifierRepository;
         _eraWeaponConfigurationSlotRepository = eraWeaponConfigurationSlotRepository;
@@ -108,6 +114,9 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
         _eraWeaponInstanceModSelectionRepository = eraWeaponInstanceModSelectionRepository;
         _eraWeaponSlotTypeRepository = eraWeaponSlotTypeRepository;
         _eraWeaponSlotConfigurationRepository = eraWeaponSlotConfigurationRepository;
+        _eraWeaponFrameworkRepository = eraWeaponFrameworkRepository;
+        _eraWeaponFrameworkStatRepository = eraWeaponFrameworkStatRepository;
+        _eraWeaponFrameworkCapabilityRepository = eraWeaponFrameworkCapabilityRepository;
         _mapper = mapper;
         _eraEquipmentShareRepository = eraEquipmentShareRepository;
         _userAccountRepository = userAccountRepository;
@@ -137,14 +146,18 @@ public sealed partial class EraEquipmentDataProvider : IEraEquipmentDataProvider
     public async Task<EraWeaponCatalogDto> GetWeaponCatalogAsync(CancellationToken cancellationToken)
     {
         var templates = await _eraWeaponTemplateRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var statMappings = await _eraWeaponStatMappingRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var templateStats = await _eraWeaponTemplateStatRepository.QueryNoTracking().OrderBy(row => row.Stat).ToListAsync(cancellationToken).ConfigureAwait(false);
         var definitions = await _eraWeaponModDefinitionRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var modifiers = await _eraWeaponModStatModifierRepository.QueryNoTracking().OrderBy(row => row.Sequence).ToListAsync(cancellationToken).ConfigureAwait(false);
         var slots = await _eraWeaponConfigurationSlotRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var pools = await _eraWeaponConfigurationModPoolRepository.QueryNoTracking().OrderBy(row => row.ModDefinitionId).ToListAsync(cancellationToken).ConfigureAwait(false);
         var slotTypes = await _eraWeaponSlotTypeRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
         var configurations = await _eraWeaponSlotConfigurationRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return EraWeaponDataMapping.CreateCatalog(slotTypes, configurations, templates, statMappings, definitions, modifiers, slots, pools, _mapper);
+        var frameworks = await _eraWeaponFrameworkRepository.QueryNoTracking().OrderBy(row => row.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var frameworkStats = await _eraWeaponFrameworkStatRepository.QueryNoTracking().OrderBy(row => row.DisplayOrder).ThenBy(row => row.Stat).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var capabilities = await _eraWeaponFrameworkCapabilityRepository.QueryNoTracking().OrderBy(row => row.CapabilityKind).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return EraWeaponDataMapping.CreateCatalog(slotTypes, configurations, templates, definitions, modifiers, slots, pools,
+            frameworks, frameworkStats, capabilities, templateStats, _mapper);
     }
 
     public async Task<EraEquipmentConfiguration?> GetConfigurationAsync(CancellationToken cancellationToken)
