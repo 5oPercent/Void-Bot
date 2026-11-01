@@ -14,6 +14,88 @@ namespace Void.Bot.IntegrationTest.Services.ERA;
 public partial class EraIntegrationFixture
 {
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [Trait("Category", "ERADropIntegration")]
+    public async Task Direct_ground_rewards_should_allow_visitors_and_replay_without_relaxing_normal_reward_authority(bool isPublic, bool giveToHost)
+    {
+        await SeedAsync(0);
+        var catalog = WeaponCatalog();
+        (await PublishWeaponsAsync(catalog)).Code.ShouldBe(HttpStatusCode.OK);
+        await using var team = await CreateWorldTeamAsync(includeOther: true, otherHost: true);
+        var world = await ReadyDropWorldAsync(team);
+        var visitor = team.Team.Members.Single(member => member.PlayerId == _playerId);
+        var normal = GroundCommand(world, team);
+        normal.MemberId = visitor.MemberId;
+        (await Should.ThrowAsync<EraWorldAccessException>(() => SubmitGroundAsync(normal)))
+            .ErrorCode.ShouldBe("era.world_host_required");
+        var command = new GrantEraGroundRewardCommand
+        {
+            WorldInstanceId = world.WorldInstanceId, RequestId = Guid.NewGuid(),
+            CharacterId = giveToHost ? _otherCharacterId : _characterId, MemberId = visitor.MemberId,
+            AuthorityEpoch = world.AuthorityEpoch, Placement = normal.Placement, IsPublic = isPublic,
+            Entries = new List<EraEquipmentRewardEntry>
+            {
+                new() { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001") },
+                new() { TemplateId = catalog.Templates[0].Id, Grade = EraEquipmentGrade.Reliable }
+            }
+        };
+        Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, token));
+        var first = await Send();
+        first.Code.ShouldBe(HttpStatusCode.OK);
+        first.Data!.Grants.Single().CharacterId.ShouldBe(command.CharacterId);
+        var own = (await QueryDropsAsync(world.WorldInstanceId)).Data!.Drops;
+        var host = (await QueryDropsAsync(world.WorldInstanceId, _otherAccountId)).Data!.Drops;
+        own.Count.ShouldBe(isPublic || !giveToHost ? 2 : 0);
+        host.Count.ShouldBe(isPublic || giveToHost ? 2 : 0);
+        if (isPublic) host.ShouldAllBe(drop => drop.DroppedByPlayerId == _playerId);
+        var drops = giveToHost ? host : own;
+        drops.Count(drop => drop.EquipmentType == EraEquipmentType.Weapon).ShouldBe(1);
+        drops.Count(drop => drop.EquipmentType == EraEquipmentType.Armor).ShouldBe(1);
+        var pickup = PickupCommand(world, drops[0]);
+        pickup.CharacterId = command.CharacterId;
+        (await PickupDropAsync(pickup, accountId: giveToHost ? _otherAccountId : null)).Code.ShouldBe(HttpStatusCode.OK);
+        var replay = await Send();
+        replay.IsReplay.ShouldBeTrue();
+        JsonSerializer.Serialize(replay.Data).ShouldBe(JsonSerializer.Serialize(first.Data));
+        (await QueryDropsAsync(world.WorldInstanceId, giveToHost ? _otherAccountId : null)).Data!.Drops.Count.ShouldBe(1);
+        command.Entries[0].Count++;
+        (await Should.ThrowAsync<EraRewardException>(() => Send())).ErrorCode.ShouldBe("era.drop_idempotency_conflict");
+    }
+
+    [Fact]
+    [Trait("Category", "ERADropIntegration")]
+    public async Task Direct_ground_rewards_from_visitors_should_still_require_current_world_membership_and_authority_epoch()
+    {
+        await SeedAsync(0);
+        await using var team = await CreateWorldTeamAsync(includeOther: true, otherHost: true);
+        var world = await ReadyDropWorldAsync(team);
+        var command = new GrantEraGroundRewardCommand
+        {
+            WorldInstanceId = world.WorldInstanceId, RequestId = Guid.NewGuid(), CharacterId = _characterId,
+            MemberId = team.Team.Members.Single(member => member.PlayerId == _playerId).MemberId,
+            AuthorityEpoch = world.AuthorityEpoch + 1, Placement = new EraEquipmentDropPlacementDto(),
+            Entries = new List<EraEquipmentRewardEntry>
+            {
+                new() { TemplateId = Guid.Parse("10000000-0000-0000-0000-000000000001") }
+            }
+        };
+        Task<SubmitEraGroundRewardResponse> Send() => RequestAsync((mediator, token) =>
+            mediator.SendAsync<GrantEraGroundRewardCommand, SubmitEraGroundRewardResponse>(command, token));
+        (await Should.ThrowAsync<EraWorldAccessException>(() => Send())).ErrorCode.ShouldBe("era.world_authority_changed");
+        command.AuthorityEpoch = world.AuthorityEpoch;
+        command.MemberId = Guid.NewGuid();
+        (await Should.ThrowAsync<EraRewardException>(() => Send())).ErrorCode.ShouldBe("era.drop_not_found");
+        await ReadDatabaseAsync(async context =>
+        {
+            (await context.Set<EraRewardEvent>().CountAsync()).ShouldBe(0);
+            (await context.Set<EraEquipmentDrop>().CountAsync()).ShouldBe(0);
+        });
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "ERADropIntegration")]
