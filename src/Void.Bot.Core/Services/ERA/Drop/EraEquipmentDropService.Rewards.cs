@@ -84,7 +84,7 @@ public sealed partial class EraEquipmentDropService
             }
             characters.Add(character.Id, character);
         }
-        var context = await _worldService.LockRewardWorldAsync(command, actor.Id, previous != null, cancellationToken).ConfigureAwait(false);
+        var context = await _worldService.LockRewardWorldAsync(command, actor.Id, previous != null, entries == null, cancellationToken).ConfigureAwait(false);
         if (previous != null)
         {
             if (previous.WorldInstanceId != command.WorldInstanceId || previous.ScopeId != command.WorldInstanceId || previous.RequestPayload != payload)

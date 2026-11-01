@@ -8,14 +8,14 @@ namespace Void.Bot.Core.Services.ERA.World;
 
 public partial interface IEraWorldService
 {
-    /// <summary>调用方先锁奖励作用域及相应玩家／角色，再在此锁队伍、世界并验证实时房主。</summary>
-    Task<EraWorldRewardContext> LockRewardWorldAsync(SubmitEraGroundRewardCommand command, Guid playerId, bool historical,
+    /// <summary>调用方先锁奖励作用域及相应玩家／角色；配置奖励要求房主，已鉴权的直接奖励允许有效成员。</summary>
+    Task<EraWorldRewardContext> LockRewardWorldAsync(SubmitEraGroundRewardCommand command, Guid playerId, bool historical, bool hostRequired,
         CancellationToken cancellationToken);
 }
 
 public sealed partial class EraWorldService
 {
-    public async Task<EraWorldRewardContext> LockRewardWorldAsync(SubmitEraGroundRewardCommand command, Guid playerId, bool historical,
+    public async Task<EraWorldRewardContext> LockRewardWorldAsync(SubmitEraGroundRewardCommand command, Guid playerId, bool historical, bool hostRequired,
         CancellationToken cancellationToken)
     {
         var initial = await _worlds.GetWorldAsync(command.WorldInstanceId, cancellationToken).ConfigureAwait(false);
@@ -29,7 +29,7 @@ public sealed partial class EraWorldService
         {
             throw Error(HttpStatusCode.NotFound, "era.world_not_found", text => text.NotFound);
         }
-        var authority = await RequireTeamAsync(world.TeamId, playerId, command.MemberId, command.AuthorityEpoch, true, cancellationToken).ConfigureAwait(false);
+        var authority = await RequireTeamAsync(world.TeamId, playerId, command.MemberId, command.AuthorityEpoch, hostRequired, cancellationToken).ConfigureAwait(false);
         var members = await _worlds.GetMembersAsync(world.Id, false, cancellationToken).ConfigureAwait(false);
         var actor = members.SingleOrDefault(member => member.PlayerId == playerId && member.MemberId == command.MemberId && member.CharacterId == authority.Member.CharacterId);
         if (actor == null)
@@ -50,7 +50,8 @@ public sealed partial class EraWorldService
             {
                 throw Error(HttpStatusCode.Forbidden, "era.world_member_unavailable", text => text.MemberUnavailable);
             }
-            if (world.AuthorityEpoch != command.AuthorityEpoch || world.HostPlayerId != playerId)
+            if (world.AuthorityEpoch != command.AuthorityEpoch || world.HostPlayerId != authority.Team.HostPlayerId ||
+                hostRequired && world.HostPlayerId != playerId)
             {
                 throw Error(HttpStatusCode.Conflict, "era.world_authority_changed", text => text.AuthorityChanged);
             }
