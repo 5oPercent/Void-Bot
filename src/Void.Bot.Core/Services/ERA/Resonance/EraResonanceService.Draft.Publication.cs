@@ -309,7 +309,7 @@ public partial class EraResonanceService
             return previous == null ? DraftUnavailable<PublishEraResonanceDraftResponse>() : new()
             {
                 Code = HttpStatusCode.OK,
-                Data = JsonSerializer.Deserialize<ResonanceConfiguration>(previous.Payload)!
+                Data = EraResonanceDraftCompiler.DecodePublication(previous.Payload)
             };
         }
 
@@ -381,7 +381,7 @@ public partial class EraResonanceService
         return record == null ? Error<GetEraResonancePublicationResponse>(HttpStatusCode.NotFound, "era.publication_not_found", text => text.ConfigUnavailable) : new()
         {
             Code = HttpStatusCode.OK,
-            Data = JsonSerializer.Deserialize<ResonanceConfiguration>(record.Payload)!
+            Data = EraResonanceDraftCompiler.DecodePublication(record.Payload)
         };
     }
 
@@ -409,7 +409,7 @@ public partial class EraResonanceService
             return Error<RestoreEraDraftPublicationResponse>(HttpStatusCode.NotFound, "era.publication_not_found", text => text.ConfigUnavailable);
         }
 
-        var configuration = JsonSerializer.Deserialize<ResonanceConfiguration>(record.Payload)!;
+        var configuration = EraResonanceDraftCompiler.DecodePublication(record.Payload);
         try { ResonanceConfigurationValidator.Validate(configuration); }
         catch (ArgumentException) { return DraftInvalid<RestoreEraDraftPublicationResponse>(); }
         return await ImportIntoDraftAsync<RestoreEraDraftPublicationResponse>(view, configuration, EraResonanceDraftImportMode.Replace, true, cancellationToken).ConfigureAwait(false);

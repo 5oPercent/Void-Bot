@@ -1,4 +1,5 @@
 using Shouldly;
+using System.Text.Json;
 using Void.Bot.Core.Validators.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
@@ -7,6 +8,18 @@ namespace Void.Bot.UnitTest.ERA;
 
 public class BuffDefinitionValidatorFixture
 {
+    [Fact]
+    public void EffectContract_UsesIdAndRejectsRetiredPresentationKey()
+    {
+        var definition = new BuffDefinitionDto { Id = "restore.health", Kind = BuffKind.Instant,
+            Effects = new() { new() { Kind = BuffEffectKind.Heal, Amount = 25 } } };
+        var json = JsonSerializer.Serialize(definition);
+        json.ShouldNotContain("PresentationKey");
+        JsonSerializer.Deserialize<BuffDefinitionDto>(json)!.Id.ShouldBe(definition.Id);
+        var legacy = json.Insert(1, "\"PresentationKey\":\"old.presentation\",");
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<BuffDefinitionDto>(legacy));
+    }
+
     [Fact]
     public void Validate_ItemHealingBuffDoesNotRequireResonanceConfiguration()
     {

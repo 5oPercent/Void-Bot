@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Void.Bot.Core.Services.ERA.Resonance.Models;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Validators.ERA;
@@ -12,6 +13,15 @@ namespace Void.Bot.Core.Services.ERA.Resonance;
 /// <summary>唯一草稿汇总器；保留池和效果顺序，不读取数据库或实施玩家数据迁移。</summary>
 internal static class EraResonanceDraftCompiler
 {
+    // 历史发布原文与哈希保持不变；只在读取边界移除已废弃的效果表现字段。
+    public static ResonanceConfiguration DecodePublication(string payload)
+    {
+        var document = JsonNode.Parse(payload) ?? throw new InvalidOperationException("发布配置为空。");
+        if (document["Buffs"] is JsonArray buffs)
+            foreach (var buff in buffs.OfType<JsonObject>()) buff.Remove("PresentationKey");
+        return document.Deserialize<ResonanceConfiguration>() ?? throw new InvalidOperationException("发布配置为空。");
+    }
+
     public static ResonanceConfiguration Compile(EraResonanceDraftView view)
     {
         var settings = JsonSerializer.Deserialize<EraResonanceDraftSettings>(view.Workspace.SettingsPayload) ?? throw new InvalidOperationException("草稿设置为空。");
