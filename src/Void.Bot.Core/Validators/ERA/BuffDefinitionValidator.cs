@@ -63,8 +63,6 @@ public static class BuffDefinitionValidator
             || life.CountEvents && (definition.StackRule != 2 || string.IsNullOrWhiteSpace(life.TriggerEventId) || life.TriggerEventId.Length > 128 || life.TriggerEventId != life.TriggerEventId.Trim())
             || definition.Kind == BuffKind.Instant && (life.CountEvents || life.DecayMode != 0))
             throw new ArgumentException("BUFF 生命周期配置无效。");
-        if (definition.PresentationKey == null || definition.PresentationKey.Length > 128 || definition.PresentationKey != definition.PresentationKey.Trim())
-            throw new ArgumentException("BUFF 表现 Key 无效。");
         ValidateText(definition.Name, 256);
         ValidateText(definition.Description, 2048);
         ValidateText(definition.StackGroup, 128);

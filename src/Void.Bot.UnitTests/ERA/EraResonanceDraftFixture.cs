@@ -17,6 +17,34 @@ namespace Void.Bot.UnitTest.ERA;
 
 public sealed class EraResonanceDraftFixture
 {
+    [Fact]
+    public async Task HistoricalEffects_DropRetiredPresentationFieldOnReadRestoreAndRetry()
+    {
+        var service = Service();
+        const string payload = """
+            {"Version":2,"SchemaVersion":3,"Buffs":[{"Id":"restore.health","PresentationKey":"old.presentation","Kind":0,"Effects":[{"Kind":2,"Amount":25}]}]}
+            """;
+        var publication = new EraResonancePublication { Version = 2, Payload = payload, ContentHash = "original-hash" };
+        _history.Add(2, publication);
+        var read = await service.GetPublicationAsync(new() { Version = 2 }, CancellationToken.None);
+        read.Code.ShouldBe(HttpStatusCode.OK);
+        read.Data!.Buffs.Single().Id.ShouldBe("restore.health");
+        JsonSerializer.Serialize(read.Data).ShouldNotContain("PresentationKey");
+        var restored = await service.RestorePublicationToDraftAsync(new() { Version = 2, ExpectedDraftRevision = 1 }, CancellationToken.None);
+        restored.Code.ShouldBe(HttpStatusCode.OK);
+        _records.Single().StableId.ShouldBe("restore.health");
+        _records.Single().Payload.ShouldNotContain("PresentationKey");
+        var request = new PublishEraResonanceDraftCommand { RequestId = Guid.NewGuid(), ExpectedDraftRevision = 1, ExpectedPublishedVersion = 1 };
+        _receipts.Add(request.RequestId, new() { Id = request.RequestId, AccountId = _account,
+            ExpectedDraftRevision = 1, ExpectedPublishedVersion = 1, PublishedVersion = 2 });
+        var retry = await service.PublishDraftAsync(request, CancellationToken.None);
+        retry.Code.ShouldBe(HttpStatusCode.OK);
+        retry.Data!.Buffs.Single().Id.ShouldBe("restore.health");
+        JsonSerializer.Serialize(retry.Data).ShouldNotContain("PresentationKey");
+        publication.Payload.ShouldBe(payload);
+        publication.ContentHash.ShouldBe("original-hash");
+    }
+
 
 
     [Fact]

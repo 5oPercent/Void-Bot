@@ -10,16 +10,13 @@ namespace Void.Bot.Message.Dto.ERA;
 public sealed class BuffDefinitionDto
 {
     /// <summary>
-    /// 稳定且唯一的定义 ID，不随数值或客户端表现调整改变。
+    /// 稳定且唯一的效果 Key，同时用于关联客户端表现，不随数值或资源调整改变。
     /// </summary>
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>
-    /// 基本显示名称；图标、颜色和其他样式由客户端映射。
-    /// </summary>
-    public string PresentationKey { get; set; } = string.Empty;
     public BuffLifecycleDto Lifecycle { get; set; } = new();
 
+    /// <summary>基本显示名称；图标、颜色和其他样式由客户端按 Id 映射。</summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>

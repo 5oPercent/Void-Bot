@@ -2,7 +2,11 @@
 
 原有能力体系与技能分别更名为“晶格体系 / Lattice”和“谐振技能 / Resonance”。原服务改名为 `EraResonanceService`／`EraResonanceDataProvider`，控制器为 `EraLatticesController`／`EraResonancesController`，相关消息、处理器、校验器、映射及持久化实体同步替换。核心定义为 `LatticeDefinition`、`ResonanceDefinition`、`ResonanceVariant`，不保留另一套旧服务或实体。
 
-重命名后的实体仍通过原 `[Table]` 映射读写既有 `era_skill_*`、`era_character_skill_profile` 与 `era_character_learned_skill` 数据表，不新增数据库表。已有接口路径、权限标识、JSON 字段、定义 ID 与表现 Key 保持兼容；此次不改变序列化和缓存结构，也不执行数据库迁移。
+重命名后的实体仍通过原 `[Table]` 映射读写既有 `era_skill_*`、`era_character_skill_profile` 与 `era_character_learned_skill` 数据表，不新增数据库表。重命名本身保留接口路径、权限标识与定义 ID。
+
+2026-11-03：效果删除 `PresentationKey`，统一使用 `Id` 关联客户端图标、背景和颜色；技能仍以 `EffectId` 引用效果。新建、保存、导入和导出的效果都不再包含该字段，严格拒绝旧字段。晶格、武器和护甲的表现 Key 保持原有用途。沿用本轮未合入功能已有的结构版本 3，不重复提升缓存／协议版本。
+
+新增 `Script0049_remove_buff_presentation_key.sql`，只清理当前正式快照和效果草稿内的旧字段，保留效果 Key、数值、顺序及晶格表现字段；受影响草稿的对象版本与工作区修订号递增，重复执行不变。历史发布原文和哈希不改写，历史读取、恢复及幂等发布重试在读取边界移除该字段。迁移已通过隔离 MySQL 8 的 11 项断言，未应用到业务库；三端需同步部署，旧导入文件需删除效果内的 `presentationKey`。
 
 本模块沿用 Controller → Mediator → Handler → Service → DataProvider 分层。Command 由现有工作单元提交，Request 不创建数据。数据库结构由 `Script0026_init_era_skills.sql` 建立，`Script0028_scope_era_skills_to_characters.sql` 将配装和学习记录改为角色归属，本次未执行迁移或启动服务。新增草稿编辑和统一发布见 [谐振技能草稿管理接口](ERA技能草稿管理接口.md)及[实施清单](ERA技能编辑与发布TODO.md)。
 
