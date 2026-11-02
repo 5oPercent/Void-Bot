@@ -4,11 +4,11 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-/// <summary>技能草稿验证、导入、发布或历史消息。</summary>
+/// <summary>谐振技能草稿验证、导入、发布或历史消息。</summary>
 public sealed class GetEraDraftReferencesRequest : IRequest
 {
     /// <summary>引用目标类别。</summary>
-    public EraSkillDraftKind Kind { get; set; }
+    public EraResonanceDraftKind Kind { get; set; }
     /// <summary>引用目标稳定 ID。</summary>
     public string Id { get; set; } = "";
     /// <summary>分页跳过量，不小于零。</summary>
@@ -18,6 +18,6 @@ public sealed class GetEraDraftReferencesRequest : IRequest
 }
 
 /// <summary>操作结果，发布返回完整已发布配置。</summary>
-public sealed class GetEraDraftReferencesResponse : EraResponse<EraSkillDraftReferencePage>
+public sealed class GetEraDraftReferencesResponse : EraResponse<EraResonanceDraftReferencePage>
 {
 }

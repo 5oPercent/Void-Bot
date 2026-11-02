@@ -1,22 +1,11 @@
 namespace Void.Bot.Message.Enum.ERA;
 
-/// <summary>
-/// BUFF 的生命周期类型，由游戏端效果系统执行。
-/// </summary>
+/// <summary>效果的存续类型；周期类型允许全部效果条目。</summary>
 public enum BuffKind
 {
-    /// <summary>
-    /// 施加时执行一次效果，不进入长期实例池。
-    /// </summary>
+    /// <summary>执行一次结算，不保留实例，不支持需要撤销的属性修正。</summary>
     Instant = 0,
 
-    /// <summary>
-    /// 持续提供属性修正，时间结束或清理时移除。
-    /// </summary>
-    Persistent = 1,
-
-    /// <summary>
-    /// 存续期间按指定间隔执行效果。
-    /// </summary>
+    /// <summary>保留实例；正数间隔重复结算，-1 不重复。属性修正随实例存续。</summary>
     Periodic = 2,
 }

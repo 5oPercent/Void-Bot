@@ -1,16 +1,16 @@
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
-using Void.Bot.Core.Services.ERA.Skill;
+using Void.Bot.Core.Services.ERA.Resonance;
 using Void.Bot.Message.Commands.ERA;
 
 namespace Void.Bot.Core.Handler.CommandHandler.ERA;
 
-/// <summary>转交技能编辑／发布服务，沿用工作单元事务。</summary>
+/// <summary>转交谐振技能编辑／发布服务，沿用工作单元事务。</summary>
 public sealed class RestoreEraDraftPublicationCommandHandler : ICommandHandler<RestoreEraDraftPublicationCommand,RestoreEraDraftPublicationResponse>
 {
-    private readonly IEraSkillService _service;
+    private readonly IEraResonanceService _service;
 
-    public RestoreEraDraftPublicationCommandHandler(IEraSkillService service)
+    public RestoreEraDraftPublicationCommandHandler(IEraResonanceService service)
     {
         _service = service;
     }

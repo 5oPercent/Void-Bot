@@ -36,9 +36,9 @@
 
 默认容量变更只影响新玩家，重复初始化不会覆盖现有容量。官方通过容量接口单独调整已有玩家。请求包含 requestId、expectedVersion、reason，以及 capacity 或 delta；支持容量 0，负数或溢出结果拒绝。管理接口中的 PlayerId 是 ERA 玩家档案 ID，使用路由值覆盖请求体值。重试同一操作必须携带相同请求 ID 和原始参数，成功后返回原始回执；更换参数复用 ID 返回冲突。
 
-ERA 玩家档案使用独立 ID，`era_player` 本身不保存主账号字段。`era_player_account_link` 关联表保存 Void.Bot AccountId 与 ERA PlayerId 的一对一绑定，并分别对两列建立唯一约束。仓库容量以及未来的仓库物品都归属 PlayerId，因此同一账号下的所有角色天然共享仓库。角色记录使用独立 CharacterId，并保存 CharacterDefinitionId、DisplayName 和并发 Version；未来角色装备、技能配置及进度应引用 CharacterId，不应把共享仓库复制到角色记录。
+ERA 玩家档案使用独立 ID，`era_player` 本身不保存主账号字段。`era_player_account_link` 关联表保存 Void.Bot AccountId 与 ERA PlayerId 的一对一绑定，并分别对两列建立唯一约束。仓库容量以及未来的仓库物品都归属 PlayerId，因此同一账号下的所有角色天然共享仓库。角色记录使用独立 CharacterId，并保存 CharacterDefinitionId、DisplayName 和并发 Version；未来角色装备、谐振技能配置及进度应引用 CharacterId，不应把共享仓库复制到角色记录。
 
-创建角色请求携带 RequestId，同一玩家重复提交相同请求和参数时返回原角色，使用相同 RequestId 提交不同参数时返回 idempotency_conflict。当前只保存已明确的角色标识与显示配置，不提前存储未经验证的任意 JSON；新增外观、技能等字段时继续使用强类型 Command、DTO 和数据库列。
+创建角色请求携带 RequestId，同一玩家重复提交相同请求和参数时返回原角色，使用相同 RequestId 提交不同参数时返回 idempotency_conflict。当前只保存已明确的角色标识与显示配置，不提前存储未经验证的任意 JSON；新增外观、谐振技能等字段时继续使用强类型 Command、DTO 和数据库列。
 
 ## 持久化与并发
 
@@ -46,7 +46,7 @@ DbUp Script0023 创建 era_configuration、era_player、era_player_account_link�
 
 配置更新锁定全部当前配置行并检查整套配置版本，在同一事务中替换为最新完整集合。玩家初始化锁定主账号行，随后通过关联表检查已有玩家，并在同一事务中创建 ERA 玩家与账号绑定；关联表双向唯一约束进一步防重。角色创建锁定所属玩家并检查创建请求 ID。容量变更锁定玩家，当前读取幂等回执，版本检查后同时更新容量和插入审计回执。普通 Command 使用 Mediator 最外层事务统一提交，没有 Service 手动 SaveChanges。相关接口应通过 Mediator 使用，不能直接把 Service 当成独立事务边界。
 
-ERA 玩家档案拥有独立主键，账号绑定只存在于独立关联表中。玩家档案保存共享仓库容量、版本与审计时间；角色通过 PlayerId 归属玩家档案。未来仓库物品独立建表并引用 PlayerId，角色已装备物品或技能配置引用 CharacterId；容量降低不删除物品，未来库存模块决定超限时存入规则。配置值使用明确的 ValueType 和不变格式字符串，不存储未经验证的任意 JSON；后端校验核心配置键，同时允许追加受支持类型的新配置项。
+ERA 玩家档案拥有独立主键，账号绑定只存在于独立关联表中。玩家档案保存共享仓库容量、版本与审计时间；角色通过 PlayerId 归属玩家档案。未来仓库物品独立建表并引用 PlayerId，角色已装备物品或谐振技能配置引用 CharacterId；容量降低不删除物品，未来库存模块决定超限时存入规则。配置值使用明确的 ValueType 和不变格式字符串，不存储未经验证的任意 JSON；后端校验核心配置键，同时允许追加受支持类型的新配置项。
 
 ## Blazor
 

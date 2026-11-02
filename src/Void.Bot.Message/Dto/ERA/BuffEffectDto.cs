@@ -18,7 +18,7 @@ public sealed class BuffEffectDto
     public double Amount { get; set; }
 
     /// <summary>
-    /// 属性修正目标协议值：0 力量、1 体质、2 敏捷、3 武器攻击、4 最大生命、5 移速、6 最大防护。
+    /// 属性修正目标协议值：0 力量、1 体质、2 敏捷、3 武器攻击、4 最大生命、5 移速、6 最大防护、7 聚焦、8 效率、9 抗性。
     /// </summary>
     public int Stat { get; set; }
 

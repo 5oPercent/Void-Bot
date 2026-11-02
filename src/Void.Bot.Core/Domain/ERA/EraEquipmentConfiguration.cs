@@ -4,7 +4,7 @@ using Void.Bot.Message.Dto;
 
 namespace Void.Bot.Core.Domain.ERA;
 
-/// <summary>整批版本化装备目录，沿用技能目录的固定配置行与 JSON 载荷方式。</summary>
+/// <summary>整批版本化装备目录，沿用谐振技能目录的固定配置行与 JSON 载荷方式。</summary>
 [Table("era_equipment_configuration")]
 public sealed class EraEquipmentConfiguration : IEntity<Guid>, IEntityModified
 {

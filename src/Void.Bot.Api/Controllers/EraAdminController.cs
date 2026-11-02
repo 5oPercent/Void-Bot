@@ -88,15 +88,15 @@ public sealed partial class EraAdminController : ControllerBase
     [HttpPost("characters/{characterId:guid}/learned-skills")]
     [RequestSizeLimit(16384)]
     [DescriptionLocalization("GrantEraLearnedSkill")]
-    [ProducesResponseType(typeof(GrantEraLearnedSkillResponse), 200)]
+    [ProducesResponseType(typeof(GrantEraLearnedResonanceResponse), 200)]
     public async Task<IActionResult> GrantAsync(
         [FromRoute] Guid characterId,
-        [FromBody] GrantEraLearnedSkillCommand command,
+        [FromBody] GrantEraLearnedResonanceCommand command,
         CancellationToken cancellationToken)
     {
         command.CharacterId = characterId;
         var response = await _mediator
-            .SendAsync<GrantEraLearnedSkillCommand, GrantEraLearnedSkillResponse>(command, cancellationToken)
+            .SendAsync<GrantEraLearnedResonanceCommand, GrantEraLearnedResonanceResponse>(command, cancellationToken)
             .ConfigureAwait(false);
 
         return Ok(response);
@@ -104,114 +104,114 @@ public sealed partial class EraAdminController : ControllerBase
 
     [HttpGet("configuration")]
     [DescriptionLocalization("GetEraSkillDraft")]
-    [ProducesResponseType(typeof(GetEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> GetDraftStatusAsync([FromQuery] GetEraSkillDraftRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(GetEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> GetDraftStatusAsync([FromQuery] GetEraResonanceDraftRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<GetEraSkillDraftRequest, GetEraSkillDraftResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<GetEraResonanceDraftRequest, GetEraResonanceDraftResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("configuration/initialize")]
     [DescriptionLocalization("InitializeEraSkillDraft")]
-    [ProducesResponseType(typeof(InitializeEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> InitializeDraftAsync([FromBody] InitializeEraSkillDraftCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(InitializeEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> InitializeDraftAsync([FromBody] InitializeEraResonanceDraftCommand command, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.SendAsync<InitializeEraSkillDraftCommand, InitializeEraSkillDraftResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<InitializeEraResonanceDraftCommand, InitializeEraResonanceDraftResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("configuration/export")]
     [DescriptionLocalization("ExportEraSkillDraft")]
-    [ProducesResponseType(typeof(ExportEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> ExportDraftAsync([FromQuery] ExportEraSkillDraftRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ExportEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> ExportDraftAsync([FromQuery] ExportEraResonanceDraftRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ExportEraSkillDraftRequest, ExportEraSkillDraftResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ExportEraResonanceDraftRequest, ExportEraResonanceDraftResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("ability-systems")]
     [DescriptionLocalization("ListEraDraftSystem")]
-    [ProducesResponseType(typeof(ListEraDraftSystemResponse), 200)]
-    public async Task<IActionResult> ListDraftSystemAsync([FromQuery] ListEraDraftSystemRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ListEraDraftLatticeResponse), 200)]
+    public async Task<IActionResult> ListDraftLatticeAsync([FromQuery] ListEraDraftLatticeRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ListEraDraftSystemRequest, ListEraDraftSystemResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ListEraDraftLatticeRequest, ListEraDraftLatticeResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("ability-systems/{id}")]
     [DescriptionLocalization("GetEraDraftSystem")]
-    [ProducesResponseType(typeof(GetEraDraftSystemResponse), 200)]
-    public async Task<IActionResult> GetDraftSystemAsync(string id, [FromQuery] GetEraDraftSystemRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(GetEraDraftLatticeResponse), 200)]
+    public async Task<IActionResult> GetDraftLatticeAsync(string id, [FromQuery] GetEraDraftLatticeRequest request, CancellationToken cancellationToken)
     {
         request.Id = id;
-        return Ok(await _mediator.RequestAsync<GetEraDraftSystemRequest, GetEraDraftSystemResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<GetEraDraftLatticeRequest, GetEraDraftLatticeResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("ability-systems/{id}")]
     [DescriptionLocalization("SaveEraDraftSystem")]
-    [ProducesResponseType(typeof(SaveEraDraftSystemResponse), 200)]
-    public async Task<IActionResult> SaveDraftSystemAsync(string id, [FromBody] SaveEraDraftSystemCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(SaveEraDraftLatticeResponse), 200)]
+    public async Task<IActionResult> SaveDraftLatticeAsync(string id, [FromBody] SaveEraDraftLatticeCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<SaveEraDraftSystemCommand, SaveEraDraftSystemResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<SaveEraDraftLatticeCommand, SaveEraDraftLatticeResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("ability-systems/{id}/delete")]
     [DescriptionLocalization("DeleteEraDraftSystem")]
-    [ProducesResponseType(typeof(DeleteEraDraftSystemResponse), 200)]
-    public async Task<IActionResult> DeleteDraftSystemAsync(string id, [FromBody] DeleteEraDraftSystemCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(DeleteEraDraftLatticeResponse), 200)]
+    public async Task<IActionResult> DeleteDraftLatticeAsync(string id, [FromBody] DeleteEraDraftLatticeCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<DeleteEraDraftSystemCommand, DeleteEraDraftSystemResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<DeleteEraDraftLatticeCommand, DeleteEraDraftLatticeResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("ability-systems/{id}/restore")]
     [DescriptionLocalization("RestoreEraDraftSystem")]
-    [ProducesResponseType(typeof(RestoreEraDraftSystemResponse), 200)]
-    public async Task<IActionResult> RestoreDraftSystemAsync(string id, [FromBody] RestoreEraDraftSystemCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(RestoreEraDraftLatticeResponse), 200)]
+    public async Task<IActionResult> RestoreDraftLatticeAsync(string id, [FromBody] RestoreEraDraftLatticeCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<RestoreEraDraftSystemCommand, RestoreEraDraftSystemResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<RestoreEraDraftLatticeCommand, RestoreEraDraftLatticeResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("skills")]
     [DescriptionLocalization("ListEraDraftSkill")]
-    [ProducesResponseType(typeof(ListEraDraftSkillResponse), 200)]
-    public async Task<IActionResult> ListDraftSkillAsync([FromQuery] ListEraDraftSkillRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ListEraDraftResonanceResponse), 200)]
+    public async Task<IActionResult> ListDraftResonanceAsync([FromQuery] ListEraDraftResonanceRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ListEraDraftSkillRequest, ListEraDraftSkillResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ListEraDraftResonanceRequest, ListEraDraftResonanceResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("skills/{id}")]
     [DescriptionLocalization("GetEraDraftSkill")]
-    [ProducesResponseType(typeof(GetEraDraftSkillResponse), 200)]
-    public async Task<IActionResult> GetDraftSkillAsync(string id, [FromQuery] GetEraDraftSkillRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(GetEraDraftResonanceResponse), 200)]
+    public async Task<IActionResult> GetDraftResonanceAsync(string id, [FromQuery] GetEraDraftResonanceRequest request, CancellationToken cancellationToken)
     {
         request.Id = id;
-        return Ok(await _mediator.RequestAsync<GetEraDraftSkillRequest, GetEraDraftSkillResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<GetEraDraftResonanceRequest, GetEraDraftResonanceResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("skills/{id}")]
     [DescriptionLocalization("SaveEraDraftSkill")]
-    [ProducesResponseType(typeof(SaveEraDraftSkillResponse), 200)]
-    public async Task<IActionResult> SaveDraftSkillAsync(string id, [FromBody] SaveEraDraftSkillCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(SaveEraDraftResonanceResponse), 200)]
+    public async Task<IActionResult> SaveDraftResonanceAsync(string id, [FromBody] SaveEraDraftResonanceCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<SaveEraDraftSkillCommand, SaveEraDraftSkillResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<SaveEraDraftResonanceCommand, SaveEraDraftResonanceResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("skills/{id}/delete")]
     [DescriptionLocalization("DeleteEraDraftSkill")]
-    [ProducesResponseType(typeof(DeleteEraDraftSkillResponse), 200)]
-    public async Task<IActionResult> DeleteDraftSkillAsync(string id, [FromBody] DeleteEraDraftSkillCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(DeleteEraDraftResonanceResponse), 200)]
+    public async Task<IActionResult> DeleteDraftResonanceAsync(string id, [FromBody] DeleteEraDraftResonanceCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<DeleteEraDraftSkillCommand, DeleteEraDraftSkillResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<DeleteEraDraftResonanceCommand, DeleteEraDraftResonanceResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("skills/{id}/restore")]
     [DescriptionLocalization("RestoreEraDraftSkill")]
-    [ProducesResponseType(typeof(RestoreEraDraftSkillResponse), 200)]
-    public async Task<IActionResult> RestoreDraftSkillAsync(string id, [FromBody] RestoreEraDraftSkillCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(RestoreEraDraftResonanceResponse), 200)]
+    public async Task<IActionResult> RestoreDraftResonanceAsync(string id, [FromBody] RestoreEraDraftResonanceCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<RestoreEraDraftSkillCommand, RestoreEraDraftSkillResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<RestoreEraDraftResonanceCommand, RestoreEraDraftResonanceResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("buffs")]
@@ -276,18 +276,18 @@ public sealed partial class EraAdminController : ControllerBase
 
     [HttpPost("configuration/validate")]
     [DescriptionLocalization("ValidateEraSkillDraft")]
-    [ProducesResponseType(typeof(ValidateEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> ValidateDraftAsync([FromBody] ValidateEraSkillDraftRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ValidateEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> ValidateDraftAsync([FromBody] ValidateEraResonanceDraftRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ValidateEraSkillDraftRequest, ValidateEraSkillDraftResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ValidateEraResonanceDraftRequest, ValidateEraResonanceDraftResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("configuration/publish-preview")]
     [DescriptionLocalization("PreviewEraSkillDraft")]
-    [ProducesResponseType(typeof(PreviewEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> PreviewDraftAsync([FromBody] PreviewEraSkillDraftRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PreviewEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> PreviewDraftAsync([FromBody] PreviewEraResonanceDraftRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<PreviewEraSkillDraftRequest, PreviewEraSkillDraftResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<PreviewEraResonanceDraftRequest, PreviewEraResonanceDraftResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("configuration/references")]
@@ -300,35 +300,35 @@ public sealed partial class EraAdminController : ControllerBase
 
     [HttpPost("configuration/import")]
     [DescriptionLocalization("ImportEraSkillDraft")]
-    [ProducesResponseType(typeof(ImportEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> ImportDraftAsync([FromBody] ImportEraSkillDraftCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ImportEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> ImportDraftAsync([FromBody] ImportEraResonanceDraftCommand command, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.SendAsync<ImportEraSkillDraftCommand, ImportEraSkillDraftResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<ImportEraResonanceDraftCommand, ImportEraResonanceDraftResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("configuration/publish")]
     [DescriptionLocalization("PublishEraSkillDraft")]
-    [ProducesResponseType(typeof(PublishEraSkillDraftResponse), 200)]
-    public async Task<IActionResult> PublishDraftAsync([FromBody] PublishEraSkillDraftCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(PublishEraResonanceDraftResponse), 200)]
+    public async Task<IActionResult> PublishDraftAsync([FromBody] PublishEraResonanceDraftCommand command, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.SendAsync<PublishEraSkillDraftCommand, PublishEraSkillDraftResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<PublishEraResonanceDraftCommand, PublishEraResonanceDraftResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("configuration/history")]
     [DescriptionLocalization("ListEraSkillPublications")]
-    [ProducesResponseType(typeof(ListEraSkillPublicationsResponse), 200)]
-    public async Task<IActionResult> ListPublicationsAsync([FromQuery] ListEraSkillPublicationsRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(ListEraResonancePublicationsResponse), 200)]
+    public async Task<IActionResult> ListPublicationsAsync([FromQuery] ListEraResonancePublicationsRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ListEraSkillPublicationsRequest, ListEraSkillPublicationsResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ListEraResonancePublicationsRequest, ListEraResonancePublicationsResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("configuration/history/{version:long}")]
     [DescriptionLocalization("GetEraSkillPublication")]
-    [ProducesResponseType(typeof(GetEraSkillPublicationResponse), 200)]
-    public async Task<IActionResult> GetPublicationAsync(long version, [FromQuery] GetEraSkillPublicationRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(GetEraResonancePublicationResponse), 200)]
+    public async Task<IActionResult> GetPublicationAsync(long version, [FromQuery] GetEraResonancePublicationRequest request, CancellationToken cancellationToken)
     {
         request.Version = version;
-        return Ok(await _mediator.RequestAsync<GetEraSkillPublicationRequest, GetEraSkillPublicationResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<GetEraResonancePublicationRequest, GetEraResonancePublicationResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("configuration/history/{version:long}/restore")]
