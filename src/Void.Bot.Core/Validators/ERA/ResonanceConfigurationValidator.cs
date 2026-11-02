@@ -45,7 +45,7 @@ public static class ResonanceConfigurationValidator
         }
     }
 
-    public static void ValidateProfile(ResonanceConfiguration configuration, CharacterResonanceProfile profile, ISet<string>? learnedSkills = null)
+    public static void ValidateProfile(ResonanceConfiguration configuration, CharacterResonanceProfile profile)
     {
         if (profile == null ||
             profile.Version < 0 ||
@@ -74,10 +74,9 @@ public static class ResonanceConfigurationValidator
                 }
 
                 if (!selected.Add(id) ||
-                    !PoolIds(configuration, system, (ResonanceSlotKind)i).Contains(id, StringComparer.Ordinal) || learnedSkills != null &&
-                    !learnedSkills.Contains(id))
+                    !PoolIds(configuration, system, (ResonanceSlotKind)i).Contains(id, StringComparer.Ordinal))
                 {
-                    throw new ArgumentException("谐振技能不在可用谐振技能池、重复装配或尚未学习。");
+                    throw new ArgumentException("谐振技能不在可用谐振技能池或重复装配。");
                 }
             }
         }

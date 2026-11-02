@@ -67,17 +67,11 @@ public partial class EraResonanceService
                 text => text.ConfigUnavailable);
         }
 
-        var learnedSkillIds = await _dataProvider
-            .GetLearnedResonancesAsync(character.Id, cancellationToken)
-            .ConfigureAwait(false);
-        var learnedSkills = learnedSkillIds.ToHashSet(StringComparer.Ordinal);
-
         try
         {
             ResonanceConfigurationValidator.ValidateProfile(
                 DecodeConfiguration(configurationRecord),
-                command.Profile,
-                learnedSkills);
+                command.Profile);
         }
         catch (ArgumentException)
         {
