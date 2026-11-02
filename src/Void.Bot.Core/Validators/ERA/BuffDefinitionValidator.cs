@@ -3,7 +3,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Core.Validators.ERA;
 
-/// <summary>通用 BUFF 定义校验；不依赖技能配置、技能池或槽位。</summary>
+/// <summary>通用 BUFF 定义校验；不依赖谐振技能配置、谐振技能池或槽位。</summary>
 public static class BuffDefinitionValidator
 {
     public static void Validate(BuffDefinitionDto definition)
@@ -55,13 +55,23 @@ public static class BuffDefinitionValidator
 
     private static void ValidateDefinition(BuffDefinitionDto definition)
     {
+        var life = definition.Lifecycle;
+        if (life == null || life.EventsPerStack < 1 || life.StacksPerThreshold < 1 || life.StacksPerDecay < 1
+            || life.DecayMode is < 0 or > 2 || !double.IsFinite(life.DecayDelaySeconds) || life.DecayDelaySeconds < 0 || life.DecayDelaySeconds > 86400
+            || !double.IsFinite(life.DecayIntervalSeconds) || life.DecayIntervalSeconds <= 0 || life.DecayIntervalSeconds > 86400
+            || life.DecayMode == 2 && definition.DurationSeconds <= 0
+            || life.CountEvents && (definition.StackRule != 2 || string.IsNullOrWhiteSpace(life.TriggerEventId) || life.TriggerEventId.Length > 128 || life.TriggerEventId != life.TriggerEventId.Trim())
+            || definition.Kind == BuffKind.Instant && (life.CountEvents || life.DecayMode != 0))
+            throw new ArgumentException("BUFF 生命周期配置无效。");
+        if (definition.PresentationKey == null || definition.PresentationKey.Length > 128 || definition.PresentationKey != definition.PresentationKey.Trim())
+            throw new ArgumentException("BUFF 表现 Key 无效。");
         ValidateText(definition.Name, 256);
         ValidateText(definition.Description, 2048);
         ValidateText(definition.StackGroup, 128);
 
         if (!Enum.IsDefined(typeof(BuffKind), definition.Kind) ||
             !IsFiniteInRange(definition.DurationSeconds, 0, 86400) ||
-            !IsFiniteInRange(definition.IntervalSeconds, 0.001, 86400) ||
+            (definition.IntervalSeconds != -1 && !IsFiniteInRange(definition.IntervalSeconds, 0.001, 86400)) ||
             definition.StackRule < 0 || definition.StackRule > 3 ||
             definition.SourceScope < 0 || definition.SourceScope > 2 ||
             definition.MaxStacks < 1 || definition.MaxStacks > 10000 ||
@@ -80,18 +90,18 @@ public static class BuffDefinitionValidator
 
             if (effect.Kind == BuffEffectKind.Modifier)
             {
-                if (definition.Kind != BuffKind.Persistent ||
-                    effect.Stat < 0 || effect.Stat > 6 ||
+                if (definition.Kind != BuffKind.Periodic ||
+                    effect.Stat < 0 || effect.Stat > 9 ||
                     effect.Operation < 0 || effect.Operation > 2 ||
-                    effect.Stat <= 2 && effect.Operation != 0 ||
+                    (effect.Stat <= 2 || effect.Stat >= 7) && effect.Operation != 0 ||
                     effect.Operation == 2 && effect.Amount < 0)
                 {
                     throw new ArgumentException("属性修正 BUFF 配置无效。");
                 }
             }
-            else if (effect.Amount < 0 || definition.Kind == BuffKind.Persistent)
+            else if (effect.Amount < 0)
             {
-                throw new ArgumentException("治疗／伤害应使用即时或周期 BUFF。");
+                throw new ArgumentException("伤害、治疗和防护恢复的数值不得为负。");
             }
         }
     }

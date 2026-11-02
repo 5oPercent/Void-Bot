@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Commands.ERA;
 
-/// <summary>技能草稿验证、导入、发布或历史消息。</summary>
+/// <summary>谐振技能草稿验证、导入、发布或历史消息。</summary>
 public sealed class RestoreEraDraftPublicationCommand : ICommand
 {
     /// <summary>预期草稿修订号。</summary>
@@ -13,6 +13,6 @@ public sealed class RestoreEraDraftPublicationCommand : ICommand
 }
 
 /// <summary>操作结果，发布返回完整已发布配置。</summary>
-public sealed class RestoreEraDraftPublicationResponse : EraResponse<EraSkillDraftStatus>
+public sealed class RestoreEraDraftPublicationResponse : EraResponse<EraResonanceDraftStatus>
 {
 }

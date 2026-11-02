@@ -3,7 +3,7 @@ using Void.Bot.Message.Dto.ERA;
 
 namespace Void.Bot.Message.Request.ERA;
 
-/// <summary>技能草稿管理消息，保存不直接发布。</summary>
+/// <summary>谐振技能草稿管理消息，保存不直接发布。</summary>
 public sealed class ListEraDraftBuffRequest : IRequest
 {
     /// <summary>分页跳过量，不小于零。</summary>
@@ -16,7 +16,7 @@ public sealed class ListEraDraftBuffRequest : IRequest
     public bool IncludeDeleted { get; set; }
 }
 
-/// <summary>技能草稿操作结果。</summary>
-public sealed class ListEraDraftBuffResponse : EraResponse<EraSkillDraftPage<BuffDefinitionDto>>
+/// <summary>谐振技能草稿操作结果。</summary>
+public sealed class ListEraDraftBuffResponse : EraResponse<EraResonanceDraftPage<BuffDefinitionDto>>
 {
 }

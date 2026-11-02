@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Message.Dto.ERA;
@@ -5,6 +6,7 @@ namespace Void.Bot.Message.Dto.ERA;
 /// <summary>
 /// BUFF 的文字与业务配置；实例状态及实际表现由游戏端管理。
 /// </summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class BuffDefinitionDto
 {
     /// <summary>
@@ -15,6 +17,9 @@ public sealed class BuffDefinitionDto
     /// <summary>
     /// 基本显示名称；图标、颜色和其他样式由客户端映射。
     /// </summary>
+    public string PresentationKey { get; set; } = string.Empty;
+    public BuffLifecycleDto Lifecycle { get; set; } = new();
+
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
@@ -28,14 +33,14 @@ public sealed class BuffDefinitionDto
     public BuffKind Kind { get; set; }
 
     /// <summary>
-    /// BUFF 持续时间，单位为秒；持续或周期 BUFF 中 0 表示永久。
+    /// BUFF 持续时间，单位为秒；周期 BUFF 中 0 表示永久。
     /// </summary>
     public double DurationSeconds { get; set; }
 
     /// <summary>
-    /// 周期 BUFF 两次效果执行之间的间隔，单位为秒。
+    /// 周期 BUFF 的结算间隔（秒）；-1 表示仅施加时结算一次，不安排后续周期。
     /// </summary>
-    public double IntervalSeconds { get; set; } = 1;
+    public double IntervalSeconds { get; set; } = -1;
 
     /// <summary>
     /// BUFF 叠加分组；空字符串时使用 BUFF ID 作为分组。

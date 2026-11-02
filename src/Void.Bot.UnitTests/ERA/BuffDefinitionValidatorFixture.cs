@@ -8,7 +8,7 @@ namespace Void.Bot.UnitTest.ERA;
 public class BuffDefinitionValidatorFixture
 {
     [Fact]
-    public void Validate_ItemHealingBuffDoesNotRequireSkillConfiguration()
+    public void Validate_ItemHealingBuffDoesNotRequireResonanceConfiguration()
     {
         var definition = new BuffDefinitionDto()
         {
@@ -69,4 +69,40 @@ public class BuffDefinitionValidatorFixture
 
         Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
     }
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(.001)]
+    [InlineData(1)]
+    public void Periodic_effects_allow_mixed_modifiers_damage_healing_and_protection(double interval)
+    {
+        var definition = new BuffDefinitionDto { Id = "mixed", Kind = BuffKind.Periodic, IntervalSeconds = interval, DurationSeconds = 5,
+            Effects = new() {
+                new() { Kind = BuffEffectKind.Modifier, Stat = 5, Amount = -.2, Operation = 1 },
+                new() { Kind = BuffEffectKind.Damage, Amount = 10 },
+                new() { Kind = BuffEffectKind.Heal, Amount = 2 },
+                new() { Kind = BuffEffectKind.RestoreProtection, Amount = 3 } } };
+        Should.NotThrow(() => BuffDefinitionValidator.Validate(definition));
+    }
+
+    [Theory]
+    [InlineData(-2)]
+    [InlineData(-.5)]
+    [InlineData(0)]
+    [InlineData(.0001)]
+    [InlineData(86401)]
+    public void Periodic_effects_reject_other_intervals(double interval)
+    {
+        var definition = new BuffDefinitionDto { Id = "invalid", Kind = BuffKind.Periodic, IntervalSeconds = interval,
+            Effects = new() { new() { Kind = BuffEffectKind.Damage, Amount = 1 } } };
+        Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
+    }
+
+    [Fact]
+    public void Retired_persistent_kind_is_not_reinterpreted_as_periodic()
+    {
+        var definition = new BuffDefinitionDto { Id = "retired", Kind = (BuffKind)1,
+            Effects = new() { new() { Kind = BuffEffectKind.Modifier, Stat = 5, Amount = 1 } } };
+        Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
+    }
+
 }

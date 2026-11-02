@@ -24,7 +24,7 @@
 
 完整目录已有清单接口，包含模板、改装、属性映射、槽位类型及方案五类集合，版本位于 `data.version`。该清单路径目前仍要求有效游戏客户端会话；独立 Admin 管理接口不要求游戏会话，Web 可直接完成五类对象的单项管理。纯 Web 批量发布时，也可以按第 3.4 节从五类管理分页完整读取同一版本目录。
 
-`GET /api/era/admin/configuration` 与 `/configuration/export` 属于技能／BUFF 草稿，不能用于读取武器目录。武器路径中包含 `/equipment/`。
+`GET /api/era/admin/configuration` 与 `/configuration/export` 属于谐振技能／BUFF 草稿，不能用于读取武器目录。武器路径中包含 `/equipment/`。
 
 ## 2. 通用约定
 

@@ -43,13 +43,13 @@ public sealed class EraManifestController : ControllerBase
     [HttpGet("catalog")]
     [SkipPermissionCheck]
     [DescriptionLocalization("GetEraSkillConfiguration")]
-    [ProducesResponseType(typeof(GetEraSkillConfigurationResponse), 200)]
+    [ProducesResponseType(typeof(GetEraResonanceConfigurationResponse), 200)]
     public async Task<IActionResult> GetConfigurationAsync(
-        [FromQuery] GetEraSkillConfigurationRequest request,
+        [FromQuery] GetEraResonanceConfigurationRequest request,
         CancellationToken cancellationToken)
     {
         var response = await _mediator
-            .RequestAsync<GetEraSkillConfigurationRequest, GetEraSkillConfigurationResponse>(request, cancellationToken)
+            .RequestAsync<GetEraResonanceConfigurationRequest, GetEraResonanceConfigurationResponse>(request, cancellationToken)
             .ConfigureAwait(false);
 
         return Ok(response);
