@@ -128,14 +128,10 @@ public class EraResonanceServiceFixture
     }
 
     [Fact]
-    public async Task Save_DisabledLearnedResonanceIsAllowed()
+    public async Task Save_DisabledResonanceIsAllowed()
     {
         var service = Service();
         ConfigureRead();
-        _data.GetLearnedResonancesAsync(_characterId, Arg.Any<CancellationToken>()).Returns(new List<string>()
-        {
-            "heal"
-        });
         var result = await service.SaveProfileAsync(new SaveEraResonanceProfileCommand()
         {
             CharacterId = _characterId,
@@ -148,14 +144,44 @@ public class EraResonanceServiceFixture
     }
 
     [Fact]
-    public async Task Save_UnlearnedResonanceDoesNotWriteProfile()
+    public async Task Save_UnlearnedResonanceIsAllowed()
     {
         var service = Service();
-        ConfigureRead();
+        var configuration = Config();
+        configuration.DisabledSkills.Clear();
+        _data.GetConfigurationAsync(false, Arg.Any<CancellationToken>()).Returns(new EraResonanceConfiguration()
+        {
+            Version = 1,
+            Payload = JsonSerializer.Serialize(configuration)
+        });
         var result = await service.SaveProfileAsync(new SaveEraResonanceProfileCommand()
         {
             CharacterId = _characterId,
             Profile = Profile()
+        }, CancellationToken.None);
+        result.Code.ShouldBe(HttpStatusCode.OK);
+        result.Data!.Version.ShouldBe(1);
+        result.Data.Loadouts[0].Slots[1].ShouldBe("heal");
+        await _data.Received(1).CreateProfileAsync(Arg.Is<EraCharacterResonanceProfile>(p =>
+            p.CharacterId == _characterId && p.Version == 1), Arg.Any<CancellationToken>());
+        await _data.DidNotReceive().GetLearnedResonancesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("missing", null)]
+    [InlineData(null, "heal")]
+    [InlineData("heal", "heal")]
+    public async Task Save_InvalidPoolOrDuplicateDoesNotWriteProfile(string? primary, string? secondary)
+    {
+        var service = Service();
+        ConfigureRead();
+        var profile = Profile();
+        profile.Loadouts[0].Slots[1] = primary;
+        profile.Loadouts[0].Slots[2] = secondary;
+        var result = await service.SaveProfileAsync(new SaveEraResonanceProfileCommand()
+        {
+            CharacterId = _characterId,
+            Profile = profile
         }, CancellationToken.None);
         result.ErrorCode.ShouldBe("era.skills_invalid_loadout");
         await _data.DidNotReceive().CreateProfileAsync(Arg.Any<EraCharacterResonanceProfile>(), Arg.Any<CancellationToken>());

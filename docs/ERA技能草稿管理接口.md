@@ -81,7 +81,7 @@ Mode=0 按类别和 Id 合并、全局池有序去重；Mode=1 标记删除未�
 
 ## 读取、迁移与验证
 
-游戏通过 GET /api/era/manifest/catalog 获取正式快照，任务内冻结。角色配置仍使用 /api/era/characters/{characterId}/ability-systems/loadouts；校验当前账号归属与学习状态。主机读取有效成员配装使用 /api/era/worlds/{worldInstanceId}/ability-profiles，保留权威代次及租约校验。
+游戏通过 GET /api/era/manifest/catalog 获取正式快照，任务内冻结。角色配置仍使用 /api/era/characters/{characterId}/ability-systems/loadouts；校验当前账号归属、技能池、槽位、重复装备及配装版本，当前阶段不校验学习状态。主机读取有效成员配装使用 /api/era/worlds/{worldInstanceId}/ability-profiles，保留权威代次及租约校验。
 
 新增 DbUp Script0048_use_fixed_resonance_configuration.sql：直接执行 UPDATE／DELETE，无临时函数或 DELIMITER。空旧目录升结构 3；删除废弃元数据及参数模板菜单／授权绑定；仅有改动的设置递增版本。无旧业务内容，不建立转换器；若意外存在非空旧 Skills，保留其原结构版本，不将其冒充新配置。历史 DbUp 文件及日志不重置，无关晶格、效果和身份数据保留。手动执行应选中整份脚本，并在目标数据库执行；手动执行不登记 DbUp 日志，脚本可重复执行。
 
