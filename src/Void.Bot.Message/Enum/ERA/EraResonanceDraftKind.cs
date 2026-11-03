@@ -8,5 +8,7 @@ public enum EraResonanceDraftKind
     /// <summary>谐振技能及槽位方案。</summary>
     Resonance = 1,
     /// <summary>BUFF 定义。</summary>
-    Buff = 2
+    Buff = 2,
+    /// <summary>敌人定义。</summary>
+    Enemy = 3
 }

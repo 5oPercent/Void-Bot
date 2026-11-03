@@ -15,7 +15,7 @@ using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.UnitTest.ERA;
 
-public sealed class EraResonanceDraftFixture
+public sealed partial class EraResonanceDraftFixture
 {
     [Fact]
     public async Task HistoricalEffects_DropRetiredPresentationFieldOnReadRestoreAndRetry()
@@ -80,7 +80,9 @@ public sealed class EraResonanceDraftFixture
     {
         _user.Id.Returns(_account);
         _data.GetDraftWorkspaceAsync(Arg.Any<bool>(),Arg.Any<CancellationToken>()).Returns(_workspace);
-        _data.GetDraftRecordsAsync(Arg.Any<bool>(),Arg.Any<CancellationToken>()).Returns(_records);
+        // 模拟数据库查询返回独立列表，保留实体引用，避免导入同时更新查询列表和仓储时重复加入。
+        _data.GetDraftRecordsAsync(Arg.Any<bool>(),Arg.Any<CancellationToken>()).Returns(_ => _records.ToList());
+        _data.AddDraftRecordAsync(Arg.Any<EraResonanceDraftRecord>(),Arg.Any<CancellationToken>()).Returns(c=>{_records.Add(c.ArgAt<EraResonanceDraftRecord>(0));return Task.CompletedTask;});
         _data.GetConfigurationAsync(Arg.Any<bool>(),Arg.Any<CancellationToken>()).Returns(_published);
         _data.GetPublicationAsync(Arg.Any<long>(),Arg.Any<CancellationToken>()).Returns(c=>Task.FromResult<EraResonancePublication?>(_history.GetValueOrDefault(c.ArgAt<long>(0))));
         _data.GetPublishReceiptAsync(Arg.Any<Guid>(),Arg.Any<CancellationToken>()).Returns(c=>Task.FromResult<EraResonancePublishReceipt?>(_receipts.GetValueOrDefault(c.ArgAt<Guid>(0))));

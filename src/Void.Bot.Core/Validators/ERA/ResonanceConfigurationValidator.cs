@@ -36,6 +36,12 @@ public static class ResonanceConfigurationValidator
         }
 
         CombatRelationConfigurationValidator.ValidateConditions(configuration);
+        foreach (var enemy in Index(configuration.Enemies ?? new(), item => item.Id).Values)
+        {
+            EnemyDefinitionValidator.Validate(enemy);
+            EnemyDefinitionValidator.References(enemy, configuration);
+        }
+
         Pool(configuration.CommonTacticalSkills, ResonanceSlotKind.Tactical, skills);
         References(configuration.DisabledSkills, skills);
         // 为世界快照中的实体／BUFF 状态保留空间，完整配置不得占满默认 1 MiB RPC 帧。

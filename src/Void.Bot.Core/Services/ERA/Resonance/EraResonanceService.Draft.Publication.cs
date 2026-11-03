@@ -102,6 +102,12 @@ public partial class EraResonanceService
             }
         }
 
+        foreach (var enemy in configuration.Enemies ?? new())
+        {
+            if (request.Kind == EraResonanceDraftKind.Resonance) Scan(enemy.Skills.Select(s => s.SkillId), "Enemy", enemy.Id, "Enemies/" + enemy.Id + "/Skills");
+            if (request.Kind == EraResonanceDraftKind.Buff) Scan(enemy.InitialBuffs, "Enemy", enemy.Id, "Enemies/" + enemy.Id + "/InitialBuffs");
+        }
+
         return new()
         {
             Code = HttpStatusCode.OK,
@@ -168,6 +174,12 @@ public partial class EraResonanceService
             Add(EraResonanceDraftKind.Buff, definition);
         }
 
+        // Older imports omit this optional collection: preserve enemies. Restoring older history intentionally clears it.
+        foreach (var definition in configuration.Enemies ?? (restoringHistory ? new List<EnemyDefinition>() : view.Records.Where(r => r.Kind == EraResonanceDraftKind.Enemy && !r.IsDeleted).Select(EraResonanceDraftCompiler.Decode<EnemyDefinition>).ToList()))
+        {
+            Add(EraResonanceDraftKind.Enemy, definition);
+        }
+
         var existing = view.Records.ToDictionary(r => (r.Kind, r.StableId));
         if (!restoringHistory && incoming.Any(i => existing.TryGetValue((i.Kind, i.Id), out var r) && r.IsDeleted))
         {
@@ -217,6 +229,7 @@ public partial class EraResonanceService
                 case EraResonanceDraftKind.Lattice: combined.Systems.Add(JsonSerializer.Deserialize<LatticeDefinition>(record.Value)!); break;
                 case EraResonanceDraftKind.Resonance: combined.Skills.Add(JsonSerializer.Deserialize<ResonanceDefinition>(record.Value)!); break;
                 case EraResonanceDraftKind.Buff: combined.Buffs.Add(JsonSerializer.Deserialize<BuffDefinitionDto>(record.Value)!); break;
+                case EraResonanceDraftKind.Enemy: (combined.Enemies ??= new()).Add(JsonSerializer.Deserialize<EnemyDefinition>(record.Value)!); break;
             }
         }
         try { ResonanceConfigurationValidator.Validate(combined); }

@@ -28,6 +28,7 @@ internal static class EraResonanceDraftCompiler
         var result = new ResonanceConfiguration
         {
             Version = view.Published.Version,
+            Enemies = new(),
             CombatRelations = settings.CombatRelations,
             CommonTacticalSkills = settings.CommonTacticalSkills,
             DisabledSkills = settings.DisabledSkills
@@ -44,6 +45,9 @@ internal static class EraResonanceDraftCompiler
                     break;
                 case EraResonanceDraftKind.Buff:
                     result.Buffs.Add(Decode<BuffDefinitionDto>(record));
+                    break;
+                case EraResonanceDraftKind.Enemy:
+                    result.Enemies.Add(Decode<EnemyDefinition>(record));
                     break;
                 default:
                     throw new InvalidOperationException("草稿类别无效。");
@@ -71,6 +75,7 @@ internal static class EraResonanceDraftCompiler
         copy.Systems = copy.Systems.OrderBy(s => s.Id, StringComparer.Ordinal).ToList();
         copy.Skills = copy.Skills.OrderBy(s => s.Id, StringComparer.Ordinal).ToList();
         copy.Buffs = copy.Buffs.OrderBy(s => s.Id, StringComparer.Ordinal).ToList();
+        copy.Enemies = (copy.Enemies ?? new()).OrderBy(s => s.Id, StringComparer.Ordinal).ToList();
         if (copy.CombatRelations is { } relations)
         {
             relations.Species = relations.Species.OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
@@ -139,6 +144,12 @@ internal static class EraResonanceDraftCompiler
             }
         }
 
+        foreach (var enemy in configuration.Enemies ?? new())
+        {
+            try { EnemyDefinitionValidator.Validate(enemy); EnemyDefinitionValidator.References(enemy, configuration); }
+            catch (ArgumentException error) { errors.Add(new() { Code = "era.draft_invalid_enemy", Path = "Enemies/" + enemy?.Id, Message = error.Message }); }
+        }
+
         try
         {
             ResonanceConfigurationValidator.Validate(configuration);
@@ -173,6 +184,7 @@ internal static class EraResonanceDraftCompiler
         Compare("Systems", before.Systems, after.Systems, s => s.Id);
         Compare("Skills", before.Skills, after.Skills, s => s.Id);
         Compare("Buffs", before.Buffs, after.Buffs, b => b.Id);
+        Compare("Enemies", before.Enemies ?? new(), after.Enemies ?? new(), e => e.Id);
         if (JsonSerializer.Serialize(before.CombatRelations) != JsonSerializer.Serialize(after.CombatRelations))
             result.Add(new() { Type = "Modified", Id = "CombatRelations", Path = "Settings/CombatRelations" });
         if (!before.CommonTacticalSkills.SequenceEqual(after.CommonTacticalSkills))

@@ -32,6 +32,10 @@ public sealed class ResonanceConfiguration
     /// </summary>
     public List<BuffDefinitionDto> Buffs { get; set; } = new List<BuffDefinitionDto>();
 
+    /// <summary>仅管理端保存和发布；游戏配置接口暂不输出此字段。旧目录缺省表示未携带敌人集合。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<EnemyDefinition>? Enemies { get; set; }
+
     /// <summary>
     /// 所有晶格体系共享的通用战术谐振技能 ID，选择时与晶格体系专属池合并去重。
     /// </summary>
