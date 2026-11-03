@@ -38,6 +38,7 @@ public static class ResonanceDraftDefinitionValidator
             case EraResonanceDraftKind.Lattice: System((LatticeDefinition)value); break;
             case EraResonanceDraftKind.Resonance: Resonance((ResonanceDefinition)value); break;
             case EraResonanceDraftKind.Buff: BuffDefinitionValidator.Validate((BuffDefinitionDto)value); break;
+            case EraResonanceDraftKind.Enemy: EnemyDefinitionValidator.Validate((EnemyDefinition)value); break;
             default: throw new ArgumentException("草稿类别无效。");
         }
         if (JsonSerializer.SerializeToUtf8Bytes(value,value.GetType()).Length > 262144) throw new ArgumentException("单项定义超过 256 KiB。");
@@ -47,6 +48,7 @@ public static class ResonanceDraftDefinitionValidator
         LatticeDefinition system => system.Id,
         ResonanceDefinition skill => skill.Id,
         BuffDefinitionDto buff => buff.Id,
+        EnemyDefinition enemy => enemy.Id,
         _ => throw new ArgumentException("草稿对象类型无效。")
     };
 }

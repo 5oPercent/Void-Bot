@@ -37,6 +37,7 @@ public partial class EraResonanceService
         if (configuration.SchemaVersion != 3)
             return Error<GetEraResonanceConfigurationResponse>(HttpStatusCode.ServiceUnavailable, "era.skills_config_incompatible", text => text.ConfigUnavailable);
         ResonanceConfigurationValidator.Validate(configuration);
+        configuration.Enemies = null;
         return new GetEraResonanceConfigurationResponse()
         {
             Code = HttpStatusCode.OK,

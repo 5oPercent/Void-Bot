@@ -183,6 +183,11 @@ public partial class EraResonanceService
             await Add(EraResonanceDraftKind.Buff, definition);
         }
 
+        foreach (var definition in configuration.Enemies ?? new())
+        {
+            await Add(EraResonanceDraftKind.Enemy, definition);
+        }
+
         workspace.SettingsPayload = JsonSerializer.Serialize(new EraResonanceDraftSettings { CombatRelations = configuration.CombatRelations, CommonTacticalSkills = configuration.CommonTacticalSkills, DisabledSkills = configuration.DisabledSkills });
         workspace.SettingsVersion = 1;
         workspace.Initialized = true;
@@ -294,6 +299,12 @@ public partial class EraResonanceService
         if (view == null)
         {
             return DraftUnavailable<TResponse>();
+        }
+
+        if (definition is EnemyDefinition enemy)
+        {
+            try { EnemyDefinitionValidator.References(enemy, EraResonanceDraftCompiler.Compile(view)); }
+            catch (ArgumentException) { return DraftInvalid<TResponse>(); }
         }
 
         var record = view.Records.SingleOrDefault(r => r.Kind == kind && r.StableId == id);

@@ -25,6 +25,11 @@ public partial interface IEraResonanceService
     Task<SaveEraDraftBuffResponse> SaveDraftBuffAsync(SaveEraDraftBuffCommand command, CancellationToken cancellationToken);
     Task<DeleteEraDraftBuffResponse> DeleteDraftBuffAsync(DeleteEraDraftBuffCommand command, CancellationToken cancellationToken);
     Task<RestoreEraDraftBuffResponse> RestoreDraftBuffAsync(RestoreEraDraftBuffCommand command, CancellationToken cancellationToken);
+    Task<ListEraDraftEnemyResponse> ListDraftEnemyAsync(ListEraDraftEnemyRequest request, CancellationToken cancellationToken);
+    Task<GetEraDraftEnemyResponse> GetDraftEnemyAsync(GetEraDraftEnemyRequest request, CancellationToken cancellationToken);
+    Task<SaveEraDraftEnemyResponse> SaveDraftEnemyAsync(SaveEraDraftEnemyCommand command, CancellationToken cancellationToken);
+    Task<DeleteEraDraftEnemyResponse> DeleteDraftEnemyAsync(DeleteEraDraftEnemyCommand command, CancellationToken cancellationToken);
+    Task<RestoreEraDraftEnemyResponse> RestoreDraftEnemyAsync(RestoreEraDraftEnemyCommand command, CancellationToken cancellationToken);
     Task<GetEraDraftSettingsResponse> GetDraftSettingsAsync(GetEraDraftSettingsRequest request, CancellationToken cancellationToken);
     Task<SaveEraDraftSettingsResponse> SaveDraftSettingsAsync(SaveEraDraftSettingsCommand command, CancellationToken cancellationToken);
 }
@@ -104,5 +109,30 @@ public partial class EraResonanceService
     public Task<RestoreEraDraftBuffResponse> RestoreDraftBuffAsync(RestoreEraDraftBuffCommand command, CancellationToken cancellationToken)
     {
         return ChangeDraftDeletionAsync<RestoreEraDraftBuffResponse, BuffDefinitionDto>(EraResonanceDraftKind.Buff, command.Id, command.ExpectedVersion, false, cancellationToken);
+    }
+
+    public Task<ListEraDraftEnemyResponse> ListDraftEnemyAsync(ListEraDraftEnemyRequest request, CancellationToken cancellationToken)
+    {
+        return ListDraftItemsAsync<ListEraDraftEnemyResponse, EnemyDefinition>(EraResonanceDraftKind.Enemy, request.Skip, request.Take, request.Search, request.IncludeDeleted, cancellationToken);
+    }
+
+    public Task<GetEraDraftEnemyResponse> GetDraftEnemyAsync(GetEraDraftEnemyRequest request, CancellationToken cancellationToken)
+    {
+        return GetDraftItemAsync<GetEraDraftEnemyResponse, EnemyDefinition>(EraResonanceDraftKind.Enemy, request.Id, cancellationToken);
+    }
+
+    public Task<SaveEraDraftEnemyResponse> SaveDraftEnemyAsync(SaveEraDraftEnemyCommand command, CancellationToken cancellationToken)
+    {
+        return SaveDraftItemAsync<SaveEraDraftEnemyResponse, EnemyDefinition>(EraResonanceDraftKind.Enemy, command.Id, command.ExpectedVersion, command.Definition, cancellationToken);
+    }
+
+    public Task<DeleteEraDraftEnemyResponse> DeleteDraftEnemyAsync(DeleteEraDraftEnemyCommand command, CancellationToken cancellationToken)
+    {
+        return ChangeDraftDeletionAsync<DeleteEraDraftEnemyResponse, EnemyDefinition>(EraResonanceDraftKind.Enemy, command.Id, command.ExpectedVersion, true, cancellationToken);
+    }
+
+    public Task<RestoreEraDraftEnemyResponse> RestoreDraftEnemyAsync(RestoreEraDraftEnemyCommand command, CancellationToken cancellationToken)
+    {
+        return ChangeDraftDeletionAsync<RestoreEraDraftEnemyResponse, EnemyDefinition>(EraResonanceDraftKind.Enemy, command.Id, command.ExpectedVersion, false, cancellationToken);
     }
 }

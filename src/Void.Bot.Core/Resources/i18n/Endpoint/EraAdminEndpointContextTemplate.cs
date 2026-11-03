@@ -52,6 +52,11 @@ public sealed class EraAdminEndpointContextTemplate : IContextTemplate
     public string SaveEraDraftBuff { get; set; } = "保存单个BUFF草稿";
     public string DeleteEraDraftBuff { get; set; } = "标记删除单个BUFF草稿";
     public string RestoreEraDraftBuff { get; set; } = "恢复单个BUFF草稿";
+    public string ListEraDraftEnemy { get; set; } = "分页查询敌人配置草稿";
+    public string GetEraDraftEnemy { get; set; } = "读取敌人配置草稿";
+    public string SaveEraDraftEnemy { get; set; } = "保存敌人配置草稿";
+    public string DeleteEraDraftEnemy { get; set; } = "标记删除敌人配置草稿";
+    public string RestoreEraDraftEnemy { get; set; } = "恢复敌人配置草稿";
     public string GetEraDraftSettings { get; set; } = "读取通用池与禁用草稿设置";
     public string SaveEraDraftSettings { get; set; } = "保存通用池与禁用草稿设置";
     public string ValidateEraSkillDraft { get; set; } = "校验草稿完整引用与发布预算";
