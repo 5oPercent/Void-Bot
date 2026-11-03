@@ -23,6 +23,7 @@ public sealed class ResonanceVariant
     public double TriggerIntervalSeconds { get; set; }
     /// <summary>从载体生成起计时，延迟启动载体自身逻辑；不推迟载体生成或结束。</summary>
     public double ExecutionDelaySeconds { get; set; }
+    /// <summary>默认效果触发条件；不限制释放，单项效果可完整覆盖，自身载体不判断条件。</summary>
     public ResonanceEntityConditionDto Condition { get; set; } = new();
     public List<ResonanceGrantedEffectDto> Effects { get; set; } = new();
 }

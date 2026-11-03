@@ -44,12 +44,12 @@ ResonanceDefinition 仅 Id、Name、Description、Variants。每技能 1～4 个
 | CarrierKind | Self=0、Entity=1、Construct=2、Area=3 |
 | DurationSeconds／TriggerIntervalSeconds | 构造物／区域为 0.001～86400 秒；自身／实体必须为 0 |
 | ExecutionDelaySeconds | 0～86400 秒，生成后延迟首次自身逻辑，默认 0 |
-| Condition | 默认种族阵营条件树 |
+| Condition | 默认效果触发条件树，不限制技能释放；自身载体不判断条件 |
 | Effects | 最多 64 项，每项 EffectId 及可空 Condition；空数组表示无给予效果 |
 
 延迟从生成计时，存在时间也从生成计时。默认立即开始自身逻辑，随后按间隔；到期不执行。延迟不小于寿命时不会执行。构造物可能发射携带效果的子弹，公共层不自动替构造物给予；何时命中给予由客户端实现。区域形状、半径、构造物外观与运动不属于服务端配置。
 
-Effects 引用现有 BuffDefinitionDto，不复制治疗／伤害数值或属性持续时间。Condition=null 继承槽位默认；非空完整替换默认，不是附加 AND。比如默认敌对，伤害继承，治疗显式设友方，可在同一区域分别生效。效果的寿命、叠加、刷新和撤销只由效果配置定义，载体结束不截短已给予效果。
+Effects 引用现有 BuffDefinitionDto，不复制治疗／伤害数值或属性持续时间。Condition=null 继承槽位默认触发条件；非空完整替换默认，不是附加 AND。自身载体直接对释放者给予效果，不判断默认或单项效果条件，切换类型时保留原条件数据。比如默认敌对，伤害继承，治疗显式设友方，可在同一区域分别生效。释放由释放配置及原有合法性校验决定，不依赖默认或单项效果触发条件；目标不匹配仍可释放并消耗次数，非自身载体实际给予时按当前条件逐项判断，不满足仅跳过对应效果。效果的寿命、叠加、刷新和撤销只由效果配置定义，载体结束不截短已给予效果。
 
 ## 效果类型与周期叠加
 
@@ -61,7 +61,7 @@ IntervalSeconds=-1 表示不重复，每次给予时结算一次并按规则持�
 
 类型切换不自动改写效果条目。结构版本仍为本轮未合并的 3，不为同一功能反复升级。数据库无旧业务数据，不新增旧内容转换函数或单独迁移。
 
-## 指向条件
+## 触发条件
 
 每个节点含 Kind、IdentityId、Relation、Children。Kind：Any=0、Species=1、Faction=2、Relation=3、AllOf=4、AnyOf=5、Not=6。Species／Faction 必须引用 CombatRelations 的实际身份 Id；仅身份节点携带 IdentityId。Relation 只允许自身1、友方2、中立3、敌对4；其他节点 Relation=0。
 

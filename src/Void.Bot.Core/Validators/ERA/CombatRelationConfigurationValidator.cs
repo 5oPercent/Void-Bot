@@ -15,7 +15,7 @@ public static class CombatRelationConfigurationValidator
             AbilityExecutionContract.Condition(condition);
             if (condition.Kind == ResonanceConditionKind.Species && !species.Contains(condition.IdentityId)
                 || condition.Kind == ResonanceConditionKind.Faction && !factions.Contains(condition.IdentityId))
-                throw new ArgumentException("指向条件引用未登记的种族或阵营。");
+                throw new ArgumentException("触发条件引用未登记的种族或阵营。");
             foreach (var child in condition.Children) Condition(child);
         }
         foreach (var skill in configuration.Skills)
