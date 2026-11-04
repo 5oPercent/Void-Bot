@@ -24,6 +24,9 @@ public sealed class BuffDefinitionDto
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>是否禁用效果；保留原有定义及引用。</summary>
+    public bool IsDisabled { get; set; }
+
     /// <summary>
     /// 当前定义的类型，决定如何解释效果或 BUFF 生命周期。
     /// </summary>

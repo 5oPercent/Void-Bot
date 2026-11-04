@@ -12,6 +12,7 @@ namespace Void.Bot.Api.Controllers;
 [Authorize]
 [EraClientSession]
 [ApiController]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [Security]
 [Route("api/era/manifest")]
 [RequestSizeLimit(1048576)]

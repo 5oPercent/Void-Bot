@@ -282,7 +282,7 @@ public class EraWeaponFrameworkFixture
         var data = Substitute.For<IEraWeaponDataProvider>();
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
         var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
-        data.LockPublicationAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EraEquipmentConfiguration?>(publication));
+        data.LockConfigurationAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EraEquipmentConfiguration?>(publication));
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(catalog));
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new EraArmorCatalogDto()));
         data.GetReferencedWeaponsAsync(Arg.Any<EraEquipmentReferenceChanges>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(new List<EraEquipmentInstance>()));

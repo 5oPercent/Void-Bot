@@ -8,7 +8,7 @@ public sealed class EraEquipmentManifestDto
 {
     /// <summary>目录契约版本，当前为 3。</summary>
     public int SchemaVersion { get; set; } = 3;
-    /// <summary>由配置存储行确定的整份目录发布版本。</summary>
+    /// <summary>当前关系表读取及写入并发令牌，不对应历史快照。</summary>
     public long Version { get; set; }
     /// <summary>关系表中的护甲模板、槽位方案与改装配置。</summary>
     public EraArmorCatalogDto Armors { get; set; } = new();
@@ -16,6 +16,6 @@ public sealed class EraEquipmentManifestDto
     public EraArmorGenerationRulesDto GenerationRules { get; set; } = new EraArmorGenerationRulesDto();
     /// <summary>角色背包装备共享的总容量，不含已穿装备。</summary>
     public int InventoryCapacity { get; set; }
-    /// <summary>关系表中的当前武器配置，与目录 Version 属于同一发布。</summary>
+    /// <summary>关系表中的当前武器配置，与目录 Version 对应同一次一致性读取。</summary>
     public EraWeaponCatalogDto Weapons { get; set; } = new EraWeaponCatalogDto();
 }

@@ -21,7 +21,7 @@ public enum ResonanceSlotKind
     Secondary = 2,
 
     /// <summary>
-    /// 战术谐振技能槽，可选择晶格体系专属和通用战术谐振技能。
+    /// 战术谐振技能槽，只可选择当前晶格体系配置的战术技能。
     /// </summary>
     Tactical = 3,
 }

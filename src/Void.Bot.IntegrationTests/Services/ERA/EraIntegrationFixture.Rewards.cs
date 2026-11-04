@@ -358,12 +358,12 @@ public partial class EraIntegrationFixture
             rules = JsonSerializer.Deserialize<EraRewardRules>((await context.Set<EraRewardConfiguration>().SingleAsync()).Payload)!;
         });
         rules.Nodes.Single().ChanceBasisPoints = 0;
-        var publish = new PublishEraRewardConfigurationCommand { ExpectedVersion = 11, Configuration = rules };
+        var publish = new SaveEraRewardConfigurationCommand { ExpectedVersion = 11, Configuration = rules };
         var response = await RequestAsync((mediator, token) =>
-            mediator.SendAsync<PublishEraRewardConfigurationCommand, PublishEraRewardConfigurationResponse>(publish, token));
+            mediator.SendAsync<SaveEraRewardConfigurationCommand, SaveEraRewardConfigurationResponse>(publish, token));
         response.Data.ShouldBe(12);
         (await Should.ThrowAsync<EraRewardException>(() => RequestAsync((mediator, token) =>
-            mediator.SendAsync<PublishEraRewardConfigurationCommand, PublishEraRewardConfigurationResponse>(publish, token))))
+            mediator.SendAsync<SaveEraRewardConfigurationCommand, SaveEraRewardConfigurationResponse>(publish, token))))
             .ErrorCode.ShouldBe("era.reward_configuration_version_conflict");
         var newEvent = await PrepareRewardAsync(RewardCommand());
         (await GrantRewardAsync(prepared.Data)).Data!.Grants.Single().EquipmentInstanceIds.Count.ShouldBe(1);

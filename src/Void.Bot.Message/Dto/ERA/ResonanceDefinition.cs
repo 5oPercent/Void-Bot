@@ -22,6 +22,9 @@ public sealed class ResonanceDefinition
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>技能禁用标识，默认允许；仍可装配，但不能在局内释放。</summary>
+    public bool IsDisabled { get; set; }
+
     /// <summary>
     /// 谐振技能支持的槽位方案；每个槽位最多提供一个方案。
     /// </summary>

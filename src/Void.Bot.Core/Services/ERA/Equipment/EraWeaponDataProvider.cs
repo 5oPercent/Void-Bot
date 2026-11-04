@@ -14,7 +14,7 @@ public interface IEraWeaponDataProvider : IScope
 {
     Task<EraWeaponCatalogDto> GetCatalogAsync(CancellationToken cancellationToken);
     Task<Dictionary<Guid, EraWeaponInstanceDto>> GetInstancesAsync(IEnumerable<Guid> equipmentIds, CancellationToken cancellationToken);
-    Task<EraEquipmentConfiguration?> LockPublicationAsync(CancellationToken cancellationToken);
+    Task<EraEquipmentConfiguration?> LockConfigurationAsync(CancellationToken cancellationToken);
     Task<List<EraEquipmentInstance>> GetReferencedWeaponsAsync(EraEquipmentReferenceChanges changes, CancellationToken cancellationToken);
     Task<List<string>> GetPendingRewardPlansAsync(CancellationToken cancellationToken);
     Task<string?> GetRewardConfigurationPayloadAsync(CancellationToken cancellationToken);
@@ -113,7 +113,7 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
         return EraWeaponDataMapping.CreateInstances(candidates, selections, _mapper, ids);
     }
 
-    public async Task<EraEquipmentConfiguration?> LockPublicationAsync(CancellationToken cancellationToken)
+    public async Task<EraEquipmentConfiguration?> LockConfigurationAsync(CancellationToken cancellationToken)
     {
         _eraWeaponTemplateRepository.RequireTransaction();
         var id = Void.Bot.Message.Constants.ERA.EraEquipmentConstants.ConfigurationId;

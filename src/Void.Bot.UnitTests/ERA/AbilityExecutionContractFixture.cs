@@ -38,7 +38,7 @@ public class AbilityExecutionContractFixture
         variant.Condition.Relation.ShouldBe(4); variant.Effects[1].Condition!.Relation.ShouldBe(2);
         variant.Effects[0].Condition.ShouldBeNull();
         Should.Throw<JsonException>(() => JsonSerializer.Deserialize<ResonanceVariant>("{\"CarrierId\":\"self\"}"));
-        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EraResonanceDraftSettings>("{\"EditorDefinitions\":[]}"));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EraDataSettings>("{\"EditorDefinitions\":[]}"));
     }
 
     [Fact]

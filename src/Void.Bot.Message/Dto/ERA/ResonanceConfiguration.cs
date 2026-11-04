@@ -2,16 +2,11 @@ using System.Text.Json.Serialization;
 namespace Void.Bot.Message.Dto.ERA;
 
 /// <summary>
-/// 整批发布的谐振技能配置，包含晶格体系、谐振技能方案、BUFF 定义和禁用列表，不包含客户端表现资源。
+/// 从独立业务表组合的当前配置，包含晶格体系、谐振技能方案、BUFF 定义及种族阵营关系，不包含客户端表现资源。
 /// </summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class ResonanceConfiguration
 {
-    /// <summary>
-    /// 整份配置或配装的版本，由后端发布／保存时递增。
-    /// </summary>
-    public long Version { get; set; }
-
     /// <summary>
     /// 配置数据结构版本；当前为 3，用于识别客户端支持的契约。
     /// </summary>
@@ -32,20 +27,11 @@ public sealed class ResonanceConfiguration
     /// </summary>
     public List<BuffDefinitionDto> Buffs { get; set; } = new List<BuffDefinitionDto>();
 
-    /// <summary>仅管理端保存和发布；游戏配置接口暂不输出此字段。旧目录缺省表示未携带敌人集合。</summary>
+    /// <summary>仅管理端配置；游戏配置接口暂不输出此字段。旧目录缺省表示未携带敌人集合。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<EnemyDefinition>? Enemies { get; set; }
 
-    /// <summary>
-    /// 所有晶格体系共享的通用战术谐振技能 ID，选择时与晶格体系专属池合并去重。
-    /// </summary>
-    public List<string> CommonTacticalSkills { get; set; } = new List<string>();
-
-    /// <summary>可发布的种族、阵营和默认关系；旧目录可为空。</summary>
+    /// <summary>当前种族、阵营和默认关系；旧目录可为空。</summary>
     public CombatRelationConfigurationDto? CombatRelations { get; set; }
 
-    /// <summary>
-    /// 本次配置中禁用的谐振技能 ID；禁用不阻止配装保存，由主机禁止局内释放。
-    /// </summary>
-    public List<string> DisabledSkills { get; set; } = new List<string>();
 }

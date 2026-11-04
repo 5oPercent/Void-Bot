@@ -14,12 +14,21 @@ public static class EnemyDefinitionValidator
     {
         if (value == null || string.IsNullOrWhiteSpace(value.Name) || value.Name.Length > 256 || value.Description == null || value.Description.Length > 2048)
             throw new ArgumentException("敌人名称或说明无效。");
-        ResonanceDraftDefinitionValidator.Id(value.Id);
+        if (!Enum.IsDefined(value.Tier)) throw new ArgumentException("敌人等阶无效。");
+        EraDataDefinitionValidator.Id(value.Id);
         AbilityExecutionContract.Key(value.PresentationKey, true);
-        ResonanceDraftDefinitionValidator.Id(value.SpeciesId);
-        ResonanceDraftDefinitionValidator.Id(value.FactionId);
-        Number(value.MaximumHealth, 1, 1000000000);
-        Number(value.MaximumProtection, 0, 1000000000);
+        EraDataDefinitionValidator.Id(value.SpeciesId);
+        EraDataDefinitionValidator.Id(value.FactionId);
+        Number(value.BaseHealth, 1, 1000000000);
+        Number(value.BaseProtection, 0, 1000000000);
+        var tiers = value.TierMultipliers;
+        if (tiers == null) throw new ArgumentException("缺少敌人等阶倍率表。");
+        foreach (var multipliers in new[] { tiers.Minor, tiers.Elite, tiers.Major, tiers.Ultra, tiers.Boss })
+        {
+            if (multipliers == null) throw new ArgumentException("敌人等阶倍率表必须包含五档。");
+            Number(multipliers.Health, 0.001, 10000);
+            Number(multipliers.Protection, 0, 10000); Number(multipliers.Damage, 0, 10000);
+        }
         Number(value.WalkSpeed, 0, 1000); Number(value.RunSpeed, 0, 1000);
         Number(value.RecoveryDelaySeconds, 0, 86400); Number(value.HealthRecoveryPerSecond, 0, 1000000000); Number(value.ProtectionRecoveryPerSecond, 0, 1000000000);
         var ai = value.Ai;
@@ -31,16 +40,16 @@ public static class EnemyDefinitionValidator
         Number(ai.IdleMinimumSeconds, 0, 86400); Number(ai.IdleMaximumSeconds, ai.IdleMinimumSeconds, 86400);
         var attack = value.NormalAttack;
         if (attack == null) throw new ArgumentException("缺少普通攻击配置。");
-        Number(attack.Damage, 0, 1000000000); Number(attack.Distance, 0, 1000000);
+        Number(attack.BaseDamage, 0, 1000000000); Number(attack.Distance, 0, 1000000);
         Number(attack.WindupSeconds, 0, 86400); Number(attack.BackswingSeconds, 0, 86400); Number(attack.CooldownSeconds, 0, 86400);
         if (value.Skills == null || value.Skills.Count > 256 || value.Skills.Any(s => s == null) || value.Skills.Select(s => s.SkillId).Distinct(StringComparer.Ordinal).Count() != value.Skills.Count)
             throw new ArgumentException("敌人技能列表无效或重复。");
         foreach (var skill in value.Skills)
         {
-            ResonanceDraftDefinitionValidator.Id(skill.SkillId);
+            EraDataDefinitionValidator.Id(skill.SkillId);
             if (!Enum.IsDefined(skill.Slot) || skill.Priority < 0) throw new ArgumentException("敌人技能方案或优先级无效。");
         }
-        ResonanceDraftDefinitionValidator.Ids(value.InitialBuffs);
+        EraDataDefinitionValidator.Ids(value.InitialBuffs);
         if (value.InitialBuffs.Count > 256) throw new ArgumentException("初始 BUFF 最多 256 项。");
     }
 

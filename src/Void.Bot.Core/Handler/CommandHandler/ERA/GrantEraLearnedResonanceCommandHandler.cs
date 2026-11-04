@@ -1,15 +1,15 @@
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
-using Void.Bot.Core.Services.ERA.Resonance;
+using Void.Bot.Core.Services.ERA.AbilityProfile;
 using Void.Bot.Message.Commands.ERA;
 
 namespace Void.Bot.Core.Handler.CommandHandler.ERA;
 
 public class GrantEraLearnedResonanceCommandHandler : ICommandHandler<GrantEraLearnedResonanceCommand, GrantEraLearnedResonanceResponse>
 {
-    private readonly IEraResonanceService _service;
+    private readonly IEraAbilityProfileService _service;
 
-    public GrantEraLearnedResonanceCommandHandler(IEraResonanceService service)
+    public GrantEraLearnedResonanceCommandHandler(IEraAbilityProfileService service)
     {
         _service = service;
     }

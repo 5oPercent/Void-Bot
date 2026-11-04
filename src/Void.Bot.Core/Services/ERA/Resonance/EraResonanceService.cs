@@ -1,55 +1,44 @@
-using System.Linq.Expressions;
-using System.Net;
-using AutoMapper;
-using Void.Bot.Core.Resources.i18n.ERA;
-using Void.Bot.Core.Services.ERA.Player;
+using Void.Bot.Core.Domain.ERA;
+using Void.Bot.Core.Services.ERA.Configuration;
 using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Language;
-using Void.Bot.Message.Dto;
+using Void.Bot.Message.Commands.ERA;
+using Void.Bot.Message.Dto.ERA;
+using Void.Bot.Message.Enum.ERA;
+using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Core.Services.ERA.Resonance;
 
-public partial interface IEraResonanceService : IScope
+public interface IEraResonanceService : IScope
 {
+    Task<ListEraDataResonanceResponse> ListDataResonanceAsync(ListEraDataResonanceRequest request, CancellationToken cancellationToken);
+    Task<GetEraDataResonanceResponse> GetDataResonanceAsync(GetEraDataResonanceRequest request, CancellationToken cancellationToken);
+    Task<SaveEraDataResonanceResponse> SaveDataResonanceAsync(SaveEraDataResonanceCommand command, CancellationToken cancellationToken);
+    Task<DeleteEraDataResonanceResponse> DeleteDataResonanceAsync(DeleteEraDataResonanceCommand command, CancellationToken cancellationToken);
 }
 
-/// <summary>
-/// ERA 谐振技能配置与角色配装的业务入口；事务由 Mediator 工作单元统一提交。
-/// </summary>
-public partial class EraResonanceService : IEraResonanceService
+/// <summary>本类别配置的独立业务入口，事务由 Mediator 工作单元提交。</summary>
+public sealed class EraResonanceService(IEraResonanceDataProvider records, IEraAbilityCatalogQueryService catalog,
+    IEraConfigurationStateProvider states, ICurrentUser currentUser, ILocalizationService localization)
+    : EraDefinitionService<EraSkillDefinition, ResonanceDefinition>(records, catalog, states, currentUser, localization), IEraResonanceService
 {
-    private readonly IEraResonanceDataProvider _dataProvider;
-    private readonly IEraCharacterContext _characterContext;
-    private readonly ICurrentUser _currentUser;
-    private readonly ILocalizationService _localizationService;
-    private readonly IMapper _mapper;
+    protected override EraDataKind Kind => EraDataKind.Resonance;
 
-    public EraResonanceService(
-        IEraResonanceDataProvider dataProvider,
-        IEraCharacterContext characterContext,
-        ICurrentUser currentUser,
-        ILocalizationService localizationService,
-        IMapper mapper)
+    protected override void SetDefinition(EraSkillDefinition record, ResonanceDefinition definition)
     {
-        _dataProvider = dataProvider;
-        _characterContext = characterContext;
-        _currentUser = currentUser;
-        _localizationService = localizationService;
-        _mapper = mapper;
+        base.SetDefinition(record, definition);
+        record.IsDisabled = definition.IsDisabled;
     }
 
-    private T Error<T>(
-        HttpStatusCode status,
-        string key,
-        Expression<Func<EraResonancesContextTemplate, object>> text)
-        where T : VoidBotResponse, new()
-    {
-        return new T()
-        {
-            Code = status,
-            ErrorCode = key,
-            Message = _localizationService.GetValue(text)
-        };
-    }
+    public Task<ListEraDataResonanceResponse> ListDataResonanceAsync(ListEraDataResonanceRequest request, CancellationToken cancellationToken) =>
+        ListAsync<ListEraDataResonanceResponse>(request.Skip, request.Take, request.Search, cancellationToken);
 
+    public Task<GetEraDataResonanceResponse> GetDataResonanceAsync(GetEraDataResonanceRequest request, CancellationToken cancellationToken) =>
+        GetAsync<GetEraDataResonanceResponse>(request.Id, cancellationToken);
+
+    public Task<SaveEraDataResonanceResponse> SaveDataResonanceAsync(SaveEraDataResonanceCommand command, CancellationToken cancellationToken) =>
+        SaveAsync<SaveEraDataResonanceResponse>(command.Id, command.ExpectedVersion, command.Definition, cancellationToken);
+
+    public Task<DeleteEraDataResonanceResponse> DeleteDataResonanceAsync(DeleteEraDataResonanceCommand command, CancellationToken cancellationToken) =>
+        DeleteAsync<DeleteEraDataResonanceResponse>(command.Id, command.ExpectedVersion, cancellationToken);
 }

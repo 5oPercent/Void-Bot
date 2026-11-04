@@ -8,47 +8,38 @@ namespace Void.Bot.Api.Controllers;
 public sealed partial class EraAdminController
 {
     [HttpGet("enemies")]
-    [DescriptionLocalization("ListEraDraftEnemy")]
-    [ProducesResponseType(typeof(ListEraDraftEnemyResponse), 200)]
-    public async Task<IActionResult> ListDraftEnemyAsync([FromQuery] ListEraDraftEnemyRequest request, CancellationToken cancellationToken)
+    [DescriptionLocalization("ListEraDataEnemy")]
+    [ProducesResponseType(typeof(ListEraDataEnemyResponse), 200)]
+    public async Task<IActionResult> ListDataEnemyAsync([FromQuery] ListEraDataEnemyRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _mediator.RequestAsync<ListEraDraftEnemyRequest, ListEraDraftEnemyResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<ListEraDataEnemyRequest, ListEraDataEnemyResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpGet("enemies/{id}")]
-    [DescriptionLocalization("GetEraDraftEnemy")]
-    [ProducesResponseType(typeof(GetEraDraftEnemyResponse), 200)]
-    public async Task<IActionResult> GetDraftEnemyAsync(string id, [FromQuery] GetEraDraftEnemyRequest request, CancellationToken cancellationToken)
+    [DescriptionLocalization("GetEraDataEnemy")]
+    [ProducesResponseType(typeof(GetEraDataEnemyResponse), 200)]
+    public async Task<IActionResult> GetDataEnemyAsync(string id, [FromQuery] GetEraDataEnemyRequest request, CancellationToken cancellationToken)
     {
         request.Id = id;
-        return Ok(await _mediator.RequestAsync<GetEraDraftEnemyRequest, GetEraDraftEnemyResponse>(request, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.RequestAsync<GetEraDataEnemyRequest, GetEraDataEnemyResponse>(request, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("enemies/{id}")]
-    [DescriptionLocalization("SaveEraDraftEnemy")]
-    [ProducesResponseType(typeof(SaveEraDraftEnemyResponse), 200)]
-    public async Task<IActionResult> SaveDraftEnemyAsync(string id, [FromBody] SaveEraDraftEnemyCommand command, CancellationToken cancellationToken)
+    [DescriptionLocalization("SaveEraDataEnemy")]
+    [ProducesResponseType(typeof(SaveEraDataEnemyResponse), 200)]
+    public async Task<IActionResult> SaveDataEnemyAsync(string id, [FromBody] SaveEraDataEnemyCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<SaveEraDraftEnemyCommand, SaveEraDraftEnemyResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<SaveEraDataEnemyCommand, SaveEraDataEnemyResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
     [HttpPost("enemies/{id}/delete")]
-    [DescriptionLocalization("DeleteEraDraftEnemy")]
-    [ProducesResponseType(typeof(DeleteEraDraftEnemyResponse), 200)]
-    public async Task<IActionResult> DeleteDraftEnemyAsync(string id, [FromBody] DeleteEraDraftEnemyCommand command, CancellationToken cancellationToken)
+    [DescriptionLocalization("DeleteEraDataEnemy")]
+    [ProducesResponseType(typeof(DeleteEraDataEnemyResponse), 200)]
+    public async Task<IActionResult> DeleteDataEnemyAsync(string id, [FromBody] DeleteEraDataEnemyCommand command, CancellationToken cancellationToken)
     {
         command.Id = id;
-        return Ok(await _mediator.SendAsync<DeleteEraDraftEnemyCommand, DeleteEraDraftEnemyResponse>(command, cancellationToken).ConfigureAwait(false));
-    }
-
-    [HttpPost("enemies/{id}/restore")]
-    [DescriptionLocalization("RestoreEraDraftEnemy")]
-    [ProducesResponseType(typeof(RestoreEraDraftEnemyResponse), 200)]
-    public async Task<IActionResult> RestoreDraftEnemyAsync(string id, [FromBody] RestoreEraDraftEnemyCommand command, CancellationToken cancellationToken)
-    {
-        command.Id = id;
-        return Ok(await _mediator.SendAsync<RestoreEraDraftEnemyCommand, RestoreEraDraftEnemyResponse>(command, cancellationToken).ConfigureAwait(false));
+        return Ok(await _mediator.SendAsync<DeleteEraDataEnemyCommand, DeleteEraDataEnemyResponse>(command, cancellationToken).ConfigureAwait(false));
     }
 
 }

@@ -33,7 +33,7 @@ public partial interface IEraWeaponService : IScope
     Task<DeleteEraWeaponModificationResponse> DeleteModificationAsync(DeleteEraWeaponModificationCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponSlotConfigurationResponse> DeleteSlotConfigurationAsync(DeleteEraWeaponSlotConfigurationCommand command, CancellationToken cancellationToken);
     Task<DeleteEraWeaponSlotTypeResponse> DeleteSlotTypeAsync(DeleteEraWeaponSlotTypeCommand command, CancellationToken cancellationToken);
-    Task<PublishEraWeaponConfigurationResponse> PublishConfigurationAsync(PublishEraWeaponConfigurationCommand command, CancellationToken cancellationToken);
+    Task<SaveEraWeaponConfigurationResponse> PublishConfigurationAsync(SaveEraWeaponConfigurationCommand command, CancellationToken cancellationToken);
     Task<ValidateEraWeaponConfigurationResponse> ValidateConfigurationAsync(ValidateEraWeaponConfigurationRequest request, CancellationToken cancellationToken);
 }
 
@@ -200,8 +200,8 @@ public sealed partial class EraWeaponService : IEraWeaponService
             return catalog;
         }, cancellationToken);
 
-    public Task<PublishEraWeaponConfigurationResponse> PublishConfigurationAsync(PublishEraWeaponConfigurationCommand command, CancellationToken cancellationToken) =>
-        WriteAsync<PublishEraWeaponConfigurationResponse>(command.ExpectedManifestVersion, _ => command.Configuration, cancellationToken);
+    public Task<SaveEraWeaponConfigurationResponse> PublishConfigurationAsync(SaveEraWeaponConfigurationCommand command, CancellationToken cancellationToken) =>
+        WriteAsync<SaveEraWeaponConfigurationResponse>(command.ExpectedManifestVersion, _ => command.Configuration, cancellationToken);
 
     public async Task<ValidateEraWeaponConfigurationResponse> ValidateConfigurationAsync(ValidateEraWeaponConfigurationRequest request, CancellationToken cancellationToken)
     {
@@ -221,7 +221,7 @@ public sealed partial class EraWeaponService : IEraWeaponService
         where T : EraResponse<EraWeaponConfigurationResultDto>, new()
     {
         if (!_currentUser.Id.HasValue || _currentUser.Id == Guid.Empty) throw Error(HttpStatusCode.Unauthorized, "era.weapon_unauthorized", value => value.Unauthorized);
-        var publication = await _weapons.LockPublicationAsync(cancellationToken).ConfigureAwait(false) ??
+        var publication = await _weapons.LockConfigurationAsync(cancellationToken).ConfigureAwait(false) ??
             throw Error(HttpStatusCode.ServiceUnavailable, "era.weapon_config_unavailable", value => value.Unavailable);
         if (expectedVersion < 1 || expectedVersion == long.MaxValue || publication.Version != expectedVersion)
             throw Error(HttpStatusCode.Conflict, "era.weapon_config_version_conflict", value => value.VersionConflict);
