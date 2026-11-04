@@ -1,0 +1,78 @@
+{
+  "enemies": [
+    {
+      "id": "target-dummy-health",
+      "name": "生命靶子",
+      "description": "按客户端现有场景整理；静止受击靶子，AI 和普通攻击参数不执行。恢复参数映射为生命每秒 10。",
+      "presentationKey": "",
+      "speciesId": "construct",
+      "factionId": "hostile",
+      "maximumHealth": 100,
+      "maximumProtection": 0,
+      "walkSpeed": 6,
+      "runSpeed": 10,
+      "recoveryDelaySeconds": 3,
+      "healthRecoveryPerSecond": 10,
+      "protectionRecoveryPerSecond": 0,
+      "ai": {
+        "behavior": 0,
+        "aggression": 0,
+        "perceptionDistance": 18,
+        "fieldOfView": 120,
+        "perceptionIntervalSeconds": 0.3,
+        "targetMemorySeconds": 6,
+        "maximumChaseSeconds": 20,
+        "stopDistance": 1.8,
+        "stuckTimeoutSeconds": 3,
+        "idleMinimumSeconds": 2,
+        "idleMaximumSeconds": 5
+      },
+      "normalAttack": {
+        "damage": 0,
+        "distance": 1.8,
+        "windupSeconds": 0.5,
+        "backswingSeconds": 0.6,
+        "cooldownSeconds": 1.8
+      },
+      "skills": [],
+      "initialBuffs": []
+    },
+    {
+      "id": "target-dummy-shield",
+      "name": "防护靶子",
+      "description": "按客户端现有场景整理；静止受击靶子，AI 和普通攻击参数不执行。恢复参数按生命／防护分别每秒 10 映射；客户端原实现为共享每秒 10、优先生命，行为不完全等价。",
+      "presentationKey": "",
+      "speciesId": "construct",
+      "factionId": "hostile",
+      "maximumHealth": 25,
+      "maximumProtection": 175,
+      "walkSpeed": 6,
+      "runSpeed": 10,
+      "recoveryDelaySeconds": 3,
+      "healthRecoveryPerSecond": 10,
+      "protectionRecoveryPerSecond": 10,
+      "ai": {
+        "behavior": 0,
+        "aggression": 0,
+        "perceptionDistance": 18,
+        "fieldOfView": 120,
+        "perceptionIntervalSeconds": 0.3,
+        "targetMemorySeconds": 6,
+        "maximumChaseSeconds": 20,
+        "stopDistance": 1.8,
+        "stuckTimeoutSeconds": 3,
+        "idleMinimumSeconds": 2,
+        "idleMaximumSeconds": 5
+      },
+      "normalAttack": {
+        "damage": 0,
+        "distance": 1.8,
+        "windupSeconds": 0.5,
+        "backswingSeconds": 0.6,
+        "cooldownSeconds": 1.8
+      },
+      "skills": [],
+      "initialBuffs": []
+    }
+  ]
+}
