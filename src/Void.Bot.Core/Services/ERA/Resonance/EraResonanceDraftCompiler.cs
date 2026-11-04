@@ -19,23 +19,7 @@ internal static class EraResonanceDraftCompiler
         var document = JsonNode.Parse(payload) ?? throw new InvalidOperationException("发布配置为空。");
         if (document["Buffs"] is JsonArray buffs)
             foreach (var buff in buffs.OfType<JsonObject>()) buff.Remove("PresentationKey");
-        if (document["Enemies"] is JsonArray enemies)
-            foreach (var enemy in enemies) DropRetiredEnemyFields(enemy);
         return document.Deserialize<ResonanceConfiguration>() ?? throw new InvalidOperationException("发布配置为空。");
-    }
-
-    private static void DropRetiredEnemyFields(JsonNode? enemy)
-    {
-        if (enemy is not JsonObject) return;
-        if (enemy["NormalAttack"] is JsonObject attack) attack.Remove("Enabled");
-        if (enemy["Recovery"] is JsonObject recovery) recovery.Remove("HealthEnabled");
-    }
-
-    public static EnemyDefinition DecodeEnemy(string payload)
-    {
-        var document = JsonNode.Parse(payload) ?? throw new InvalidOperationException("敌人草稿为空。");
-        DropRetiredEnemyFields(document);
-        return document.Deserialize<EnemyDefinition>() ?? throw new InvalidOperationException("敌人草稿为空。");
     }
 
     public static ResonanceConfiguration Compile(EraResonanceDraftView view)
@@ -75,9 +59,7 @@ internal static class EraResonanceDraftCompiler
 
     public static T Decode<T>(EraResonanceDraftRecord record)
     {
-        var value = typeof(T) == typeof(EnemyDefinition)
-            ? (T)(object)DecodeEnemy(record.Payload)
-            : JsonSerializer.Deserialize<T>(record.Payload);
+        var value = JsonSerializer.Deserialize<T>(record.Payload);
         if (value is null)
         {
             throw new InvalidOperationException("草稿对象为空。");

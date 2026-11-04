@@ -21,6 +21,7 @@ public static class EnemyDefinitionValidator
         Number(value.MaximumHealth, 1, 1000000000);
         Number(value.MaximumProtection, 0, 1000000000);
         Number(value.WalkSpeed, 0, 1000); Number(value.RunSpeed, 0, 1000);
+        Number(value.RecoveryDelaySeconds, 0, 86400); Number(value.HealthRecoveryPerSecond, 0, 1000000000); Number(value.ProtectionRecoveryPerSecond, 0, 1000000000);
         var ai = value.Ai;
         if (ai == null || !Enum.IsDefined(ai.Behavior) || !Enum.IsDefined(ai.Aggression)) throw new ArgumentException("敌人 AI 行为无效。");
         Number(ai.PerceptionDistance, 0, 1000000); Number(ai.FieldOfView, 0, 360);
@@ -41,9 +42,6 @@ public static class EnemyDefinitionValidator
         }
         ResonanceDraftDefinitionValidator.Ids(value.InitialBuffs);
         if (value.InitialBuffs.Count > 256) throw new ArgumentException("初始 BUFF 最多 256 项。");
-        var recovery = value.Recovery;
-        if (recovery == null) throw new ArgumentException("缺少恢复配置。");
-        Number(recovery.DelaySeconds, 0, 86400); Number(recovery.HealthPerSecond, 0, 1000000000); Number(recovery.ProtectionPerSecond, 0, 1000000000);
     }
 
     public static void References(EnemyDefinition value, ResonanceConfiguration configuration)
