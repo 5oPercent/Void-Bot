@@ -229,7 +229,7 @@ public partial class EraResonanceService
                 case EraResonanceDraftKind.Lattice: combined.Systems.Add(JsonSerializer.Deserialize<LatticeDefinition>(record.Value)!); break;
                 case EraResonanceDraftKind.Resonance: combined.Skills.Add(JsonSerializer.Deserialize<ResonanceDefinition>(record.Value)!); break;
                 case EraResonanceDraftKind.Buff: combined.Buffs.Add(JsonSerializer.Deserialize<BuffDefinitionDto>(record.Value)!); break;
-                case EraResonanceDraftKind.Enemy: (combined.Enemies ??= new()).Add(JsonSerializer.Deserialize<EnemyDefinition>(record.Value)!); break;
+                case EraResonanceDraftKind.Enemy: (combined.Enemies ??= new()).Add(EraResonanceDraftCompiler.DecodeEnemy(record.Value)); break;
             }
         }
         try { ResonanceConfigurationValidator.Validate(combined); }

@@ -43,7 +43,6 @@ public sealed class EnemyAiDefinition
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class EnemyNormalAttackDefinition
 {
-    public bool Enabled { get; set; }
     public double Damage { get; set; }
     public double Distance { get; set; } = 1.8;
     public double WindupSeconds { get; set; } = 0.5;
@@ -63,7 +62,6 @@ public sealed class EnemySkillReference
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class EnemyRecoveryDefinition
 {
-    public bool HealthEnabled { get; set; }
     public double DelaySeconds { get; set; } = 5;
     public double HealthPerSecond { get; set; }
     public double ProtectionPerSecond { get; set; }
