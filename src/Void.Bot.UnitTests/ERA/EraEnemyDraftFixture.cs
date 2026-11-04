@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Shouldly;
+using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Validators.ERA;
 using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
@@ -40,6 +42,57 @@ public sealed partial class EraResonanceDraftFixture
         var restored = await service.RestoreDraftEnemyAsync(new() { Id = "guard", ExpectedVersion = 2 }, CancellationToken.None);
         restored.Data!.IsDeleted.ShouldBeFalse();
         restored.Data.Version.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Enemy_RetiredAttackAndRecoverySwitchesAreDroppedOnDraftAndHistoryReads()
+    {
+        var service = Service();
+        var definition = Enemy();
+        definition.NormalAttack.Damage = 25;
+        definition.Recovery.HealthPerSecond = 12;
+        var legacy = JsonSerializer.SerializeToNode(definition)!;
+        legacy["NormalAttack"]!["Enabled"] = false;
+        legacy["Recovery"]!["HealthEnabled"] = true;
+        var payload = legacy.ToJsonString();
+        var record = new EraResonanceDraftRecord { Id = Guid.NewGuid(), WorkspaceId = _workspace.Id, Kind = EraResonanceDraftKind.Enemy, StableId = "guard", Version = 1, Payload = payload };
+        _records.Add(record);
+        var read = await service.GetDraftEnemyAsync(new() { Id = "guard" }, CancellationToken.None);
+        read.Code.ShouldBe(HttpStatusCode.OK);
+        read.Data!.Definition.NormalAttack.Damage.ShouldBe(25);
+        read.Data.Definition.Recovery.HealthPerSecond.ShouldBe(12);
+        JsonSerializer.Serialize(read.Data).ShouldNotContain("Enabled");
+        record.Payload.ShouldBe(payload);
+        var exported = await service.ExportDraftAsync(new(), CancellationToken.None);
+        JsonSerializer.Serialize(exported.Data).ShouldNotContain("Enabled");
+        var merged = await service.ImportDraftAsync(new() { ExpectedDraftRevision = _workspace.Revision, Mode = EraResonanceDraftImportMode.Merge, Configuration = new() { Enemies = new() } }, CancellationToken.None);
+        merged.Code.ShouldBe(HttpStatusCode.OK);
+
+        var historical = JsonSerializer.SerializeToNode(new ResonanceConfiguration
+        {
+            Version = 2,
+            Enemies = new() { definition },
+            CombatRelations = JsonSerializer.Deserialize<EraResonanceDraftSettings>(_workspace.SettingsPayload)!.CombatRelations
+        })!;
+        historical["Enemies"]![0] = legacy.DeepClone();
+        var publication = new EraResonancePublication { Version = 2, Payload = historical.ToJsonString(), ContentHash = "original-hash" };
+        var original = publication.Payload;
+        _history.Add(2, publication);
+        var history = await service.GetPublicationAsync(new() { Version = 2 }, CancellationToken.None);
+        history.Code.ShouldBe(HttpStatusCode.OK);
+        JsonSerializer.Serialize(history.Data).ShouldNotContain("Enabled");
+        var restored = await service.RestorePublicationToDraftAsync(new() { Version = 2, ExpectedDraftRevision = _workspace.Revision }, CancellationToken.None);
+        restored.Code.ShouldBe(HttpStatusCode.OK);
+        record.Payload.ShouldNotContain("Enabled");
+        var request = new Void.Bot.Message.Commands.ERA.PublishEraResonanceDraftCommand { RequestId = Guid.NewGuid(), ExpectedDraftRevision = _workspace.Revision, ExpectedPublishedVersion = 1 };
+        _receipts.Add(request.RequestId, new() { Id = request.RequestId, AccountId = _account, ExpectedDraftRevision = request.ExpectedDraftRevision, ExpectedPublishedVersion = 1, PublishedVersion = 2 });
+        var retry = await service.PublishDraftAsync(request, CancellationToken.None);
+        retry.Code.ShouldBe(HttpStatusCode.OK);
+        JsonSerializer.Serialize(retry.Data).ShouldNotContain("Enabled");
+        publication.Payload.ShouldBe(original);
+        publication.ContentHash.ShouldBe("original-hash");
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyNormalAttackDefinition>("{\"Enabled\":true}"));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyRecoveryDefinition>("{\"HealthEnabled\":true}"));
     }
 
     [Fact]

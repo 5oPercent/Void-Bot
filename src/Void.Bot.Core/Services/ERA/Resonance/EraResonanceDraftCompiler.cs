@@ -13,13 +13,29 @@ namespace Void.Bot.Core.Services.ERA.Resonance;
 /// <summary>唯一草稿汇总器；保留池和效果顺序，不读取数据库或实施玩家数据迁移。</summary>
 internal static class EraResonanceDraftCompiler
 {
-    // 历史发布原文与哈希保持不变；只在读取边界移除已废弃的效果表现字段。
+    // 历史发布原文与哈希保持不变；只在读取边界移除已废弃的配置字段。
     public static ResonanceConfiguration DecodePublication(string payload)
     {
         var document = JsonNode.Parse(payload) ?? throw new InvalidOperationException("发布配置为空。");
         if (document["Buffs"] is JsonArray buffs)
             foreach (var buff in buffs.OfType<JsonObject>()) buff.Remove("PresentationKey");
+        if (document["Enemies"] is JsonArray enemies)
+            foreach (var enemy in enemies) DropRetiredEnemyFields(enemy);
         return document.Deserialize<ResonanceConfiguration>() ?? throw new InvalidOperationException("发布配置为空。");
+    }
+
+    private static void DropRetiredEnemyFields(JsonNode? enemy)
+    {
+        if (enemy is not JsonObject) return;
+        if (enemy["NormalAttack"] is JsonObject attack) attack.Remove("Enabled");
+        if (enemy["Recovery"] is JsonObject recovery) recovery.Remove("HealthEnabled");
+    }
+
+    public static EnemyDefinition DecodeEnemy(string payload)
+    {
+        var document = JsonNode.Parse(payload) ?? throw new InvalidOperationException("敌人草稿为空。");
+        DropRetiredEnemyFields(document);
+        return document.Deserialize<EnemyDefinition>() ?? throw new InvalidOperationException("敌人草稿为空。");
     }
 
     public static ResonanceConfiguration Compile(EraResonanceDraftView view)
@@ -59,7 +75,9 @@ internal static class EraResonanceDraftCompiler
 
     public static T Decode<T>(EraResonanceDraftRecord record)
     {
-        var value = JsonSerializer.Deserialize<T>(record.Payload);
+        var value = typeof(T) == typeof(EnemyDefinition)
+            ? (T)(object)DecodeEnemy(record.Payload)
+            : JsonSerializer.Deserialize<T>(record.Payload);
         if (value is null)
         {
             throw new InvalidOperationException("草稿对象为空。");
