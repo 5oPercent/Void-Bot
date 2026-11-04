@@ -58,6 +58,13 @@ public sealed partial class EraResonanceDraftFixture
     public void Enemy_RejectsInvalidNumbersDuplicateSkillsAndUnknownFields()
     {
         var definition = Enemy();
+        foreach (var key in new[] { " ", " guard.body", "guard.body ", new string('x', 129) })
+        {
+            definition.PresentationKey = key;
+            Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(definition));
+        }
+        definition.PresentationKey = "";
+        EnemyDefinitionValidator.Validate(definition);
         definition.RecoveryDelaySeconds = -1;
         Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(definition));
         definition.RecoveryDelaySeconds = 5;
@@ -78,17 +85,21 @@ public sealed partial class EraResonanceDraftFixture
         Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyDefinition>("{\"RegionId\":\"zone\"}"));
     }
 
-    [Fact]
-    public async Task Enemy_PublicationIncludesTemplatesButRuntimeResponseKeepsExistingContract()
+    [Theory]
+    [InlineData("")]
+    [InlineData("guard.body")]
+    public async Task Enemy_PublicationIncludesTemplatesButRuntimeResponseKeepsExistingContract(string presentationKey)
     {
         var service = Service();
-        await service.SaveDraftEnemyAsync(new() { Id = "guard", Definition = Enemy() }, CancellationToken.None);
+        var definition = Enemy();
+        definition.PresentationKey = presentationKey;
+        await service.SaveDraftEnemyAsync(new() { Id = "guard", Definition = definition }, CancellationToken.None);
         var request = new Void.Bot.Message.Commands.ERA.PublishEraResonanceDraftCommand { RequestId = Guid.NewGuid(), ExpectedDraftRevision = _workspace.Revision, ExpectedPublishedVersion = 1 };
         var published = await service.PublishDraftAsync(request, CancellationToken.None);
         published.Code.ShouldBe(HttpStatusCode.OK);
         published.Data!.Enemies!.Single().Id.ShouldBe("guard");
         var retry = await service.PublishDraftAsync(request, CancellationToken.None);
-        retry.Data!.Enemies!.Single().PresentationKey.ShouldBe("guard.body");
+        retry.Data!.Enemies!.Single().PresentationKey.ShouldBe(presentationKey);
         var runtime = await service.GetConfigurationAsync(new(), CancellationToken.None);
         runtime.Code.ShouldBe(HttpStatusCode.OK);
         JsonSerializer.Serialize(runtime.Data).ShouldNotContain("Enemies");

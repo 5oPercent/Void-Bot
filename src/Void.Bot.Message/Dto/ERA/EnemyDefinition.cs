@@ -10,6 +10,7 @@ public sealed class EnemyDefinition
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
+    /// <summary>客户端表现资源数据集 Key；空字符串时按敌人 Id 解析，保存时保留空值。</summary>
     public string PresentationKey { get; set; } = "";
     public string SpeciesId { get; set; } = "";
     public string FactionId { get; set; } = "";

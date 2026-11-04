@@ -15,7 +15,7 @@ public static class EnemyDefinitionValidator
         if (value == null || string.IsNullOrWhiteSpace(value.Name) || value.Name.Length > 256 || value.Description == null || value.Description.Length > 2048)
             throw new ArgumentException("敌人名称或说明无效。");
         ResonanceDraftDefinitionValidator.Id(value.Id);
-        AbilityExecutionContract.Key(value.PresentationKey);
+        AbilityExecutionContract.Key(value.PresentationKey, true);
         ResonanceDraftDefinitionValidator.Id(value.SpeciesId);
         ResonanceDraftDefinitionValidator.Id(value.FactionId);
         Number(value.MaximumHealth, 1, 1000000000);
