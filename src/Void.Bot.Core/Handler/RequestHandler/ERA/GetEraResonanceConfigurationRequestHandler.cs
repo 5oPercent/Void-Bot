@@ -1,15 +1,15 @@
 using Mediator.Net.Context;
 using Mediator.Net.Contracts;
-using Void.Bot.Core.Services.ERA.Resonance;
+using Void.Bot.Core.Services.ERA.Configuration;
 using Void.Bot.Message.Request.ERA;
 
 namespace Void.Bot.Core.Handler.RequestHandler.ERA;
 
 public class GetEraResonanceConfigurationRequestHandler : IRequestHandler<GetEraResonanceConfigurationRequest, GetEraResonanceConfigurationResponse>
 {
-    private readonly IEraResonanceService _service;
+    private readonly IEraAbilityCatalogQueryService _service;
 
-    public GetEraResonanceConfigurationRequestHandler(IEraResonanceService service)
+    public GetEraResonanceConfigurationRequestHandler(IEraAbilityCatalogQueryService service)
     {
         _service = service;
     }

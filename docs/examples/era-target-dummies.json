@@ -4,11 +4,39 @@
       "id": "target-dummy-health",
       "name": "生命靶子",
       "description": "按客户端现有场景整理；静止受击靶子，AI 和普通攻击参数不执行。恢复参数映射为生命每秒 10。",
+      "tier": 0,
       "presentationKey": "",
       "speciesId": "construct",
       "factionId": "hostile",
-      "maximumHealth": 100,
-      "maximumProtection": 0,
+      "baseHealth": 100,
+      "baseProtection": 0,
+      "tierMultipliers": {
+        "minor": {
+          "health": 1,
+          "protection": 0,
+          "damage": 1
+        },
+        "elite": {
+          "health": 5,
+          "protection": 3,
+          "damage": 2
+        },
+        "major": {
+          "health": 10,
+          "protection": 6,
+          "damage": 3
+        },
+        "ultra": {
+          "health": 20,
+          "protection": 10,
+          "damage": 4
+        },
+        "boss": {
+          "health": 100,
+          "protection": 0,
+          "damage": 2
+        }
+      },
       "walkSpeed": 6,
       "runSpeed": 10,
       "recoveryDelaySeconds": 3,
@@ -28,7 +56,7 @@
         "idleMaximumSeconds": 5
       },
       "normalAttack": {
-        "damage": 0,
+        "baseDamage": 10,
         "distance": 1.8,
         "windupSeconds": 0.5,
         "backswingSeconds": 0.6,
@@ -41,11 +69,39 @@
       "id": "target-dummy-shield",
       "name": "防护靶子",
       "description": "按客户端现有场景整理；静止受击靶子，AI 和普通攻击参数不执行。恢复参数按生命／防护分别每秒 10 映射；客户端原实现为共享每秒 10、优先生命，行为不完全等价。",
+      "tier": 0,
       "presentationKey": "",
       "speciesId": "construct",
       "factionId": "hostile",
-      "maximumHealth": 25,
-      "maximumProtection": 175,
+      "baseHealth": 25,
+      "baseProtection": 175,
+      "tierMultipliers": {
+        "minor": {
+          "health": 1,
+          "protection": 1,
+          "damage": 1
+        },
+        "elite": {
+          "health": 5,
+          "protection": 3,
+          "damage": 2
+        },
+        "major": {
+          "health": 10,
+          "protection": 6,
+          "damage": 3
+        },
+        "ultra": {
+          "health": 20,
+          "protection": 10,
+          "damage": 4
+        },
+        "boss": {
+          "health": 100,
+          "protection": 0,
+          "damage": 2
+        }
+      },
       "walkSpeed": 6,
       "runSpeed": 10,
       "recoveryDelaySeconds": 3,
@@ -65,7 +121,7 @@
         "idleMaximumSeconds": 5
       },
       "normalAttack": {
-        "damage": 0,
+        "baseDamage": 10,
         "distance": 1.8,
         "windupSeconds": 0.5,
         "backswingSeconds": 0.6,

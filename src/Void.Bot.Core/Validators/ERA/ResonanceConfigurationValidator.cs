@@ -8,7 +8,7 @@ public static class ResonanceConfigurationValidator
 {
     public static void Validate(ResonanceConfiguration configuration)
     {
-        if (configuration == null || configuration.SchemaVersion != 3 || configuration.Version < 0)
+        if (configuration == null || configuration.SchemaVersion != 3)
         {
             throw new ArgumentException("谐振技能配置格式或版本无效。");
         }
@@ -22,13 +22,13 @@ public static class ResonanceConfigurationValidator
 
         foreach (var skill in skills.Values)
         {
-            ResonanceDraftDefinitionValidator.Resonance(skill);
+            EraDataDefinitionValidator.Resonance(skill);
 
             foreach (var variant in skill.Variants) References(variant.Effects.Select(effect => effect.EffectId).Distinct(StringComparer.Ordinal).ToList(), buffs);
         }
         foreach (var system in systems.Values)
         {
-            ResonanceDraftDefinitionValidator.System(system);
+            EraDataDefinitionValidator.System(system);
             Pool(system.SpecialSkills, ResonanceSlotKind.Special, skills);
             Pool(system.PrimarySkills, ResonanceSlotKind.Primary, skills);
             Pool(system.SecondarySkills, ResonanceSlotKind.Secondary, skills);
@@ -42,8 +42,6 @@ public static class ResonanceConfigurationValidator
             EnemyDefinitionValidator.References(enemy, configuration);
         }
 
-        Pool(configuration.CommonTacticalSkills, ResonanceSlotKind.Tactical, skills);
-        References(configuration.DisabledSkills, skills);
         // 为世界快照中的实体／BUFF 状态保留空间，完整配置不得占满默认 1 MiB RPC 帧。
         if (System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(configuration).Length > 262144)
         {
@@ -80,7 +78,7 @@ public static class ResonanceConfigurationValidator
                 }
 
                 if (!selected.Add(id) ||
-                    !PoolIds(configuration, system, (ResonanceSlotKind)i).Contains(id, StringComparer.Ordinal))
+                    !PoolIds(system, (ResonanceSlotKind)i).Contains(id, StringComparer.Ordinal))
                 {
                     throw new ArgumentException("谐振技能不在可用谐振技能池或重复装配。");
                 }
@@ -93,7 +91,7 @@ public static class ResonanceConfigurationValidator
         }
     }
 
-    public static IEnumerable<string> PoolIds(ResonanceConfiguration configuration, LatticeDefinition system, ResonanceSlotKind slot)
+    public static IEnumerable<string> PoolIds(LatticeDefinition system, ResonanceSlotKind slot)
     {
         switch (slot)
         {
@@ -104,7 +102,7 @@ public static class ResonanceConfigurationValidator
             case ResonanceSlotKind.Secondary:
                 return system.SecondarySkills;
             case ResonanceSlotKind.Tactical:
-                return system.TacticalSkills.Concat(configuration.CommonTacticalSkills).Distinct(StringComparer.Ordinal);
+                return system.TacticalSkills;
             default:
                 throw new ArgumentOutOfRangeException(nameof(slot));
         }

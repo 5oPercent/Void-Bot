@@ -120,12 +120,12 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
-    [HttpPost("equipment/armor-configuration/publish")]
-    [DescriptionLocalization("PublishEraArmorConfiguration")]
-    [ProducesResponseType(typeof(PublishEraArmorConfigurationResponse), 200)]
-    public async Task<IActionResult> PublishArmorConfigurationAsync([FromBody] PublishEraArmorConfigurationCommand command, CancellationToken cancellationToken)
+    [HttpPost("equipment/armor-configuration/save")]
+    [DescriptionLocalization("SaveEraArmorConfiguration")]
+    [ProducesResponseType(typeof(SaveEraArmorConfigurationResponse), 200)]
+    public async Task<IActionResult> SaveArmorConfigurationAsync([FromBody] SaveEraArmorConfigurationCommand command, CancellationToken cancellationToken)
     {
-        var response = await _mediator.SendAsync<PublishEraArmorConfigurationCommand, PublishEraArmorConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
+        var response = await _mediator.SendAsync<SaveEraArmorConfigurationCommand, SaveEraArmorConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
     [HttpGet("equipment/armor-slot-types")]

@@ -120,12 +120,12 @@ public sealed partial class EraAdminController
         return Ok(response);
     }
 
-    [HttpPost("equipment/configuration/publish")]
-    [DescriptionLocalization("PublishEraWeaponConfiguration")]
-    [ProducesResponseType(typeof(PublishEraWeaponConfigurationResponse), 200)]
-    public async Task<IActionResult> PublishWeaponConfigurationAsync([FromBody] PublishEraWeaponConfigurationCommand command, CancellationToken cancellationToken)
+    [HttpPost("equipment/configuration/save")]
+    [DescriptionLocalization("SaveEraWeaponConfiguration")]
+    [ProducesResponseType(typeof(SaveEraWeaponConfigurationResponse), 200)]
+    public async Task<IActionResult> SaveWeaponConfigurationAsync([FromBody] SaveEraWeaponConfigurationCommand command, CancellationToken cancellationToken)
     {
-        var response = await _mediator.SendAsync<PublishEraWeaponConfigurationCommand, PublishEraWeaponConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
+        var response = await _mediator.SendAsync<SaveEraWeaponConfigurationCommand, SaveEraWeaponConfigurationResponse>(command, cancellationToken).ConfigureAwait(false);
         return Ok(response);
     }
     [HttpGet("equipment/weapon-slot-types")]

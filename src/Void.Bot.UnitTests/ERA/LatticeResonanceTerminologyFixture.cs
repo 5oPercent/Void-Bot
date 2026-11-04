@@ -10,7 +10,7 @@ public sealed class LatticeResonanceTerminologyFixture
     public void Renamed_definitions_read_existing_configuration_and_keep_its_transport_fields()
     {
         const string legacy = """
-            {"SchemaVersion":3,"Version":7,"Systems":[{"Id":"old.system","Name":"Existing name","PrimarySkills":["old.skill"]}],"Skills":[{"Id":"old.skill","Variants":[{"Slot":1,"MaximumCharges":3}]}]}
+            {"SchemaVersion":3,"Systems":[{"Id":"old.system","Name":"Existing name","PrimarySkills":["old.skill"]}],"Skills":[{"Id":"old.skill","Variants":[{"Slot":1,"MaximumCharges":3}]}]}
             """;
         var configuration = JsonSerializer.Deserialize<ResonanceConfiguration>(legacy)!;
         configuration.Systems.Single().ShouldBeOfType<LatticeDefinition>();
@@ -20,6 +20,7 @@ public sealed class LatticeResonanceTerminologyFixture
         configuration.Skills.Single().Variants.Single().MaximumCharges.ShouldBe(3);
 
         using var stored = JsonDocument.Parse(JsonSerializer.Serialize(configuration));
+        stored.RootElement.TryGetProperty("Version", out _).ShouldBeFalse();
         stored.RootElement.GetProperty("Systems")[0].GetProperty("PrimarySkills")[0].GetString().ShouldBe("old.skill");
         stored.RootElement.GetProperty("Skills")[0].GetProperty("Variants")[0].GetProperty("Slot").GetInt32().ShouldBe(1);
         stored.RootElement.TryGetProperty("Lattices", out _).ShouldBeFalse();

@@ -2,7 +2,7 @@ using NSubstitute;
 using Shouldly;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Exceptions;
-using Void.Bot.Core.Services.ERA.Resonance;
+using Void.Bot.Core.Services.ERA.AbilityProfile;
 using Void.Bot.Core.Services.ERA.Player;
 using Void.Bot.Core.Services.ERA.Team;
 using Void.Bot.Core.Services.ERA.World;
@@ -39,7 +39,7 @@ public class EraWorldAbilityFixture
             Members = new List<EraTeamMember> { new EraTeamMember { PlayerId = player.Id, CharacterId = character,
                 MemberId = member, ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5) } }
         });
-        var equipment = Substitute.For<IEraResonanceDataProvider>();
+        var equipment = Substitute.For<IEraAbilityProfileDataProvider>();
         await Should.ThrowAsync<EraWorldAccessException>(() => new EraWorldAbilityService(worlds, teams, players,
             equipment, Substitute.For<ILocalizationService>(), TimeProvider.System).GetAsync(request, CancellationToken.None));
         await equipment.DidNotReceive().GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());

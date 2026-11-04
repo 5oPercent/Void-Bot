@@ -9,8 +9,6 @@ public sealed class EraResonancesContextTemplate : IContextTemplate
     public string InvalidLoadout { get; set; } ="谐振技能未学习、槽位不匹配或配装重复";
     public string SkillNotFound { get; set; } ="谐振技能不存在";
     public string ConfigUnavailable { get; set; } ="谐振技能配置不可用";
-    public string DraftUnavailable { get; set; } = "草稿尚未初始化或草稿迁移未应用";
-    public string InvalidDraft { get; set; } = "草稿参数、定义或引用无效";
-    public string ItemDeleted { get; set; } = "对象已标记删除，请先恢复原对象再编辑";
-    public string PublishRequestConflict { get; set; } = "发布请求标识已经用于其他请求";
+    public string DataUnavailable { get; set; } = "配置尚未初始化或配置迁移未应用";
+    public string InvalidData { get; set; } = "配置参数、定义或引用无效";
 }

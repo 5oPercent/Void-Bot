@@ -33,7 +33,7 @@ public interface IEraArmorService : IScope
     Task<DeleteEraArmorModificationResponse> DeleteModificationAsync(DeleteEraArmorModificationCommand command, CancellationToken cancellationToken);
     Task<DeleteEraArmorSlotConfigurationResponse> DeleteSlotConfigurationAsync(DeleteEraArmorSlotConfigurationCommand command, CancellationToken cancellationToken);
     Task<DeleteEraArmorSlotTypeResponse> DeleteSlotTypeAsync(DeleteEraArmorSlotTypeCommand command, CancellationToken cancellationToken);
-    Task<PublishEraArmorConfigurationResponse> PublishConfigurationAsync(PublishEraArmorConfigurationCommand command, CancellationToken cancellationToken);
+    Task<SaveEraArmorConfigurationResponse> PublishConfigurationAsync(SaveEraArmorConfigurationCommand command, CancellationToken cancellationToken);
     Task<ValidateEraArmorConfigurationResponse> ValidateConfigurationAsync(ValidateEraArmorConfigurationRequest request, CancellationToken cancellationToken);
 }
 
@@ -199,8 +199,8 @@ public sealed class EraArmorService : IEraArmorService
             return catalog;
         }, cancellationToken);
 
-    public Task<PublishEraArmorConfigurationResponse> PublishConfigurationAsync(PublishEraArmorConfigurationCommand command, CancellationToken cancellationToken) =>
-        WriteAsync<PublishEraArmorConfigurationResponse>(command.ExpectedManifestVersion, _ => command.Configuration, cancellationToken);
+    public Task<SaveEraArmorConfigurationResponse> PublishConfigurationAsync(SaveEraArmorConfigurationCommand command, CancellationToken cancellationToken) =>
+        WriteAsync<SaveEraArmorConfigurationResponse>(command.ExpectedManifestVersion, _ => command.Configuration, cancellationToken);
 
     public async Task<ValidateEraArmorConfigurationResponse> ValidateConfigurationAsync(ValidateEraArmorConfigurationRequest request, CancellationToken cancellationToken)
     {
@@ -220,7 +220,7 @@ public sealed class EraArmorService : IEraArmorService
         where T : EraResponse<EraArmorConfigurationResultDto>, new()
     {
         if (!_currentUser.Id.HasValue || _currentUser.Id == Guid.Empty) throw Error(HttpStatusCode.Unauthorized, "era.armor_unauthorized", value => value.Unauthorized);
-        var publication = await _armors.LockPublicationAsync(cancellationToken).ConfigureAwait(false) ??
+        var publication = await _armors.LockConfigurationAsync(cancellationToken).ConfigureAwait(false) ??
             throw Error(HttpStatusCode.ServiceUnavailable, "era.armor_config_unavailable", value => value.Unavailable);
         if (expectedVersion < 1 || expectedVersion == long.MaxValue || publication.Version != expectedVersion)
             throw Error(HttpStatusCode.Conflict, "era.armor_config_version_conflict", value => value.VersionConflict);

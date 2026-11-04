@@ -18,7 +18,7 @@ namespace Void.Bot.Core.Services.ERA.Reward;
 
 public interface IEraInventoryRewardService : IScope
 {
-    Task<PublishEraRewardConfigurationResponse> PublishAsync(PublishEraRewardConfigurationCommand command, CancellationToken cancellationToken);
+    Task<SaveEraRewardConfigurationResponse> SaveConfigurationAsync(SaveEraRewardConfigurationCommand command, CancellationToken cancellationToken);
     Task<PrepareEraInventoryRewardResponse> PrepareAsync(PrepareEraInventoryRewardCommand command, CancellationToken cancellationToken);
     Task<GrantEraInventoryRewardResponse> GrantAsync(GrantEraInventoryRewardCommand command, CancellationToken cancellationToken);
 }
@@ -57,7 +57,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         return new EraRewardException(status, code, _localization.GetValue(text));
     }
 
-    public async Task<PublishEraRewardConfigurationResponse> PublishAsync(PublishEraRewardConfigurationCommand command, CancellationToken cancellationToken)
+    public async Task<SaveEraRewardConfigurationResponse> SaveConfigurationAsync(SaveEraRewardConfigurationCommand command, CancellationToken cancellationToken)
     {
         if (command.ExpectedVersion < 1 || command.ExpectedVersion == long.MaxValue || command.Configuration == null)
             throw Error(HttpStatusCode.BadRequest, "era.reward_invalid_operation", text => text.InvalidOperation);
@@ -76,7 +76,7 @@ public sealed class EraInventoryRewardService : IEraInventoryRewardService
         // 只更新独立奖励配置版本，已有事件完全使用自己的快照；不提升任何缓存版本。
         row.Payload = JsonSerializer.Serialize(command.Configuration);
         row.Version++;
-        return new PublishEraRewardConfigurationResponse { Code = HttpStatusCode.OK, Data = row.Version };
+        return new SaveEraRewardConfigurationResponse { Code = HttpStatusCode.OK, Data = row.Version };
     }
 
     public async Task<PrepareEraInventoryRewardResponse> PrepareAsync(PrepareEraInventoryRewardCommand command, CancellationToken cancellationToken)

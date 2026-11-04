@@ -77,10 +77,10 @@ public partial class EraIntegrationFixture
         return catalog;
     }
 
-    private Task<PublishEraWeaponConfigurationResponse> PublishWeaponsAsync(EraWeaponCatalogDto catalog, long version = 7,
+    private Task<SaveEraWeaponConfigurationResponse> PublishWeaponsAsync(EraWeaponCatalogDto catalog, long version = 7,
         EraIntegrationSqlInterceptor? interceptor = null) => RequestAsync((mediator, token) =>
-        mediator.SendAsync<PublishEraWeaponConfigurationCommand, PublishEraWeaponConfigurationResponse>(
-            new PublishEraWeaponConfigurationCommand { ExpectedManifestVersion = version, Configuration = catalog }, token), interceptor);
+        mediator.SendAsync<SaveEraWeaponConfigurationCommand, SaveEraWeaponConfigurationResponse>(
+            new SaveEraWeaponConfigurationCommand { ExpectedManifestVersion = version, Configuration = catalog }, token), interceptor);
 
     private Task<GetEraCharacterEquipmentResponse> ReadWeaponEquipmentAsync() => RequestAsync((mediator, token) =>
         mediator.RequestAsync<GetEraCharacterEquipmentRequest, GetEraCharacterEquipmentResponse>(

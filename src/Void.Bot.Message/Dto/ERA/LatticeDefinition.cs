@@ -40,7 +40,7 @@ public sealed class LatticeDefinition
     public List<string> SecondarySkills { get; set; } = new List<string>();
 
     /// <summary>
-    /// 当前晶格体系专属战术谐振技能 ID，实际可选范围还包含通用战术谐振技能池。
+    /// 当前晶格体系的完整战术谐振技能 ID 列表，不追加其它技能池。
     /// </summary>
     public List<string> TacticalSkills { get; set; } = new List<string>();
 }
