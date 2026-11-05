@@ -209,6 +209,7 @@ public sealed partial class EraWeaponService : IEraWeaponService
         var result = new EraWeaponConfigurationValidationDto { Version = manifest.Version };
         try
         {
+            ApplyAmmoDefaults(request.Configuration, manifest.Weapons);
             EraWeaponConfigurationValidator.Validate(request.Configuration);
             await CheckReferencesAsync(request.Configuration, manifest, cancellationToken).ConfigureAwait(false);
         }
@@ -234,6 +235,7 @@ public sealed partial class EraWeaponService : IEraWeaponService
             Frameworks = manifest.Weapons.Frameworks.ToList(), Templates = manifest.Weapons.Templates.ToList(), Modifications = manifest.Weapons.Modifications.ToList(),
             SlotTypes = manifest.Weapons.SlotTypes.ToList(), SlotConfigurations = manifest.Weapons.SlotConfigurations.ToList()
         });
+        ApplyAmmoDefaults(proposed, manifest.Weapons);
         try { EraWeaponConfigurationValidator.Validate(proposed); }
         catch (ArgumentException) { throw Error(HttpStatusCode.BadRequest, "era.weapon_invalid_configuration", value => value.InvalidConfiguration); }
         await CheckReferencesAsync(proposed, manifest, cancellationToken).ConfigureAwait(false);
@@ -242,6 +244,16 @@ public sealed partial class EraWeaponService : IEraWeaponService
         publication.LastModifiedBy = _currentUser.Id;
         publication.UpdatedAt = _clock.GetUtcNow();
         return new T { Code = HttpStatusCode.OK, Data = new EraWeaponConfigurationResultDto { Version = publication.Version, Configuration = proposed, SavedId = savedId?.Invoke() } };
+    }
+
+    private static void ApplyAmmoDefaults(EraWeaponCatalogDto proposed, EraWeaponCatalogDto previous)
+    {
+        if (proposed?.Templates == null || proposed.Frameworks == null) return;
+        foreach (var template in proposed.Templates.Where(template => template != null && !template.AmmoSupply.HasValue))
+        {
+            var old = previous.Templates.FirstOrDefault(value => value.Id == template.Id);
+            template.AmmoSupply = old?.AmmoSupply ?? proposed.Frameworks.FirstOrDefault(value => value?.Id == template.FrameworkId)?.DefaultAmmoSupply;
+        }
     }
 
     private async Task CheckReferencesAsync(EraWeaponCatalogDto proposed, EraEquipmentManifestDto manifest, CancellationToken cancellationToken)

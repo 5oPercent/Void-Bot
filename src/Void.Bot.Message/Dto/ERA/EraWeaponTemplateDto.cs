@@ -23,6 +23,10 @@ public sealed class EraWeaponTemplateDto
     public List<EraWeaponStatValueDto> BaseStats { get; set; } = new();
     /// <summary>引用的武器框架标识，必填；用于取得表现驱动、能力组合及补充属性集合。</summary>
     public Guid FrameworkId { get; set; }
+    /// <summary>武器弹药类型，默认战术；无限类型的储备容量必须为 -1，战术与重型使用有限备弹。</summary>
+    public EraWeaponAmmoType AmmoType { get; set; } = EraWeaponAmmoType.Tactical;
+    /// <summary>武器补给份额，单位为发／份，范围为 1～100；显式值覆盖框架默认值。创建时省略或为空则带入框架默认值，更新时省略或为空则保留已有值；读取目录时必须已确定，无限类型不参与分配。</summary>
+    public int? AmmoSupply { get; set; }
     /// <summary>允许装备的位置，必须为 Weapon1～Weapon3 中至少一个且不得重复。</summary>
     public List<EraEquipmentSlot> CompatibleSlots { get; set; } = new List<EraEquipmentSlot>();
     /// <summary>可选的改装槽位方案标识；为空时不采用槽位方案生成改装候选。</summary>

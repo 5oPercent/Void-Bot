@@ -33,7 +33,7 @@ public partial class EraIntegrationFixture
         catalog.SlotConfigurations.Add(configuration);
         var template = new EraWeaponTemplateDto
         {
-            Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Integration rifle", PresentationKey = "scifi_rifle",
+            Id = Guid.Parse("20000000-0000-0000-0000-000000000001"), Name = "Integration rifle", AmmoSupply = 6, PresentationKey = "scifi_rifle",
             SlotConfigurationId = configuration.Id, FrameworkId = catalog.Frameworks[0].Id,
             CompatibleSlots = new List<EraEquipmentSlot> { EraEquipmentSlot.Weapon1, EraEquipmentSlot.Weapon2, EraEquipmentSlot.Weapon3 },
             BaseStats = new()
@@ -41,7 +41,7 @@ public partial class EraIntegrationFixture
                 new() { Stat = EraWeaponStat.Damage, Value = 50 },
                 new() { Stat = EraWeaponStat.Frequency, Value = 5 },
                 new() { Stat = EraWeaponStat.LoadedCapacity, Value = 30 },
-                new() { Stat = EraWeaponStat.ReserveCapacity, Value = 120 },
+                new() { Stat = EraWeaponStat.ReserveCapacity, Value = 70 },
                 new() { Stat = EraWeaponStat.ReloadSpeed, Value = 1 },
                 new() { Stat = EraWeaponStat.Penetration, Value = 0 },
                 new() { Stat = EraWeaponStat.Accuracy, Value = 50, EffectAtZero = 3, EffectAtHundred = 1 },

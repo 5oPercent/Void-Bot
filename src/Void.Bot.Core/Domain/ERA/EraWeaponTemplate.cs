@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Void.Bot.Message.Dto;
+using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Core.Domain.ERA;
 
@@ -16,5 +17,7 @@ public sealed class EraWeaponTemplate : IEntity<Guid>
     /// <summary>可复用的整套改装槽位方案；只影响后续生成。</summary>
     public Guid? SlotConfigurationId { get; set; }
     public Guid FrameworkId { get; set; }
+    public EraWeaponAmmoType AmmoType { get; set; } = EraWeaponAmmoType.Tactical;
+    public int AmmoSupply { get; set; } = 1;
     [Column(TypeName = "text")] public string CompatibleSlotsPayload { get; set; } = string.Empty;
 }

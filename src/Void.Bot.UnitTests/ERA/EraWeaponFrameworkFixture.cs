@@ -34,7 +34,7 @@ public class EraWeaponFrameworkFixture
             catalog.Templates.Add(template);
         }
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
-        equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" });
+        equipment.GetConfigurationAsync(Arg.Any<CancellationToken>()).Returns(new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":4}" });
         equipment.GetWeaponCatalogAsync(Arg.Any<CancellationToken>()).Returns(catalog);
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(new EraArmorCatalogDto());
         var service = new EraWeaponService(Substitute.For<IEraWeaponDataProvider>(), equipment,
@@ -76,6 +76,7 @@ public class EraWeaponFrameworkFixture
         var stats = catalog.Templates[0].BaseStats;
         stats.Single(value => value.Stat == EraWeaponStat.Damage).Value = 0;
         stats.Single(value => value.Stat == EraWeaponStat.LoadedCapacity).Value = 1;
+        catalog.Templates[0].AmmoType = EraWeaponAmmoType.Infinite;
         stats.Single(value => value.Stat == EraWeaponStat.ReserveCapacity).Value = -1;
         stats.Single(value => value.Stat == EraWeaponStat.Penetration).Value = -1;
         stats.RemoveAll(value => value.Stat is EraWeaponStat.Accuracy or EraWeaponStat.Stability or EraWeaponStat.ReloadSpeed);
@@ -281,7 +282,7 @@ public class EraWeaponFrameworkFixture
     {
         var data = Substitute.For<IEraWeaponDataProvider>();
         var equipment = Substitute.For<IEraEquipmentDataProvider>();
-        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":3}" };
+        var publication = new EraEquipmentConfiguration { Version = 7, Payload = "{\"SchemaVersion\":4}" };
         data.LockConfigurationAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult<EraEquipmentConfiguration?>(publication));
         data.GetCatalogAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(catalog));
         equipment.GetArmorCatalogAsync(Arg.Any<CancellationToken>()).Returns(Task.FromResult(new EraArmorCatalogDto()));
