@@ -19,6 +19,8 @@ public sealed class EraWeaponFrameworkDto
     public bool IsEnabled { get; set; } = true;
     /// <summary>可自定义的客户端表现流程键，必填且为 1～32 位 ASCII 字母、数字、点、下划线或短横线，区分大小写；不决定能力组合，与模板的具体表现资源键区分。</summary>
     public string PresentationDriverKey { get; set; } = string.Empty;
+    /// <summary>框架提供的补给份额默认值，单位为发／份，范围为 1～100；新建模板未指定补给份额时带入，模板可覆盖，后续修改不追改已有模板。</summary>
+    public int DefaultAmmoSupply { get; set; } = 1;
     /// <summary>启用的补充属性，不含六项公共属性；必须与能力组合要求完全一致且不得重复。</summary>
     public List<EraWeaponStat> SupplementaryStats { get; set; } = new();
     /// <summary>框架的类型化能力集合，最多 8 项且类型不得重复；命中方式及发射、蓄力的组合关系独立于表现流程键校验。</summary>

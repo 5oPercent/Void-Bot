@@ -88,6 +88,13 @@ public static class EraWeaponConfigurationValidator
                 throw new ArgumentException("Weapon template, configuration reference or equipment mapping is invalid.");
             var framework = frameworks[template.FrameworkId];
             ValidateStats(template.BaseStats, framework);
+            if (!System.Enum.IsDefined(template.AmmoType) || template.AmmoSupply is not (>= 1 and <= 100))
+                throw new ArgumentException("Weapon ammunition type or base supply is invalid.");
+            var loaded = template.BaseStats.Single(value => value.Stat == EraWeaponStat.LoadedCapacity).Value;
+            var reserve = template.BaseStats.Single(value => value.Stat == EraWeaponStat.ReserveCapacity).Value;
+            if ((template.AmmoType == EraWeaponAmmoType.Infinite) != (reserve == -1) ||
+                template.AmmoType != EraWeaponAmmoType.Infinite && loaded + reserve > 100)
+                throw new ArgumentException("Weapon ammunition type and capacities are inconsistent.");
             if (template.SlotConfigurationId.HasValue && configurations[template.SlotConfigurationId.Value].Slots.SelectMany(slot => slot.Pool)
                 .Any(entry => modifications[entry.ModDefinitionId].Modifiers.Any(value => !SupportsStat(template.BaseStats, value.Stat))))
                 throw new ArgumentException("Weapon configuration uses an attribute unsupported by an associated template.");
@@ -149,6 +156,7 @@ public static class EraWeaponConfigurationValidator
         if (framework == null || string.IsNullOrWhiteSpace(framework.Name) || framework.Name.Length > 128 ||
             string.IsNullOrWhiteSpace(framework.Category) || framework.Category.Length > 64 || framework.Category != framework.Category.Trim() ||
             framework.Note is not { Length: <= 2048 } || !IsValidPresentationDriverKey(framework.PresentationDriverKey) ||
+            framework.DefaultAmmoSupply is < 1 or > 100 ||
             framework.SupplementaryStats == null || framework.Capabilities == null || framework.Capabilities.Count > 8 ||
             framework.Capabilities.Any(capability => capability == null) ||
             framework.Capabilities.Select(capability => capability.Kind).Distinct().Count() != framework.Capabilities.Count ||

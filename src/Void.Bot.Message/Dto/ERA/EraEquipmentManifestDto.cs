@@ -6,8 +6,8 @@ namespace Void.Bot.Message.Dto.ERA;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed class EraEquipmentManifestDto
 {
-    /// <summary>目录契约版本，当前为 3。</summary>
-    public int SchemaVersion { get; set; } = 3;
+    /// <summary>目录契约版本，当前为 4。</summary>
+    public int SchemaVersion { get; set; } = 4;
     /// <summary>当前关系表读取及写入并发令牌，不对应历史快照。</summary>
     public long Version { get; set; }
     /// <summary>关系表中的护甲模板、槽位方案与改装配置。</summary>

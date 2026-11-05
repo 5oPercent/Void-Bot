@@ -17,6 +17,9 @@ public partial class EraIntegrationFixture
         await SeedAsync(0);
         var catalog = WeaponCatalog();
         catalog.Frameworks[0].Category = "测试步枪";
+        catalog.Frameworks[0].DefaultAmmoSupply = 8;
+        catalog.Templates[0].AmmoType = EraWeaponAmmoType.Heavy;
+        catalog.Templates[0].AmmoSupply = 2;
         catalog.Frameworks[0].PresentationDriverKey = "rifle.custom-v2";
         await PublishWeaponsAsync(catalog);
         var id = catalog.Frameworks.Single().Id;
@@ -25,6 +28,7 @@ public partial class EraIntegrationFixture
         list.Version.ShouldBe(8);
         list.Data!.Items.Single().Id.ShouldBe(id);
         list.Data.Items.Single().Category.ShouldBe("测试步枪");
+        list.Data.Items.Single().DefaultAmmoSupply.ShouldBe(8);
         var unmatched = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponFrameworksRequest, GetEraWeaponFrameworksResponse>(
             new GetEraWeaponFrameworksRequest { PageIndex = 1, PageSize = 10, Category = "其他" }, token));
         unmatched.Data!.Items.ShouldBeEmpty();
@@ -44,6 +48,10 @@ public partial class EraIntegrationFixture
             var framework = await context.Set<EraWeaponFramework>().SingleAsync();
             framework.IsEnabled.ShouldBeFalse();
             framework.Category.ShouldBe("测试步枪");
+            framework.DefaultAmmoSupply.ShouldBe(8);
+            var template = await context.Set<EraWeaponTemplate>().SingleAsync();
+            template.AmmoType.ShouldBe(EraWeaponAmmoType.Heavy);
+            template.AmmoSupply.ShouldBe(2);
             framework.PresentationDriverKey.ShouldBe("rifle.custom-v2");
             (await context.Set<EraWeaponTemplate>().SingleAsync()).FrameworkId.ShouldBe(id);
             (await context.Set<EraWeaponTemplateStat>().CountAsync()).ShouldBe(9);

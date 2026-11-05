@@ -255,6 +255,8 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
             entity.Name = template.Name; entity.Icon = template.Icon; entity.Note = template.Note;
             entity.IsGenerationEnabled = template.IsGenerationEnabled; entity.PresentationKey = template.PresentationKey;
             entity.FrameworkId = template.FrameworkId;
+            entity.AmmoType = template.AmmoType;
+            entity.AmmoSupply = template.AmmoSupply!.Value;
             entity.SlotConfigurationId = template.SlotConfigurationId;
             if (changedTemplateStats.Contains(template.Id))
                 foreach (var stat in template.BaseStats)
