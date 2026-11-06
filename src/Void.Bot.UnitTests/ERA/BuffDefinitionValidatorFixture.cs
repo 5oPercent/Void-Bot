@@ -118,4 +118,59 @@ public class BuffDefinitionValidatorFixture
         Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
     }
 
+    [Theory]
+    [InlineData(BuffEffectKind.Stun)]
+    [InlineData(BuffEffectKind.Root)]
+    [InlineData(BuffEffectKind.Silence)]
+    public void Controls_require_single_finite_persistent_effect(BuffEffectKind kind)
+    {
+        var valid = new BuffDefinitionDto { Id = "control", Kind = BuffKind.Periodic, DurationSeconds = 4,
+            Effects = new() { new() { Kind = kind } } };
+        Should.NotThrow(() => BuffDefinitionValidator.Validate(valid));
+        JsonSerializer.Deserialize<BuffDefinitionDto>(JsonSerializer.Serialize(valid))!.Effects[0].Kind.ShouldBe(kind);
+        foreach (var mutate in new Action<BuffDefinitionDto>[] {
+            d => d.Kind = BuffKind.Instant, d => d.DurationSeconds = 0, d => d.IntervalSeconds = 1,
+            d => d.MaxStacks = 2, d => d.StackRule = 2, d => d.RemoveOnDeath = false,
+            d => d.Lifecycle.DecayMode = 1, d => d.Effects[0].Amount = 1, d => d.Effects[0].Stat = 1,
+            d => d.Effects.Add(new() { Kind = BuffEffectKind.Damage, Amount = 1 }) })
+        {
+            var invalid = JsonSerializer.Deserialize<BuffDefinitionDto>(JsonSerializer.Serialize(valid))!;
+            mutate(invalid);
+            Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(invalid));
+        }
+    }
+
+    [Theory]
+    [InlineData(BuffEffectKind.StunResistance)]
+    [InlineData(BuffEffectKind.RootResistance)]
+    [InlineData(BuffEffectKind.SilenceResistance)]
+    public void Control_resistance_is_a_bounded_fraction(BuffEffectKind kind)
+    {
+        var definition = new BuffDefinitionDto { Id = "resistance", Kind = BuffKind.Periodic,
+            Effects = new() { new() { Kind = kind, Amount = .5 } } };
+        foreach (var amount in new[] { 0.0, .5, 1.0 })
+        {
+            definition.Effects[0].Amount = amount;
+            Should.NotThrow(() => BuffDefinitionValidator.Validate(definition));
+        }
+        foreach (var amount in new[] { -.01, 1.01, double.NaN, double.PositiveInfinity })
+        {
+            definition.Effects[0].Amount = amount;
+            Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
+        }
+    }
+
+    [Theory]
+    [InlineData(BuffEffectKind.StunImmunity)]
+    [InlineData(BuffEffectKind.RootImmunity)]
+    [InlineData(BuffEffectKind.SilenceImmunity)]
+    public void Control_immunity_has_no_unused_numeric_payload(BuffEffectKind kind)
+    {
+        var definition = new BuffDefinitionDto { Id = "immunity", Kind = BuffKind.Periodic,
+            Effects = new() { new() { Kind = kind } } };
+        Should.NotThrow(() => BuffDefinitionValidator.Validate(definition));
+        definition.Effects[0].Amount = 1;
+        Should.Throw<ArgumentException>(() => BuffDefinitionValidator.Validate(definition));
+    }
+
 }
