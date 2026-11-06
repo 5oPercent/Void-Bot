@@ -9,6 +9,36 @@ namespace Void.Bot.UnitTest.ERA;
 
 public sealed partial class EraConfigurationServicesFixture
 {
+    [Fact]
+    public void Enemy_CombatContractRejectsLegacyFieldsAndInvalidDecisionCombinations()
+    {
+        foreach (var field in new[] { "Behavior", "MaximumChaseSeconds", "IdleMinimumSeconds", "IdleMaximumSeconds" })
+            Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyAiDefinition>("{\"" + field + "\":0}"));
+        var enemy = Enemy();
+        enemy.Ai.ReactionMinimumSeconds = 2;
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        enemy.Ai.ReactionMaximumSeconds = 2;
+        enemy.Ai.VisibilityWeight = enemy.Ai.DistanceWeight = enemy.Ai.RecentDamageWeight = enemy.Ai.LowHealthWeight = enemy.Ai.CurrentTargetWeight = 0;
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        enemy.Ai.DistanceWeight = 1;
+        enemy.NormalAttack.SpreadDegrees = 5;
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        enemy.NormalAttack.Mode = EnemyAttackMode.Hitscan;
+        EnemyDefinitionValidator.Validate(enemy);
+        enemy.Skills.Add(new() { SkillId = "heal", Decision = new() { Target = EnemyActionTarget.Self } });
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        enemy.Skills[0].Decision.MaximumDistance = 0;
+        enemy.Skills[0].Decision.RequireLineOfSight = false;
+        enemy.Skills[0].Decision.Token = EnemyAttackToken.Support;
+        enemy.Defense.SkillId = "heal";
+        EnemyDefinitionValidator.Validate(enemy);
+        enemy.Defense.ExitHealthRatio = .1;
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        enemy.Defense.ExitHealthRatio = .5;
+        enemy.Defense.SkillId = "missing";
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+    }
+
     private EnemyDefinition Enemy()
     {
         _workspace.SettingsPayload = JsonSerializer.Serialize(new EraDataSettings
@@ -19,7 +49,7 @@ public sealed partial class EraConfigurationServicesFixture
                 Factions = new() { new() { Id = "hostile", Name = "敌对阵营" } }
             }
         });
-        return new() { Id = "guard", Name = "守卫", PresentationKey = "guard.body", SpeciesId = "construct", FactionId = "hostile", Ai = new() { Behavior = EnemyBehavior.Roam } };
+        return new() { Id = "guard", Name = "守卫", PresentationKey = "guard.body", SpeciesId = "construct", FactionId = "hostile", Ai = new() { Aggression = EnemyAggression.Retaliate } };
     }
 
     [Fact]
@@ -33,7 +63,7 @@ public sealed partial class EraConfigurationServicesFixture
         var duplicate = await service.Enemies.SaveDataEnemyAsync(new() { Id = "guard", Definition = definition }, CancellationToken.None);
         duplicate.ErrorCode.ShouldBe("era.data_version_conflict");
         var list = await service.Enemies.ListDataEnemyAsync(new() { Search = "守卫" }, CancellationToken.None);
-        list.Data!.Items.Single().Definition.Ai.Behavior.ShouldBe(EnemyBehavior.Roam);
+        list.Data!.Items.Single().Definition.Ai.Aggression.ShouldBe(EnemyAggression.Retaliate);
         await service.Enemies.DeleteDataEnemyAsync(new() { Id = "guard", ExpectedVersion = created.Data.Version }, CancellationToken.None);
         (await service.Enemies.ListDataEnemyAsync(new(), CancellationToken.None)).Data!.Total.ShouldBe(0);
         _records.ShouldBeEmpty();
@@ -165,7 +195,7 @@ public sealed partial class EraConfigurationServicesFixture
         var service = Service();
         var definition = Enemy();
         var skill = await service.Skills.SaveDataResonanceAsync(new() { Id = "test.skill", Definition = Resonance() }, CancellationToken.None);
-        definition.Skills.Add(new() { SkillId = "test.skill", Slot = ResonanceSlotKind.Tactical });
+        definition.Skills.Add(new() { SkillId = "test.skill", Slot = ResonanceSlotKind.Tactical, Decision = new() { Target = EnemyActionTarget.Self, MaximumDistance = 0, RequireLineOfSight = false, Token = EnemyAttackToken.Support } });
         await service.Enemies.SaveDataEnemyAsync(new() { Id = "guard", Definition = definition }, CancellationToken.None);
         var references = await service.Catalog.GetDataReferencesAsync(new() { Id = "test.skill", Kind = EraDataKind.Resonance }, CancellationToken.None);
         references.Data!.Items.ShouldContain(item => item.Path == "Enemies/guard/Skills");
