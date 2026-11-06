@@ -31,6 +31,9 @@ public static class EnemyDefinitionValidator
         }
         Number(value.WalkSpeed, 0, 1000); Number(value.RunSpeed, 0, 1000);
         Number(value.RecoveryDelaySeconds, 0, 86400); Number(value.HealthRecoveryPerSecond, 0, 1000000000); Number(value.ProtectionRecoveryPerSecond, 0, 1000000000);
+        var control = value.ControlDefense;
+        if (control == null) throw new ArgumentException("缺少常驻控制防护配置。");
+        Number(control.StunResistance, 0, 1); Number(control.RootResistance, 0, 1); Number(control.SilenceResistance, 0, 1);
         var ai = value.Ai;
         if (ai == null || !Enum.IsDefined(ai.Aggression)) throw new ArgumentException("敌人攻击倾向无效。");
         Number(ai.PerceptionDistance, 0, 1000000);

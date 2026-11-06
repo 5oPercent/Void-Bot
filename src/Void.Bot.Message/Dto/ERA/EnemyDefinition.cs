@@ -30,11 +30,24 @@ public sealed class EnemyDefinition
     public double HealthRecoveryPerSecond { get; set; }
     /// <summary>每秒防护恢复量。</summary>
     public double ProtectionRecoveryPerSecond { get; set; }
+    public EnemyControlDefenseDefinition ControlDefense { get; set; } = new();
     public EnemyAiDefinition Ai { get; set; } = new();
     public EnemyNormalAttackDefinition NormalAttack { get; set; } = new();
     public EnemyDefenseDefinition Defense { get; set; } = new();
     public List<EnemySkillReference> Skills { get; set; } = new();
     public List<string> InitialBuffs { get; set; } = new();
+}
+
+/// <summary>常驻控制防护；抗性缩短对应控制时长，范围 0～1，不随等阶倍率缩放。</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed class EnemyControlDefenseDefinition
+{
+    public double StunResistance { get; set; }
+    public double RootResistance { get; set; }
+    public double SilenceResistance { get; set; }
+    public bool StunImmunity { get; set; }
+    public bool RootImmunity { get; set; }
+    public bool SilenceImmunity { get; set; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

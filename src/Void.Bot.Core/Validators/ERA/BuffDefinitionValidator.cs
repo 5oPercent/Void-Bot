@@ -86,7 +86,18 @@ public static class BuffDefinitionValidator
                 throw new ArgumentException("BUFF 效果无效。");
             }
 
-            if (effect.Kind == BuffEffectKind.Modifier)
+            if (effect.Kind >= BuffEffectKind.Stun)
+            {
+                bool resistance = effect.Kind is BuffEffectKind.StunResistance or BuffEffectKind.RootResistance or BuffEffectKind.SilenceResistance;
+                if (definition.Kind != BuffKind.Periodic || effect.Stat != 0 || effect.Operation != 0 ||
+                    (resistance ? effect.Amount < 0 || effect.Amount > 1 : effect.Amount != 0))
+                    throw new ArgumentException("控制、抗性与免疫必须为持续效果；抗性为 0～1，其余数值、属性与运算必须为 0。");
+                if (effect.Kind <= BuffEffectKind.Silence && (definition.Effects.Count != 1 || definition.DurationSeconds <= 0 ||
+                    definition.IntervalSeconds != -1 || definition.MaxStacks != 1 || definition.StackRule == 2 ||
+                    !definition.RemoveOnDeath || life.CountEvents || life.DecayMode != 0))
+                    throw new ArgumentException("控制必须为独立的单项有限时长效果，单层、整体到期、死亡移除，不使用周期结算或事件累计。");
+            }
+            else if (effect.Kind == BuffEffectKind.Modifier)
             {
                 if (definition.Kind != BuffKind.Periodic ||
                     effect.Stat < 0 || effect.Stat > 9 ||

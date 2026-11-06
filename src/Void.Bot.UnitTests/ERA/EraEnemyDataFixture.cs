@@ -39,6 +39,37 @@ public sealed partial class EraConfigurationServicesFixture
         Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
     }
 
+    [Fact]
+    public void Enemy_ControlDefenseDefaultsValidateAndRoundTrip()
+    {
+        var enemy = Enemy();
+        var oldPayload = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(enemy))!.AsObject();
+        oldPayload.Remove("ControlDefense");
+        var oldEnemy = JsonSerializer.Deserialize<EnemyDefinition>(oldPayload.ToJsonString())!;
+        EnemyDefinitionValidator.Validate(oldEnemy);
+        oldEnemy.ControlDefense.StunResistance.ShouldBe(0);
+        oldEnemy.ControlDefense.RootResistance.ShouldBe(0);
+        oldEnemy.ControlDefense.SilenceResistance.ShouldBe(0);
+        oldEnemy.ControlDefense.StunImmunity.ShouldBeFalse();
+        oldEnemy.ControlDefense.RootImmunity.ShouldBeFalse();
+        oldEnemy.ControlDefense.SilenceImmunity.ShouldBeFalse();
+        enemy.ControlDefense = new() { StunResistance = .5, RootResistance = .25, SilenceResistance = 1, StunImmunity = true, RootImmunity = true, SilenceImmunity = true };
+        EnemyDefinitionValidator.Validate(enemy);
+        var restored = JsonSerializer.Deserialize<EnemyDefinition>(JsonSerializer.Serialize(enemy))!;
+        JsonSerializer.Serialize(restored.ControlDefense).ShouldBe(JsonSerializer.Serialize(enemy.ControlDefense));
+        foreach (string field in new[] { "StunResistance", "RootResistance", "SilenceResistance" })
+            foreach (double value in new[] { -.01, 1.01, double.NaN, double.PositiveInfinity })
+            {
+                var invalid = Enemy();
+                typeof(EnemyControlDefenseDefinition).GetProperty(field)!.SetValue(invalid.ControlDefense, value);
+                Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(invalid));
+            }
+        enemy.ControlDefense = null!;
+        Should.Throw<ArgumentException>(() => EnemyDefinitionValidator.Validate(enemy));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyControlDefenseDefinition>("{\"Unknown\":true}"));
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<EnemyControlDefenseDefinition>("{\"StunImmunity\":1}"));
+    }
+
     private EnemyDefinition Enemy()
     {
         _workspace.SettingsPayload = JsonSerializer.Serialize(new EraDataSettings
