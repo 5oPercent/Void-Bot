@@ -88,6 +88,9 @@ public static class EraWeaponConfigurationValidator
                 throw new ArgumentException("Weapon template, configuration reference or equipment mapping is invalid.");
             var framework = frameworks[template.FrameworkId];
             ValidateStats(template.BaseStats, framework);
+            if (!double.IsFinite(template.WeakPointHealthDamageMultiplier) || template.WeakPointHealthDamageMultiplier is < 0 or > 10000 ||
+                !double.IsFinite(template.WeakPointProtectionDamageMultiplier) || template.WeakPointProtectionDamageMultiplier is < 0 or > 10000)
+                throw new ArgumentException("Weapon weak point damage multiplier is invalid.");
             if (!System.Enum.IsDefined(template.AmmoType) || template.AmmoSupply is not (>= 1 and <= 100))
                 throw new ArgumentException("Weapon ammunition type or base supply is invalid.");
             var loaded = template.BaseStats.Single(value => value.Stat == EraWeaponStat.LoadedCapacity).Value;
@@ -157,6 +160,8 @@ public static class EraWeaponConfigurationValidator
             string.IsNullOrWhiteSpace(framework.Category) || framework.Category.Length > 64 || framework.Category != framework.Category.Trim() ||
             framework.Note is not { Length: <= 2048 } || !IsValidPresentationDriverKey(framework.PresentationDriverKey) ||
             framework.DefaultAmmoSupply is < 1 or > 100 ||
+            !double.IsFinite(framework.WeakPointHealthDamageMultiplier) || framework.WeakPointHealthDamageMultiplier is < 0 or > 10000 ||
+            !double.IsFinite(framework.WeakPointProtectionDamageMultiplier) || framework.WeakPointProtectionDamageMultiplier is < 0 or > 10000 ||
             framework.SupplementaryStats == null || framework.Capabilities == null || framework.Capabilities.Count > 8 ||
             framework.Capabilities.Any(capability => capability == null) ||
             framework.Capabilities.Select(capability => capability.Kind).Distinct().Count() != framework.Capabilities.Count ||

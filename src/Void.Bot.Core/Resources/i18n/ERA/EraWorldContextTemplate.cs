@@ -5,6 +5,8 @@ namespace Void.Bot.Core.Resources.i18n.ERA;
 [Language("ERA", "EraWorld")]
 public sealed class EraWorldContextTemplate : IContextTemplate
 {
+    public string SuperAdminRequired { get; set; } = "需要有效的超级管理员权限。";
+    public string ModularActivityApprovalUnavailable { get; set; } = "模块化活动授权已失效或已领取。";
     public string ReadyRequired { get; set; } = "世界尚未构建就绪，不能生成奖励";
     public string InvalidOperation { get; set; } = "世界操作参数无效";
     public string NotFound { get; set; } = "世界不存在或当前玩家不是该世界成员";

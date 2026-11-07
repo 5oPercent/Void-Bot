@@ -19,5 +19,7 @@ public sealed class EraWeaponTemplate : IEntity<Guid>
     public Guid FrameworkId { get; set; }
     public EraWeaponAmmoType AmmoType { get; set; } = EraWeaponAmmoType.Tactical;
     public int AmmoSupply { get; set; } = 1;
+    public double WeakPointHealthDamageMultiplier { get; set; } = 1;
+    public double WeakPointProtectionDamageMultiplier { get; set; } = 1;
     [Column(TypeName = "text")] public string CompatibleSlotsPayload { get; set; } = string.Empty;
 }
