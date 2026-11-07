@@ -8,7 +8,8 @@ namespace Void.Bot.Message.Request.ERA;
 /// </summary>
 public class GetEraResonanceConfigurationRequest : IRequest
 {
-
+    /// <summary>地图模板生成使用完整敌人集合；旧客户端默认不请求该扩展字段。</summary>
+    public bool IncludeEnemies { get; set; }
 }
 
 /// <summary>

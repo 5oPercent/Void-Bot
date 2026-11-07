@@ -100,7 +100,7 @@ public sealed partial class EraAbilityCatalogQueryService(IEraConfigurationState
         if (configuration.SchemaVersion != 3)
             return Error<GetEraResonanceConfigurationResponse>(HttpStatusCode.ServiceUnavailable, "era.skills_config_incompatible", text => text.ConfigUnavailable);
         ResonanceConfigurationValidator.Validate(configuration);
-        configuration.Enemies = null;
+        if (!request.IncludeEnemies) configuration.Enemies = null;
         return new GetEraResonanceConfigurationResponse()
         {
             Code = HttpStatusCode.OK,

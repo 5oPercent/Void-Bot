@@ -89,6 +89,36 @@ public sealed partial class EraConfigurationServicesFixture
     }
 
     [Fact]
+    public async Task CatalogQuery_EnemyTemplatesAreOptInAndUseTheSameRevision()
+    {
+        var services = Service();
+        var enemy = Enemy();
+        var saved = await services.Enemies.SaveDataEnemyAsync(new() { Id = enemy.Id, Definition = enemy }, CancellationToken.None);
+        saved.Code.ShouldBe(HttpStatusCode.OK);
+        var revision = _workspace.Revision;
+
+        var legacy = await services.Catalog.GetConfigurationAsync(new(), CancellationToken.None);
+        legacy.Code.ShouldBe(HttpStatusCode.OK);
+        legacy.Data!.Enemies.ShouldBeNull();
+        JsonSerializer.Serialize(legacy.Data).ShouldNotContain("\"Enemies\"");
+
+        var complete = await services.Catalog.GetConfigurationAsync(new() { IncludeEnemies = true }, CancellationToken.None);
+        complete.Code.ShouldBe(HttpStatusCode.OK);
+        complete.Data!.Enemies!.Count.ShouldBe(1);
+        var template = complete.Data.Enemies[0];
+        template.Id.ShouldBe(enemy.Id);
+        template.Name.ShouldBe(enemy.Name);
+        template.Ai.Aggression.ShouldBe(enemy.Ai.Aggression);
+        complete.Data.CombatRelations!.Species.ShouldContain(s => s.Id == enemy.SpeciesId);
+        complete.Data.SchemaVersion.ShouldBe(3);
+        _workspace.Revision.ShouldBe(revision);
+
+        // Requests must not mutate the stored catalog or change the default response for old clients.
+        (await services.Catalog.GetConfigurationAsync(new(), CancellationToken.None)).Data!.Enemies.ShouldBeNull();
+        (await services.Catalog.ReadConfigurationAsync(CancellationToken.None))!.Enemies!.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task CatalogQuery_RetriesWhenTheRevisionChangesBetweenCategoryReads()
     {
         var services = Service();
