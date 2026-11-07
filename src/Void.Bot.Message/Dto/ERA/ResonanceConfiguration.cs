@@ -27,7 +27,7 @@ public sealed class ResonanceConfiguration
     /// </summary>
     public List<BuffDefinitionDto> Buffs { get; set; } = new List<BuffDefinitionDto>();
 
-    /// <summary>仅管理端配置；游戏配置接口暂不输出此字段。旧目录缺省表示未携带敌人集合。</summary>
+    /// <summary>敌人模板集合；游戏目录在 IncludeEnemies 请求时输出，旧客户端缺省不携带。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<EnemyDefinition>? Enemies { get; set; }
 
