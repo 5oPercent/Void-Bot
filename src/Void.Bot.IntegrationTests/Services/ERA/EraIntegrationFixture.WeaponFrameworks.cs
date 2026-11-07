@@ -18,8 +18,12 @@ public partial class EraIntegrationFixture
         var catalog = WeaponCatalog();
         catalog.Frameworks[0].Category = "测试步枪";
         catalog.Frameworks[0].DefaultAmmoSupply = 8;
+        catalog.Frameworks[0].WeakPointHealthDamageMultiplier = 2;
+        catalog.Frameworks[0].WeakPointProtectionDamageMultiplier = .5;
         catalog.Templates[0].AmmoType = EraWeaponAmmoType.Heavy;
         catalog.Templates[0].AmmoSupply = 2;
+        catalog.Templates[0].WeakPointHealthDamageMultiplier = .75;
+        catalog.Templates[0].WeakPointProtectionDamageMultiplier = 3;
         catalog.Frameworks[0].PresentationDriverKey = "rifle.custom-v2";
         await PublishWeaponsAsync(catalog);
         var id = catalog.Frameworks.Single().Id;
@@ -29,6 +33,8 @@ public partial class EraIntegrationFixture
         list.Data!.Items.Single().Id.ShouldBe(id);
         list.Data.Items.Single().Category.ShouldBe("测试步枪");
         list.Data.Items.Single().DefaultAmmoSupply.ShouldBe(8);
+        list.Data.Items.Single().WeakPointHealthDamageMultiplier.ShouldBe(2);
+        list.Data.Items.Single().WeakPointProtectionDamageMultiplier.ShouldBe(.5);
         var unmatched = await RequestAsync((mediator, token) => mediator.RequestAsync<GetEraWeaponFrameworksRequest, GetEraWeaponFrameworksResponse>(
             new GetEraWeaponFrameworksRequest { PageIndex = 1, PageSize = 10, Category = "其他" }, token));
         unmatched.Data!.Items.ShouldBeEmpty();
@@ -40,6 +46,8 @@ public partial class EraIntegrationFixture
         disabled.Data!.Version.ShouldBe(9);
         disabled.Data.Configuration.Frameworks.Single().IsEnabled.ShouldBeFalse();
         disabled.Data.Configuration.Templates.Single().IsGenerationEnabled.ShouldBeTrue();
+        disabled.Data.Configuration.Templates.Single().WeakPointHealthDamageMultiplier.ShouldBe(.75);
+        disabled.Data.Configuration.Templates.Single().WeakPointProtectionDamageMultiplier.ShouldBe(3);
         var error = await Should.ThrowAsync<EraWeaponException>(() => RequestAsync((mediator, token) =>
             mediator.SendAsync<DeleteEraWeaponFrameworkCommand, DeleteEraWeaponFrameworkResponse>(new DeleteEraWeaponFrameworkCommand { Id = id, ExpectedManifestVersion = 9 }, token)));
         error.Code.ShouldBe(HttpStatusCode.Conflict);
@@ -49,9 +57,13 @@ public partial class EraIntegrationFixture
             framework.IsEnabled.ShouldBeFalse();
             framework.Category.ShouldBe("测试步枪");
             framework.DefaultAmmoSupply.ShouldBe(8);
+            framework.WeakPointHealthDamageMultiplier.ShouldBe(2);
+            framework.WeakPointProtectionDamageMultiplier.ShouldBe(.5);
             var template = await context.Set<EraWeaponTemplate>().SingleAsync();
             template.AmmoType.ShouldBe(EraWeaponAmmoType.Heavy);
             template.AmmoSupply.ShouldBe(2);
+            template.WeakPointHealthDamageMultiplier.ShouldBe(.75);
+            template.WeakPointProtectionDamageMultiplier.ShouldBe(3);
             framework.PresentationDriverKey.ShouldBe("rifle.custom-v2");
             (await context.Set<EraWeaponTemplate>().SingleAsync()).FrameworkId.ShouldBe(id);
             (await context.Set<EraWeaponTemplateStat>().CountAsync()).ShouldBe(9);

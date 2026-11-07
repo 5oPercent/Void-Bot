@@ -20,6 +20,10 @@ public sealed class EnemyDefinition
     public double BaseHealth { get; set; } = 100;
     /// <summary>基础防护；防护上限为基础防护乘当前等阶防护倍率后向上取整，默认 50。</summary>
     public double BaseProtection { get; set; } = 50;
+    /// <summary>弱点生命伤害系数，默认 1，范围 0～10000；不随等阶、难度或人数缩放。</summary>
+    public double WeakPointHealthMultiplier { get; set; } = 1;
+    /// <summary>弱点防护伤害系数，默认 1，范围 0～10000；击穿后以剩余普通伤害重新计算生命伤害。</summary>
+    public double WeakPointProtectionMultiplier { get; set; } = 1;
     /// <summary>本敌人独立的五档倍率；切换等阶不改写基础值或其他档位。</summary>
     public EnemyTierMultipliersDefinition TierMultipliers { get; set; } = new();
     public double WalkSpeed { get; set; } = 2;

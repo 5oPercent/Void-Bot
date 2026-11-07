@@ -27,6 +27,10 @@ public sealed class EraWeaponTemplateDto
     public EraWeaponAmmoType AmmoType { get; set; } = EraWeaponAmmoType.Tactical;
     /// <summary>武器补给份额，单位为发／份，范围为 1～100；显式值覆盖框架默认值。创建时省略或为空则带入框架默认值，更新时省略或为空则保留已有值；读取目录时必须已确定，无限类型不参与分配。</summary>
     public int? AmmoSupply { get; set; }
+    /// <summary>独立保存的弱点生命伤害系数，默认 1，范围 0～10000；选择框架时带入，允许修改。</summary>
+    public double WeakPointHealthDamageMultiplier { get; set; } = 1;
+    /// <summary>弱点防护伤害系数，默认 1，范围 0～10000；与生命系数独立，模板不在运行时继承框架值。</summary>
+    public double WeakPointProtectionDamageMultiplier { get; set; } = 1;
     /// <summary>允许装备的位置，必须为 Weapon1～Weapon3 中至少一个且不得重复。</summary>
     public List<EraEquipmentSlot> CompatibleSlots { get; set; } = new List<EraEquipmentSlot>();
     /// <summary>可选的改装槽位方案标识；为空时不采用槽位方案生成改装候选。</summary>

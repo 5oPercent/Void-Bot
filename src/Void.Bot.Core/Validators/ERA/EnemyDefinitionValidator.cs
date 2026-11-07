@@ -21,6 +21,7 @@ public static class EnemyDefinitionValidator
         EraDataDefinitionValidator.Id(value.FactionId);
         Number(value.BaseHealth, 1, 1000000000);
         Number(value.BaseProtection, 0, 1000000000);
+        Number(value.WeakPointHealthMultiplier, 0, 10000); Number(value.WeakPointProtectionMultiplier, 0, 10000);
         var tiers = value.TierMultipliers;
         if (tiers == null) throw new ArgumentException("缺少敌人等阶倍率表。");
         foreach (var multipliers in new[] { tiers.Minor, tiers.Elite, tiers.Major, tiers.Ultra, tiers.Boss })

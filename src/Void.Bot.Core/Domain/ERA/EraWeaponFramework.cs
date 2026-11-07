@@ -13,5 +13,7 @@ public sealed class EraWeaponFramework : IEntity<Guid>
     [StringLength(2048)] public string Note { get; set; } = string.Empty;
     public bool IsEnabled { get; set; }
     public int DefaultAmmoSupply { get; set; } = 1;
+    public double WeakPointHealthDamageMultiplier { get; set; } = 1;
+    public double WeakPointProtectionDamageMultiplier { get; set; } = 1;
     [StringLength(32)] public string PresentationDriverKey { get; set; } = string.Empty;
 }

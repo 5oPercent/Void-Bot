@@ -21,6 +21,10 @@ public sealed class EraWeaponFrameworkDto
     public string PresentationDriverKey { get; set; } = string.Empty;
     /// <summary>框架提供的补给份额默认值，单位为发／份，范围为 1～100；新建模板未指定补给份额时带入，模板可覆盖，后续修改不追改已有模板。</summary>
     public int DefaultAmmoSupply { get; set; } = 1;
+    /// <summary>弱点生命伤害系数，默认 1，范围 0～10000；选择框架时带入模板，后续不追改模板。</summary>
+    public double WeakPointHealthDamageMultiplier { get; set; } = 1;
+    /// <summary>弱点防护伤害系数，默认 1，范围 0～10000；与生命系数独立，模板不在运行时继承框架值。</summary>
+    public double WeakPointProtectionDamageMultiplier { get; set; } = 1;
     /// <summary>启用的补充属性，不含六项公共属性；必须与能力组合要求完全一致且不得重复。</summary>
     public List<EraWeaponStat> SupplementaryStats { get; set; } = new();
     /// <summary>框架的类型化能力集合，最多 8 项且类型不得重复；命中方式及发射、蓄力的组合关系独立于表现流程键校验。</summary>

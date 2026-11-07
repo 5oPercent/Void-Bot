@@ -19,6 +19,8 @@ public sealed class EraWorldsEndpointContextTemplate : IContextTemplate
     public string SetEraWorldEquipmentRestriction { get; set; } = "声明已穿装备操作限制";
     public string SubmitEraGroundReward { get; set; } = "房主提交怪物、宝箱或世界事件私人地面奖励";
     public string GrantEraGroundReward { get; set; } = "直接指定奖励条目生成私人地面装备";
+    public string ApproveEraModularActivity { get; set; } = "超级管理员申请发起模块化地图活动准备";
+    public string ClaimEraModularActivity { get; set; } = "当前权威主机领取模块化地图活动授权";
     public string GetEraEquipmentDrops { get; set; } = "读取本人可领取的私人或分享地面掉落";
     public string PickupEraEquipmentDrop { get; set; } = "拾取本人世界中的私人或分享地面装备";
     public string DestroyEraEquipmentDrops { get; set; } = "销毁本人有拾取权限的地面装备";
