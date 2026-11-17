@@ -24,4 +24,7 @@ public sealed class EraWorldsEndpointContextTemplate : IContextTemplate
     public string GetEraEquipmentDrops { get; set; } = "读取本人可领取的私人或分享地面掉落";
     public string PickupEraEquipmentDrop { get; set; } = "拾取本人世界中的私人或分享地面装备";
     public string DestroyEraEquipmentDrops { get; set; } = "销毁本人有拾取权限的地面装备";
+    public string ApproveEraAdminWorldAction { get; set; } = "超级管理员申请执行世界管理操作";
+    public string ClaimEraAdminWorldAction { get; set; } = "当前权威主机领取世界管理操作授权";
+    public string GrantApprovedEraGroundReward { get; set; } = "当前权威主机执行已授权的装备生成";
 }

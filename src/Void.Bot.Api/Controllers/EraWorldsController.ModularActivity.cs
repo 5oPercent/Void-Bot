@@ -7,6 +7,42 @@ namespace Void.Bot.Api.Controllers;
 
 public sealed partial class EraWorldsController
 {
+    [HttpPost("{worldInstanceId:guid}/admin-action/approve")]
+    [RequestSizeLimit(1100000)]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("ApproveEraAdminWorldAction")]
+    [ProducesResponseType(typeof(ApproveEraModularActivityResponse), 200)]
+    public async Task<IActionResult> ApproveEraAdminWorldActionAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] ApproveEraModularActivity request, CancellationToken cancellationToken)
+    {
+        request.WorldInstanceId = worldInstanceId;
+        request.IsAdminWorldAction = true;
+        return Ok(await _mediator.SendAsync<ApproveEraModularActivity, ApproveEraModularActivityResponse>(request, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpPost("{worldInstanceId:guid}/admin-action/claim")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("ClaimEraAdminWorldAction")]
+    [ProducesResponseType(typeof(ClaimEraModularActivityResponse), 200)]
+    public async Task<IActionResult> ClaimEraAdminWorldActionAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] ClaimEraModularActivity request, CancellationToken cancellationToken)
+    {
+        request.WorldInstanceId = worldInstanceId;
+        request.IsAdminWorldAction = true;
+        return Ok(await _mediator.SendAsync<ClaimEraModularActivity, ClaimEraModularActivityResponse>(request, cancellationToken).ConfigureAwait(false));
+    }
+
+    [HttpPost("{worldInstanceId:guid}/admin-action/grant-equipment")]
+    [SkipPermissionCheck]
+    [DescriptionLocalization("GrantApprovedEraGroundReward")]
+    [ProducesResponseType(typeof(SubmitEraGroundRewardResponse), 200)]
+    public async Task<IActionResult> GrantApprovedEraGroundRewardAsync([FromRoute] Guid worldInstanceId,
+        [FromBody] GrantApprovedEraGroundRewardCommand request, CancellationToken cancellationToken)
+    {
+        request.WorldInstanceId = worldInstanceId;
+        return Ok(await _mediator.SendAsync<GrantApprovedEraGroundRewardCommand, SubmitEraGroundRewardResponse>(request, cancellationToken).ConfigureAwait(false));
+    }
+
     [HttpPost("{worldInstanceId:guid}/modular-activity/approve")]
     [RequestSizeLimit(70000)]
     [SkipPermissionCheck] // 服务层显式要求有效 SuperAdmin；普通端点授权不能替代该角色。

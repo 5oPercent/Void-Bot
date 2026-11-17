@@ -12,6 +12,7 @@ using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Commands.ERA;
+using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.Core.Services.ERA.World;
@@ -20,6 +21,7 @@ public interface IEraModularActivityService : IScope
 {
     Task<Guid> ApproveAsync(Guid worldId, ApproveEraModularActivity request, CancellationToken cancellationToken);
     Task<JsonElement> ClaimAsync(Guid worldId, ClaimEraModularActivity request, CancellationToken cancellationToken);
+    Task<GrantEraGroundRewardCommand> AuthorizeEquipmentAsync(GrantApprovedEraGroundRewardCommand request, CancellationToken cancellationToken);
 }
 
 public sealed class EraModularActivityService(
@@ -27,19 +29,24 @@ public sealed class EraModularActivityService(
     ICurrentUser currentUser, IUserRoleService roles, ILocalizationService localization, TimeProvider clock) : IEraModularActivityService
 {
     private sealed record Approval(Guid AccountId, Guid PlayerId, Guid CharacterId, JsonElement Selection);
+    private sealed record EquipmentSelection(Guid RequestId, Guid CharacterId, Guid PlacementMemberId,
+        List<EraEquipmentRewardEntry> Entries, bool IsPublic);
+    private static readonly JsonSerializerOptions AdminJson = new(JsonSerializerDefaults.Web);
 
     public async Task<Guid> ApproveAsync(Guid worldId, ApproveEraModularActivity request, CancellationToken cancellationToken)
     {
         Guid accountId = currentUser.Id.GetValueOrDefault();
         if (accountId == Guid.Empty || !await roles.CheckUserIsSuperAdminAsync(accountId, cancellationToken).ConfigureAwait(false))
             throw SuperAdminRequired();
-        if (request.Selection.ValueKind != JsonValueKind.Object || Encoding.UTF8.GetByteCount(request.Selection.GetRawText()) > 65536)
+        if (request.Selection.ValueKind != JsonValueKind.Object ||
+            Encoding.UTF8.GetByteCount(request.Selection.GetRawText()) > (request.IsAdminWorldAction ? 1048576 : 65536) ||
+            request.IsAdminWorldAction && string.IsNullOrWhiteSpace(ActionKind(request.Selection)))
             throw InvalidOperation();
 
         var (snapshot, team) = await RequireContextAsync(worldId, request.MemberId, request.AuthorityEpoch, false, cancellationToken).ConfigureAwait(false);
         var member = team.Members.Single(member => member.MemberId == request.MemberId);
         Guid id = Guid.NewGuid();
-        var key = Key(snapshot.World, request.MemberId, id);
+        var key = Key(snapshot.World, request.MemberId, id, request.IsAdminWorldAction);
         var approval = new Approval(accountId, member.PlayerId, member.CharacterId, request.Selection);
         try
         {
@@ -54,7 +61,7 @@ public sealed class EraModularActivityService(
     {
         if (request.ApprovalId == Guid.Empty || request.InitiatorMemberId == Guid.Empty) throw InvalidOperation();
         var (snapshot, team) = await RequireContextAsync(worldId, request.MemberId, request.AuthorityEpoch, true, cancellationToken).ConfigureAwait(false);
-        var key = Key(snapshot.World, request.InitiatorMemberId, request.ApprovalId);
+        var key = Key(snapshot.World, request.InitiatorMemberId, request.ApprovalId, request.IsAdminWorldAction);
         try
         {
             var json = await approvals.ReadAsync(key, cancellationToken).ConfigureAwait(false);
@@ -63,11 +70,60 @@ public sealed class EraModularActivityService(
                 throw ApprovalUnavailable();
             if (!await roles.CheckUserIsSuperAdminAsync(approval.AccountId, cancellationToken).ConfigureAwait(false))
                 throw SuperAdminRequired();
-            if (!await approvals.ConsumeAsync(key, cancellationToken).ConfigureAwait(false))
+            // 装备还需主机计算落点并提交；正式奖励以固定请求 ID 防重。
+            bool equipment = request.IsAdminWorldAction && ActionKind(approval.Selection) == "equipment";
+            if (!equipment && !await approvals.ConsumeAsync(key, cancellationToken).ConfigureAwait(false))
                 throw ApprovalUnavailable();
             return approval.Selection;
         }
         catch (RedisException) { throw NetworkingUnavailable(); }
+    }
+
+    public async Task<GrantEraGroundRewardCommand> AuthorizeEquipmentAsync(GrantApprovedEraGroundRewardCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (request.ApprovalId == Guid.Empty || request.InitiatorMemberId == Guid.Empty || request.Placement == null)
+            throw InvalidOperation();
+        var (snapshot, team) = await RequireContextAsync(request.WorldInstanceId, request.MemberId, request.AuthorityEpoch,
+            true, cancellationToken).ConfigureAwait(false);
+        var key = Key(snapshot.World, request.InitiatorMemberId, request.ApprovalId, true);
+        try
+        {
+            var json = await approvals.ReadAsync(key, cancellationToken).ConfigureAwait(false);
+            var approval = json == null ? null : JsonSerializer.Deserialize<Approval>(json);
+            if (approval == null || ActionKind(approval.Selection) != "equipment" ||
+                !IsContinuing(snapshot, team, request.InitiatorMemberId, approval.PlayerId, approval.CharacterId))
+                throw ApprovalUnavailable();
+            if (!await roles.CheckUserIsSuperAdminAsync(approval.AccountId, cancellationToken).ConfigureAwait(false))
+                throw SuperAdminRequired();
+            var payload = ActionProperty(approval.Selection, "payload", "Payload");
+            var equipment = payload.ValueKind == JsonValueKind.Object ? payload.Deserialize<EquipmentSelection>(AdminJson) : null;
+            var anchor = equipment == null ? null : team.Members.SingleOrDefault(member => member.MemberId == equipment.PlacementMemberId);
+            if (equipment == null || equipment.RequestId == Guid.Empty || anchor == null ||
+                !IsContinuing(snapshot, team, anchor.MemberId, anchor.PlayerId, anchor.CharacterId) ||
+                (equipment.IsPublic ? equipment.CharacterId != approval.CharacterId :
+                    anchor.MemberId != request.InitiatorMemberId && anchor.CharacterId != equipment.CharacterId))
+                throw InvalidOperation();
+            return new GrantEraGroundRewardCommand
+            {
+                WorldInstanceId = request.WorldInstanceId, MemberId = request.MemberId, AuthorityEpoch = request.AuthorityEpoch,
+                RequestId = equipment.RequestId, CharacterId = equipment.CharacterId, IsPublic = equipment.IsPublic,
+                Entries = equipment.Entries, Placement = request.Placement
+            };
+        }
+        catch (RedisException) { throw NetworkingUnavailable(); }
+        catch (JsonException) { throw InvalidOperation(); }
+    }
+
+    private static JsonElement ActionProperty(JsonElement selection, string camelCase, string pascalCase) =>
+        selection.ValueKind == JsonValueKind.Object &&
+        (selection.TryGetProperty(camelCase, out var property) || selection.TryGetProperty(pascalCase, out property))
+            ? property : default;
+
+    private static string? ActionKind(JsonElement selection)
+    {
+        var kind = ActionProperty(selection, "kind", "Kind");
+        return kind.ValueKind == JsonValueKind.String ? kind.GetString() : null;
     }
 
     private async Task<(EraWorldReadSnapshot Snapshot, EraTeam Team)> RequireContextAsync(Guid worldId, Guid memberId,
@@ -106,8 +162,8 @@ public sealed class EraModularActivityService(
                    member.ActiveCharacterId == characterId);
     }
 
-    private static string Key(EraWorld world, Guid initiator, Guid approval) =>
-        $"{world.TeamId:N}:{world.Id:N}:{world.AuthorityEpoch}:{initiator:N}:{approval:N}";
+    private static string Key(EraWorld world, Guid initiator, Guid approval, bool adminWorldAction) =>
+        $"{(adminWorldAction ? "admin-action:" : string.Empty)}{world.TeamId:N}:{world.Id:N}:{world.AuthorityEpoch}:{initiator:N}:{approval:N}";
 
     private EraWorldAccessException SuperAdminRequired() => new(HttpStatusCode.Forbidden, "era.super_admin_required",
         localization.GetValue<EraWorldContextTemplate>(text => text.SuperAdminRequired));

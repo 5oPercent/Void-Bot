@@ -22,6 +22,7 @@ public partial class EraIntegrationFixture
         catalog.Frameworks[0].WeakPointProtectionDamageMultiplier = .5;
         catalog.Templates[0].AmmoType = EraWeaponAmmoType.Heavy;
         catalog.Templates[0].AmmoSupply = 2;
+        catalog.Templates[0].ProjectileCount = 8;
         catalog.Templates[0].WeakPointHealthDamageMultiplier = .75;
         catalog.Templates[0].WeakPointProtectionDamageMultiplier = 3;
         catalog.Frameworks[0].PresentationDriverKey = "rifle.custom-v2";
@@ -62,6 +63,7 @@ public partial class EraIntegrationFixture
             var template = await context.Set<EraWeaponTemplate>().SingleAsync();
             template.AmmoType.ShouldBe(EraWeaponAmmoType.Heavy);
             template.AmmoSupply.ShouldBe(2);
+            template.ProjectileCount.ShouldBe(8);
             template.WeakPointHealthDamageMultiplier.ShouldBe(.75);
             template.WeakPointProtectionDamageMultiplier.ShouldBe(3);
             framework.PresentationDriverKey.ShouldBe("rifle.custom-v2");
