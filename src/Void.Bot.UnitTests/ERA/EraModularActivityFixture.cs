@@ -12,6 +12,7 @@ using Void.Bot.Core.Services.Identity;
 using Void.Bot.Core.Services.Language;
 using Void.Bot.Core.Services.Security;
 using Void.Bot.Message.Commands.ERA;
+using Void.Bot.Message.Dto.ERA;
 using Void.Bot.Message.Enum.ERA;
 
 namespace Void.Bot.UnitTest.ERA;
@@ -110,6 +111,78 @@ public sealed class EraModularActivityFixture
         await Should.ThrowAsync<EraWorldAccessException>(() =>
             ClaimAsync(new ClaimEraModularActivity(_host.MemberId, Epoch, _guest.MemberId, id)));
         await _approvals.DidNotReceive().ReadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("vitals")]
+    [InlineData("custom-world-action")]
+    public async Task Guest_world_action_is_consumed_once_by_non_admin_host_and_cannot_be_claimed_as_map(string kind)
+    {
+        UseMember(_guest, _guestAccount);
+        var action = JsonSerializer.SerializeToElement(new { kind, payload = new { action = 1, amount = 40 } });
+        var approval = await _service.ApproveAsync(_worldId, new ApproveEraModularActivity(_guest.MemberId, Epoch, action)
+        {
+            IsAdminWorldAction = true
+        }, CancellationToken.None);
+
+        var claim = new ClaimEraModularActivity(_host.MemberId, Epoch, _guest.MemberId, approval);
+        await Should.ThrowAsync<EraWorldAccessException>(() => ClaimAsync(claim with { MemberId = _guest.MemberId, IsAdminWorldAction = true }));
+        UseMember(_host, _hostAccount);
+        await Should.ThrowAsync<EraWorldAccessException>(() => ClaimAsync(claim));
+        await Should.ThrowAsync<EraWorldAccessException>(() => ClaimAsync(claim with { InitiatorMemberId = _host.MemberId, IsAdminWorldAction = true }));
+        var result = await ClaimAsync(claim with { IsAdminWorldAction = true });
+        result.GetRawText().ShouldBe(action.GetRawText());
+        await Should.ThrowAsync<EraWorldAccessException>(() => ClaimAsync(claim with { IsAdminWorldAction = true }));
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"kind\":null}")]
+    [InlineData("{\"kind\":1}")]
+    [InlineData("{\"kind\":\"\"}")]
+    [InlineData("{\"kind\":\"   \"}")]
+    public async Task Admin_world_action_requires_a_nonempty_string_kind(string json)
+    {
+        UseMember(_guest, _guestAccount);
+        var action = JsonSerializer.Deserialize<JsonElement>(json);
+        await Should.ThrowAsync<EraWorldAccessException>(() => _service.ApproveAsync(_worldId,
+            new ApproveEraModularActivity(_guest.MemberId, Epoch, action) { IsAdminWorldAction = true }, CancellationToken.None));
+        await _approvals.DidNotReceive().StoreAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Equipment_grant_uses_guest_approved_entries_with_host_placement_and_rechecks_role()
+    {
+        UseMember(_guest, _guestAccount);
+        var reward = Guid.NewGuid();
+        var template = Guid.NewGuid();
+        var action = JsonSerializer.SerializeToElement(new
+        {
+            kind = "equipment",
+            payload = new
+            {
+                requestId = reward, characterId = _guest.CharacterId, placementMemberId = _guest.MemberId,
+                entries = new[] { new { templateId = template, count = 2 } }, isPublic = false
+            }
+        });
+        var approval = await _service.ApproveAsync(_worldId, new ApproveEraModularActivity(_guest.MemberId, Epoch, action)
+        {
+            IsAdminWorldAction = true
+        }, CancellationToken.None);
+        var grant = new GrantApprovedEraGroundRewardCommand(_host.MemberId, Epoch, _guest.MemberId, approval,
+            new EraEquipmentDropPlacementDto { X = 7 }) { WorldInstanceId = _worldId };
+
+        UseMember(_host, _hostAccount);
+        await ClaimAsync(new ClaimEraModularActivity(_host.MemberId, Epoch, _guest.MemberId, approval) { IsAdminWorldAction = true });
+        var command = await _service.AuthorizeEquipmentAsync(grant, CancellationToken.None);
+        command.RequestId.ShouldBe(reward);
+        command.MemberId.ShouldBe(_host.MemberId);
+        command.CharacterId.ShouldBe(_guest.CharacterId);
+        command.Entries.Single().TemplateId.ShouldBe(template);
+        command.Placement.X.ShouldBe(7d);
+
+        _roles.CheckUserIsSuperAdminAsync(_guestAccount, Arg.Any<CancellationToken>()).Returns(false);
+        await Should.ThrowAsync<EraWorldAccessException>(() => _service.AuthorizeEquipmentAsync(grant, CancellationToken.None));
     }
 
     private void UseMember(EraTeamMember member, Guid account)

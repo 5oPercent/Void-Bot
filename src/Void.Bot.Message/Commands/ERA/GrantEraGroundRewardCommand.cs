@@ -21,3 +21,10 @@ public sealed class GrantEraGroundRewardCommand : ICommand
     public List<EraEquipmentRewardEntry> Entries { get; set; } = new List<EraEquipmentRewardEntry>();
     public EraEquipmentDropPlacementDto Placement { get; set; } = new EraEquipmentDropPlacementDto();
 }
+
+[TransactionIsolation(IsolationLevel.ReadCommitted)]
+public sealed record GrantApprovedEraGroundRewardCommand(Guid MemberId, long AuthorityEpoch, Guid InitiatorMemberId,
+    Guid ApprovalId, EraEquipmentDropPlacementDto Placement) : ICommand
+{
+    public Guid WorldInstanceId { get; set; }
+}

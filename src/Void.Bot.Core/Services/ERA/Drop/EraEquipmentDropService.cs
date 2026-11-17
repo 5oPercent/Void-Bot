@@ -22,6 +22,7 @@ namespace Void.Bot.Core.Services.ERA.Drop;
 public interface IEraEquipmentDropService : IScope
 {
     Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken);
+    Task<SubmitEraGroundRewardResponse> GrantApprovedAsync(GrantApprovedEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command, CancellationToken cancellationToken);
     Task<GetEraEquipmentDropsResponse> GetAsync(GetEraEquipmentDropsRequest request, CancellationToken cancellationToken);
     Task<PickupEraEquipmentDropResponse> PickupAsync(PickupEraEquipmentDropCommand command, CancellationToken cancellationToken);
@@ -45,12 +46,13 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
     private readonly TimeProvider _clock;
     private readonly IEraWeaponGenerator? _weapons;
     private readonly IEraEquipmentNotificationService? _notifications;
+    private readonly IEraModularActivityService? _adminApprovals;
 
     public EraEquipmentDropService(IEraEquipmentDropDataProvider drops, IEraWorldDataProvider worlds, IEraWorldService worldService,
         IEraRewardDataProvider rewards, IEraEquipmentDataProvider equipment, IEraDataProvider characters, IEraPlayerContext players,
         IEraCharacterContext characterContext, IEraArmorGenerator armor, IEraRewardPoolRoller pools,
         ILocalizationService localization, TimeProvider clock, IEraWeaponGenerator? weapons = null,
-        IEraEquipmentNotificationService? notifications = null)
+        IEraEquipmentNotificationService? notifications = null, IEraModularActivityService? adminApprovals = null)
     {
         _drops = drops;
         _worlds = worlds;
@@ -66,6 +68,7 @@ public sealed partial class EraEquipmentDropService : IEraEquipmentDropService
         _clock = clock;
         _weapons = weapons;
         _notifications = notifications;
+        _adminApprovals = adminApprovals;
     }
 
     private EraRewardException Error(HttpStatusCode status, string code, Expression<Func<EraEquipmentDropContextTemplate, object>> text)

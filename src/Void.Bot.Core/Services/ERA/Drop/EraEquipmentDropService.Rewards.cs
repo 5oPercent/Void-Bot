@@ -1,4 +1,5 @@
 using System.Net;
+using FluentValidation;
 using System.Text.Json;
 using Void.Bot.Core.Domain.ERA;
 using Void.Bot.Core.Services.ERA.Equipment;
@@ -18,7 +19,18 @@ public sealed partial class EraEquipmentDropService
         return SubmitAsync(command, null, null, cancellationToken);
     }
 
-    public Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken)
+    public Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken) =>
+        GrantAsync(command, cancellationToken, requireHost: false);
+
+    public async Task<SubmitEraGroundRewardResponse> GrantApprovedAsync(GrantApprovedEraGroundRewardCommand request, CancellationToken cancellationToken)
+    {
+        var approvals = _adminApprovals ?? throw new InvalidOperationException("ERA admin approvals are unavailable.");
+        var command = await approvals.AuthorizeEquipmentAsync(request, cancellationToken).ConfigureAwait(false);
+        await new GrantEraGroundRewardCommandValidator().ValidateAndThrowAsync(command, cancellationToken).ConfigureAwait(false);
+        return await GrantAsync(command, cancellationToken, requireHost: true).ConfigureAwait(false);
+    }
+
+    private Task<SubmitEraGroundRewardResponse> GrantAsync(GrantEraGroundRewardCommand command, CancellationToken cancellationToken, bool requireHost)
     {
         // 直接发放以 RequestId 作为来源实例防重；无需来源定义、奖励节点或奖励池配置。
         return SubmitAsync(new SubmitEraGroundRewardCommand
@@ -26,11 +38,12 @@ public sealed partial class EraEquipmentDropService
             WorldInstanceId = command.WorldInstanceId, RequestId = command.RequestId, MemberId = command.MemberId,
             AuthorityEpoch = command.AuthorityEpoch, SourceType = EraRewardSourceType.Internal,
             SourceInstanceId = command.RequestId, TriggerIndex = 1, Placement = command.Placement
-        }, command.Entries, command.CharacterId, cancellationToken, command.IsPublic);
+        }, command.Entries, command.CharacterId, cancellationToken, command.IsPublic, requireHost);
     }
 
     private async Task<SubmitEraGroundRewardResponse> SubmitAsync(SubmitEraGroundRewardCommand command,
-        IReadOnlyList<EraEquipmentRewardEntry>? entries, Guid? characterId, CancellationToken cancellationToken, bool isPublic = false)
+        IReadOnlyList<EraEquipmentRewardEntry>? entries, Guid? characterId, CancellationToken cancellationToken, bool isPublic = false,
+        bool requireHost = false)
     {
         if (command.WorldInstanceId == Guid.Empty || command.RequestId == Guid.Empty || command.MemberId == Guid.Empty ||
             command.AuthorityEpoch < 1 || entries == null && command.SourceType is not (EraRewardSourceType.Monster or EraRewardSourceType.Chest or EraRewardSourceType.Event) ||
@@ -84,7 +97,7 @@ public sealed partial class EraEquipmentDropService
             }
             characters.Add(character.Id, character);
         }
-        var context = await _worldService.LockRewardWorldAsync(command, actor.Id, previous != null, entries == null, cancellationToken).ConfigureAwait(false);
+        var context = await _worldService.LockRewardWorldAsync(command, actor.Id, previous != null, requireHost || entries == null, cancellationToken).ConfigureAwait(false);
         if (previous != null)
         {
             if (previous.WorldInstanceId != command.WorldInstanceId || previous.ScopeId != command.WorldInstanceId || previous.RequestPayload != payload)

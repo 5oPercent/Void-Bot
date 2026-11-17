@@ -19,3 +19,10 @@ public sealed class GrantEraGroundRewardCommandHandler : ICommandHandler<GrantEr
         return _service.GrantAsync(context.Message, cancellationToken);
     }
 }
+
+public sealed class GrantApprovedEraGroundRewardCommandHandler(IEraEquipmentDropService drops)
+    : ICommandHandler<GrantApprovedEraGroundRewardCommand, SubmitEraGroundRewardResponse>
+{
+    public Task<SubmitEraGroundRewardResponse> Handle(IReceiveContext<GrantApprovedEraGroundRewardCommand> context,
+        CancellationToken cancellationToken) => drops.GrantApprovedAsync(context.Message, cancellationToken);
+}
