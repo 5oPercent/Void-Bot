@@ -257,6 +257,7 @@ public sealed class EraWeaponDataProvider : IEraWeaponDataProvider
             entity.FrameworkId = template.FrameworkId;
             entity.AmmoType = template.AmmoType;
             entity.AmmoSupply = template.AmmoSupply!.Value;
+            entity.ProjectileCount = template.ProjectileCount;
             entity.WeakPointHealthDamageMultiplier = template.WeakPointHealthDamageMultiplier;
             entity.WeakPointProtectionDamageMultiplier = template.WeakPointProtectionDamageMultiplier;
             entity.SlotConfigurationId = template.SlotConfigurationId;

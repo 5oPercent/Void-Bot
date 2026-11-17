@@ -93,6 +93,8 @@ public static class EraWeaponConfigurationValidator
                 throw new ArgumentException("Weapon weak point damage multiplier is invalid.");
             if (!System.Enum.IsDefined(template.AmmoType) || template.AmmoSupply is not (>= 1 and <= 100))
                 throw new ArgumentException("Weapon ammunition type or base supply is invalid.");
+            if (template.ProjectileCount < 1)
+                throw new ArgumentException("Weapon projectile count must be a positive integer.");
             var loaded = template.BaseStats.Single(value => value.Stat == EraWeaponStat.LoadedCapacity).Value;
             var reserve = template.BaseStats.Single(value => value.Stat == EraWeaponStat.ReserveCapacity).Value;
             if ((template.AmmoType == EraWeaponAmmoType.Infinite) != (reserve == -1) ||

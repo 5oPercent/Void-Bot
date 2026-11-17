@@ -8,6 +8,25 @@ namespace Void.Bot.UnitTest.ERA;
 
 public class EraWeaponTemplateStatFixture
 {
+    [Fact]
+    public void Should_default_missing_projectile_count_and_preserve_explicit_values()
+    {
+        JsonSerializer.Deserialize<EraWeaponTemplateDto>("{}")!.ProjectileCount.ShouldBe(1);
+        var template = EraWeaponFixture.Catalog().Templates[0];
+        template.ProjectileCount = 8;
+        JsonSerializer.Deserialize<EraWeaponTemplateDto>(JsonSerializer.Serialize(template))!.ProjectileCount.ShouldBe(8);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Should_reject_nonpositive_projectile_counts(int count)
+    {
+        var catalog = EraWeaponFixture.Catalog();
+        catalog.Templates[0].ProjectileCount = count;
+        Should.Throw<ArgumentException>(() => EraWeaponConfigurationValidator.Validate(catalog));
+    }
+
     [Theory]
     [InlineData(EraWeaponStat.Damage)]
     [InlineData(EraWeaponStat.Frequency)]
